@@ -8,7 +8,7 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-def draw_loss(train_loss, valid_loss=None, save_path='./loss.png'):
+def draw_loss_curve(train_loss, valid_loss=None, save_path='./loss.png'):
     plt.figure()
 
     epochs = range(1, len(train_loss) + 1)

@@ -3,7 +3,7 @@ import time
 import torch
 import torch.nn as nn
 
-from utils.utils import draw_loss
+from utils.utils import draw_loss_curve
 
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -97,7 +97,7 @@ class Trainer:
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
     
     def run_one_epoch(self, epoch):
         """
