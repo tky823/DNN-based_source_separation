@@ -8,8 +8,8 @@ class UNetBase(nn.Module):
         super().__init__()
         
     @classmethod
-    def load_model(cls, model_path):
-        package = torch.load(model_path)
+    def build_model(cls, model_path):
+        package = torch.load(model_path, map_location=lambda storage, loc: storage)
         
         channels = package['channels']
         kernel_size, stride, dilated = package['kernel_size'], package['stride'], package['dilated']
@@ -17,7 +17,6 @@ class UNetBase(nn.Module):
         out_channels = package['out_channels']
         
         model = cls(channels, kernel_size, stride=stride, dilated=dilated, nonlinear_enc=nonlinear_enc, nonlinear_dec=nonlinear_dec, out_channels=out_channels)
-        model.load_state_dict(package['state_dict'])
         
         return model
         
@@ -59,9 +58,15 @@ class UNet1d(UNetBase):
         else:
             channels_dec = channels[:0:-1] + [out_channels]
             
-        channels_dec = [
-            2 * out_channel for out_channel in channels_dec
-        ]
+        _channels_dec = []
+        
+        for idx, out_channel in enumerate(channels_dec):
+            if idx == 0:
+                _channels_dec.append(out_channel)
+            else:
+                _channels_dec.append(2 * out_channel)
+        
+        channels_dec = _channels_dec
         
         self.channels = channels
         self.kernel_size, self.stride, self.dilated = kernel_size, stride, dilated
@@ -568,4 +573,4 @@ if __name__ == '__main__':
     package = unet2d.get_package()
     model_path = "unet.pth"
     torch.save(package, model_path)
-    model = UNet2d.load_model(model_path)
+    model = UNet2d.build_model(model_path)
