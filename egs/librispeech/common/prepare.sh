@@ -7,8 +7,8 @@ N_SOURCES=$2
 
 sr=16000
 train_duration=2
-valid_duration=2
-test_duration=2
+valid_duration=4
+test_duration=4
 
 seed=111
 
