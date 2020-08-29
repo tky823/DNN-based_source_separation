@@ -57,7 +57,7 @@ if [ ${enc_nonlinear} = 'trainable' ]; then
     tag="${tag}enc-${enc_nonlinear}_"
 fi
 
-if [ ${enc_basis} = 'Fourier' -o ${dec_basis} = 'Fourier']; then
+if [ ${enc_basis} = 'Fourier' -o ${dec_basis} = 'Fourier' ]; then
     tag="${tag}${window_fn}-window_"
 fi
 
