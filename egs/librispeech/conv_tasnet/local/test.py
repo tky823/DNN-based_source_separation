@@ -55,7 +55,6 @@ def main(args):
     
     pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
     
-    return
     tester = Tester(model, loader, pit_criterion, args)
     tester.run()
     
