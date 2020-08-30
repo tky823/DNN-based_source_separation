@@ -53,7 +53,7 @@ seed=111
 
 prefix=""
 
-if [ ${enc_nonlinear} = 'trainable' ]; then
+if [ ${enc_basis} = 'trainable' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
