@@ -156,6 +156,8 @@ class Trainer:
                         save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
                         os.makedirs(save_dir, exist_ok=True)
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx))
+                        norm = np.abs(estimated_source).max()
+                        estimated_source = estimated_source / norm
                         write_wav(save_path, signal=estimated_source, sr=self.sr)
 
         train_loss /= n_train_batch
