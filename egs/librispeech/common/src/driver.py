@@ -272,7 +272,9 @@ class Tester:
                     
                     command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
                     command += " | grep Pre | awk '{print $5}'"
+                    print(command)
                     pesq_output = subprocess.check_output(command, shell=True)
+                    print(pesq_output)
                     pesq_output = pesq_output.decode().strip()
                     pesq += float(pesq_output)
                     
