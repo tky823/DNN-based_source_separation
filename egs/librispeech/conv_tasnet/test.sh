@@ -3,7 +3,6 @@
 . ./path.sh
 
 exp_dir="$1"
-out_dir="$2"
 
 n_sources=2
 
@@ -66,6 +65,8 @@ model_choice="best"
 
 model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
+
+out_dir="${save_dir}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
