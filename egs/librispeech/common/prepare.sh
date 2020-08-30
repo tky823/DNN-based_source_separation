@@ -25,7 +25,7 @@ test_url="http://www.openslr.org/resources/12/${test_file}"
 test_dataset="test-clean"
 test_json="test-${N_SOURCES}mix.json"
 
-if [ -e "${DATASET_ROOT}/LibriSpeech/${train_dataset}" ]; then
+if [ -e "${DATASET_ROOT}/LibriSpeech/${train_dataset}/103" ]; then
     echo "Already downloaded dataset ${train_dataset}"
 else
     mkdir -p "${DATASET_ROOT}"
@@ -34,7 +34,7 @@ else
     rm "/tmp/${train_file}"
 fi
 
-if [ -e "${DATASET_ROOT}/LibriSpeech/${valid_dataset}" ]; then
+if [ -e "${DATASET_ROOT}/LibriSpeech/${valid_dataset}/1272" ]; then
     echo "Already downloaded dataset ${valid_dataset}"
 else
     mkdir -p "${DATASET_ROOT}"
@@ -43,7 +43,7 @@ else
     rm "/tmp/${valid_file}"
 fi
 
-if [ -e "${DATASET_ROOT}/LibriSpeech/${test_dataset}" ]; then
+if [ -e "${DATASET_ROOT}/LibriSpeech/${test_dataset}/1089" ]; then
     echo "Already downloaded dataset ${test_dataset}"
 else
     mkdir -p "${DATASET_ROOT}"
