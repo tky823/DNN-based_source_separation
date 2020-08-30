@@ -268,7 +268,9 @@ class Tester:
                     source_path = "tmp-{}-target.wav".format(source_idx)
                     estimated_path = "tmp-{}-estimated.wav".format(source_idx)
                     
-                    pesq_output = subprocess.check_output("./PESQ +{} {} {} | grep Pre | awk '{print $5}'".format(self.sr, source_path, estimated_path), shell=True)
+                    command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
+                    command += " | grep Pre | awk '{print $5}'"
+                    pesq_output = subprocess.check_output(command, shell=True)
                     pesq_output = pesq_output.decode().strip()
                     pesq += float(pesq_output)
                     
