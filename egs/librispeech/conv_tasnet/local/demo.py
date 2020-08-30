@@ -16,7 +16,6 @@ parser.add_argument('--sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--num_chunk', type=int, default=256, help='Number of chunks')
 parser.add_argument('--duration', type=int, default=10, help='Duration [sec]')
 parser.add_argument('--model_path', type=str, default='./best.pth', help='Path for model')
-parser.add_argument('--filename', type=str, default='./tmp.wav', help='Mixture wavfiles.')
 parser.add_argument('--save_dir', type=str, default='./results', help='Directory to save estimation.')
 
 FORMAT = pyaudio.paInt16
@@ -26,7 +25,7 @@ DEVICE_INDEX = 0
 def main(args):
     process_offline(args.sr, args.num_chunk, duration=args.duration, model_path=args.model_path, save_dir=args.save_dir)
 
-def process_offline(sr, num_chunk, duration=5, filename="tmp.wav", model_path=None, save_dir="results"):
+def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="results"):
     num_loop = int(duration * sr / num_chunk)
     sequence = []
     
@@ -50,15 +49,17 @@ def process_offline(sr, num_chunk, duration=5, filename="tmp.wav", model_path=No
     
     print("Stop recording")
     
+    os.makedirs(save_dir, exist_ok=True)
+    
     # Save
     signal = b"".join(sequence)
     signal = np.frombuffer(signal, dtype=np.int16)
     signal = signal / 32768
-    write_wav(filename, signal=signal, sr=sr)
+    
+    save_path = os.path.join(save_dir, "mixture.wav")
+    write_wav(save_path, signal=signal, sr=sr)
 
     # Separate by DNN
-    os.makedirs(save_dir, exist_ok=True)
-    
     model = load_model(model_path)
     model.eval()
 
