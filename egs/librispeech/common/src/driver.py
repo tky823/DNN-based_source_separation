@@ -153,7 +153,7 @@ class Trainer:
                 if idx < 5:
                     estimated_sources = output[0].detach().cpu().numpy()
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_dir = os.path.join(self.sample_dir, "{}".format(source_idx))
+                        save_dir = os.path.join(self.sample_dir, "{}".format(idx))
                         os.makedirs(save_dir, exist_ok=True)
                         save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch+1))
                         write_wav(save_path, signal=estimated_source, sr=self.sr)
