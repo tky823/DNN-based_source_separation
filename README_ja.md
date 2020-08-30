@@ -12,18 +12,18 @@ DNNによる音源分離（PyTorch実装）
 ## 実行例
 [Conv-TasNet](https://arxiv.org/abs/1809.07454)によるLibriSpeechデータセットを用いた音源分離の例
 ```
-"./egs/librispeech/"
+cd <REPOSITORY_ROOT>/egs/librispeech/
 ```
 
 ### 0. データセットの準備
 ```
-cd ./common/
+cd <REPOSITORY_ROOT>/egs/librispeech/common/
 . ./prepare.sh <DATASET_DIR> <#SPEAKERS>
 ```
 
 ### 1. 学習
 ```
-cd "../conv_tasnet/"
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./train.sh <OUTPUT_DIR>
 ```
 
@@ -36,4 +36,7 @@ cd "../conv_tasnet/"
 Coming soon...
 
 ### 3. デモンストレーション
-Coming soon...
+```
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+. ./demo.sh
+```

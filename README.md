@@ -12,18 +12,18 @@ A PyTorch implementation of DNN-based source separation.
 ## Example
 LibriSpeech example using [Conv-TasNet](https://arxiv.org/abs/1809.07454)
 ```
-"./egs/librispeech/"
+cd <REPOSITORY_ROOT>/egs/librispeech/
 ```
 
 ### 0. Preparation
 ```
-cd ./common/
+cd <REPOSITORY_ROOT>/egs/librispeech/common/
 . ./prepare.sh <DATASET_DIR> <#SPEAKERS>
 ```
 
 ### 1. Training
 ```
-cd "../conv_tasnet/"
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./train.sh <OUTPUT_DIR>
 ```
 
@@ -36,4 +36,7 @@ If you want to resume training,
 Coming soon...
 
 ### 3. Demo
-Coming soon...
+```
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+. ./demo.sh
+```
