@@ -123,8 +123,5 @@ def test_collate_fn(batch):
         
         batched_segment_ID.append(segmend_ID)
     
-    print(batched_sources.size())
-    print(batched_segment_ID)
-    
-    raise ValueError("Stop")
+    return batched_mixture, batched_sources, batched_segment_ID
 
