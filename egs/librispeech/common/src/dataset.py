@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-class TrainDataset(torch.utils.data.Dataset):
+class WaveTrainDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
         super().__init__()
         
@@ -41,11 +41,11 @@ class TrainDataset(torch.utils.data.Dataset):
         return len(self.json_data)
 
 
-class EvalDataset(TrainDataset):
+class WaveEvalDataset(WaveTrainDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
 
-class TestDataset(torch.utils.data.Dataset):
+class WaveTestDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
         super().__init__()
         
@@ -85,18 +85,18 @@ class TestDataset(torch.utils.data.Dataset):
         return len(self.json_data)
 
 
-class TrainDataLoader(torch.utils.data.DataLoader):
+class WaveTrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
-class EvalDataLoader(torch.utils.data.DataLoader):
+class WaveEvalDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
     
-class TestDataLoader(torch.utils.data.DataLoader):
+class WaveTestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         

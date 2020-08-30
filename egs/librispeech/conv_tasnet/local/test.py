@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import TestDataset, TestDataLoader
+from dataset import WaveTestDataset, WaveTestDataLoader
 from driver import Tester
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
@@ -28,10 +28,10 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    test_dataset = TestDataset(args.wav_root, args.test_json_path)
+    test_dataset = WaveTestDataset(args.wav_root, args.test_json_path)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
-    loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
+    loader = WaveTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
     model = ConvTasNet.build_model(args.model_path)
     print(model)
