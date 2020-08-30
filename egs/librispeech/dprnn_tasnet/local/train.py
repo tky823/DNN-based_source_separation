@@ -67,6 +67,8 @@ def main(args):
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
+    return
+    
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
