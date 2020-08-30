@@ -45,3 +45,6 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./demo.sh
 ```
+
+## バージョン情報
+v0.0.0: Conv-TasNetとDPRNN-TasNetによるLibriSpeechデータセットの例を含める．

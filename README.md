@@ -45,3 +45,6 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./demo.sh
 ```
+
+## Version
+v0.0.0: Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
