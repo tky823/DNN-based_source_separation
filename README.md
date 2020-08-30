@@ -33,7 +33,10 @@ If you want to resume training,
 ```
 
 ### 2. Evaluation
-Coming soon...
+```
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+. ./test.sh <OUTPUT_DIR>
+```
 
 ### 3. Demo
 ```

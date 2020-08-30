@@ -33,7 +33,10 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 ```
 
 ### 2. 評価
-Coming soon...
+```
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+. ./test.sh <OUTPUT_DIR>
+```
 
 ### 3. デモンストレーション
 ```
