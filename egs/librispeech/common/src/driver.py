@@ -255,6 +255,7 @@ class Tester:
                     source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
                     write_wav(source_path, signal=source, sr=self.sr)
                     source_path = "tmp-{}-target.wav".format(order_idx)
+                    write_wav(source_path, signal=source, sr=self.sr)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
