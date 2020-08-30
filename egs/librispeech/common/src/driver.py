@@ -202,8 +202,8 @@ class Tester:
         self.sr = args.sr
         self.n_sources = args.n_sources
         
-        self.save_dir = args.save_dir
-        os.makedirs(self.save_dir, exist_ok=True)
+        self.out_dir = args.out_dir
+        os.makedirs(self.out_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
         
@@ -222,7 +222,7 @@ class Tester:
         n_test = len(self.loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources) in enumerate(self.loader):
+            for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
@@ -231,28 +231,42 @@ class Tester:
                 loss = loss.sum(dim=0)
                 test_loss += loss.item()
                 
+                mixture = mixture[0].squeeze(dim=0).cpu().numpy() # -> (T,)
                 sources = sources[0].cpu().numpy() # -> (n_sources, T)
                 estimated_sources = output[0].cpu().numpy() # -> (n_sources, T)
                 perm_idx = perm_idx[0] # -> (n_sources,)
+                segment_IDs = segment_IDs[0] # -> (n_sources,)
                 
-                for order_idx, (source, estimated_source) in enumerate(zip(sources, estimated_sources)):
-                    # Original
-                    source_path = "tmp-source-{}.wav".format(order_idx)
+                norm = np.abs(mixture).max()
+                mixture /= norm
+                mixture_ID = "+".join(segment_IDs)
+                mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
+                write_wav(mixture_path, signal=mixture, sr=self.sr)
+                subprocess.call("cp {} tmp-mixture.wav".format(mixture_path), shell=True)
+                
+                for order_idx in range(self.n_sources):
+                    source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
+                    segment_ID = segment_IDs[order_idx]
+                    
+                    # Target
                     norm = np.abs(source).max()
-                    source = source / norm
+                    source /= norm
+                    source_path = "{}_{}-target.wav".format(mixture_ID, segment_ID)
                     write_wav(source_path, signal=source, sr=self.sr)
+                    subprocess.call("cp {} tmp-{}-target.wav".format(source_path, order_idx), shell=True)
                     
                     # Estimated source
-                    estimated_path = "tmp-estimated-{}.wav".format(perm_idx[order_idx])
                     norm = np.abs(estimated_source).max()
-                    estimated_source = estimated_source / norm
+                    estimated_source /= norm
+                    estimated_path = "{}_{}-estimated.wav".format(mixture_ID, segment_ID)
                     write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                    subprocess.call("cp {} tmp-{}-estimated.wav".format(source_path, order_idx), shell=True)
                 
                 pesq = 0
                 
-                for source_idx, source in enumerate(sources):
-                    source_path = "tmp-source-{}.wav".format(source_idx)
-                    estimated_path = "tmp-estimated-{}.wav".format(source_idx)
+                for source_idx in range(self.n_sources):
+                    source_path = "tmp-{}-target.wav".format(source_idx)
+                    estimated_path = "tmp-{}-estimated.wav".format(source_idx)
                     
                     pesq_output = subprocess.check_output("./PESQ +{} {} {} | grep Pre | awk '{print $5}'".format(self.sr, source_path, estimated_path), shell=True)
                     pesq_output = pesq_output.decode().strip()
