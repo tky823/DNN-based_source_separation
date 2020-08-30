@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_basis
+from utils.utils_tasnet import choose_basis, choose_layer_norm
 from models.dprnn import DPRNN
 
 EPS=1e-12
@@ -48,7 +48,7 @@ class DPRNNTasNet(nn.Module):
         encoder, decoder = choose_basis(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
         
         self.encoder = encoder
-        self.separator = Separator(n_basis, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+        self.separator = Separator(n_basis, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
@@ -151,12 +151,13 @@ class DPRNNTasNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2):
+    def __init__(self, num_features, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
+        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.dprnn = DPRNN(num_features, hidden_channels, num_blocks=num_blocks, causal=causal)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
