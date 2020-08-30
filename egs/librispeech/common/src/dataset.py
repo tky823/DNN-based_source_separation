@@ -54,6 +54,7 @@ class WaveEvalDataset(WaveTrainDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
 
+
 class WaveTestDataset(LibriSpeechDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
@@ -94,6 +95,7 @@ class WaveTestDataset(LibriSpeechDataset):
     def __len__(self):
         return len(self.json_data)
 
+
 class SpectrogramTrainDataset(WaveTrainDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
         super().__init__(wav_root, json_path)
@@ -117,24 +119,27 @@ class SpectrogramTrainDataset(WaveTrainDataset):
         
         return mixture, sources
 
-class WaveTrainDataLoader(torch.utils.data.DataLoader):
+
+class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
-class WaveEvalDataLoader(torch.utils.data.DataLoader):
+class EvalDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
-    
-class WaveTestDataLoader(torch.utils.data.DataLoader):
+
+
+class TestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
         
         self.collate_fn = test_collate_fn
+
 
 def test_collate_fn(batch):
     batched_mixture, batched_sources = None, None

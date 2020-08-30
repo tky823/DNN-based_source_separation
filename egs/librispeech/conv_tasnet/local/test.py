@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTestDataset, WaveTestDataLoader
+from dataset import WaveTestDataset, TestDataLoader
 from driver import Tester
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
@@ -31,7 +31,7 @@ def main(args):
     test_dataset = WaveTestDataset(args.wav_root, args.test_json_path)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
-    loader = WaveTestDataLoader(test_dataset, batch_size=1, shuffle=False)
+    loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
     model = ConvTasNet.build_model(args.model_path)
     print(model)
