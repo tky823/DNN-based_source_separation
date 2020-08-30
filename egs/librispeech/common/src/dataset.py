@@ -107,7 +107,6 @@ class TestDataLoader(torch.utils.data.DataLoader):
         self.collate_fn = test_collate_fn
 
 def test_collate_fn(batch):
-    print(batch)
     batched_mixture, batched_sources = None, None
     batched_segment_ID = []
     
@@ -121,8 +120,10 @@ def test_collate_fn(batch):
         else:
             batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
             batched_sources = torch.cat([batched_sources, sources], dim=0)
+        
         batched_segment_ID.append(segmend_ID)
     
+    print(batched_sources.size())
     print(batched_segment_ID)
     
     raise ValueError("Stop")
