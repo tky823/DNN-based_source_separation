@@ -203,7 +203,9 @@ class Tester:
         self.n_sources = args.n_sources
         
         self.out_dir = args.out_dir
-        os.makedirs(self.out_dir, exist_ok=True)
+        
+        if self.out_dir is not None:
+            os.makedirs(self.out_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
         
@@ -246,8 +248,9 @@ class Tester:
                 norm = np.abs(mixture).max()
                 mixture /= norm
                 mixture_ID = "+".join(segment_IDs)
-                mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
-                write_wav(mixture_path, signal=mixture, sr=self.sr)
+                if idx < 10 and self.out_dir is not None:
+                    mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
+                    write_wav(mixture_path, signal=mixture, sr=self.sr)
                 mixture_path = "tmp-mixture.wav"
                 write_wav(mixture_path, signal=mixture, sr=self.sr)
                 
@@ -258,16 +261,18 @@ class Tester:
                     # Target
                     norm = np.abs(source).max()
                     source /= norm
-                    source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
-                    write_wav(source_path, signal=source, sr=self.sr)
+                    if idx < 10 and  self.out_dir is not None:
+                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
+                        write_wav(source_path, signal=source, sr=self.sr)
                     source_path = "tmp-{}-target.wav".format(order_idx)
                     write_wav(source_path, signal=source, sr=self.sr)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
                     estimated_source /= norm
-                    estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
-                    write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                    if idx < 10 and  self.out_dir is not None:
+                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
+                        write_wav(estimated_path, signal=estimated_source, sr=self.sr)
                     estimated_path = "tmp-{}-estimated.wav".format(order_idx)
                     write_wav(estimated_path, signal=estimated_source, sr=self.sr)
                 
