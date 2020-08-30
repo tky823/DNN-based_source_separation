@@ -51,17 +51,17 @@ use_cuda=1
 overwrite=0
 seed=111
 
-preffix=""
+prefix=""
 
 if [ ${enc_nonlinear} = 'trainable' ]; then
-    preffix="${preffix}enc-${enc_nonlinear}_"
+    prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
 if [ ${enc_basis} = 'Fourier' -o ${dec_basis} = 'Fourier' ]; then
-    preffix="${preffix}${window_fn}-window_"
+    prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${preffix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 
 model_dir="${save_dir}/model"
