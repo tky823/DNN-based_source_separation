@@ -251,14 +251,14 @@ class Tester:
                     # Target
                     norm = np.abs(source).max()
                     source /= norm
-                    source_path = "{}_{}-target.wav".format(mixture_ID, segment_ID)
+                    source_path = "{}_{}-target.wav".format(mixture_ID, order_idx)
                     write_wav(source_path, signal=source, sr=self.sr)
                     subprocess.call("cp {} tmp-{}-target.wav".format(source_path, order_idx), shell=True)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
                     estimated_source /= norm
-                    estimated_path = "{}_{}-estimated.wav".format(mixture_ID, segment_ID)
+                    estimated_path = "{}_{}-estimated.wav".format(mixture_ID, order_idx)
                     write_wav(estimated_path, signal=estimated_source, sr=self.sr)
                     subprocess.call("cp {} tmp-{}-estimated.wav".format(source_path, order_idx), shell=True)
                 
