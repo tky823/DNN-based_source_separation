@@ -295,4 +295,4 @@ class Tester:
         test_loss_improvement /= n_test
         test_pesq /= n_test
             
-            
+        print("Loss: {:.3f}, loss improvement: {:3f} PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
