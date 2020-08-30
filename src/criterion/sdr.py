@@ -32,6 +32,7 @@ class SISDR(nn.Module):
     def __init__(self, eps=EPS):
         super().__init__()
         
+        self.maximize = True
         self.eps = eps
         
     def forward(self, input, target, batch_mean=True):
@@ -60,6 +61,7 @@ class NegSISDR(nn.Module):
     def __init__(self, eps=EPS):
         super().__init__()
         
+        self.maximize = False
         self.eps = eps
         
     def forward(self, input, target, batch_mean=True):

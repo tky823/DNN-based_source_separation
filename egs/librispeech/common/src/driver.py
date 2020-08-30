@@ -218,6 +218,7 @@ class Tester:
         self.model.eval()
         
         test_loss = 0
+        test_loss_improvement = 0
         test_pesq = 0
         n_test = len(self.loader.dataset)
         
@@ -226,10 +227,15 @@ class Tester:
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
+                
+                loss_mixture, _ = self.pit_criterion(mixture, sources, batch_mean=False)
+                loss_mixture = loss_mixture.sum(dim=0)
+                
                 output = self.model(mixture)
                 loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 test_loss += loss.item()
+                test_loss_improvement += loss_mixture.item() - loss.item()
                 
                 mixture = mixture[0].squeeze(dim=0).cpu().numpy() # -> (T,)
                 sources = sources[0].cpu().numpy() # -> (n_sources, T)
@@ -272,7 +278,7 @@ class Tester:
                     estimated_path = "tmp-{}-estimated.wav".format(source_idx)
                     
                     command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
-                    command += " | grep Pre | awk '{print $5}'"
+                    command += " | grep Prediction | awk '{print $5}'"
                     pesq_output = subprocess.check_output(command, shell=True)
                     pesq_output = pesq_output.decode().strip()
                     pesq += float(pesq_output)
@@ -281,11 +287,12 @@ class Tester:
                     subprocess.call("rm {}".format(estimated_path), shell=True)
                 
                 pesq /= self.n_sources
-                print(pesq, flush=True)
+                print("{:.3f}".format(pesq), flush=True)
                 
                 test_pesq += pesq
         
-        test_pesq /= n_test
         test_loss /= n_test
+        test_loss_improvement /= n_test
+        test_pesq /= n_test
             
             

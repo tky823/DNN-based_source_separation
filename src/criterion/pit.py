@@ -38,7 +38,10 @@ class PIT1d:
                 possible_loss = torch.cat([possible_loss, loss.unsqueeze(dim=1)], dim=1)
                 
         # possible_loss (batch_size, P)
-        loss, idx_min = torch.min(possible_loss, dim=1) # loss (batch_size, ), idx_min (batch_size, )
+        if self.criterion.maximize:
+            loss, idx_max = torch.max(possible_loss, dim=1) # loss (batch_size, ), idx_min (batch_size, )s
+        else:
+            loss, idx_min = torch.min(possible_loss, dim=1) # loss (batch_size, ), idx_min (batch_size, )
         if batch_mean:
             loss = loss.mean(dim=0)
              
