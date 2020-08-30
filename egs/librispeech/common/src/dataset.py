@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-class WaveTrainDataset(torch.utils.data.Dataset):
+class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
         super().__init__()
         
@@ -12,8 +12,17 @@ class WaveTrainDataset(torch.utils.data.Dataset):
         
         with open(json_path) as f:
             self.json_data = json.load(f)
+
+class WaveTrainDataset(LibriSpeechDataset):
+    def __init__(self, wav_root, json_path):
+        super().__init__(wav_root, json_path)
         
     def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, T) <torch.Tensor>
+            sources (n_sources, T) <torch.Tensor>
+        """
         data = self.json_data[idx]
         mixture = 0
         sources = None
@@ -45,16 +54,17 @@ class WaveEvalDataset(WaveTrainDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
 
-class WaveTestDataset(torch.utils.data.Dataset):
+class WaveTestDataset(LibriSpeechDataset):
     def __init__(self, wav_root, json_path):
-        super().__init__()
-        
-        self.wav_root = wav_root
-        
-        with open(json_path) as f:
-            self.json_data = json.load(f)
+        super().__init__(wav_root, json_path)
         
     def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, T) <torch.Tensor>
+            sources (n_sources, T) <torch.Tensor>
+            segment_IDs (n_sources,) <list<str>>
+        """
         data = self.json_data[idx]
         mixture = 0
         sources = None
@@ -84,6 +94,28 @@ class WaveTestDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.json_data)
 
+class SpectrogramTrainDataset(WaveTrainDataset):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
+        super().__init__(wav_root, json_path)
+        
+        if hop_size is None:
+            hop_size = fft_size//2
+        
+        self.fft_size, self.hop_size = fft_size, hop_size
+        
+        self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, F_bin, T_bin) <torch.Tensor>
+            sources (n_sources, F_bin, T_bin) <torch.Tensor>
+        """
+        mixture, sources = super().__getitem__(idx)
+        mixture = self.stft(mixture)
+        sources = self.stft(sources)
+        
+        return mixture, sources
 
 class WaveTrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
