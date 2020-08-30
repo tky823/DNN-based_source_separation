@@ -230,6 +230,7 @@ class Tester:
                 loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 test_loss += loss.item()
+                print(segment_IDs)
                 
                 mixture = mixture[0].squeeze(dim=0).cpu().numpy() # -> (T,)
                 sources = sources[0].cpu().numpy() # -> (n_sources, T)
@@ -246,7 +247,6 @@ class Tester:
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
-                    print(segment_IDs)
                     segment_ID = segment_IDs[order_idx]
                     
                     # Target
