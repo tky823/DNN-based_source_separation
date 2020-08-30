@@ -246,6 +246,7 @@ class Tester:
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
+                    print(segment_IDs)
                     segment_ID = segment_IDs[order_idx]
                     
                     # Target
