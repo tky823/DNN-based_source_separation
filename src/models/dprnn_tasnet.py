@@ -157,7 +157,6 @@ class Separator(nn.Module):
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
-        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.dprnn = DPRNN(num_features, hidden_channels, num_blocks=num_blocks, causal=causal)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
