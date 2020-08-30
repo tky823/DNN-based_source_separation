@@ -40,7 +40,7 @@ class Trainer:
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
-            package = torch.load(args.continue_from)
+            package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
             
             self.best_loss = package['best_loss']
             self.no_improvement = package['no_improvement']
@@ -207,7 +207,7 @@ class Tester:
         
         self.use_cuda = args.use_cuda
         
-        package = torch.load(args.model_path)
+        package = torch.load(args.model_path, map_location=lambda storage, loc: storage)
         
         if isinstance(self.model, nn.DataParallel):
             self.model.module.load_state_dict(package['state_dict'])
