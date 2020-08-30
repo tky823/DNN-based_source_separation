@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from utils.utils_autio import write_wav
 
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -17,13 +18,16 @@ class Trainer:
         self._reset(args)
     
     def _reset(self, args):
+        self.sr = args.sr
         self.max_norm = args.max_norm
         
         self.model_dir = args.model_dir
         self.loss_dir = args.loss_dir
+        self.sample_dir = args.sample_dir
         
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.loss_dir, exist_ok=True)
+        os.makedirs(self.sample_dir, exist_ok=True)
         
         self.epochs = args.epochs
         
@@ -145,6 +149,14 @@ class Trainer:
                 loss, _ = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
+                
+                if idx < 5:
+                    estimated_sources = output[0].detach().cpu().numpy()
+                    for source_idx, estimated_source in enumerate(estimated_sources):
+                        save_dir = os.path.join(self.sample_dir, "{}".format(source_idx))
+                        os.makedirs(save_dir, exist_ok=True)
+                        save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch+1))
+                        write_wav(save_path, signal=estimated_sources, sr=self.sr)
 
         train_loss /= n_train_batch
         valid_loss /= n_valid
