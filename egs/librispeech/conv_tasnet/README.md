@@ -34,6 +34,6 @@ Evaluation for test data.
 Models are placed in sub-directory. These models are train on Google Colaboratory.
 Network configuration may be different from original papers.
 
-| Model | `N` | `L` | `H` | `B` | `Sc` | `P` | `X` | `R` | `causal` | SI-SDRi [dB] | PESQ | 
+| Model | N | L | H | B | Sc | P | X | R | causal | SI-SDRi [dB] | PESQ | 
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 64 | 16 | 256 | 128 | 128 | 3 | 6 | 3 | `True` |  |  |
+| Conv-TasNet | 64 | 16 | 256 | 128 | 128 | 3 | 6 | 3 | True |  |  |
