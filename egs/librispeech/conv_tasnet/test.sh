@@ -8,7 +8,7 @@ out_dir="$2"
 n_sources=2
 
 wav_root="../../../dataset/LibriSpeech"
-test_json_path="../../../dataset/LibriSpeech/train-clean-100/test-${n_sources}mix.json"
+test_json_path="../../../dataset/LibriSpeech/test-100/test-${n_sources}mix.json"
 
 sr=16000
 
