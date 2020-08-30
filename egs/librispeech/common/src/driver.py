@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 import numpy as np
 import torch
@@ -20,6 +21,7 @@ class Trainer:
     
     def _reset(self, args):
         self.sr = args.sr
+        self.n_sources = args.n_sources
         self.max_norm = args.max_norm
         
         self.model_dir = args.model_dir
@@ -185,3 +187,86 @@ class Trainer:
         package['epoch'] = epoch + 1
         
         torch.save(package, model_path)
+
+class Tester:
+    def __init__(self, model, loader, pit_criterion, args):
+        self.loader = loader
+        
+        self.model = model
+        
+        self.pit_criterion = pit_criterion
+        
+        self._reset(args)
+        
+    def _reset(self, args):
+        self.sr = args.sr
+        self.n_sources = args.n_sources
+        
+        self.save_dir = args.save_dir
+        os.makedirs(self.save_dir, exist_ok=True)
+        
+        self.use_cuda = args.use_cuda
+        
+        package = torch.load(args.model_path)
+        
+        if isinstance(self.model, nn.DataParallel):
+            self.model.module.load_state_dict(package['state_dict'])
+        else:
+            self.model.load_state_dict(package['state_dict'])
+    
+    def run(self):
+        self.model.eval()
+        
+        test_loss = 0
+        test_pesq = 0
+        n_test = len(self.loader.dataset)
+        
+        with torch.no_grad():
+            for idx, (mixture, sources) in enumerate(self.loader):
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                output = self.model(mixture)
+                loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
+                loss = loss.sum(dim=0)
+                test_loss += loss.item()
+                
+                sources = sources[0].cpu().numpy() # -> (n_sources, T)
+                estimated_sources = output[0].cpu().numpy() # -> (n_sources, T)
+                perm_idx = perm_idx[0] # -> (n_sources,)
+                
+                for order_idx, (source, estimated_source) in enumerate(zip(sources, estimated_sources)):
+                    # Original
+                    source_path = "tmp-source-{}.wav".format(order_idx)
+                    norm = np.abs(source).max()
+                    source = source / norm
+                    write_wav(source_path, signal=source, sr=self.sr)
+                    
+                    # Estimated source
+                    estimated_path = "tmp-estimated-{}.wav".format(perm_idx[order_idx])
+                    norm = np.abs(estimated_source).max()
+                    estimated_source = estimated_source / norm
+                    write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                
+                pesq = 0
+                
+                for source_idx, source in enumerate(sources):
+                    source_path = "tmp-source-{}.wav".format(source_idx)
+                    estimated_path = "tmp-estimated-{}.wav".format(source_idx)
+                    
+                    pesq_output = subprocess.check_output("./PESQ +{} {} {} | grep Pre | awk '{print $5}'".format(self.sr, source_path, estimated_path), shell=True)
+                    pesq_output = pesq_output.decode().strip()
+                    pesq += float(pesq_output)
+                    
+                    subprocess.call("rm {}".format(source_path), shell=True)
+                    subprocess.call("rm {}".format(estimated_path), shell=True)
+                
+                pesq /= self.n_sources
+                print(pesq)
+                
+                test_pesq += pesq
+        
+        test_pesq /= n_test
+        test_loss /= n_test
+            
+            
