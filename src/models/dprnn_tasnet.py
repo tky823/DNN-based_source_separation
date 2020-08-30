@@ -114,6 +114,32 @@ class DPRNNTasNet(nn.Module):
     
         return package
     
+    @classmethod
+    def build_model(cls, model_path):
+        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        n_basis = package['n_basis']
+        kernel_size, stride = package['kernel_size'], package['stride']
+        enc_basis, dec_basis = package['enc_basis'], package['dec_basis']
+        enc_nonlinear = package['enc_nonlinear']
+        window_fn = package['window_fn']
+        
+        sep_hidden_channels = package['sep_hidden_channels']
+        sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
+        sep_num_blocks = package['sep_num_blocks']
+        
+        dilated, separable, causal = package['dilated'], package['separable'], package['causal']
+        sep_norm = package['sep_norm']
+        mask_nonlinear = package['mask_nonlinear']
+        
+        n_sources = package['n_sources']
+        
+        eps = package['eps']
+        
+        model = cls(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels, sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, dilated=dilated, separable=separable, causal=causal, sep_nonlinear=sep_nonlinear, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        
+        return model
+    
     def _get_num_parameters(self):
         num_parameters = 0
         
