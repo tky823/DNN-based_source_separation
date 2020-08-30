@@ -67,12 +67,10 @@ model_path="${save_dir}/model/${model_choice}.pth"
 
 num_chunk=256
 duration=5
-filename="mixture.wav"
 
 demo.py \
 --sr ${sr} \
 --num_chunk ${num_chunk} \
 --duration ${duration} \
 --model_path ${model_path} \
---filename ${filename} \
 --save_dir "./results"
