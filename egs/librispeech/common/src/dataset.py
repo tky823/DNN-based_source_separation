@@ -79,6 +79,8 @@ class TestDataset(torch.utils.data.Dataset):
         mixture = torch.Tensor(mixture).float()
         sources = torch.Tensor(sources).float()
         
+        print("dataset", segment_IDs)
+        
         return mixture, sources, segment_IDs
     
     def __len__(self):
