@@ -103,4 +103,11 @@ class TestDataLoader(torch.utils.data.DataLoader):
         super().__init__(*args, **kwargs)
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+        
+        self.collate_fn = test_collate_fn
+
+def test_collate_fn(batch):
+    print(batch)
+    
+    raise ValueError("Stop")
 
