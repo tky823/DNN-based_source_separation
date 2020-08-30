@@ -5,7 +5,7 @@ import torch
     Permutation invariant training
 """
 
-class PIT1d:
+class PIT:
     def __init__(self, criterion, n_sources):
         """
         Args:
@@ -46,3 +46,19 @@ class PIT1d:
             loss = loss.mean(dim=0)
              
         return loss, patterns[idx_min]
+
+class PIT1d(PIT):
+    def __init__(self, criterion, n_sources):
+        """
+        Args:
+            criterion <callable>: criterion is expected acceptable (input, target, batch_mean) when called.
+        """
+        super().__init__(criterion, n_sources)
+
+class PIT2d(PIT):
+    def __init__(self, criterion, n_sources):
+        """
+        Args:
+            criterion <callable>: criterion is expected acceptable (input, target, batch_mean) when called.
+        """
+        super().__init__(criterion, n_sources)
