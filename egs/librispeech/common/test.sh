@@ -2,7 +2,14 @@
 
 out_dir="$1"
 
-echo "download from https://www.itu.int/rec/T-REC-P.862-200102-I/en"
+# Download
+
+for file in dsp.c pesqdsp.c pesqmod.c pesqio.c pesqmain.c dsp.h pesq.h pesqpar.h ; do
+    if [ ! -e ${file} ]; then
+        echo "download PESQ software from https://www.itu.int/rec/T-REC-P.862-200102-I/en"
+        return
+    fi
+done
 
 gcc -c dsp.c
 gcc -c pesqdsp.c
