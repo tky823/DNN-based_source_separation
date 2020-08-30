@@ -242,7 +242,7 @@ class Tester:
                 mixture_ID = "+".join(segment_IDs)
                 mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
                 write_wav(mixture_path, signal=mixture, sr=self.sr)
-                subprocess.call("cp {} tmp-mixture.wav".format(mixture_path), shell=True)
+                subprocess.call("cp {} ./tmp-mixture.wav".format(mixture_path), shell=True)
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
@@ -253,14 +253,14 @@ class Tester:
                     source /= norm
                     source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
                     write_wav(source_path, signal=source, sr=self.sr)
-                    subprocess.call("cp {} tmp-{}-target.wav".format(source_path, order_idx), shell=True)
+                    subprocess.call("cp {} ./tmp-{}-target.wav".format(source_path, order_idx), shell=True)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
                     estimated_source /= norm
                     estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
                     write_wav(estimated_path, signal=estimated_source, sr=self.sr)
-                    subprocess.call("cp {} tmp-{}-estimated.wav".format(estimated_path, order_idx), shell=True)
+                    subprocess.call("cp {} ./tmp-{}-estimated.wav".format(estimated_path, order_idx), shell=True)
                 
                 pesq = 0
                 
