@@ -62,9 +62,9 @@ class DANet(nn.Module):
             if self.training:
                 raise ValueError("assignment is required.")
         else:
-            w = torch.where(input > threshold_weight, torch.ones_like(input), torch.zeros_like(input))  # -> (batch_size, 1, F_bin, T_bin)
-            w = w.view(batch_size, 1, F_bin*T_bin)
-            assignment = w * assignment
+            print(threshold_weight.size())
+            threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
+            assignment = threshold_weight * assignment
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
         
         attractor = torch.bmm(assignment, latent.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)
