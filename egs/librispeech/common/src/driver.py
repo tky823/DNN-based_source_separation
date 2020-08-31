@@ -322,7 +322,7 @@ class AttractorTrainer(Trainer):
         self.F_bin = args.F_bin
     
     def run_one_epoch_train(self, epoch):
-        F_bin = args.F_bin
+        F_bin = self.F_bin
         # Override
         """
         Training
