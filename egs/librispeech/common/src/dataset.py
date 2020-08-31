@@ -164,10 +164,12 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
         
-        log_amplitude = 20 * torch.log10(sources_amplitude)
+        real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+        mixture_amplitude = torch.sqrt(real**2+imag**2)
+        log_amplitude = 20 * torch.log10(mixture_amplitude)
         max_log_amplitude = torch.max(log_amplitude)
         threshold = 10**((max_log_amplitude - threshold) / 20)
-        threshold_weight = torch.where(sources_amplitude > 0, torch.ones_like(sources_amplitude), torch.zeros_like(sources_amplitude))
+        threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
         
         return mixture, sources, ideal_mask, threshold_weight
         

@@ -61,6 +61,7 @@ class DANet(nn.Module):
         if assignment is None:
             if self.training:
                 raise ValueError("assignment is required.")
+            raise NotImplementedError("Sorry, I haven't implemented...")
         else:
             print(threshold_weight.size())
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
