@@ -29,7 +29,7 @@ class DANet(nn.Module):
         
         self.num_parameters = self._get_num_parameters()
     
-    def forward(self, input, assignment, threshold=None):
+    def forward(self, input, assignment=None, threshold=None):
         """
         Args:
             input (batch_size, 1, F_bin, T_bin)
@@ -53,10 +53,11 @@ class DANet(nn.Module):
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
         latent = x.view(batch_size, embed_dim, F_bin*T_bin)
         
-        if self.training:
-            assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
+        if assignment is None:
+            if self.training:
+                raise ValueError("assignment is required.")
         else:
-            raise NotImplementedError("Sorry, I haven't implemented...")
+            assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
         
         attractor = torch.bmm(assignment, latent.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)
         
