@@ -339,9 +339,9 @@ class AttractorTrainer(Trainer):
                 sources = sources.cuda()
                 assignment = assignment.cuda()
             
-            real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+            real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
             mixture = torch.sqrt(real**2+imag**2)
-            real, imag = sources[:,:F_bin], sources[:,F_bin:]
+            real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
             sources = torch.sqrt(real**2+imag**2)
             
             estimated_sources = self.model(mixture, assignment)
