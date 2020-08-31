@@ -121,8 +121,13 @@ class SpectrogramDataset(WaveDataset):
             sources (n_sources, F_bin, T_bin) <torch.Tensor>
         """
         mixture, sources = super().__getitem__(idx)
+        
+        print("<in SpectrogramDataset", mixture.size(), sources.size())
+        
         mixture = self.stft(mixture)
         sources = self.stft(sources)
+        
+        print("in SpectrogramDataset>", mixture.size(), sources.size())
         
         return mixture, sources
 
@@ -154,7 +159,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         mixture, sources = super().__getitem__(idx) # (1, F_bin, T_bin), (n_sources, F_bin, T_bin)
         ideal_mask = self.generate_mask(sources)
         
-        print("in Dataset", mixture.size(), sources.size(), ideal_mask.size())
+        print("in IdealMaskSpectrogramDataset", mixture.size(), sources.size(), ideal_mask.size())
         
         return mixture, sources, ideal_mask
         
