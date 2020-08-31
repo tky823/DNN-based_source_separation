@@ -134,7 +134,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
 
 class IdealMaskSpectrogramDataset(SpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm'):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
         super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
         
         if mask_type == 'ibm':
@@ -145,6 +145,8 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
             self.generate_mask = wiener_filter_mask
         else:
             raise NotImplementedError("Not support mask {}".format(mask_type))
+        
+        self.threshold = threshold
     
     def __getitem__(self, idx):
         """
@@ -152,15 +154,22 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
             mixture (1, 2*F_bin, T_bin) <torch.Tensor>
             sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
             ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
+            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
         """
         F_bin = self.F_bin
+        threshold = self.threshold
         
         mixture, sources = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
         real, imag = sources[:,:F_bin], sources[:,F_bin:]
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
         
-        return mixture, sources, ideal_mask
+        log_amplitude = 20 * torch.log10(sources_amplitude)
+        max_log_amplitude = torch.max(log_amplitude)
+        threshold = 10**((max_log_amplitude - threshold) / 20)
+        threshold_weight = torch.Tensor(sources_amplitude > 0)
+        
+        return mixture, sources, ideal_mask, threshold_weight
         
 
 class TrainDataLoader(torch.utils.data.DataLoader):

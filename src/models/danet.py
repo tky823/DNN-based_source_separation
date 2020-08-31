@@ -29,19 +29,24 @@ class DANet(nn.Module):
         
         self.num_parameters = self._get_num_parameters()
     
-    def forward(self, input, assignment=None, threshold=None):
+    def forward(self, input, assignment=None, threshold_weight=None):
         """
         Args:
             input (batch_size, 1, F_bin, T_bin)
             assignment (batch_size, n_sources, F_bin, T_bin): Speaker assignment when training
+            threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         Returns:
             output (batch_size, n_sources, F_bin, T_bin)
         """
-        output, _ = self.extract_latent(input, assignment, threshold=threshold)
+        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight)
         
         return output
     
-    def extract_latent(self, input, assignment=None, threshold=None):
+    def extract_latent(self, input, assignment=None, threshold_weight=None):
+        """
+        input (batch_size, 1, F_bin, T_bin) <torch.Tensor>
+        threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
+        """
         embed_dim = self.embed_dim
         n_sources = self.n_sources
         
@@ -57,6 +62,9 @@ class DANet(nn.Module):
             if self.training:
                 raise ValueError("assignment is required.")
         else:
+            w = torch.where(input > threshold_weight, torch.ones_like(input), torch.zeros_like(input))  # -> (batch_size, 1, F_bin, T_bin)
+            w = w.view(batch_size, 1, F_bin*T_bin)
+            assignment = w * assignment
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
         
         attractor = torch.bmm(assignment, latent.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)

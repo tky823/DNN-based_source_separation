@@ -20,6 +20,7 @@ parser.add_argument('--valid_json_path', type=str, default=None, help='Path for 
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
+parser.add_argument('--threshold', type=str, default=40, help='Wight threshold. Default: 40 ')
 # Model configuration
 parser.add_argument('--fft_size', type=int, default=256, help='Window length')
 parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
@@ -49,8 +50,8 @@ def main(args):
     
     loader = {}
     
-    train_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask)
-    valid_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask)
+    train_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    valid_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     

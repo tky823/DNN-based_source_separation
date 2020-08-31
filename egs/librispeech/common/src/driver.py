@@ -335,18 +335,19 @@ class AttractorTrainer(Trainer):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources, assignment) in enumerate(self.train_loader):
+        for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
                 assignment = assignment.cuda()
+                threshold_weight = threshold_weight.cuda()
             
             real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
             mixture = torch.sqrt(real**2+imag**2)
             real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
             sources = torch.sqrt(real**2+imag**2)
             
-            estimated_sources = self.model(mixture, assignment)
+            estimated_sources = self.model(mixture, assignment=assignment, threshold_weight=threshold_weight)
             loss, _ = self.pit_criterion(estimated_sources, sources)
             
             self.optimizer.zero_grad()
@@ -378,7 +379,7 @@ class AttractorTrainer(Trainer):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources, assignment) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, 1, 2*F_bin, T_bin)
                 sources (batch_size, n_sources, F_bin, T_bin)
@@ -388,13 +389,14 @@ class AttractorTrainer(Trainer):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     assignment = assignment.cuda()
+                    threshold_weight = threshold_weight.cuda()
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_amplitude, assignment)
+                output = self.model(mixture, assignment=assignment, threshold_weight=threshold_weight)
                 loss, _ = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()

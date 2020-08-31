@@ -17,6 +17,7 @@ window_fn='hamming' # window_fn is activated if enc_basis='Fourier' or dec_basis
 fft_size=256
 hop_size=64
 ideal_mask='ibm'
+threshold=40
 
 # Model configuration
 K=20
@@ -40,7 +41,7 @@ use_cuda=1
 overwrite=0
 seed=111
 
-save_dir="${exp_dir}/${n_sources}mix/${criterion}/${window_fn}-window_K${K}_H${H}_B${B}_H${H}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${criterion}/${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_H${H}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
 
 model_dir="${save_dir}/model"
@@ -61,6 +62,7 @@ train.py \
 --sr ${sr} \
 --window_fn ${window_fn} \
 --ideal_mask ${ideal_mask} \
+--threshold ${threshold} \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
 -K ${K} \
