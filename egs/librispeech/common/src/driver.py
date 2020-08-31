@@ -400,14 +400,15 @@ class AttractorTrainer(Trainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].detach().cpu().numpy() # -> (1, 2*F_bin, T_bin)
-                    mixture_amplitude = mixture_amplitude[0].detach().cpu().numpy() # -> (n_sources, F_bin, T_bin)
-                    estimated_sources_amplitude = output[0].detach().cpu().numpy() # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0] # -> (1, 2*F_bin, T_bin)
+                    mixture_amplitude = mixture_amplitude[0] # -> (n_sources, F_bin, T_bin)
+                    estimated_sources_amplitude = output[0] # -> (n_sources, F_bin, T_bin)
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
                     real, imag = ratio * real, ratio * imag
                     estimated_sources = torch.cat([real, imag], dim=0) # -> (n_sources, 2*F_bin, T_bin)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
+                    estimated_sources = estimated_sources.detach().cpu().numpy()
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
