@@ -77,7 +77,7 @@ def main(args):
     elif args.optimizer == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     elif args.optimizer == 'rmsprop':
-        optimizer = torch.optim.RMSProp(model.parameters(), lr=args.lr)
+        optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
         
