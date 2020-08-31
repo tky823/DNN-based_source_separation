@@ -38,9 +38,14 @@ class L1Loss(nn.Module):
         return loss
 
 class L2Loss(nn.Module):
-    def __init__(self, reduction='mean'):
+    def __init__(self, dim=1, reduction='mean'):
+        """
+        Args:
+            dim <int> or <tuple<int>>
+        """
         super().__init__()
         
+        self.dim = dim
         self.reduction = reduction
         
         if not reduction in ['mean', 'sum']:
@@ -54,10 +59,12 @@ class L2Loss(nn.Module):
             input (batch_size, *):
             target (batch_size, *):
         """
-        n_dim = input.dim()
-        dim = tuple(range(1,n_dim))
-        
         loss = torch.abs(input - target) # (batch_size, *)
+        loss = torch.sum(loss**2, dim=self.dim)
+        loss = torch.sqrt(loss)
+        
+        n_dim = loss.dim()
+        dim = tuple(range(1,n_dim))
         
         if self.reduction == 'mean':
             loss = loss.mean(dim=dim)
