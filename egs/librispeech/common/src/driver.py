@@ -318,6 +318,8 @@ class Tester:
 class AttractorTrainer(Trainer):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
+        
+        self.F_bin = args.F_bin
     
     def run_one_epoch_train(self, epoch):
         # Override
@@ -334,6 +336,11 @@ class AttractorTrainer(Trainer):
                 mixture = mixture.cuda()
                 sources = sources.cuda()
                 assignment = assignment.cuda()
+            
+            real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+            mixture = torch.sqrt(real**2+imag**2)
+            real, imag = sources[:,:F_bin], sources[:,F_bin:]
+            sources = torch.sqrt(real**2+imag**2)
             
             estimated_sources = self.model(mixture, assignment)
             loss, _ = self.pit_criterion(estimated_sources, sources)

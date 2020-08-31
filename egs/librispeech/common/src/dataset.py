@@ -111,23 +111,20 @@ class SpectrogramDataset(WaveDataset):
             hop_size = fft_size//2
         
         self.fft_size, self.hop_size = fft_size, hop_size
+        self.F_bin = fft_size//2 + 1
         
         self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
         
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin) <torch.Tensor>
+            mixture (1, 2*F_bin, T_bin) <torch.Tensor>, first F_bin is real, the latter F_bin is iamginary part.
+            sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
         """
         mixture, sources = super().__getitem__(idx)
         
-        print("<in SpectrogramDataset", mixture.size(), sources.size())
-        
-        mixture = self.stft(mixture)
-        sources = self.stft(sources)
-        
-        print("in SpectrogramDataset>", mixture.size(), sources.size())
+        mixture = self.stft(mixture) # (1, 2*F_bin, T_bin)
+        sources = self.stft(sources) # (n_sources, 2*F_bin, T_bin)
         
         return mixture, sources
 
@@ -152,14 +149,16 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin) <torch.Tensor>
+            mixture (1, 2*F_bin, T_bin) <torch.Tensor>
+            sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
             ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
         """
-        mixture, sources = super().__getitem__(idx) # (1, F_bin, T_bin), (n_sources, F_bin, T_bin)
-        ideal_mask = self.generate_mask(sources)
+        mixture, sources = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
+        real, imag = sources[:,:F_bin], mixture[:,F_bin:]
+        sources_amplitude = torch.sqrt(real**2+imag**2)
+        ideal_mask = self.generate_mask(sources_amplitude)
         
-        print("in IdealMaskSpectrogramDataset", mixture.size(), sources.size(), ideal_mask.size())
+        # print("in IdealMaskSpectrogramDataset", mixture.size(), sources.size(), ideal_mask.size())
         
         return mixture, sources, ideal_mask
         
