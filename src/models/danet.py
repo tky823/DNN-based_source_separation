@@ -58,8 +58,9 @@ class DANet(nn.Module):
         similarity = torch.bmm(attractor, x) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
         mask = self.mask_nonlinear(similarity) # -> (batch_size, n_sources, F_bin, T_bin)
+        output = mask * input
         
-        return mask
+        return output
     
     def _get_num_parameters(self):
         num_parameters = 0
