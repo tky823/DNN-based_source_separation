@@ -32,7 +32,7 @@ parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam'], help='Optimizer, [sgd, adam]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
-
+parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
 parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
