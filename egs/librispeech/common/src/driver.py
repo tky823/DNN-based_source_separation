@@ -353,7 +353,7 @@ class AttractorTrainer(Trainer):
             loss.backward()
             
             if self.max_norm:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             self.optimizer.step()
             
             train_loss += loss.item()
@@ -407,7 +407,6 @@ class AttractorTrainer(Trainer):
                     real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
                     real, imag = ratio * real, ratio * imag
                     estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
-                    print(estimated_sources.size())
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.detach().cpu().numpy()
                     
