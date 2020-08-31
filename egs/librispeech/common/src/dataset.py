@@ -154,6 +154,8 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         mixture, sources = super().__getitem__(idx) # (1, F_bin, T_bin), (n_sources, F_bin, T_bin)
         ideal_mask = self.generate_mask(sources)
         
+        print("in Dataset", mixture.size(), sources.size(), ideal_mask.size())
+        
         return mixture, sources, ideal_mask
         
 
