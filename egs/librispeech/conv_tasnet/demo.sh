@@ -35,7 +35,7 @@ criterion='sisdr'
 
 # Optimizer
 optimizer='adam'
-lr=0.001
+lr=1e-3
 weight_decay=0
 max_norm=5
 
