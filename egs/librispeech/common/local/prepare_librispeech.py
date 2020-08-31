@@ -88,7 +88,9 @@ def make_json_data(wav_root, json_path, speakers_path, n_sources=2, samples=3200
     while len(meta_data.keys()) >= n_sources:
         possible_speaker_IDs = meta_data.keys()
         speaker_IDs = random.sample(possible_speaker_IDs, n_sources)
-        data = {}
+        data = {
+            'sources': None
+        }
         
         for source_idx in range(n_sources):
             speaker_ID = speaker_IDs[source_idx]
@@ -98,7 +100,7 @@ def make_json_data(wav_root, json_path, speakers_path, n_sources=2, samples=3200
             if len(meta_data[speaker_ID]) == 0:
                 del meta_data[speaker_ID]
             
-            data['source-{}'.format(source_idx)] = meta
+            data['sources']['source-{}'.format(source_idx)] = meta
 
         json_data.append(data)
     
