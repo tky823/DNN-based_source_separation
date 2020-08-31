@@ -28,7 +28,7 @@ mask_nonlinear='sigmoid'
 criterion='l2loss'
 
 # Optimizer
-optimizer='adam'
+optimizer='rmsprop'
 lr=0.001
 weight_decay=0
 
