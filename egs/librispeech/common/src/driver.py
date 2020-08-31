@@ -385,7 +385,7 @@ class AttractorTrainer(Trainer):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     assignment = assignment.cuda()
-                output = self.model(mixture)
+                output = self.model(mixture, assignment)
                 loss, _ = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
