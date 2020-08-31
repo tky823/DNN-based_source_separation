@@ -48,7 +48,7 @@ class DANet(nn.Module):
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
         latent = x.view(batch_size, embed_dim, F_bin*T_bin)
         
-        if self.training
+        if self.training:
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
         else:
             raise NotImplementedError("Sorry, I haven't implemented...")
