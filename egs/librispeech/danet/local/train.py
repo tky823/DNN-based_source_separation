@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramDataset, TrainDataLoader
-from driver import Trainer
+from driver import AttractorTrainer
 from models.danet import DANet
 from criterion.distance import L2Loss
 from criterion.pit import PIT2d
@@ -87,7 +87,7 @@ def main(args):
     
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
     
-    trainer = Trainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AttractorTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
 
 if __name__ == '__main__':
