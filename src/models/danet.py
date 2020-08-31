@@ -32,6 +32,7 @@ class DANet(nn.Module):
         Returns:
             output (batch_size, n_sources, F_bin, T_bin)
         """
+        print(input.size(), assignment.size())
         embed_dim = self.embed_dim
         n_sources = self.n_sources
         
