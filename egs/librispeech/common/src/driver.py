@@ -407,6 +407,7 @@ class AttractorTrainer(Trainer):
                     real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
                     real, imag = ratio * real, ratio * imag
                     estimated_sources = torch.cat([real, imag], dim=0) # -> (n_sources, 2*F_bin, T_bin)
+                    print(estimated_sources.size())
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.detach().cpu().numpy()
                     
