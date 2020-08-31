@@ -7,20 +7,25 @@ class DANet(nn.Module):
     def __init__(self, F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
         super().__init__()
         
-        self.embed_dim = embed_dim
+        self.F_bin = F_bin
+        self.hidden_channels, self.embed_dim = hidden_channels, embed_dim
         self.num_blocks = num_blocks
+        
+        self.causal = causal
+        self.mask_nonlinear = mask_nonlinear
         
         self.lstm = StackedLSTM(F_bin, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal)
         self.fc = nn.Linear(hidden_channels, F_bin*embed_dim)
         
         if mask_nonlinear == 'sigmoid':
-            self.mask_nonlinear = nn.Sigmoid()
+            self.mask_nonlinear2d = nn.Sigmoid()
         elif mask_nonlinear == 'softmax':
-            self.mask_nonlinear = nn.Softmax(dim=1)
+            self.mask_nonlinear2d = nn.Softmax(dim=1)
         else:
             raise NotImplementedError("")
     
         self.n_sources = n_sources
+        self.eps = eps
         
         self.num_parameters = self._get_num_parameters()
     
@@ -57,10 +62,25 @@ class DANet(nn.Module):
         
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
-        mask = self.mask_nonlinear(similarity) # -> (batch_size, n_sources, F_bin, T_bin)
+        mask = self.mask_nonlinear2d(similarity) # -> (batch_size, n_sources, F_bin, T_bin)
         output = mask * input
         
         return output, latent
+    
+    def get_package(self):
+        F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, mask_nonlinear='sigmoid', n_sources=2, eps=EPS
+        package = {
+            'F_bin': self.F_bin,
+            'embed_dim': self.embed_dim,
+            'hidden_channels': self.hidden_channels,
+            'num_blocks': self.num_blocks,
+            'causal': self.causal,
+            'mask_nonlinear': self.mask_nonlinear,
+            'n_sources': self.n_sources,
+            'eps': self.eps
+        }
+        
+        return package
     
     def _get_num_parameters(self):
         num_parameters = 0
