@@ -15,6 +15,7 @@ sr=16000
 
 window_fn='hamming' # window_fn is activated if enc_basis='Fourier' or dec_basis='Fourier'
 fft_size=256
+hop_size=64
 
 # Model configuration
 K=20
@@ -58,6 +59,8 @@ train.py \
 --valid_json_path ${valid_json_path} \
 --sr ${sr} \
 --window_fn ${window_fn} \
+--fft_size ${fft_size} \
+--hop_size ${hop_size} \
 -K ${K} \
 -H ${H} \
 -B ${B} \

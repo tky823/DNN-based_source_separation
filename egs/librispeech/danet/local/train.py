@@ -21,6 +21,7 @@ parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 # Model configuration
 parser.add_argument('--fft_size', type=int, default=256, help='Window length')
+parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
 parser.add_argument('--hidden_channels', '-H', type=int, default=600, help='hidden_channels')
 parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM layers')
@@ -47,8 +48,8 @@ def main(args):
     
     loader = {}
     
-    train_dataset = SpectrogramTrainDataset(args.wav_root, args.train_json_path)
-    valid_dataset = SpectrogramTrainDataset(args.wav_root, args.valid_json_path)
+    train_dataset = SpectrogramTrainDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn)
+    valid_dataset = SpectrogramTrainDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
