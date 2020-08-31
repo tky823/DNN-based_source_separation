@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-from stft import BatchSTFT
+from algorithm.stft import BatchSTFT
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
