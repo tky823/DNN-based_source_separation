@@ -13,7 +13,7 @@ valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.js
 
 sr=16000
 
-window_fn='hamming' # window_fn is activated if enc_basis='Fourier' or dec_basis='Fourier'
+window_fn='hamming'
 fft_size=256
 hop_size=64
 ideal_mask='ibm'
