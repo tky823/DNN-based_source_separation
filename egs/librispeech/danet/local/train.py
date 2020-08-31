@@ -61,10 +61,6 @@ def main(args):
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
-    for mixture, sources in loader['train']:
-        print(mixture.size(), sources.size())
-        raise ValueError("Stop")
-    
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -93,8 +89,6 @@ def main(args):
     
     trainer = Trainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
-    
-    
 
 if __name__ == '__main__':
     args = parser.parse_args()
