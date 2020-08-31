@@ -50,6 +50,7 @@ class DANet(nn.Module):
         """
         embed_dim = self.embed_dim
         n_sources = self.n_sources
+        eps = self.eps
         
         batch_size, _, F_bin, T_bin = input.size()
         
@@ -68,7 +69,7 @@ class DANet(nn.Module):
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
             assignment = threshold_weight * assignment
         
-        attractor = torch.bmm(assignment, latent.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)
+        attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, K)
         
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
