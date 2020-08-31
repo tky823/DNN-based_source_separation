@@ -55,7 +55,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     signal = signal / 32768
     
     save_path = os.path.join(save_dir, "mixture.wav")
-    write_wav(filename, signal=signal, sr=sr)
+    write_wav(save_path, signal=signal, sr=sr)
 
     # Separate by DNN
     os.makedirs(save_dir, exist_ok=True)
