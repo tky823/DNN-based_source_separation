@@ -320,6 +320,7 @@ class AttractorTrainer(Trainer):
         super().__init__(model, loader, pit_criterion, optimizer, args)
         
         self.F_bin = args.F_bin
+        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run_one_epoch_train(self, epoch):
         F_bin = self.F_bin
@@ -361,3 +362,45 @@ class AttractorTrainer(Trainer):
         train_loss /= n_train_batch
         
         return train_loss
+    
+    def run_one_epoch_eval(self, epoch):
+        # Override
+        """
+        Validation
+        """
+        self.model.eval()
+        
+        valid_loss = 0
+        n_valid = len(self.valid_loader.dataset)
+        
+        with torch.no_grad():
+            for idx, (mixture, sources, assignment) in enumerate(self.valid_loader):
+                """
+                mixture (batch_size, 1, F_bin, T_bin)
+                sources (batch_size, n_sources, F_bin, T_bin)
+                assignment (batch_size, n_sources, F_bin, T_bin)
+                """
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                    assignment = assignment.cuda()
+                output = self.model(mixture)
+                loss, _ = self.pit_criterion(output, sources, batch_mean=False)
+                loss = loss.sum(dim=0)
+                valid_loss += loss.item()
+                
+                if idx < 5:
+                    estimated_sources = output[0].detach().cpu().numpy() # -> (n_sources, F_bin, T_bin)
+                    estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
+                    
+                    for source_idx, estimated_source in enumerate(estimated_sources):
+                        save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                        os.makedirs(save_dir, exist_ok=True)
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx))
+                        norm = np.abs(estimated_source).max()
+                        estimated_source = estimated_source / norm
+                        write_wav(save_path, signal=estimated_source, sr=self.sr)
+        
+        valid_loss /= n_valid
+        
+        return valid_loss
