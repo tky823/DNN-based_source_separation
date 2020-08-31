@@ -156,7 +156,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         F_bin = self.F_bin
         
         mixture, sources = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
-        real, imag = sources[:,:F_bin], mixture[:,F_bin:]
+        real, imag = sources[:,:F_bin], sources[:,F_bin:]
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
         
