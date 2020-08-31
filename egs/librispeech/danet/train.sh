@@ -39,7 +39,7 @@ use_cuda=1
 overwrite=0
 seed=111
 
-save_dir="${exp_dir}/${n_sources}mix/${criterion}/${window_fn}-window_K${N}_H${H}_B${B}_H${H}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${criterion}/${window_fn}-window_K${K}_H${H}_B${B}_H${H}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
 
 model_dir="${save_dir}/model"
