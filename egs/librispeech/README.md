@@ -1,5 +1,11 @@
 # LibriSpeech
 
+## How to do
+At the training and evaluation stage, log is saved like `train_<TIME_STAMP>.log`.
+`<TIME_STAMP>` is given by `date "+%Y%m%d-%H%M%S"`, and it depends on time.
+I recommend specify your time zone like `TZ=UTC-9 date "+%Y%m%d-%H%M%S"`.
+Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
+
 ### 0. Preparation
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/common/
