@@ -262,6 +262,7 @@ class Tester:
                 norm = np.abs(mixture).max()
                 mixture /= norm
                 mixture_ID = "+".join(segment_IDs)
+                
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
                     write_wav(mixture_path, signal=mixture, sr=self.sr)
@@ -306,7 +307,7 @@ class Tester:
                     subprocess.call("rm {}".format(estimated_path), shell=True)
                 
                 pesq /= self.n_sources
-                print("{:.3f}".format(pesq), flush=True)
+                print("{}, {:.3f}".format(mixture_ID, pesq), flush=True)
                 
                 test_pesq += pesq
         
