@@ -5,6 +5,7 @@ import soundfile as sf
 import torch
 
 from algorithm.stft import BatchSTFT
+from algorithm.ideal_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
@@ -15,7 +16,7 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         with open(json_path) as f:
             self.json_data = json.load(f)
 
-class WaveTrainDataset(LibriSpeechDataset):
+class WaveDataset(LibriSpeechDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
         
@@ -51,13 +52,17 @@ class WaveTrainDataset(LibriSpeechDataset):
     def __len__(self):
         return len(self.json_data)
 
-
-class WaveEvalDataset(WaveTrainDataset):
+class WaveTrainDataset(WaveDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
 
 
-class WaveTestDataset(LibriSpeechDataset):
+class WaveEvalDataset(WaveDataset):
+    def __init__(self, wav_root, json_path):
+        super().__init__(wav_root, json_path)
+
+
+class WaveTestDataset(WaveDataset):
     def __init__(self, wav_root, json_path):
         super().__init__(wav_root, json_path)
         
@@ -98,7 +103,7 @@ class WaveTestDataset(LibriSpeechDataset):
         return len(self.json_data)
 
 
-class SpectrogramTrainDataset(WaveTrainDataset):
+class SpectrogramDataset(WaveDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
         super().__init__(wav_root, json_path)
         
@@ -121,6 +126,36 @@ class SpectrogramTrainDataset(WaveTrainDataset):
         
         return mixture, sources
 
+class SpectrogramTrainDataset(SpectrogramDataset):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
+        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+
+
+class IdealMaskSpectrogramDataset(SpectrogramDataset):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm'):
+        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+        
+        if mask_type == 'ibm':
+            self.generate_mask = ideal_binary_mask
+        elif mask_type == 'irm':
+            self.generate_mask = ideal_ratio_mask
+        elif mask_type == 'wfm':
+            self.generate_mask = wiener_filter_mask
+        else:
+            raise NotImplementedError("Not support mask {}".format(mask_type))
+    
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, F_bin, T_bin) <torch.Tensor>
+            sources (n_sources, F_bin, T_bin) <torch.Tensor>
+            ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
+        """
+        mixture, sources = super().__getitem__(idx) # (1, F_bin, T_bin), (n_sources, F_bin, T_bin)
+        ideal_mask = self.generate_mask(sources)
+        
+        return mixture, sources, ideal_mask
+        
 
 class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
