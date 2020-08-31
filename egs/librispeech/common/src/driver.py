@@ -392,12 +392,12 @@ class AttractorTrainer(Trainer):
                     threshold_weight = threshold_weight.cuda()
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
-                mixture = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.sqrt(real**2+imag**2)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
-                sources = torch.sqrt(real**2+imag**2)
+                sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture, assignment=assignment, threshold_weight=threshold_weight)
-                loss, _ = self.pit_criterion(output, sources, batch_mean=False)
+                output = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight)
+                loss, _ = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
