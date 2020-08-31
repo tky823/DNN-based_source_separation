@@ -56,8 +56,8 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
-    F_bin = args.fft_size//2 + 1
-    model = DANet(F_bin, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    args.F_bin = args.fft_size//2 + 1
+    model = DANet(args.F_bin, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
