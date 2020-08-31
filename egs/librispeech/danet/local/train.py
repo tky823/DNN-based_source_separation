@@ -12,7 +12,7 @@ from models.danet import DANet
 from criterion.distance import L2Loss
 from criterion.pit import PIT2d
 
-parser = argparse.ArgumentParser(description="Training of ADANet")
+parser = argparse.ArgumentParser(description="Training of DANet (Deep Attractor Network)")
 
 parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
@@ -27,11 +27,10 @@ parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM laye
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam'], help='Optimizer, [sgd, adam]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
-parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
 parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
