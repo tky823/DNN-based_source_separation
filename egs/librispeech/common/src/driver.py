@@ -400,9 +400,9 @@ class AttractorTrainer(Trainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0] # -> (1, 2*F_bin, T_bin)
-                    mixture_amplitude = mixture_amplitude[0] # -> (n_sources, F_bin, T_bin)
-                    estimated_sources_amplitude = output[0] # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0].cpu() # -> (1, 2*F_bin, T_bin)
+                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (n_sources, F_bin, T_bin)
+                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
                     real, imag = ratio * real, ratio * imag
