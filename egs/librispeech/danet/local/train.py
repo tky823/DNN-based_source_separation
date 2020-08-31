@@ -84,7 +84,7 @@ def main(args):
         
     # Criterion
     if args.criterion == 'l2loss':
-        criterion = L2Loss(reduction=)
+        criterion = L2Loss(reduction='mean')
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
