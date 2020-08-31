@@ -2,11 +2,36 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class ModReLU(nn.Module):
-    def __init__(self):
+EPS=1e-12
+
+class ModReLU1d(nn.Module):
+    def __init__(self, n_units, eps=EPS):
         super().__init__()
         
-        raise NotImplementedError("Sorry, I haven't implemented...")
+        self.n_units = n_units
+        self.eps = eps
+        
+        self.bias = nn.Parameter(torch.Tensor((1,n_units,1)))
+        
+        self._reset_parameters()
+        
+    
+    def forward(self, input):
+        n_units = self.n_units
+        
+        real, imag = input[:,:n_units//2], input[:,n_units//2:]
+        magnitude = torch.sqrt(real**2 + imag**2)
+        output_magnitude = magnitude + self.bias
+        ratio = output_magnitude / (magnitude + self.eps)
+        ratio = torch.where(output_magnitude >= 0, ratio, torch.zeros_like(magnitude))
+        real, imag = ratio * real, ratio * imag
+        output = torch.cat([real, imag], dim=1)
+        
+        return output
+    
+    def _reset_parameters(self):
+        self.bias.data.zero_()
+        
 
 """
     See "Deep Complex Networks"
