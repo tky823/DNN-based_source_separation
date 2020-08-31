@@ -333,6 +333,7 @@ class AttractorTrainer(Trainer):
         n_train_batch = len(self.train_loader)
         
         for idx, (mixture, sources, assignment) in enumerate(self.train_loader):
+            print(mixture.size(), sources.size(), assignment.size())
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
