@@ -397,7 +397,7 @@ class AttractorTrainer(Trainer):
                 sources = torch.sqrt(real**2+imag**2)
                 
                 output = self.model(mixture, assignment=assignment, threshold_weight=threshold_weight)
-                loss, _ = self.pit_criterion(output, sources_amplitude, batch_mean=False)
+                loss, _ = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
