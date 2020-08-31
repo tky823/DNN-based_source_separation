@@ -92,6 +92,26 @@ class DANet(nn.Module):
         
         return package
     
+    @classmethod
+    def build_model(cls, model_path):
+        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        F_bin = package['F_bin']
+        embed_dim = package['embed_dim']
+        hidden_channels = package['hidden_channels']
+        num_blocks = package['num_blocks']
+        
+        causal = package['causal']
+        mask_nonlinear = package['mask_nonlinear']
+        
+        n_sources = package['n_sources']
+        
+        eps = package['eps']
+        
+        model = cls(F_bin, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        
+        return model
+    
     def _get_num_parameters(self):
         num_parameters = 0
         
