@@ -32,6 +32,11 @@ class DANet(nn.Module):
         Returns:
             output (batch_size, n_sources, F_bin, T_bin)
         """
+        output, _ = self.extract_latent(input, assignment, threshold=threshold)
+        
+        return output
+    
+    def extract_latent(self, input, assignment=None, threshold=None):
         embed_dim = self.embed_dim
         n_sources = self.n_sources
         
@@ -41,26 +46,21 @@ class DANet(nn.Module):
         x = self.fc(x) # -> (batch_size, T_bin, embed_dim*F_bin)
         x = x.view(batch_size, T_bin, embed_dim, F_bin)
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
-        x = x.view(batch_size, embed_dim, F_bin*T_bin)
+        latent = x.view(batch_size, embed_dim, F_bin*T_bin)
         
-        assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
+        if self.training
+            assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
+        else:
+            raise NotImplementedError("Sorry, I haven't implemented...")
         
-        if not self.training:
-            if threshold is None:
-                raise ValueError("Specify threshold!")
-            
-            w = torch.where(input>threshold, torch.ones_like(input), torch.zeros_like(input))  # -> (batch_size, 1, F_bin, T_bin)
-            w = w.view(batch_size, 1, F_bin*T_bin)
-            assignment = w * assignment
+        attractor = torch.bmm(assignment, latent.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)
         
-        attractor = torch.bmm(assignment, x.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)
-        
-        similarity = torch.bmm(attractor, x) # -> (batch_size, n_sources, F_bin*T_bin)
+        similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
         mask = self.mask_nonlinear(similarity) # -> (batch_size, n_sources, F_bin, T_bin)
         output = mask * input
         
-        return output
+        return output, latent
     
     def _get_num_parameters(self):
         num_parameters = 0

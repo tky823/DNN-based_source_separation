@@ -29,7 +29,7 @@ criterion='l2loss'
 
 # Optimizer
 optimizer='rmsprop'
-lr=0.001
+lr=1e-4
 weight_decay=0
 
 batch_size=4
