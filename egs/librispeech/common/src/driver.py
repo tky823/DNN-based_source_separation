@@ -314,3 +314,42 @@ class Tester:
         test_pesq /= n_test
             
         print("Loss: {:.3f}, loss improvement: {:3f} PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
+
+class AttractorTrainer(Trainer):
+    def __init__(self, model, loader, pit_criterion, optimizer, args):
+        super().__init__(model, loader, pit_criterion, optimizer, args)
+    
+    def run_one_epoch_train(self, epoch):
+        # Override
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+        
+        for idx, (mixture, sources, assignment) in enumerate(self.train_loader):
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+                assignment = assignment.cuda()
+            
+            estimated_sources = self.model(mixture, assignment)
+            loss, _ = self.pit_criterion(estimated_sources, sources)
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            
+            if self.max_norm:
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            self.optimizer.step()
+            
+            train_loss += loss.item()
+            
+            if (idx + 1)%100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
