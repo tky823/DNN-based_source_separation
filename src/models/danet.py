@@ -66,7 +66,6 @@ class DANet(nn.Module):
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
-            print(threshold_weight.size(), flush=True)
             assignment = threshold_weight * assignment
         
         attractor = torch.bmm(assignment, latent.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)
