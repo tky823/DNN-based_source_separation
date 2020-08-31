@@ -36,6 +36,8 @@ Network configuration may be different from original papers.
 
 | Model | SI-SDRi [dB] | PESQ |
 | :---: | :---: | :---: |
+| DANet |  |  |
+| ADANet |  |  |
 | TasNet |  |  |
 | Conv-TasNet |  |  |
 | DPRNN-TasNet |  |  |
