@@ -68,7 +68,6 @@ class DANet(nn.Module):
         return output, latent
     
     def get_package(self):
-        F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, mask_nonlinear='sigmoid', n_sources=2, eps=EPS
         package = {
             'F_bin': self.F_bin,
             'embed_dim': self.embed_dim,
