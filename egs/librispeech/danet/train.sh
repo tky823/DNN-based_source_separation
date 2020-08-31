@@ -19,8 +19,8 @@ hop_size=64
 
 # Model configuration
 K=20
-H=256
-B=128
+H=600
+B=4
 causal=0
 mask_nonlinear='sigmoid'
 
