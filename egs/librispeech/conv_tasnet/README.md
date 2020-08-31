@@ -1,4 +1,7 @@
-# LibriSpeech using Conv-TasNet
+# LibriSpeech separation using Conv-TasNet
+
+## Google Colaboratory
+You can use Google Colaboratory environment. Please see `train_conv-tasnet.ipynb`
 
 ### 0. Preparation
 ```
