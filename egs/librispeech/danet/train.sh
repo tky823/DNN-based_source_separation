@@ -16,7 +16,7 @@ sr=16000
 window_fn='hamming' # window_fn is activated if enc_basis='Fourier' or dec_basis='Fourier'
 fft_size=256
 hop_size=64
-ideal_mask='irm'
+ideal_mask='ibm'
 
 # Model configuration
 K=20
