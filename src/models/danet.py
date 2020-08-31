@@ -43,14 +43,14 @@ class DANet(nn.Module):
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
         x = x.view(batch_size, embed_dim, F_bin*T_bin)
         
-        input = input.view(batch_size, 1, F_bin*T_bin)
         assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
         
         if not self.training:
             if threshold is None:
                 raise ValueError("Specify threshold!")
             
-            w = torch.where(input>threshold, torch.ones_like(input), torch.zeros_like(input))  # -> (batch_size, 1, F_bin*T_bin)
+            w = torch.where(input>threshold, torch.ones_like(input), torch.zeros_like(input))  # -> (batch_size, 1, F_bin, T_bin)
+            w = w.view(batch_size, 1, F_bin*T_bin)
             assignment = w * assignment
         
         attractor = torch.bmm(assignment, x.permute(0,2,1)) / assignment.sum(dim=2, keepdim=True) # -> (batch_size, n_sources, K)

@@ -160,8 +160,6 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
         
-        # print("in IdealMaskSpectrogramDataset", mixture.size(), sources.size(), ideal_mask.size())
-        
         return mixture, sources, ideal_mask
         
 
