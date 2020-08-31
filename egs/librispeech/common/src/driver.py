@@ -110,6 +110,15 @@ class Trainer:
         """
         Training
         """
+        train_loss = self.run_one_epoch_train(epoch)
+        valid_loss = self.run_one_epoch_eval(epoch)
+
+        return train_loss, valid_loss
+    
+    def run_one_epoch_train(self, epoch):
+        """
+        Training
+        """
         self.model.train()
         
         train_loss = 0
@@ -135,6 +144,11 @@ class Trainer:
             if (idx + 1)%100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
         
+        train_loss /= n_train_batch
+        
+        return train_loss
+    
+    def run_one_epoch_eval(self, epoch):
         """
         Validation
         """
@@ -162,11 +176,10 @@ class Trainer:
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         write_wav(save_path, signal=estimated_source, sr=self.sr)
-
-        train_loss /= n_train_batch
+        
         valid_loss /= n_valid
-
-        return train_loss, valid_loss
+        
+        return valid_loss
     
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
