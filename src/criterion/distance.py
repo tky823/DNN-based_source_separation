@@ -12,6 +12,8 @@ class L1Loss(nn.Module):
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
         
+        self.maximize = False
+        
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -43,6 +45,8 @@ class L2Loss(nn.Module):
         
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
+        
+        self.maximize = False
         
     def forward(self, input, target, batch_mean=True):
         """
