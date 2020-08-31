@@ -324,11 +324,12 @@ class AttractorTrainer(Trainer):
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run_one_epoch_train(self, epoch):
-        F_bin = self.F_bin
         # Override
         """
         Training
         """
+        F_bin = self.F_bin
+        
         self.model.train()
         
         train_loss = 0
@@ -369,6 +370,8 @@ class AttractorTrainer(Trainer):
         """
         Validation
         """
+        F_bin = self.F_bin
+        
         self.model.eval()
         
         valid_loss = 0
@@ -377,7 +380,7 @@ class AttractorTrainer(Trainer):
         with torch.no_grad():
             for idx, (mixture, sources, assignment) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, F_bin, T_bin)
+                mixture (batch_size, 1, 2*F_bin, T_bin)
                 sources (batch_size, n_sources, F_bin, T_bin)
                 assignment (batch_size, n_sources, F_bin, T_bin)
                 """
@@ -385,13 +388,25 @@ class AttractorTrainer(Trainer):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     assignment = assignment.cuda()
-                output = self.model(mixture, assignment)
-                loss, _ = self.pit_criterion(output, sources, batch_mean=False)
+                
+                real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+                mixture_amplitude = torch.sqrt(real**2+imag**2)
+                real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+                sources_amplitude = torch.sqrt(real**2+imag**2)
+                
+                output = self.model(mixture_amplitude, assignment)
+                loss, _ = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    estimated_sources = output[0].detach().cpu().numpy() # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0].detach().cpu().numpy() # -> (1, 2*F_bin, T_bin)
+                    mixture_amplitude = mixture_amplitude[0].detach().cpu().numpy() # -> (n_sources, F_bin, T_bin)
+                    estimated_sources_amplitude = output[0].detach().cpu().numpy() # -> (n_sources, F_bin, T_bin)
+                    ratio = estimated_sources_amplitude / mixture_amplitude
+                    real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+                    real, imag = ratio * real, ratio * imag
+                    estimated_sources = torch.cat([real, imag], dim=0) # -> (n_sources, 2*F_bin, T_bin)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
