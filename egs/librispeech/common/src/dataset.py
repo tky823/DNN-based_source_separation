@@ -200,7 +200,7 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
         """
         mixture, sources, ideal_mask, threshold_weight, _ = super().__getitem__(idx)
     
-    return mixture, sources, ideal_mask, threshold_weight
+        return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
