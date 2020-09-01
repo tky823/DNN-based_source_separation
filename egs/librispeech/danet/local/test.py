@@ -34,7 +34,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
