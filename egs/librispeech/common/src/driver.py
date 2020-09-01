@@ -441,3 +441,16 @@ class AttractorTrainer(Trainer):
         valid_loss /= n_valid
         
         return valid_loss
+
+class AttractorTester(Tester):
+    def __init__(self, model, loader, pit_criterion, args):
+        self.loader = loader
+        
+        self.model = model
+        
+        self.pit_criterion = pit_criterion
+        
+        self._reset(args)
+    
+    def _reset(self, args):
+        raise NotImplementedError("Sorry, I haven't implemented...")

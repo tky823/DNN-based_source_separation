@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+import torch
+import torch.nn as nn
+
+from utils.utils import set_seed
+from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
+from driver import AttractorTester
+from models.danet import DANet
+from criterion.distance import L2Loss
+from criterion.pit import PIT1d
+
+parser = argparse.ArgumentParser(description="Evaluation of DANet")
+
+parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
+parser.add_argument('--test_json_path', type=str, default=None, help='Path for test.json')
+parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
+parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
+# Model configuration
+parser.add_argument('--fft_size', type=int, default=256, help='Window length')
+parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
+parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
+parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
+parser.add_argument('--model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
+parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
+parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 1: FORCE overwrite')
+parser.add_argument('--seed', type=int, default=42, help='Random seed')
+
+def main(args):
+    set_seed(args.seed)
+    
+    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    print("Test dataset includes {} samples.".format(len(test_dataset)))
+    
+    loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
+    
+    model = DANet.build_model(args.model_path)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    if args.use_cuda:
+        if torch.cuda.is_available():
+            model.cuda()
+            model = nn.DataParallel(model)
+            print("Use CUDA")
+        else:
+            raise ValueError("Cannot use CUDA.")
+    else:
+        print("Does NOT use CUDA")
+    
+    # Criterion
+    if args.criterion == 'l2loss':
+        criterion = L2Loss()
+    else:
+        raise ValueError("Not support criterion {}".format(args.criterion))
+    
+    tester = AttractorTester(model, loader, criterion, args)
+    tester.run()
+    
+    
+if __name__ == '__main__':
+    args = parser.parse_args()
+    print(args)
+    main(args)
