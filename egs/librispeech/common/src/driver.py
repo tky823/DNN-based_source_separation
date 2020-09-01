@@ -395,7 +395,7 @@ class AttractorTrainer(Trainer):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, data(mixture, sources, threshold_weight) in enumerate(self.valid_loader):
+            for idx, data in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, 1, 2*F_bin, T_bin)
                 sources (batch_size, n_sources, F_bin, T_bin)
