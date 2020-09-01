@@ -31,7 +31,7 @@ class WaveDataset(LibriSpeechDataset):
         sources = None
         
         for key in data.keys():
-            source_data = data[key]
+            source_data = data[key]['sources']
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
             wave, sr = sf.read(wav_path)
@@ -79,7 +79,7 @@ class WaveTestDataset(WaveDataset):
         segment_IDs = []
         
         for key in data.keys():
-            source_data = data[key]
+            source_data = data[key]['sources']
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
             wave, sr = sf.read(wav_path)
