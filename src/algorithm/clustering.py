@@ -5,14 +5,14 @@ class Kmeans:
     def __init__(self, data, K=2):
         """
         Args:
-            data (num_data, dimension)
+            data (num_data, dimension) <torch.Tensor>
         """
         self.K = K
         
         num_data = len(data)
         
         centroid_id = random.sample(range(num_data), K)
-        centroids = torch.Tensor(data[centroid_id])
+        centroids = data[centroid_id]
         
         data = data.unsqueeze(dim=1)
         distance = torch.norm((data - centroids), dim=2) # (num_data, K)
