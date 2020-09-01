@@ -8,6 +8,7 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
 from algorithm.stft import BatchInvSTFT
+from criterion.pit import pit
 
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -138,6 +139,7 @@ class Trainer:
             
             if self.max_norm:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
             self.optimizer.step()
             
             train_loss += loss.item()
@@ -319,8 +321,21 @@ class Tester:
         print("Loss: {:.3f}, loss improvement: {:3f} PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
 
 class AttractorTrainer(Trainer):
-    def __init__(self, model, loader, pit_criterion, optimizer, args):
+    def __init__(self, model, loader, criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
+        
+        self.train_loader, self.valid_loader = loader['train'], loader['valid']
+        
+        self.model = model
+        
+        self.criterion = criterion
+        self.optimizer = optimizer
+        
+        self._reset(args)
+    
+    def _reset(self, args):
+        # Override
+        super()._reset(args)
         
         self.F_bin = args.F_bin
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
@@ -350,13 +365,14 @@ class AttractorTrainer(Trainer):
             sources = torch.sqrt(real**2+imag**2)
             
             estimated_sources = self.model(mixture, assignment=assignment, threshold_weight=threshold_weight)
-            loss, _ = self.pit_criterion(estimated_sources, sources)
+            loss = self.criterion(estimated_sources, sources)
             
             self.optimizer.zero_grad()
             loss.backward()
             
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
             self.optimizer.step()
             
             train_loss += loss.item()
@@ -390,8 +406,10 @@ class AttractorTrainer(Trainer):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                    assignment = assignment.cuda()
                     threshold_weight = threshold_weight.cuda()
+                    
+                    if assignment is not None:
+                        assignment = assignment.cuda()
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
@@ -399,7 +417,7 @@ class AttractorTrainer(Trainer):
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
                 output = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight)
-                loss, _ = self.pit_criterion(output, sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
