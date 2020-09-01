@@ -50,13 +50,11 @@ def main(args):
     loader = {}
     
     train_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
-    # valid_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     valid_dataset = EvalIdealMaskSpectrogramDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    # loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     args.F_bin = args.fft_size//2 + 1
@@ -86,7 +84,7 @@ def main(args):
         
     # Criterion
     if args.criterion == 'l2loss':
-        criterion = L2Loss(dim=(2,3), reduction='mean')
+        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, F_bin, T_bin)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
