@@ -47,7 +47,7 @@ class Kmeans:
         """
         distance = torch.norm((data - centroids), dim=2) # (num_data, K)
         distance, cluster_id = torch.min(distance, dim=1)
-        onehot_labels = torch.eye(K)[cluster_id]
+        onehot_labels = torch.eye(K)[cluster_id].to(data.device)
         
         self.num_data = num_data
         self.data = data
