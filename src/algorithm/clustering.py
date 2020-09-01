@@ -1,7 +1,8 @@
 import random
 import torch
+import torch.nn as nn
 
-class Kmeans:
+class Kmeans(nn.Module):
     def __init__(self, data, K=2):
         """
         Args:
