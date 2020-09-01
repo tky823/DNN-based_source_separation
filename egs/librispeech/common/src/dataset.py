@@ -217,7 +217,7 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
         """
         mixture, sources, ideal_mask, threshold_weight, segment_IDs = super().__getitem__(idx)
 
-    return mixture, sources, ideal_mask, threshold_weight, segment_IDs
+        return mixture, sources, ideal_mask, threshold_weight, segment_IDs
 
 class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
