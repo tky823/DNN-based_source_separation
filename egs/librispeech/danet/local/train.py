@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import IdealMaskSpectrogramDataset, EvalIdealMaskSpectrogramDataset, TrainDataLoader, EvalDataLoader
+from dataset import IdealMaskSpectrogramDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from driver import AttractorTrainer
 from models.danet import DANet
 from criterion.distance import L2Loss
@@ -50,7 +50,7 @@ def main(args):
     loader = {}
     
     train_dataset = IdealMaskSpectrogramDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
-    valid_dataset = EvalIdealMaskSpectrogramDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    valid_dataset = IdealMaskSpectrogramEvalDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
