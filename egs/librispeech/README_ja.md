@@ -1,10 +1,10 @@
 # LibriSpeech
 
 ## 実行方法
-At the training and evaluation stage, log is saved like `train_<TIME_STAMP>.log`.
-`<TIME_STAMP>` is given by `date "+%Y%m%d-%H%M%S"`, and it depends on time.
-I recommend specify your time zone like `TZ=UTC-9 date "+%Y%m%d-%H%M%S"`.
-Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
+学習や評価時には，`train_<TIME_STAMP>.log`のようにログが保存される．
+`<TIME_STAMP>`は`date "+%Y%m%d-%H%M%S"`で生成され，タイムゾーンに依存する．
+そのため，`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`のようにタイムゾーンを指定することを勧める．
+例えば，`TZ=UTC-9`は世界標準時+9時間を意味する（日本のタイムゾーン）．
 
 ### 0. データセットの準備
 ```
@@ -35,7 +35,7 @@ cd <REPOSITORY_ROOT>/egs/librispeech/<MODEL_NAME>/
 . ./demo.sh
 ```
 
-## Results
+## 結果
 テストデータによる評価
 学習済みモデルはサブディレクトリに保存されている．これらは全てGoogle Colaboratory上で学習されたもの．
 ただし，時間制約の都合上，ネットワーク構造は元の論文と変えている可能性があるため注意すること．
