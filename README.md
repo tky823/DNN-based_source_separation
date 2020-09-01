@@ -50,3 +50,5 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 v0.0.0: Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
 
 v0.0.1: Dataset is renamed.
+
+v0.1.0: Dataset structure is changed.

@@ -50,3 +50,5 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 v0.0.0: Conv-TasNetとDPRNN-TasNetによるLibriSpeechデータセットの例を含む．
 
 v0.0.1: データセット名の変更．
+
+v0.1.0: データセットの構造の変更．
