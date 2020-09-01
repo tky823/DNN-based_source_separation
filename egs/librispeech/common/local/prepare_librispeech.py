@@ -54,11 +54,11 @@ def make_json_data(wav_root, json_path, speakers_path, n_sources=2, samples=3200
 
         meta_data[speaker_ID] = []
         
-        speech_IDs = glob.glob(os.path.join(wav_root, folder_name, speaker_ID, "*"))
+        speech_IDs = sorted(glob.glob(os.path.join(wav_root, folder_name, speaker_ID, "*")))
         speech_IDs = [os.path.basename(speech_ID) for speech_ID in speech_IDs]
         
         for speech_ID in speech_IDs:
-            wav_names = glob.glob(os.path.join(wav_root, folder_name, speaker_ID, speech_ID, "*.flac"))
+            wav_names = sourted(glob.glob(os.path.join(wav_root, folder_name, speaker_ID, speech_ID, "*.flac")))
             wav_names = [os.path.basename(wav_name) for wav_name in wav_names]
             
             for wav_name in wav_names:
