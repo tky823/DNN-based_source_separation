@@ -395,35 +395,26 @@ class AttractorTrainer(Trainer):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, data in enumerate(self.valid_loader):
+            for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, 1, 2*F_bin, T_bin)
                 sources (batch_size, n_sources, F_bin, T_bin)
                 assignment (batch_size, n_sources, F_bin, T_bin)
                 threshold_weight (batch_size, F_bin, T_bin)
                 """
-                if len(data) == 3:
-                    mixture, sources, threshold_weight = data
-                    assignment = None
-                elif len(data) == 4:
-                    mixture, sources, assignment, threshold_weight = data
-                else:
-                    raise ValueError("len(data) is expected 3 or 4, but given {}".format(len(data)))
-                
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     threshold_weight = threshold_weight.cuda()
-                    
-                    if assignment is not None:
-                        assignment = assignment.cuda()
+                    assignment = assignment.cuda()
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight)
+                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight)
+                # At the test phase, assignment may be unknown.
                 loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
