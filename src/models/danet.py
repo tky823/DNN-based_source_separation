@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from algorithm.clustering import Kmeans
+
 EPS=1e-12
 
 class DANet(nn.Module):
@@ -63,13 +65,16 @@ class DANet(nn.Module):
         if assignment is None:
             if self.training:
                 raise ValueError("assignment is required.")
-            raise NotImplementedError("Sorry, I haven't implemented...")
+            latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, F_bin*T_bin)
+            latent_kmeans = latent_kmeans.permute(1,0) # -> (F_bin*T_bin, embed_dim)
+            kmeans = Kmeans(latent_kmeans, K=n_sources)
+            _, centroids = kmeans(iteration=10) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
+            attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
             assignment = threshold_weight * assignment
-        
-        attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, K)
+            attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, embed_dim)
         
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
