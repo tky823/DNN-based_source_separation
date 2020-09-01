@@ -167,6 +167,22 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
         
         return mixture, sources, ideal_mask, threshold_weight
+
+class EvalIdealMaskSpectrogramDataset(IdealMaskSpectrogramDataset):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
+        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, 2*F_bin, T_bin) <torch.Tensor>
+            sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
+            ideal_mask: None
+            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+        """
+        mixture, sources, _, threshold_weight = super().__getitem__(idx)
+        
+        return mixture, sources, None, threshold_weight
         
 
 class TrainDataLoader(torch.utils.data.DataLoader):
