@@ -26,12 +26,12 @@ class WaveDataset(LibriSpeechDataset):
             mixture (1, T) <torch.Tensor>
             sources (n_sources, T) <torch.Tensor>
         """
-        data = self.json_data[idx]
+        data = self.json_data[idx]['sources']
         mixture = 0
         sources = None
         
         for key in data.keys():
-            source_data = data[key]['sources']
+            source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
             wave, sr = sf.read(wav_path)
@@ -73,13 +73,13 @@ class WaveTestDataset(WaveDataset):
             sources (n_sources, T) <torch.Tensor>
             segment_IDs (n_sources,) <list<str>>
         """
-        data = self.json_data[idx]
+        data = self.json_data[idx]['sources']
         mixture = 0
         sources = None
         segment_IDs = []
         
         for key in data.keys():
-            source_data = data[key]['sources']
+            source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
             wave, sr = sf.read(wav_path)
