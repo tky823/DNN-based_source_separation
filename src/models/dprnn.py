@@ -6,39 +6,41 @@ from utils.utils_tasnet import choose_layer_norm
 EPS=1e-12
 
 class DPRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, causal=False):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, causal=False, eps=EPS):
         super().__init__()
         
         # Network confguration
         net = []
         
         for _ in range(num_blocks):
-            net.append(DPRNNBlock(num_features, hidden_channels, causal=causal))
+            net.append(DPRNNBlock(num_features, hidden_channels, causal=causal, eps=eps))
             
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
         """
         Args:
-            input (batch_size, num_features, chunk_size, S)
+            input (batch_size, num_features, S, chunk_size)
         Returns:
-            input (batch_size, num_features, chunk_size, S)
+            output (batch_size, num_features, S, chunk_size)
         """
         output = self.net(input)
 
         return output
 
 class DPRNNBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal):
+    def __init__(self, num_features, hidden_channels, causal, eps=EPS):
         super().__init__()
         
-        self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels)
-        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, causal=causal)
+        self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels, eps=eps)
+        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, causal=causal, eps=eps)
         
     def forward(self, input):
         """
         Args:
             input (batch_size, num_features, S, chunk_size)
+        Returns:
+            output (batch_size, num_features, S, chunk_size)
         """
         x = self.intra_chunk_block(input)
         output = self.inter_chunk_block(x)
@@ -60,6 +62,8 @@ class IntraChunkRNN(nn.Module):
         """
         Args:
             input (batch_size, num_features, S, chunk_size)
+        Returns:
+            output (batch_size, num_features, S, chunk_size)
         """
         num_features, hidden_channels = self.num_features, self.hidden_channels
         batch_size, _, S, chunk_size = input.size()
@@ -95,6 +99,8 @@ class InterChunkRNN(nn.Module):
         """
         Args:
             input (batch_size, num_features, S, chunk_size)
+        Returns:
+            output (batch_size, num_features, S, chunk_size)
         """
         num_features, hidden_channels = self.num_features, self.hidden_channels
         batch_size, _, S, chunk_size = input.size()
