@@ -89,7 +89,7 @@ def make_json_data(wav_root, json_path, speakers_path, n_sources=2, samples=3200
         possible_speaker_IDs = meta_data.keys()
         speaker_IDs = random.sample(possible_speaker_IDs, n_sources)
         data = {
-            'sources': None
+            'sources': {}
         }
         
         for source_idx in range(n_sources):
