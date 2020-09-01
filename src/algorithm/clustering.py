@@ -64,12 +64,12 @@ if __name__ == '__main__':
     iteration = 10
 
     df = pd.read_csv("data/faithful.csv")
-    x, y = torch.Tensor(df['waiting']), torch.Tensor(df['eruptions'])
-    data = torch.stack([x, y], axis=1)
+    x, y = torch.Tensor(df['waiting']).unsqueeze(dim=1), torch.Tensor(df['eruptions']).unsqueeze(dim=1)
+    data = torch.cat([x, y], dim=1)
     num_data = len(data)
 
-    mean = data.mean(axis=0, keepdims=True)
-    var = (data**2).mean(axis=0, keepdims=True)-mean**2
+    mean = data.mean(dim=0, keepdim=True)
+    var = (data**2).mean(dim=0, keepdim=True)-mean**2
     data = (data - mean)/torch.sqrt(var)
 
     plt.figure()
