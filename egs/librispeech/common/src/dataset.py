@@ -177,12 +177,11 @@ class EvalIdealMaskSpectrogramDataset(IdealMaskSpectrogramDataset):
         Returns:
             mixture (1, 2*F_bin, T_bin) <torch.Tensor>
             sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
-            ideal_mask: None
             threshold_weight (1, F_bin, T_bin) <torch.Tensor>
         """
         mixture, sources, _, threshold_weight = super().__getitem__(idx)
         
-        return mixture, sources, None, threshold_weight
+        return mixture, sources, threshold_weight
         
 
 class TrainDataLoader(torch.utils.data.DataLoader):
