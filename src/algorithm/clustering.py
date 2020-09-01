@@ -36,7 +36,6 @@ class Kmeans:
         """
         1. Calculate centroids
         """
-        print(data.device, onehot_labels.device)
         masked_data = data * onehot_labels # (num_data, K, D)
         pseudo_centroids = masked_data.sum(dim=0)
         normalizer = onehot_labels.sum(dim=0)
