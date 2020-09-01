@@ -25,52 +25,6 @@ class WaveDataset(LibriSpeechDataset):
         Returns:
             mixture (1, T) <torch.Tensor>
             sources (n_sources, T) <torch.Tensor>
-        """
-        data = self.json_data[idx]['sources']
-        mixture = 0
-        sources = None
-        
-        for key in data.keys():
-            source_data = data[key]
-            start, end = source_data['start'], source_data['end']
-            wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, sr = sf.read(wav_path)
-            wave = np.array(wave)[start: end]
-            wave = wave[None]
-            mixture = mixture + wave
-        
-            if sources is None:
-                sources = wave
-            else:
-                sources = np.concatenate([sources, wave], axis=0)
-        
-        mixture = torch.Tensor(mixture).float()
-        sources = torch.Tensor(sources).float()
-        
-        return mixture, sources
-        
-    def __len__(self):
-        return len(self.json_data)
-
-class WaveTrainDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
-
-
-class WaveEvalDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
-
-
-class WaveTestDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
-        
-    def __getitem__(self, idx):
-        """
-        Returns:
-            mixture (1, T) <torch.Tensor>
-            sources (n_sources, T) <torch.Tensor>
             segment_IDs (n_sources,) <list<str>>
         """
         data = self.json_data[idx]['sources']
@@ -98,9 +52,44 @@ class WaveTestDataset(WaveDataset):
         sources = torch.Tensor(sources).float()
         
         return mixture, sources, segment_IDs
-    
+        
     def __len__(self):
         return len(self.json_data)
+
+class WaveTrainDataset(WaveDataset):
+    def __init__(self, wav_root, json_path):
+        super().__init__(wav_root, json_path)
+    
+    def __getitem__(self, idx):
+        mixture, sources, _ = super().__getitem__(idx)
+        
+        return mixture, sources
+
+
+class WaveEvalDataset(WaveDataset):
+    def __init__(self, wav_root, json_path):
+        super().__init__(wav_root, json_path)
+    
+    def __getitem__(self, idx):
+        mixture, sources, _ = super().__getitem__(idx)
+    
+        return mixture, sources
+
+
+class WaveTestDataset(WaveDataset):
+    def __init__(self, wav_root, json_path):
+        super().__init__(wav_root, json_path)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, T) <torch.Tensor>
+            sources (n_sources, T) <torch.Tensor>
+            segment_IDs (n_sources,) <list<str>>
+        """
+        mixture, sources, segment_IDs = super().__getitem__(idx)
+        
+        return mixture, sources, segment_IDs
 
 
 class SpectrogramDataset(WaveDataset):
@@ -120,17 +109,23 @@ class SpectrogramDataset(WaveDataset):
         Returns:
             mixture (1, 2*F_bin, T_bin) <torch.Tensor>, first F_bin is real, the latter F_bin is iamginary part.
             sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
+            segment_IDs (n_sources,) <list<str>>
         """
-        mixture, sources = super().__getitem__(idx)
+        mixture, sources, segment_IDs = super().__getitem__(idx)
         
         mixture = self.stft(mixture) # (1, 2*F_bin, T_bin)
         sources = self.stft(sources) # (n_sources, 2*F_bin, T_bin)
         
-        return mixture, sources
+        return mixture, sources, segment_IDs
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
         super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+    
+    def __getitem__(self, idx):
+        mixture, sources, _ = super().__getitem__(idx)
+        
+        return mixture, sources
 
 
 class IdealMaskSpectrogramDataset(SpectrogramDataset):
@@ -159,7 +154,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         F_bin = self.F_bin
         threshold = self.threshold
         
-        mixture, sources = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
+        mixture, sources, _ = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
         real, imag = sources[:,:F_bin], sources[:,F_bin:]
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
