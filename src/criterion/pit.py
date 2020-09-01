@@ -4,7 +4,7 @@ import torch
 """
     Permutation invariant training
 """
-def pit(criterion, input, target, n_sources=None, patterns=None):
+def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True):
     """
     Args:
         criterion <callable>
@@ -62,7 +62,7 @@ class PIT:
             loss (batch_size,): minimum loss for each data
             pattern (batch_size,): permutation indices
         """
-        loss, pattern = pit(self.criterion, input, target, patterns=self.patterns)
+        loss, pattern = pit(self.criterion, input, target, patterns=self.patterns, batch_mean=batch_mean)
              
         return loss, pattern
 
