@@ -15,7 +15,7 @@ class Kmeans:
         centroids = torch.Tensor(data[centroid_id])
         
         data = data.unsqueeze(dim=1)
-        distance = torch.norm((data - centroids), dim=2) # (num_data, k)
+        distance = torch.norm((data - centroids), dim=2) # (num_data, K)
         distance, cluster_id = torch.min(distance, dim=1)
         
         self.onehot_labels = torch.eye(K)[cluster_id]
