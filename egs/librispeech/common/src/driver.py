@@ -322,8 +322,6 @@ class Tester:
 
 class AttractorTrainer(Trainer):
     def __init__(self, model, loader, criterion, optimizer, args):
-        super().__init__(model, loader, pit_criterion, optimizer, args)
-        
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
         self.model = model
