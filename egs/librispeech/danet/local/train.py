@@ -10,7 +10,6 @@ from dataset import IdealMaskSpectrogramDataset, TrainDataLoader
 from driver import AttractorTrainer
 from models.danet import DANet
 from criterion.distance import L2Loss
-from criterion.pit import PIT2d
 
 parser = argparse.ArgumentParser(description="Training of DANet (Deep Attractor Network)")
 
@@ -89,9 +88,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
-    
-    trainer = AttractorTrainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AttractorTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
 
 if __name__ == '__main__':
