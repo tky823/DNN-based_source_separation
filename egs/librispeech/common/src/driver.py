@@ -461,6 +461,8 @@ class AttractorTester(Tester):
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run(self):
+        F_bin = self.F_bin
+        
         self.model.eval()
         
         test_loss = 0
