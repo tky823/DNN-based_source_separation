@@ -318,7 +318,7 @@ class Tester:
         test_loss_improvement /= n_test
         test_pesq /= n_test
             
-        print("Loss: {:.3f}, loss improvement: {:3f} PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
+        print("Loss: {:.3f}, loss improvement: {:3f}, PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
 
 class AttractorTrainer(Trainer):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -466,7 +466,6 @@ class AttractorTester(Tester):
         self.model.eval()
         
         test_loss = 0
-        test_loss_improvement = 0
         test_pesq = 0
         n_test = len(self.loader.dataset)
         
@@ -560,15 +559,13 @@ class AttractorTester(Tester):
                     subprocess.call("rm {}".format(estimated_path), shell=True)
                 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, pesq), flush=True)
+                print("{}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), pesq), flush=True)
                 
                 test_loss += loss.item()
-                test_loss_improvement += loss_improvement
                 test_pesq += pesq
         
         test_loss /= n_test
-        test_loss_improvement /= n_test
         test_pesq /= n_test
                 
-        print("Loss: {:.3f}, loss improvement: {:3f} PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
+        print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
         
