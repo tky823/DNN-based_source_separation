@@ -109,21 +109,24 @@ class SpectrogramDataset(WaveDataset):
         Returns:
             mixture (1, 2*F_bin, T_bin) <torch.Tensor>, first F_bin is real, the latter F_bin is iamginary part.
             sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
+            T (), <int>: Number of samples in time-domain
             segment_IDs (n_sources,) <list<str>>
         """
         mixture, sources, segment_IDs = super().__getitem__(idx)
         
+        T = mixture.size(-1)
+        
         mixture = self.stft(mixture) # (1, 2*F_bin, T_bin)
         sources = self.stft(sources) # (n_sources, 2*F_bin, T_bin)
         
-        return mixture, sources, segment_IDs
+        return mixture, sources, T, segment_IDs
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
         super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
     
     def __getitem__(self, idx):
-        mixture, sources, _ = super().__getitem__(idx)
+        mixture, sources, _, _ = super().__getitem__(idx)
         
         return mixture, sources
 
@@ -150,12 +153,13 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
             sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
             ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
             threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            T (), <int>: Number of samples in time-domain
             segment_IDs (n_sources,) <list<str>>
         """
         F_bin = self.F_bin
         threshold = self.threshold
         
-        mixture, sources, segment_IDs = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
+        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
         real, imag = sources[:,:F_bin], sources[:,F_bin:]
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
@@ -167,7 +171,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         threshold = 10**((max_log_amplitude - threshold) / 20)
         threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
         
-        return mixture, sources, ideal_mask, threshold_weight, segment_IDs
+        return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
 class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
@@ -181,7 +185,7 @@ class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
             ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
             threshold_weight (1, F_bin, T_bin) <torch.Tensor>
         """
-        mixture, sources, ideal_mask, threshold_weight, _ = super().__getitem__(idx)
+        mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
         
         return mixture, sources, ideal_mask, threshold_weight
 
@@ -198,7 +202,7 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
             ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
             threshold_weight (1, F_bin, T_bin) <torch.Tensor>
         """
-        mixture, sources, ideal_mask, threshold_weight, _ = super().__getitem__(idx)
+        mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
     
         return mixture, sources, ideal_mask, threshold_weight
 
@@ -213,11 +217,12 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
             sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
             ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
             threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            T () <int>
             segment_IDs (n_sources,) <list<str>>
         """
-        mixture, sources, ideal_mask, threshold_weight, segment_IDs = super().__getitem__(idx)
+        mixture, sources, ideal_mask, threshold_weight, T, segment_IDs = super().__getitem__(idx)
 
-        return mixture, sources, ideal_mask, threshold_weight, segment_IDs
+        return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
 class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
@@ -269,9 +274,10 @@ class AttractorTestDataLoader(torch.utils.data.DataLoader):
 
 def attractor_test_collate_fn(batch):
     batched_mixture, batched_sources, batched_assignment, batched_weight_threshold = None, None, None, None
+    batched_T = []
     batched_segment_ID = []
     
-    for mixture, sources, assignment, weight_threshold, segmend_ID in batch:
+    for mixture, sources, assignment, weight_threshold, T, segmend_ID in batch:
         mixture = mixture.unsqueeze(dim=0)
         sources = sources.unsqueeze(dim=0)
         assignment = assignment.unsqueeze(dim=0)
@@ -288,6 +294,7 @@ def attractor_test_collate_fn(batch):
             batched_assignment = torch.cat([batched_assignment, assignment], dim=0)
             batched_weight_threshold = torch.cat([batched_weight_threshold, weight_threshold], dim=0)
         
+        batched_T.append(T)
         batched_segment_ID.append(segmend_ID)
     
-    return batched_mixture, batched_sources, batched_assignment, batched_weight_threshold, batched_segment_ID
+    return batched_mixture, batched_sources, batched_assignment, batched_weight_threshold, batched_T, batched_segment_ID

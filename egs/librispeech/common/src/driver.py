@@ -398,7 +398,7 @@ class AttractorTrainer(Trainer):
             for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, F_bin, T_bin)
+                sources (batch_size, n_sources, 2*F_bin, T_bin)
                 assignment (batch_size, n_sources, F_bin, T_bin)
                 threshold_weight (batch_size, F_bin, T_bin)
                 """
@@ -421,7 +421,7 @@ class AttractorTrainer(Trainer):
                 
                 if idx < 5:
                     mixture = mixture[0].cpu() # -> (1, 2*F_bin, T_bin)
-                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (n_sources, F_bin, T_bin)
+                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
                     estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
@@ -429,6 +429,7 @@ class AttractorTrainer(Trainer):
                     estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.detach().cpu().numpy()
+                    # TODO: .detach().cpu() is unnecessary?
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
@@ -454,3 +455,117 @@ class AttractorTester(Tester):
     
     def _reset(self, args):
         raise NotImplementedError("Sorry, I haven't implemented...")
+        # Override
+        super()._reset(args)
+        
+        self.F_bin = args.F_bin
+        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+    
+    def run(self):
+        self.model.eval()
+        
+        test_loss = 0
+        test_loss_improvement = 0
+        test_pesq = 0
+        n_test = len(self.loader.dataset)
+        
+        with torch.no_grad():
+            for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
+                """
+                mixture (1, 1, 2*F_bin, T_bin)
+                sources (1, n_sources, 2*F_bin, T_bin)
+                assignment (1, n_sources, F_bin, T_bin)
+                threshold_weight (1, F_bin, T_bin)
+                T (1,)
+                """
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                    ideal_mask = ideal_mask.cuda()
+                    threshold_weight = threshold_weight.cuda()
+                
+                real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+                mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
+                
+                output = self.model(mixture)
+                loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
+                loss = loss.sum(dim=0)
+                
+                mixture = mixture[0].cpu()
+                sources = sources[0].cpu()
+    
+                mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
+                estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                ratio = estimated_sources_amplitude / mixture_amplitude
+                real, imag = mixture[:,:F_bin], mixture[:,F_bin:] # -> (1, F_bin, T_bin), (1, F_bin, T_bin)
+                real, imag = ratio * real, ratio * imag # -> (n_sources, F_bin, T_bin), (n_sources, F_bin, T_bin)
+                estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
+                
+                perm_idx = perm_idx[0] # -> (n_sources,)
+                T = T[0]  # -> ()
+                segment_IDs = segment_IDs[0] # -> (n_sources,)
+                mixture = self.istft(mixture, T=T).squeeze(dim=0).numpy() # -> (T,)
+                sources = self.istft(sources, T=T).numpy() # -> (n_sources, T)
+                estimated_sources = self.istft(estimated_sources, T=T).numpy() # -> (n_sources, T)
+                
+                norm = np.abs(mixture).max()
+                mixture /= norm
+                mixture_ID = "+".join(segment_IDs)
+                    
+                if idx < 10 and self.out_dir is not None:
+                    mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
+                    write_wav(mixture_path, signal=mixture, sr=self.sr)
+                
+                mixture_path = "tmp-mixture.wav"
+                write_wav(mixture_path, signal=mixture, sr=self.sr)
+                    
+                for order_idx in range(self.n_sources):
+                    source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
+                    segment_ID = segment_IDs[order_idx]
+                    
+                    # Target
+                    norm = np.abs(source).max()
+                    source /= norm
+                    if idx < 10 and  self.out_dir is not None:
+                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
+                        write_wav(source_path, signal=source, sr=self.sr)
+                    source_path = "tmp-{}-target.wav".format(order_idx)
+                    write_wav(source_path, signal=source, sr=self.sr)
+                    
+                    # Estimated source
+                    norm = np.abs(estimated_source).max()
+                    estimated_source /= norm
+                    if idx < 10 and  self.out_dir is not None:
+                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
+                        write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                    estimated_path = "tmp-{}-estimated.wav".format(order_idx)
+                    write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                
+                pesq = 0
+                    
+                for source_idx in range(self.n_sources):
+                    source_path = "tmp-{}-target.wav".format(source_idx)
+                    estimated_path = "tmp-{}-estimated.wav".format(source_idx)
+                    
+                    command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
+                    command += " | grep Prediction | awk '{print $5}'"
+                    pesq_output = subprocess.check_output(command, shell=True)
+                    pesq_output = pesq_output.decode().strip()
+                    pesq += float(pesq_output)
+                    
+                    subprocess.call("rm {}".format(source_path), shell=True)
+                    subprocess.call("rm {}".format(estimated_path), shell=True)
+                
+                pesq /= self.n_sources
+                print("{}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, pesq), flush=True)
+                
+                test_loss += loss.item()
+                test_loss_improvement += loss_improvement
+                test_pesq += pesq
+        
+        test_loss /= n_test
+        test_loss_improvement /= n_test
+        test_pesq /= n_test
+                
+        print("Loss: {:.3f}, loss improvement: {:3f} PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
+        
