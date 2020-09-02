@@ -5,6 +5,7 @@ DNNによる音源分離（PyTorch実装）
 | モデル | 参考文献 | 実装 |
 | :---: | :---: | :---: |
 | WaveNet | [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499) | ✔ |
+| Wave-U-Net | [Wave-U-Net: A Multi-Scale Neural Network for End-to-End Audio Source Separation](https://arxiv.org/abs/1806.03185) |  |
 | Deep clustering | [Single-Channel Multi-Speaker Separation using Deep Clustering](https://arxiv.org/abs/1607.02173) |  |
 | DANet | [Deep attractor network for single-microphone speaker separation](https://arxiv.org/abs/1611.08930) |  |
 | ADANet | [Speaker-independent Speech Separation with Deep Attractor Network](https://arxiv.org/abs/1707.03634) |  |
