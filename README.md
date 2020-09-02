@@ -53,3 +53,5 @@ v0.0.0: Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are inc
 v0.0.1: Dataset is renamed.
 
 v0.1.0: Dataset structure is changed.
+
+v0.1.1: DANet is included.

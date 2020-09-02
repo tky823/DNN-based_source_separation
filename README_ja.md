@@ -53,3 +53,5 @@ v0.0.0: Conv-TasNetとDPRNN-TasNetによるLibriSpeechデータセットの例�
 v0.0.1: データセット名の変更．
 
 v0.1.0: データセットの構造の変更．
+
+v0.1.1: DANetを追加．
