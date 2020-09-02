@@ -487,9 +487,11 @@ class AttractorTester(Tester):
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
+                real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+                sources_amplitude = torch.sqrt(real**2+imag**2)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight)
-                loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
+                loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
                 mixture = mixture[0].cpu()
