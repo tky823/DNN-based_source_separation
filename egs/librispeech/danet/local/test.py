@@ -10,7 +10,7 @@ from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from driver import AttractorTester
 from models.danet import DANet
 from criterion.distance import L2Loss
-from criterion.pit import PIT1d
+from criterion.pit import PIT2d
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
@@ -59,8 +59,10 @@ def main(args):
         criterion = L2Loss()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+        
+    pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
     
-    tester = AttractorTester(model, loader, criterion, args)
+    tester = AttractorTester(model, loader, pit_criterion, args)
     tester.run()
     
     
