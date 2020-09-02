@@ -25,13 +25,14 @@ class DANet(nn.Module):
             self.mask_nonlinear2d = nn.Softmax(dim=1)
         else:
             raise NotImplementedError("")
-    
+        
+        self.iter_kmeans = 10 # TODO: Non-fixed
         self.n_sources = n_sources
         self.eps = eps
         
         self.num_parameters = self._get_num_parameters()
     
-    def forward(self, input, assignment=None, threshold_weight=None):
+    def forward(self, input, assignment=None, threshold_weight=None, n_sources=None):
         """
         Args:
             input (batch_size, 1, F_bin, T_bin)
@@ -40,18 +41,23 @@ class DANet(nn.Module):
         Returns:
             output (batch_size, n_sources, F_bin, T_bin)
         """
-        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight)
+        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources)
         
         return output
     
-    def extract_latent(self, input, assignment=None, threshold_weight=None):
+    def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None):
         """
         input (batch_size, 1, F_bin, T_bin) <torch.Tensor>
         assignment (batch_size, n_sources, F_bin, T_bin) <torch.Tensor>
         threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         """
         embed_dim = self.embed_dim
-        n_sources = self.n_sources
+        
+        if n_sources is None:
+            n_sources = self.n_sources
+        elif assignment is not None and n_sources != assignment.size(1):
+            raise ValueError("n_sources is different from assignment.size(1)")
+        
         eps = self.eps
         
         batch_size, _, F_bin, T_bin = input.size()
@@ -68,7 +74,7 @@ class DANet(nn.Module):
             latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, F_bin*T_bin)
             latent_kmeans = latent_kmeans.permute(1,0) # -> (F_bin*T_bin, embed_dim)
             kmeans = Kmeans(latent_kmeans, K=n_sources)
-            _, centroids = kmeans(iteration=10) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
+            _, centroids = kmeans(iteration=self.iter_kmeans) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
             attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
