@@ -454,7 +454,6 @@ class AttractorTester(Tester):
         self._reset(args)
     
     def _reset(self, args):
-        raise NotImplementedError("Sorry, I haven't implemented...")
         # Override
         super()._reset(args)
         
