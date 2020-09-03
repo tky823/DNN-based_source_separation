@@ -356,9 +356,6 @@ class AttractorTrainer(Trainer):
                 sources = sources.cuda()
                 assignment = assignment.cuda()
                 threshold_weight = threshold_weight.cuda()
-            
-            if torch.isnan(mixture).any():
-                raise ValueError("mixture is invalid.")
                 
             real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
             mixture_amplitude = torch.sqrt(real**2+imag**2)
