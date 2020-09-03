@@ -62,7 +62,8 @@ class DANet(nn.Module):
         
         batch_size, _, F_bin, T_bin = input.size()
         
-        x = self.lstm(input) # -> (batch_size, T_bin, F_bin)
+        log_amplitude = torch.log(input + eps)
+        x = self.lstm(log_amplitude) # -> (batch_size, T_bin, F_bin)
         x = self.fc(x) # -> (batch_size, T_bin, embed_dim*F_bin)
         x = x.view(batch_size, T_bin, embed_dim, F_bin)
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
