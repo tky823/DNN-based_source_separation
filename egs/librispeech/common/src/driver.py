@@ -10,6 +10,8 @@ from utils.utils_audio import write_wav
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
+EPS=1e-12
+
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
@@ -361,7 +363,7 @@ class AttractorTrainer(Trainer):
             mixture_amplitude = torch.sqrt(real**2+imag**2)
             if torch.isinf(mixture_amplitude).any():
                 raise ValueError("mixture_amplitude is invalid.")
-            mixture_log_amplitude = torch.log(mixture_amplitude)
+            mixture_log_amplitude = torch.log(mixture_amplitude + EPS)
             real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
