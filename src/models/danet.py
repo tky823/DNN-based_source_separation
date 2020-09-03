@@ -60,8 +60,8 @@ class DANet(nn.Module):
         
         eps = self.eps
         
-        if torch.isnan(input).any():
-            raise ValueError("input is invalid.")
+        if torch.isinf(input).any():
+            print ValueError("input has infinity.")
         batch_size, _, F_bin, T_bin = input.size()
         
         x = self.lstm(input) # -> (batch_size, T_bin, F_bin)
@@ -90,12 +90,8 @@ class DANet(nn.Module):
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
             assignment = threshold_weight * assignment
-            if torch.isnan(assignment).any():
-                raise ValueError("assignment is invalid.")
             attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, embed_dim)
         
-        if torch.isnan(attractor).any():
-            raise ValueError("attractor is invalid.")
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
         mask = self.mask_nonlinear2d(similarity) # -> (batch_size, n_sources, F_bin, T_bin)
