@@ -413,7 +413,7 @@ class AttractorTrainer(Trainer):
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
-                mixture_log_amplitude = torch.log(mixture_amplitude)
+                mixture_log_amplitude = torch.log(mixture_amplitude + EPS)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
@@ -490,7 +490,7 @@ class AttractorTester(Tester):
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
-                mixture_log_amplitude = torch.log(mixture_amplitude)
+                mixture_log_amplitude = torch.log(mixture_amplitude + EPS)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
