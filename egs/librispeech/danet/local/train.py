@@ -58,7 +58,7 @@ def main(args):
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     args.F_bin = args.fft_size//2 + 1
-    model = DANet(args.F_bin, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = DANet(args.F_bin, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
