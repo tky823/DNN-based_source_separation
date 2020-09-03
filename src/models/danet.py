@@ -61,7 +61,7 @@ class DANet(nn.Module):
         eps = self.eps
         
         if torch.isinf(input).any():
-            print ValueError("input has infinity.")
+            print("input has infinity.")
         batch_size, _, F_bin, T_bin = input.size()
         
         x = self.lstm(input) # -> (batch_size, T_bin, F_bin)
