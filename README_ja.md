@@ -54,12 +54,8 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 ```
 
 ## バージョン情報
-v0.0.0: Conv-TasNetとDPRNN-TasNetによるLibriSpeechデータセットの例を含む．
-
-v0.0.1: データセット名の変更．
-
-v0.1.0: データセットの構造の変更．
-
-v0.1.1: DANetを追加．
-
-v0.1.2: Conv-TasNetのレーヤー名の変更．DANetの入力特徴量をlog-magnitudeに変更．
+- v0.0.0: Conv-TasNetとDPRNN-TasNetによるLibriSpeechデータセットの例を含む．
+- v0.0.1: データセット名の変更．
+- v0.1.0: データセットの構造の変更．
+- v0.1.1: DANetを追加．
+- v0.1.2: Conv-TasNetのレーヤー名の変更．DANetの入力特徴量をlog-magnitudeに変更．

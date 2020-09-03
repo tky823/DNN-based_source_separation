@@ -54,12 +54,8 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 ```
 
 ## Version
-v0.0.0: Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
-
-v0.0.1: Dataset is renamed.
-
-v0.1.0: Dataset structure is changed.
-
-v0.1.1: DANet is included.
-
-v0.1.2: Layer name is changed. Input feature for DANet is replaced by log-magnitude.
+- v0.0.0: Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
+- v0.0.1: Dataset is renamed.
+- v0.1.0: Dataset structure is changed.
+- v0.1.1: DANet is included.
+- v0.1.2: Layer name is changed. Input feature for DANet is replaced by log-magnitude.
