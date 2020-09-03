@@ -102,7 +102,7 @@ class ResidualBlock1d(nn.Module):
         if norm:
             self.norm1d = choose_layer_norm(hidden_channels, causal, eps=eps)
         if separable:
-            self.separable_conv1d = SeparableConv1d(hidden_channels, num_features, skip_channels=skip_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=dual_head, eps=eps)
+            self.separable_conv1d = DepthwiseSeparableConv1d(hidden_channels, num_features, skip_channels=skip_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=dual_head, eps=eps)
         else:
             if dual_head:
                 self.output_conv1d = nn.Conv1d(hidden_channels, num_features, kernel_size=kernel_size, dilation=dilation)
@@ -150,7 +150,7 @@ class ResidualBlock1d(nn.Module):
         return output, skip
         
         
-class SeparableConv1d(nn.Module):
+class DepthwiseSeparableConv1d(nn.Module):
     def __init__(self, in_channels, out_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
         
