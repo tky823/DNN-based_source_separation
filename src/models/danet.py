@@ -68,6 +68,9 @@ class DANet(nn.Module):
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
         latent = x.view(batch_size, embed_dim, F_bin*T_bin)
         
+        if torch.isnan(latent).any():
+            raise ValueError("latent is invalid.")
+        
         if assignment is None:
             # TODO: test threshold
             if self.training:
@@ -81,8 +84,12 @@ class DANet(nn.Module):
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
             assignment = assignment.view(batch_size, n_sources, F_bin*T_bin) # -> (batch_size, n_sources, F_bin*T_bin)
             assignment = threshold_weight * assignment
+            if torch.isnan(assignment).any():
+                raise ValueError("assignment is invalid.")
             attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, embed_dim)
         
+        if torch.isnan(attractor).any():
+            raise ValueError("attractor is invalid.")
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
         similarity = similarity.view(batch_size, n_sources, F_bin, T_bin)
         mask = self.mask_nonlinear2d(similarity) # -> (batch_size, n_sources, F_bin, T_bin)
