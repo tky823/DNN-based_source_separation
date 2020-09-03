@@ -390,6 +390,7 @@ class AttractorTrainer(Trainer):
         """
         Validation
         """
+        n_sources = self.n_sources
         F_bin = self.F_bin
         
         self.model.eval()
@@ -417,7 +418,7 @@ class AttractorTrainer(Trainer):
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_log_amplitude, assignment=None, threshold_weight=threshold_weight)
+                output = self.model(mixture_log_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
                 loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
@@ -465,6 +466,7 @@ class AttractorTester(Tester):
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run(self):
+        n_sources = self.n_sources
         F_bin = self.F_bin
         
         self.model.eval()
@@ -494,7 +496,7 @@ class AttractorTester(Tester):
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_log_amplitude, assignment=None, threshold_weight=threshold_weight)
+                output = self.model(mixture_log_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
