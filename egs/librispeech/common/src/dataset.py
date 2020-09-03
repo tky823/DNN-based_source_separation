@@ -7,6 +7,8 @@ import torch
 from algorithm.stft import BatchSTFT
 from algorithm.ideal_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
+EPS=1e-12
+
 class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
         super().__init__()
@@ -132,7 +134,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
 
 class IdealMaskSpectrogramDataset(SpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, eps=EPS):
         super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
         
         if mask_type == 'ibm':
@@ -145,6 +147,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
             raise NotImplementedError("Not support mask {}".format(mask_type))
         
         self.threshold = threshold
+        self.eps = eps
     
     def __getitem__(self, idx):
         """
@@ -158,6 +161,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         """
         F_bin = self.F_bin
         threshold = self.threshold
+        eps = self.eps
         
         mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
         real, imag = sources[:,:F_bin], sources[:,F_bin:]
@@ -166,7 +170,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         
         real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
         mixture_amplitude = torch.sqrt(real**2+imag**2)
-        log_amplitude = 20 * torch.log10(mixture_amplitude)
+        log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
         max_log_amplitude = torch.max(log_amplitude)
         threshold = 10**((max_log_amplitude - threshold) / 20)
         threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
