@@ -34,7 +34,7 @@ class DANet(nn.Module):
     def forward(self, input, assignment=None, threshold_weight=None, n_sources=None):
         """
         Args:
-            input (batch_size, 1, F_bin, T_bin)
+            input (batch_size, 1, F_bin, T_bin): Amplitude
             assignment (batch_size, n_sources, F_bin, T_bin): Speaker assignment when training
             threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         Returns:
