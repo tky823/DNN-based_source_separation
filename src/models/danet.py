@@ -56,6 +56,8 @@ class DANet(nn.Module):
             if assignment is not None and n_sources != assignment.size(1):
                 raise ValueError("n_sources is different from assignment.size(1)")
         else:
+            if assignment is None:
+                raise ValueError("Specify assignment, given None!")
             n_sources = assignment.size(1)
         
         eps = self.eps
