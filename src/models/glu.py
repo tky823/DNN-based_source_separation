@@ -36,6 +36,65 @@ class GLU(nn.Module):
         
         return output
 
+
+class GLU1d(nn.Module):
+    """
+    Gated Linear Units
+    """
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        
+        if out_channels is None:
+            out_channels = in_channels
+            
+        self.in_channels, self.out_channels = in_channels, out_channels
+
+        self.map = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1)
+        self.map_gate = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1)
+        
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, T)
+        Returns:
+            output (batch_size, out_channels, T)
+        """
+        x = self.map(input)
+        x_sigmoid = self.map_gate(input)
+        output = x * torch.sigmoid(x_sigmoid)
+        output = output.permute(*permutation)
+        
+        return output
+
+class GLU2d(nn.Module):
+    """
+    Gated Linear Units
+    """
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        
+        if out_channels is None:
+            out_channels = in_channels
+            
+        self.in_channels, self.out_channels = in_channels, out_channels
+
+        self.map = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1))
+        self.map_gate = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1))
+        
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, H, W)
+        Returns:
+            output (batch_size, out_channels, H, W)
+        """
+        x = self.map(input)
+        x_sigmoid = self.map_gate(input)
+        output = x * torch.sigmoid(x_sigmoid)
+        output = output.permute(*permutation)
+        
+        return output
+
 if __name__ == '__main__':
     batch_size = 4
     in_channels, out_channels = 3, 16
