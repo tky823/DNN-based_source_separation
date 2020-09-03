@@ -10,8 +10,6 @@ from utils.utils_audio import write_wav
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
-EPS=1e-12
-
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
@@ -413,11 +411,10 @@ class AttractorTrainer(Trainer):
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
-                mixture_log_amplitude = torch.log(mixture_amplitude + EPS)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_log_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
+                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
                 loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
@@ -491,11 +488,10 @@ class AttractorTester(Tester):
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
-                mixture_log_amplitude = torch.log(mixture_amplitude + EPS)
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_log_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
+                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
