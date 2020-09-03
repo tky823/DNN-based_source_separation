@@ -69,6 +69,7 @@ class DANet(nn.Module):
         latent = x.view(batch_size, embed_dim, F_bin*T_bin)
         
         if assignment is None:
+            # TODO: test threshold
             if self.training:
                 raise ValueError("assignment is required.")
             latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, F_bin*T_bin)
