@@ -60,22 +60,13 @@ class DANet(nn.Module):
         
         eps = self.eps
         
-        if torch.isinf(input).any():
-            print("input has infinity.")
         batch_size, _, F_bin, T_bin = input.size()
         
         x = self.lstm(input) # -> (batch_size, T_bin, F_bin)
-        if torch.isnan(x).any():
-            raise ValueError("x is invalid after lstm")
         x = self.fc(x) # -> (batch_size, T_bin, embed_dim*F_bin)
-        if torch.isnan(x).any():
-            raise ValueError("x is invalid after full connection.")
         x = x.view(batch_size, T_bin, embed_dim, F_bin)
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
         latent = x.view(batch_size, embed_dim, F_bin*T_bin)
-        
-        if torch.isnan(latent).any():
-            raise ValueError("latent is invalid.")
         
         if assignment is None:
             # TODO: test threshold
