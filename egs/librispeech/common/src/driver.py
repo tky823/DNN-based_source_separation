@@ -359,11 +359,13 @@ class AttractorTrainer(Trainer):
                 
             real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
             mixture_amplitude = torch.sqrt(real**2+imag**2)
+            if torch.isinf(mixture_amplitude).any():
+                raise ValueError("mixture_amplitude is invalid.")
             mixture_log_amplitude = torch.log(mixture_amplitude)
             real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
-            if torch.isnan(mixture_log_amplitude).any():
+            if torch.isinf(mixture_log_amplitude).any():
                 raise ValueError("mixture_log_amplitude is invalid.")
             
             estimated_sources_amplitude = self.model(mixture_log_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=assignment.size(1))
