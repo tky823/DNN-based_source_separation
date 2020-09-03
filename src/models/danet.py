@@ -6,7 +6,7 @@ from algorithm.clustering import Kmeans
 EPS=1e-12
 
 class DANet(nn.Module):
-    def __init__(self, F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
+    def __init__(self, F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS, **kwargs):
         super().__init__()
         
         self.F_bin = F_bin
@@ -26,8 +26,7 @@ class DANet(nn.Module):
         else:
             raise NotImplementedError("")
         
-        self.iter_kmeans = 10 # TODO: Non-fixed
-        self.n_sources = n_sources
+        self.iter_clustering = iter_clustering
         self.eps = eps
         
         self.num_parameters = self._get_num_parameters()
@@ -53,10 +52,11 @@ class DANet(nn.Module):
         """
         embed_dim = self.embed_dim
         
-        if n_sources is None:
-            n_sources = self.n_sources
-        elif assignment is not None and n_sources != assignment.size(1):
-            raise ValueError("n_sources is different from assignment.size(1)")
+        if n_sources is not None:
+            if assignment is not None and n_sources != assignment.size(1):
+                raise ValueError("n_sources is different from assignment.size(1)")
+        else:
+            n_sources = assignment.size(1)
         
         eps = self.eps
         
@@ -74,7 +74,7 @@ class DANet(nn.Module):
             latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, F_bin*T_bin)
             latent_kmeans = latent_kmeans.permute(1,0) # -> (F_bin*T_bin, embed_dim)
             kmeans = Kmeans(latent_kmeans, K=n_sources)
-            _, centroids = kmeans(iteration=self.iter_kmeans) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
+            _, centroids = kmeans(iteration=self.iter_clustering) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
             attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
@@ -97,7 +97,6 @@ class DANet(nn.Module):
             'num_blocks': self.num_blocks,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
-            'n_sources': self.n_sources,
             'eps': self.eps
         }
         
