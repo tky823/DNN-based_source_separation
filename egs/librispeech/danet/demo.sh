@@ -45,6 +45,9 @@ save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${
 model_choice="best"
 model_path="${save_dir}/model/${model_choice}.pth"
 
+n_sources_test=2
+iter_clustering=10
+
 num_chunk=256
 duration=5
 
@@ -53,6 +56,8 @@ demo.py \
 --window_fn ${window_fn} \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+--n_sources ${n_sources_test} \
+--iter_clustering ${iter_clustering} \
 --num_chunk ${num_chunk} \
 --duration ${duration} \
 --model_path "${model_path}" \
