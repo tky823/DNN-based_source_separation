@@ -118,11 +118,9 @@ class DANet(nn.Module):
         causal = package['causal']
         mask_nonlinear = package['mask_nonlinear']
         
-        n_sources = package['n_sources']
-        
         eps = package['eps']
         
-        model = cls(F_bin, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        model = cls(F_bin, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps)
         
         return model
     
