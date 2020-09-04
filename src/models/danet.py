@@ -31,7 +31,7 @@ class DANet(nn.Module):
         
         self.num_parameters = self._get_num_parameters()
     
-    def forward(self, input, assignment=None, threshold_weight=None, n_sources=None):
+    def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
             input (batch_size, 1, F_bin, T_bin): Amplitude
@@ -40,16 +40,19 @@ class DANet(nn.Module):
         Returns:
             output (batch_size, n_sources, F_bin, T_bin)
         """
-        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources)
+        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=None)
         
         return output
     
-    def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None):
+    def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         input (batch_size, 1, F_bin, T_bin) <torch.Tensor>
         assignment (batch_size, n_sources, F_bin, T_bin) <torch.Tensor>
         threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         """
+        if iter_clustering is None:
+            iter_clustering = self.iter_clustering
+        
         embed_dim = self.embed_dim
         
         if n_sources is not None:
@@ -78,7 +81,7 @@ class DANet(nn.Module):
             latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, F_bin*T_bin)
             latent_kmeans = latent_kmeans.permute(1,0) # -> (F_bin*T_bin, embed_dim)
             kmeans = Kmeans(latent_kmeans, K=n_sources)
-            _, centroids = kmeans(iteration=self.iter_clustering) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
+            _, centroids = kmeans(iteration=iter_clustering) # (F_bin*T_bin, n_sources), (n_sources, embed_dim)
             attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, F_bin*T_bin)
