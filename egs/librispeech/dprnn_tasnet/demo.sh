@@ -69,5 +69,5 @@ demo.py \
 --sr ${sr} \
 --num_chunk ${num_chunk} \
 --duration ${duration} \
---model_path ${model_path} \
+--model_path "${model_path}" \
 --save_dir "./results"
