@@ -171,10 +171,17 @@ class Trainer:
                 valid_loss += loss.item()
                 
                 if idx < 5:
+                    mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()
+                    
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    os.makedirs(save_dir, exist_ok=True)
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    norm = np.abs(mixture).max()
+                    mixture = mixture / norm
+                    write_wav(save_path, signal=mixture, sr=self.sr)
+                    
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
-                        os.makedirs(save_dir, exist_ok=True)
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx))
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
@@ -432,9 +439,17 @@ class AttractorTrainer(Trainer):
                     estimated_sources = estimated_sources.cpu().numpy()
                     # TODO: .detach().cpu() is unnecessary?
                     
+                    mixture = self.istft(mixture) # -> (1, T)
+                    mixture = mixture.squeeze(dim=0).numpy() # -> (T,)
+                    
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    os.makedirs(save_dir, exist_ok=True)
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    norm = np.abs(mixture).max()
+                    mixture = mixture / norm
+                    write_wav(save_path, signal=mixture, sr=self.sr)
+                    
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
-                        os.makedirs(save_dir, exist_ok=True)
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx))
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
