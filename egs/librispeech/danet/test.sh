@@ -56,6 +56,8 @@ fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
+export CUDA_VISIBLE_DEVICES="0"
+
 test.py \
 --wav_root ${wav_root} \
 --test_json_path ${test_json_path} \

@@ -75,7 +75,7 @@ fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
-CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="0"
 
 train.py \
 --wav_root ${wav_root} \
