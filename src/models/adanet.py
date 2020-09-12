@@ -44,7 +44,7 @@ class ADANet(DANet):
         patterns = list(itertools.combinations(range(n_anchors), n_sources))
         patterns = torch.Tensor(patterns).long()
         n_patterns = len(patterns)
-        diag_mask = torch.diag(torch.ones((n_sources,), dtype=torch.float))
+        diag_mask = torch.diag(torch.ones((n_sources,), dtype=torch.float)).to(input.device)
         
         embed_dim = self.embed_dim
         eps = self.eps
@@ -74,10 +74,8 @@ class ADANet(DANet):
         assignment = assignment.view(batch_size*n_patterns, n_sources, F_bin*T_bin)
         attractor = torch.bmm(assignment, latent_patterns.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size*n_patterns, n_sources, embed_dim)
         
-        
         similarity = torch.bmm(attractor, attractor.permute(0,2,1)) # -> (batch_size*n_patterns, n_sources, n_sources)
         similarity = similarity.view(batch_size, n_patterns, n_sources, n_sources)
-        
         similarity = (1 - diag_mask) * similarity + (torch.min(similarity) - 1) * diag_mask * similarity
         similarity, _ = torch.max(similarity, dim=3) # -> (batch_size, n_patterns, n_sources)
         similarity, _ = torch.max(similarity, dim=2) # -> (batch_size, n_patterns)
