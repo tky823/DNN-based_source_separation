@@ -12,8 +12,8 @@ EPS=1e-12
 """
 
 class ADANet(DANet):
-    def __init__(self, F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, n_anchors=6, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS, **kwargs):
-        super().__init__(F_bin, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps, **kwargs)
+    def __init__(self, F_bin, embed_dim=20, hidden_channels=600, num_blocks=4, n_anchors=6, causal=False, mask_nonlinear='sigmoid', eps=EPS, **kwargs):
+        super().__init__(F_bin, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps, **kwargs)
         
         self.n_anchors = n_anchors
         self.anchor = nn.Parameter(torch.Tensor(n_anchors, embed_dim), requires_grad=True)
@@ -22,7 +22,6 @@ class ADANet(DANet):
         """
         Args:
             input (batch_size, 1, F_bin, T_bin): Amplitude
-            assignment (batch_size, n_sources, F_bin, T_bin): Speaker assignment when training
             threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         Returns:
             output (batch_size, n_sources, F_bin, T_bin)
@@ -37,6 +36,9 @@ class ADANet(DANet):
             input (batch_size, 1, F_bin, T_bin) <torch.Tensor>
             threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         """
+        if threshold_weight is None:
+            raise ValueError("Specify threshold_weight!")
+        
         if n_sources is None:
             raise ValueError("Specify n_sources!")
         
