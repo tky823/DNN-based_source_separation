@@ -13,7 +13,7 @@ DNNによる音源分離（PyTorch実装）
 | TasNet | [TasNet: time-domain audio separation network for real-time, single-channel speech separation](https://arxiv.org/abs/1711.00541) | ✔ |
 | Conv-TasNet | [Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation](https://arxiv.org/abs/1809.07454) | ✔ |
 | DPRNN-TasNet | [Dual-path RNN: efficient long sequence modeling for time-domain single-channel speech separation](https://arxiv.org/abs/1910.06379) | ✔ |
-| Gated DPRNN-TasNet | [Voice Separation with an Unknown Number of Multiple Speakers](https://arxiv.org/abs/2002.08933) |  |
+| Gated DPRNN-TasNet | [Voice Separation with an Unknown Number of Multiple Speakers](https://arxiv.org/abs/2003.01531) |  |
 | DeepCASA | [Divide and conquer: A deep casa approach to talker-independent monaural speaker separation](https://arxiv.org/abs/1904.11148) |  |
 | FurcaNet | [FurcaNet: An end-to-end deep gated convolutional, long short-term memory, deep neural networks for single channel speech separation](https://arxiv.org/abs/1902.00651) |  |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
