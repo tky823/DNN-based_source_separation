@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
-from driver import AttractorTrainer
+from driver import AnchoredAttractorTrainer
 from models.adanet import ADANet
 from criterion.distance import L2Loss
 
@@ -27,6 +27,7 @@ parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
 parser.add_argument('--hidden_channels', '-H', type=int, default=600, help='hidden_channels')
 parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM layers')
+parser.add_argument('--n_anchors', '-N', type=int, default=6, help='Number of anchors')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
@@ -58,9 +59,10 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
-    for mixture, sources in loader['train']:
-        print(mixture.size(), sources.size())
-        raise ValueError("Stop")
+    args.F_bin = args.fft_size//2 + 1
+    model = ADANet(args.F_bin, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, n_anchors=args.n_anchors, causal=args.causal, mask_nonlinear=args.mask_nonlinear)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
     
     if args.use_cuda:
         if torch.cuda.is_available():
@@ -72,3 +74,26 @@ def main(args):
     else:
         print("Does NOT use CUDA")
     
+    # Optimizer
+    if args.optimizer == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    elif args.optimizer == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    elif args.optimizer == 'rmsprop':
+        optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    else:
+        raise ValueError("Not support optimizer {}".format(args.optimizer))
+        
+    # Criterion
+    if args.criterion == 'l2loss':
+        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, F_bin, T_bin)
+    else:
+        raise ValueError("Not support criterion {}".format(args.criterion))
+    
+    trainer = AnchoredAttractorTrainer(model, loader, criterion, optimizer, args)
+    trainer.run()
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    print(args)
+    main(args)
