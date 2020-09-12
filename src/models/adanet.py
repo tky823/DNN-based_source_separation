@@ -50,7 +50,6 @@ class ADANet(DANet):
         eps = self.eps
         
         batch_size, _, F_bin, T_bin = input.size()
-        num_features = F_bin*T_bin
         
         log_amplitude = torch.log(input + eps)
         x = self.lstm(log_amplitude) # -> (batch_size, T_bin, F_bin)
@@ -59,24 +58,22 @@ class ADANet(DANet):
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, F_bin, T_bin)
         latent = x.view(batch_size, embed_dim, F_bin*T_bin)
         
-        if self.training:
-            anchor_permutation = self.anchor[patterns].unsqueeze(dim=0) # (1, n_patterns, n_sources, embed_dim)
-            anchor_permutation = anchor_permutation.repeat(batch_size, 1, 1, 1) # (batch_size, n_patterns, n_sources, embed_dim)
-            anchor_permutation = anchor_permutation.view(batch_size*n_patterns, n_sources, embed_dim)
-            latent_patterns = latent.unsqueeze(dim=1) # (batch_size, 1, embed_dim, F_bin*T_bin)
-            latent_patterns = latent_patterns.repeat(1, n_patterns, 1, 1) # (batch_size, n_patterns, embed_dim, F_bin*T_bin)
-            latent_patterns = latent_patterns.view(batch_size*n_patterns, embed_dim, F_bin*T_bin)
-            similarity_permutation = torch.bmm(anchor_permutation, latent_patterns) # (batch_size*n_patterns, n_sources, F_bin*T_bin)
-            assignment = torch.softmax(similarity_permutation, dim=1) # -> (batch_size*n_patterns, n_sources, F_bin*T_bin)
-            assignment = assignment.view(batch_size, n_patterns, n_sources, F_bin*T_bin)
-            
-            threshold_weight = threshold_weight.view(batch_size, 1, 1, F_bin*T_bin)
-            
-            assignment = threshold_weight * assignment # -> (batch_size, n_patterns, n_sources, F_bin*T_bin)
-            assignment = assignment.view(batch_size*n_patterns, n_sources, F_bin*T_bin)
-            attractor = torch.bmm(assignment, latent_patterns.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size*n_patterns, n_sources, embed_dim)
-        else:
-            raise ValueError("Sorry, I haven't implemented...")
+        anchor_permutation = self.anchor[patterns].unsqueeze(dim=0) # (1, n_patterns, n_sources, embed_dim)
+        anchor_permutation = anchor_permutation.repeat(batch_size, 1, 1, 1) # (batch_size, n_patterns, n_sources, embed_dim)
+        anchor_permutation = anchor_permutation.view(batch_size*n_patterns, n_sources, embed_dim)
+        latent_patterns = latent.unsqueeze(dim=1) # (batch_size, 1, embed_dim, F_bin*T_bin)
+        latent_patterns = latent_patterns.repeat(1, n_patterns, 1, 1) # (batch_size, n_patterns, embed_dim, F_bin*T_bin)
+        latent_patterns = latent_patterns.view(batch_size*n_patterns, embed_dim, F_bin*T_bin)
+        similarity_permutation = torch.bmm(anchor_permutation, latent_patterns) # (batch_size*n_patterns, n_sources, F_bin*T_bin)
+        assignment = torch.softmax(similarity_permutation, dim=1) # -> (batch_size*n_patterns, n_sources, F_bin*T_bin)
+        assignment = assignment.view(batch_size, n_patterns, n_sources, F_bin*T_bin)
+        
+        threshold_weight = threshold_weight.view(batch_size, 1, 1, F_bin*T_bin)
+        
+        assignment = threshold_weight * assignment # -> (batch_size, n_patterns, n_sources, F_bin*T_bin)
+        assignment = assignment.view(batch_size*n_patterns, n_sources, F_bin*T_bin)
+        attractor = torch.bmm(assignment, latent_patterns.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size*n_patterns, n_sources, embed_dim)
+        
         
         similarity = torch.bmm(attractor, attractor.permute(0,2,1)) # -> (batch_size*n_patterns, n_sources, n_sources)
         similarity = similarity.view(batch_size, n_patterns, n_sources, n_sources)
