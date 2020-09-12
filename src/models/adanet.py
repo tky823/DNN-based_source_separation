@@ -50,6 +50,7 @@ class ADANet(DANet):
         eps = self.eps
         
         batch_size, _, F_bin, T_bin = input.size()
+        num_features = F_bin*T_bin
         
         log_amplitude = torch.log(input + eps)
         x = self.lstm(log_amplitude) # -> (batch_size, T_bin, F_bin)
@@ -66,7 +67,7 @@ class ADANet(DANet):
             latent_patterns = latent_patterns.repeat(1, n_patterns, 1, 1) # (batch_size, n_patterns, embed_dim, F_bin*T_bin)
             latent_patterns = latent_patterns.view(batch_size*n_patterns, embed_dim, F_bin*T_bin)
             similarity_permutation = torch.bmm(anchor_permutation, latent_patterns) # (batch_size*n_patterns, n_sources, F_bin*T_bin)
-            assignment = torch.softmax(similarity_permutation, dim=2) # -> (batch_size*n_patterns, n_sources, F_bin, T_bin)
+            assignment = torch.softmax(similarity_permutation, dim=1) # -> (batch_size*n_patterns, n_sources, F_bin*T_bin)
             assignment = assignment.view(batch_size, n_patterns, n_sources, F_bin*T_bin)
             
             threshold_weight = threshold_weight.view(batch_size, 1, 1, F_bin*T_bin)
