@@ -46,14 +46,13 @@ class DANet(nn.Module):
     
     def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
-        input (batch_size, 1, F_bin, T_bin) <torch.Tensor>
-        assignment (batch_size, n_sources, F_bin, T_bin) <torch.Tensor>
-        threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
+        Args:
+            input (batch_size, 1, F_bin, T_bin) <torch.Tensor>
+            assignment (batch_size, n_sources, F_bin, T_bin) <torch.Tensor>
+            threshold_weight (batch_size, 1, F_bin, T_bin) or <float>
         """
         if iter_clustering is None:
             iter_clustering = self.iter_clustering
-        
-        embed_dim = self.embed_dim
         
         if n_sources is not None:
             if assignment is not None and n_sources != assignment.size(1):
@@ -63,6 +62,7 @@ class DANet(nn.Module):
                 raise ValueError("Specify assignment, given None!")
             n_sources = assignment.size(1)
         
+        embed_dim = self.embed_dim
         eps = self.eps
         
         batch_size, _, F_bin, T_bin = input.size()
@@ -199,9 +199,10 @@ if __name__ == '__main__':
     sources = torch.randint(0, 10, (batch_size, C, F_bin, T_bin), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = ideal_binary_mask(sources)
+    threshold_weight = torch.randint(0, 2, (batch_size, 1, F_bin, T_bin), dtype=torch.float)
     
     model = DANet(F_bin, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=C)
     print(model)
-    output = model(input, assignment)
+    output = model(input, assignment, threshold_weight=threshold_weight)
     
     print(input.size(), output.size())
