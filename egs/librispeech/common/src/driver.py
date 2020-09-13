@@ -607,7 +607,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
-                assignment = assignment.cuda()
                 threshold_weight = threshold_weight.cuda()
             
             raise ValueError
