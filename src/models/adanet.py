@@ -81,7 +81,7 @@ class ADANet(DANet):
         similarity = (1 - diag_mask) * similarity + (torch.min(similarity) - 1) * diag_mask * similarity
         similarity, _ = torch.max(similarity, dim=3) # -> (batch_size, n_patterns, n_sources)
         similarity, _ = torch.max(similarity, dim=2) # -> (batch_size, n_patterns)
-        patterns_idx = torch.arange(0, batch_size*n_patterns, n_patterns) + torch.argmin(similarity, dim=1) # -> (batch_size,)
+        patterns_idx = torch.arange(0, batch_size*n_patterns, n_patterns) + torch.argmin(similarity, dim=1).cpu() # -> (batch_size,)
         attractor = attractor[patterns_idx] # -> (batch_size, n_sources, embed_dim)
         
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, F_bin*T_bin)
