@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import ThresholdWeightSpectrogramTrainDataset, ThresholdWeightSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
+from dataset import ThresholdWeightSpectrogramTrainDataset, TrainDataLoader, EvalDataLoader
 from driver import AnchoredAttractorTrainer
 from models.adanet import ADANet
 from criterion.distance import L2Loss
