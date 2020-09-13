@@ -585,7 +585,8 @@ class AttractorTester(Tester):
         test_pesq /= n_test
                 
         print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
-        
+
+
 class AnchoredAttractorTrainer(AttractorTrainer):
     def __init__(self, model, loader, criterion, optimizer, args):
         super().__init__(model, loader, criterion, optimizer, args)
@@ -614,7 +615,7 @@ class AnchoredAttractorTrainer(AttractorTrainer):
             real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
-            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=assignment.size(1))
+            estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=assignment.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
             
             self.optimizer.zero_grad()
@@ -666,7 +667,7 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
-                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
+                output = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
                 loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
