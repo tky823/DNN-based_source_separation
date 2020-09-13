@@ -177,6 +177,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         
         return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
+
 class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
         super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
@@ -210,6 +211,7 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
     
         return mixture, sources, ideal_mask, threshold_weight
 
+
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
         super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
@@ -227,6 +229,54 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
         mixture, sources, ideal_mask, threshold_weight, T, segment_IDs = super().__getitem__(idx)
 
         return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
+
+class ThresholdWeightSpectrogramDataset(SpectrogramDataset):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, threshold=40, eps=EPS):
+        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+        
+        self.threshold = threshold
+        self.eps = eps
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, 2*F_bin, T_bin) <torch.Tensor>
+            sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
+            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            T (), <int>: Number of samples in time-domain
+            segment_IDs (n_sources,) <list<str>>
+        """
+        F_bin = self.F_bin
+        threshold = self.threshold
+        eps = self.eps
+        
+        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, 2*F_bin, T_bin), (n_sources, 2*F_bin, T_bin)
+        
+        real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+        mixture_amplitude = torch.sqrt(real**2+imag**2)
+        log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
+        max_log_amplitude = torch.max(log_amplitude)
+        threshold = 10**((max_log_amplitude - threshold) / 20)
+        threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        
+        return mixture, sources, threshold_weight, T, segment_IDs
+
+
+class ThresholdWeightSpectrogramTrainDataset(ThresholdWeightSpectrogramDataset):
+    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, threshold=40, eps=EPS):
+        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, threshold=threshold, eps=eps)
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, 2*F_bin, T_bin) <torch.Tensor>
+            sources (n_sources, 2*F_bin, T_bin) <torch.Tensor>
+            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+        """
+        mixture, sources, threshold_weight, _, _ = super().__getitem__(idx)
+        
+        return mixture, sources, threshold_weight
+
 
 class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
@@ -268,6 +318,7 @@ def test_collate_fn(batch):
     
     return batched_mixture, batched_sources, batched_segment_ID
 
+
 class AttractorTestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -275,6 +326,7 @@ class AttractorTestDataLoader(torch.utils.data.DataLoader):
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
         
         self.collate_fn = attractor_test_collate_fn
+
 
 def attractor_test_collate_fn(batch):
     batched_mixture, batched_sources, batched_assignment, batched_weight_threshold = None, None, None, None
