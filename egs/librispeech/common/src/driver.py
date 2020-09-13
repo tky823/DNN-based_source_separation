@@ -437,7 +437,6 @@ class AttractorTrainer(Trainer):
                     estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu().numpy()
-                    # TODO: .detach().cpu() is unnecessary?
                     
                     mixture = self.istft(mixture) # -> (1, T)
                     mixture = mixture.squeeze(dim=0).numpy() # -> (T,)
@@ -648,18 +647,16 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, 1, 2*F_bin, T_bin)
                 sources (batch_size, n_sources, 2*F_bin, T_bin)
-                assignment (batch_size, n_sources, F_bin, T_bin)
                 threshold_weight (batch_size, F_bin, T_bin)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     threshold_weight = threshold_weight.cuda()
-                    assignment = assignment.cuda()
                 
                 real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
@@ -682,7 +679,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                     estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu().numpy()
-                    # TODO: .detach().cpu() is unnecessary?
                     
                     mixture = self.istft(mixture) # -> (1, T)
                     mixture = mixture.squeeze(dim=0).numpy() # -> (T,)
