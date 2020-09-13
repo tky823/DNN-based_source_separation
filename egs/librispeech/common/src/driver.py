@@ -609,7 +609,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 sources = sources.cuda()
                 threshold_weight = threshold_weight.cuda()
             
-            raise ValueError
             real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
             mixture_amplitude = torch.sqrt(real**2+imag**2)
             real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
