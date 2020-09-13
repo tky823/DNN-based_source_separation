@@ -369,7 +369,7 @@ class AttractorTrainer(Trainer):
             real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
-            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=assignment.size(1))
+            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
             
             self.optimizer.zero_grad()
