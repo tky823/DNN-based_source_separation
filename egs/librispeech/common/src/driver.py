@@ -699,5 +699,3 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         valid_loss /= n_valid
         
         return valid_loss
-        
-        

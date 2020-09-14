@@ -51,7 +51,7 @@ def main(args):
     loader = {}
     
     train_dataset = ThresholdWeightSpectrogramTrainDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, threshold=args.threshold)
-    valid_dataset = ThresholdWeightSpectrogramTrainDataset(args.wav_root, args.train_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, threshold=args.threshold)
+    valid_dataset = ThresholdWeightSpectrogramTrainDataset(args.wav_root, args.valid_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, threshold=args.threshold)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
