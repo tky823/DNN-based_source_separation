@@ -95,8 +95,8 @@ class WaveDataset(WSJ0Dataset):
         return len(self.json_data)
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
@@ -105,8 +105,8 @@ class WaveTrainDataset(WaveDataset):
 
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
@@ -115,8 +115,8 @@ class WaveEvalDataset(WaveDataset):
 
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
         
     def __getitem__(self, idx):
         """
