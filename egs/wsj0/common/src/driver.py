@@ -44,13 +44,14 @@ class Trainer:
         if args.continue_from:
             package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
             
-            self.best_loss = package['best_loss']
-            self.no_improvement = package['no_improvement']
-            
             self.start_epoch = package['epoch']
             
             self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
             self.valid_loss[:self.start_epoch] = package['valid_loss'][:self.start_epoch]
+            
+            self.best_loss = package['best_loss']
+            self.prev_loss = self.valid_loss[self.start_epoch-1]
+            self.no_improvement = package['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
                 self.model.module.load_state_dict(package['state_dict'])
@@ -67,10 +68,11 @@ class Trainer:
                 else:
                     raise ValueError("{} already exists. If you continue to run, set --overwrite to be True.".format(model_path))
             
-            self.best_loss = float('infinity')
-            self.no_improvement = 0
-            
             self.start_epoch = 0
+            
+            self.best_loss = float('infinity')
+            self.prev_loss = float('infinity')
+            self.no_improvement = 0
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -89,18 +91,23 @@ class Trainer:
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
             else:
-                self.no_improvement += 1
-                if self.no_improvement >= 5:
-                    print("Stop training")
-                    break
-                if self.no_improvement == 3:
-                    optim_dict = self.optimizer.state_dict()
-                    lr = optim_dict['param_groups'][0]['lr']
-                    
-                    print("Learning rate: {} -> {}".format(lr, 0.5 * lr))
-                    
-                    optim_dict['param_groups'][0]['lr'] = 0.5 * lr
-                    self.optimizer.load_state_dict(optim_dict)
+                if valid_loss >= self.prev_loss:
+                    self.no_improvement += 1
+                    if self.no_improvement >= 10:
+                        print("Stop training")
+                        break
+                    if self.no_improvement >= 3:
+                        optim_dict = self.optimizer.state_dict()
+                        lr = optim_dict['param_groups'][0]['lr']
+                        
+                        print("Learning rate: {} -> {}".format(lr, 0.5 * lr))
+                        
+                        optim_dict['param_groups'][0]['lr'] = 0.5 * lr
+                        self.optimizer.load_state_dict(optim_dict)
+                else:
+                    self.no_improvement = 0
+            
+            self.prev_loss = valid_loss
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
@@ -138,7 +145,7 @@ class Trainer:
             loss.backward()
             
             if self.max_norm:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
             self.optimizer.step()
             
