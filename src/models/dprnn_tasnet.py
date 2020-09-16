@@ -223,6 +223,10 @@ class Segment1d(nn.Module):
         output = x.permute(0,1,3,2).contiguous() # -> (batch_size, num_features, S, chunk_size)
         
         return output
+    
+    def extra_repr(self):
+        s = "chunk_size={chunk_size}, hop_size={hop_size}".format(chunk_size=self.chunk_size, hop_size=self.hop_size)
+        return s
 
 
 class OverlapAdd1d(nn.Module):
@@ -251,6 +255,10 @@ class OverlapAdd1d(nn.Module):
         output = output.squeeze(dim=3)
         
         return output
+    
+    def extra_repr(self):
+        s = "chunk_size={chunk_size}, hop_size={hop_size}".format(chunk_size=self.chunk_size, hop_size=self.hop_size)
+        return s
 
 if __name__ == '__main__':
     batch_size, num_features, T_bin = 2, 3, 5
