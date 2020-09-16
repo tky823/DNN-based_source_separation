@@ -185,6 +185,14 @@ class FourierEncoder(nn.Module):
         output = F.conv1d(input, self.basis, stride=self.stride)
         
         return output
+    
+    def extra_repr(self):
+        s = "kernel_size={kernel_size}, stride={stride}"
+        
+        if self.repeat != 1:
+            s += ", repeat={repeat}"
+        
+        return s.format(**self.__dict__)
         
     def get_basis(self):
         return self.basis.squeeze(dim=1).detach().cpu().numpy()
@@ -223,6 +231,14 @@ class FourierDecoder(nn.Module):
         output = F.conv_transpose1d(input, self.basis, stride=self.stride)
         
         return output
+    
+    def extra_repr(self):
+        s = "kernel_size={kernel_size}, stride={stride}"
+        
+        if self.repeat != 1:
+            s += ", repeat={repeat}"
+        
+        return s.format(**self.__dict__)
         
     def get_basis(self):
         return self.basis.squeeze(dim=1).detach().cpu().numpy()
