@@ -145,8 +145,10 @@ class EvalDataLoader(torch.utils.data.DataLoader):
 if __name__ == '__main__':
     torch.manual_seed(111)
     
-    wav_root = "../../../../../db/wsj0-mix/2speakers/wav8k/min/tt"
-    list_path = "../../../../dataset/wsj0-mix/2speakers/mix_2_spk_min_tt_mix"
+    data_type = 'tt'
+    min_max = 'max'
+    wav_root = "../../../../../db/wsj0-mix/2speakers/wav8k/{}/{}".format(min_max, data_type)
+    list_path = "../../../../dataset/wsj0-mix/2speakers/mix_2_spk_{}_{}_mix".format(min_max, data_type)
     
     dataset = WaveDataset(wav_root, list_path)
     loader = TrainDataLoader(dataset, batch_size=4, shuffle=True)
