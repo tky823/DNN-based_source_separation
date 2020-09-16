@@ -20,6 +20,7 @@ parser.add_argument('--train_list_path', type=str, default=None, help='Path for 
 parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
+parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
 parser.add_argument('--dec_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
@@ -60,9 +61,10 @@ def main(args):
     
     samples = int(args.sr * args.duration)
     overlap = samples//2
+    max_samples = int(args.sr * args.valid_duration)
     
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
-    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, n_sources=args.n_sources)
+    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
