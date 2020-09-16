@@ -7,13 +7,20 @@ from utils.utils_audio import read_wav
 EPS=1e-12
 
 class WSJ0Dataset(torch.utils.data.Dataset):
-    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
+    def __init__(self, wav_root, list_path, n_sources=2):
         super().__init__()
+        
+        self.wav_root = wav_root
+        self.list_path = list_path
+
+
+class WaveDataset(WSJ0Dataset):
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, n_sources=n_sources)
         
         if overlap is None:
             overlap = samples//2
         
-        self.wav_root = wav_root
         self.json_data = []
         
         with open(list_path) as f:
@@ -51,10 +58,6 @@ class WSJ0Dataset(torch.utils.data.Dataset):
                     data['ID'] = ID
                 
                     self.json_data.append(data)
-
-class WaveDataset(WSJ0Dataset):
-    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
         
     def __getitem__(self, idx):
         """
@@ -105,18 +108,58 @@ class WaveTrainDataset(WaveDataset):
 
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
+    def __init__(self, wav_root, list_path, max_samples=None, n_sources=2):
+        super().__init__(wav_root, list_path, n_sources=n_sources)
+        
+        self.json_data = []
+        
+        with open(list_path) as f:
+            for line in f:
+                ID = line.strip()
+                wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
+                
+                y, sr = read_wav(wav_path)
+                
+                T_total = len(y)
+                
+                if max_samples is None:
+                    samples = T_total
+                else:
+                    samples = max_samples
+                
+                data = {
+                    'sources': {},
+                    'mixture': {}
+                }
+                
+                for source_idx in range(n_sources):
+                    source_data = {
+                        'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                        'start': 0,
+                        'end': samples
+                    }
+                    data['sources']['s{}'.format(source_idx+1)] = source_data
+                
+                mixture_data = {
+                    'path': os.path.join('mix', '{}.wav'.format(ID)),
+                    'start': 0,
+                    'end': samples
+                }
+                data['mixture'] = mixture_data
+                data['ID'] = ID
+            
+                self.json_data.append(data)
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
+        segment_ID = self.json_data[idx]['ID']
     
-        return mixture, sources
+        return mixture, sources, segment_ID
 
 
-class WaveTestDataset(WaveDataset):
-    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
+class WaveTestDataset(WaveEvalDataset):
+    def __init__(self, wav_root, list_path, max_samples=None, n_sources=2):
+        super().__init__(wav_root, list_path, max_samples=max_samples, n_sources=n_sources)
         
     def __getitem__(self, idx):
         """
@@ -145,13 +188,21 @@ class EvalDataLoader(torch.utils.data.DataLoader):
 if __name__ == '__main__':
     torch.manual_seed(111)
     
+    n_sources = 2
     data_type = 'tt'
     min_max = 'max'
-    wav_root = "../../../../../db/wsj0-mix/2speakers/wav8k/{}/{}".format(min_max, data_type)
-    list_path = "../../../../dataset/wsj0-mix/2speakers/mix_2_spk_{}_{}_mix".format(min_max, data_type)
+    wav_root = "../../../../../db/wsj0-mix/{}speakers/wav8k/{}/{}".format(n_sources, min_max, data_type)
+    list_path = "../../../../dataset/wsj0-mix/{}speakers/mix_{}_spk_{}_{}_mix".format(n_sources, n_sources, min_max, data_type)
     
-    dataset = WaveDataset(wav_root, list_path)
+    dataset = WaveTrainDataset(wav_root, list_path, n_sources=n_sources)
     loader = TrainDataLoader(dataset, batch_size=4, shuffle=True)
+    
+    for mixture, sources in loader:
+        print(mixture.size(), sources.size())
+        break
+    
+    dataset = WaveTestDataset(wav_root, list_path, n_sources=n_sources)
+    loader = EvalDataLoader(dataset, batch_size=1, shuffle=False)
     
     for mixture, sources, segment_ID in loader:
         print(mixture.size(), sources.size())

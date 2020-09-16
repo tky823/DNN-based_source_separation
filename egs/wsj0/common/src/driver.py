@@ -168,7 +168,7 @@ class Trainer:
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
@@ -181,7 +181,7 @@ class Trainer:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, segment_IDs[0])
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = np.abs(mixture).max()
@@ -189,7 +189,7 @@ class Trainer:
                     write_wav(save_path, signal=mixture, sr=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         write_wav(save_path, signal=estimated_source, sr=self.sr)
