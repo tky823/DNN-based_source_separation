@@ -1,0 +1,6 @@
+scipy
+numpy
+matplotlib
+SoundFile
+pyaudio
+torch>=1.5
