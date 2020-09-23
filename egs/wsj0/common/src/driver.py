@@ -272,11 +272,11 @@ class Tester:
                 sources = sources[0].cpu().numpy() # -> (n_sources, T)
                 estimated_sources = output[0].cpu().numpy() # -> (n_sources, T)
                 perm_idx = perm_idx[0] # -> (n_sources,)
-                segment_IDs = segment_IDs[0] # -> (n_sources,)
+                segment_IDs = segment_IDs[0] # -> <str>
                 
                 norm = np.abs(mixture).max()
                 mixture /= norm
-                mixture_ID = "+".join(segment_IDs)
+                mixture_ID = segment_IDs
                 
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
@@ -286,7 +286,6 @@ class Tester:
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
-                    segment_ID = segment_IDs[order_idx]
                     
                     # Target
                     norm = np.abs(source).max()
@@ -527,15 +526,15 @@ class AttractorTester(Tester):
                 estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
                 
                 perm_idx = perm_idx[0] # -> (n_sources,)
-                T = T[0]  # -> ()
-                segment_IDs = segment_IDs[0] # -> (n_sources,)
+                T = T[0]  # -> <int>
+                segment_IDs = segment_IDs[0] # -> <str>
                 mixture = self.istft(mixture, T=T).squeeze(dim=0).numpy() # -> (T,)
                 sources = self.istft(sources, T=T).numpy() # -> (n_sources, T)
                 estimated_sources = self.istft(estimated_sources, T=T).numpy() # -> (n_sources, T)
                 
                 norm = np.abs(mixture).max()
                 mixture /= norm
-                mixture_ID = "+".join(segment_IDs)
+                mixture_ID = segment_IDs
                     
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
@@ -546,7 +545,6 @@ class AttractorTester(Tester):
                     
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
-                    segment_ID = segment_IDs[order_idx]
                     
                     # Target
                     norm = np.abs(source).max()
