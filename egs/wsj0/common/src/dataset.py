@@ -125,7 +125,10 @@ class WaveEvalDataset(WaveDataset):
                 if max_samples is None:
                     samples = T_total
                 else:
-                    samples = max_samples
+                    if T_total < max_samples:
+                        samples = T_total
+                    else:
+                        samples = max_samples
                 
                 data = {
                     'sources': {},
