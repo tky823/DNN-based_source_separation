@@ -9,7 +9,7 @@ EPS=1e-12
     https://arxiv.org/abs/1811.02508
 """
 
-def si_sdr(input, target, eps=EPS):
+def sisdr(input, target, eps=EPS):
     """
     Scale-invariant-SDR (source-to-distortion ratio)
     Args:
@@ -47,7 +47,7 @@ class SISDR(nn.Module):
         
         assert n_dim in [2, 3], "Only 2D or 3D tensor is acceptable, but given {}D tensor.".format(n_dim)
         
-        loss = si_sdr(input, target, eps=self.eps)
+        loss = sisdr(input, target, eps=self.eps)
         
         if n_dim == 3:
             loss = loss.mean(dim=1)
@@ -76,7 +76,7 @@ class NegSISDR(nn.Module):
         
         assert n_dim in [2, 3], "Only 2D or 3D tensor is acceptable, but given {}D tensor.".format(n_dim)
         
-        loss = - si_sdr(input, target, eps=self.eps)
+        loss = - sisdr(input, target, eps=self.eps)
         
         if n_dim == 3:
             loss = loss.mean(dim=1)
