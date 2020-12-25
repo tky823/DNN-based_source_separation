@@ -1,5 +1,8 @@
 .DS_Store
 
+# outputs
+faithful.csv
+faithful-*.png
 *.wav
 
 # Byte-compiled / optimized / DLL files
