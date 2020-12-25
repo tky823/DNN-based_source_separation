@@ -236,7 +236,7 @@ if __name__ == '__main__':
     plt.figure()
     plt.pcolormesh(basis, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
-    plt.savefig('data/basis_enc-trainable.png')
+    plt.savefig('data/basis_enc-trainable.png', bbox_inches='tight')
     plt.close()
     
     # Causal
@@ -259,5 +259,5 @@ if __name__ == '__main__':
     plt.figure()
     plt.pcolormesh(basis, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
-    plt.savefig('data/basis_enc-Fourier.png')
+    plt.savefig('data/basis_enc-Fourier.png', bbox_inches='tight')
     plt.close()
