@@ -81,3 +81,18 @@ class PIT2d(PIT):
             criterion <callable>: criterion is expected acceptable (input, target, batch_mean) when called.
         """
         super().__init__(criterion, n_sources)
+
+if __name__ == '__main__':
+    import torch
+    from criterion.sdr import SISDR
+    
+    batch_size, C, T = 4, 2, 1024
+    
+    criterion = SISDR()
+    pit_criterion = PIT1d(criterion, n_sources=C)
+    
+    input = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    target = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    loss = pit_criterion(input, target)
+    
+    print(loss)
