@@ -60,3 +60,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 - v0.1.1: DANet is included.
 - v0.1.2: Layer name is changed. Input feature for DANet is replaced by log-magnitude.
 - v0.1.3: Add scripts for Wall Street Journal 0 (WSJ0) dataset.
+- v0.1.4: Add non-nagative matrix factorization (NMF)
