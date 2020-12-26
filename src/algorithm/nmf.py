@@ -1,5 +1,8 @@
 import torch
 
+from criterion.distance import L2Loss
+from criterion.divergence import generalized_kl_divergence, is_divergence
+
 EPS=1e-12
 
 __metrics__ = ['EUC', 'KL', 'IS']
@@ -16,6 +19,15 @@ class NMF:
         self.K = K
         self.metric = metric
         self.eps = eps
+
+        if metric == 'EUC':
+            self.criterion = lambda input, target: (input - target)**2
+        elif metric == 'KL':
+            self.criterion = generalized_kl_divergence
+        elif metric == 'IS':
+            self.criterion = is_divergence
+        
+        self.loss = []
     
     def update(self, target, iteration=100):
         K = self.K
@@ -24,25 +36,33 @@ class NMF:
 
         self.base = torch.rand(F_bin, K, dtype=torch.float) + 1
         self.activation = torch.rand(K, T_bin, dtype=torch.float) + 1
+        self.reconstruction = torch.matmul(self.base, self.activation)
+
+        loss = self.criterion(self.reconstruction, target)
+        self.loss.append(loss.sum().item())
 
         for idx in range(iteration):
             self.update_once()
+            loss = self.criterion(self.reconstruction, target)
+            self.loss.append(loss.sum().item())
         
     def update_once(self):
         if self.metric == 'EUC':
             self.update_euc()
         elif self.metric == 'KL':
             self.update_kl()
+        elif self.metric == 'IS':
+            self.update_is()
         else:
             raise NotImplementedError("Not support {}".format(self.metric))
-    
+
+        self.reconstruction = torch.matmul(self.base, self.activation)
 
     def update_euc(self):
         eps = self.eps
         target = self.target
-        base, activation = self.base, self.activation
+        base, activation, reconstruction = self.base, self.activation, self.reconstruction
         base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
-        reconstruction = torch.matmul(base, activation)
 
         self.base =  base * (torch.matmul(target, activation_transpose) / (torch.matmul(reconstruction, activation_transpose) + eps))
         self.activation = activation * (torch.matmul(base_transpose, target) / (torch.matmul(base_transpose, reconstruction) + eps))
@@ -50,19 +70,26 @@ class NMF:
     def update_kl(self):
         eps = self.eps
         target = self.target
-        base, activation = self.base, self.activation
+        base, activation, reconstruction = self.base, self.activation, self.reconstruction
         base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
-        reconstruction = torch.matmul(base, activation)
         division = target / (reconstruction + eps)
         
         self.base =  base * (torch.matmul(division, activation_transpose) / (activation_transpose.sum(dim=0, keepdim=True) + eps))
         self.activation = activation * (torch.matmul(base_transpose, division) / (base_transpose.sum(dim=1, keepdim=True) + eps))
+    
+    def update_is(self):
+        eps = self.eps
+        target = self.target
+        base, activation, reconstruction = self.base, self.activation, self.reconstruction
+        base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
+        division, reconstruction_inverse = target / (reconstruction + eps)**2, 1 / (reconstruction + eps)
+        
+        self.base =  base * torch.sqrt(torch.matmul(division, activation_transpose) / (torch.matmul(reconstruction_inverse, activation_transpose) + eps))
+        self.activation = activation * torch.sqrt(torch.matmul(base_transpose, division) / (torch.matmul(base_transpose, reconstruction_inverse) + eps))
 
 def _test(metric='EUC'):
     torch.manual_seed(111)
 
-    nmf = NMF()    
-    
     fft_size, hop_size = 1024, 256
     n_bases = 6
     iteration = 100
@@ -122,6 +149,11 @@ def _test(metric='EUC'):
         plt.colorbar()
         plt.savefig('data/NMF/{}/estimated-spectrogram-iter{}-base{}.png'.format(metric, iteration, idx), bbox_inches='tight')
         plt.close()
+    
+    plt.figure()
+    plt.plot(nmf.loss)
+    plt.savefig('data/NMF/{}/loss.png'.format(metric), bbox_inches='tight')
+    plt.close()
 
 
 if __name__ == '__main__':
@@ -134,6 +166,8 @@ if __name__ == '__main__':
 
     os.makedirs('data/NMF/EUC', exist_ok=True)
     os.makedirs('data/NMF/KL', exist_ok=True)
+    os.makedirs('data/NMF/IS', exist_ok=True)
 
     _test(metric='EUC')
     _test(metric='KL')
+    _test(metric='IS')
