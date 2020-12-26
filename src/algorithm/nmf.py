@@ -17,10 +17,10 @@ class NMF:
         self.metric = metric
         self.eps = eps
     
-    def update(self, iteration):
+    def update(self, target, iteration=100):
         K = self.K
-        self.target = input
-        F_bin, T_bin = input.size()
+        self.target = target
+        F_bin, T_bin = target.size()
 
         self.base = torch.rand(F_bin, K, dtype=torch.float) + 1
         self.activation = torch.rand(K, T_bin, dtype=torch.float) + 1
@@ -55,8 +55,8 @@ class NMF:
         reconstruction = torch.matmul(base, activation)
         division = target / (reconstruction + eps)
         
-        self.base =  base * (torch.matmul(division, activation_transpose) / (activation_transpose.sum(dim=1, keepdim=True) + eps))
-        self.activation = activation * (torch.matmul(base_transpose, division) / (base_transpose.sum(dim=0, keepdim=True) + eps))
+        self.base =  base * (torch.matmul(division, activation_transpose) / (activation_transpose.sum(dim=0, keepdim=True) + eps))
+        self.activation = activation * (torch.matmul(base_transpose, division) / (base_transpose.sum(dim=1, keepdim=True) + eps))
 
 def _test(metric='EUC'):
     torch.manual_seed(111)
@@ -89,7 +89,7 @@ def _test(metric='EUC'):
     plt.close()
 
     nmf = NMF(n_bases, metric=metric)
-    nmf(power)
+    nmf.update(power, iteration=iteration)
 
     estimated_power = torch.matmul(nmf.base, nmf.activation)
     estimated_amplitude = torch.sqrt(estimated_power)
@@ -120,7 +120,7 @@ def _test(metric='EUC'):
         plt.figure()
         plt.pcolormesh(log_spectrogram, cmap='jet')
         plt.colorbar()
-        plt.savefig('data/estimated-spectrogram-{}.png'.format(idx), bbox_inches='tight')
+        plt.savefig('data/estimated-spectrogram_NMF-{}{}-{}.png'.format(metric, iteration, idx), bbox_inches='tight')
         plt.close()
 
 
