@@ -18,11 +18,11 @@ parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
-parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
-parser.add_argument('--dec_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Decoder type')
+parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
+parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--n_basis', '-N', type=int, default=512, help='# basis')
+parser.add_argument('--n_bases', '-N', type=int, default=512, help='# bases')
 parser.add_argument('--kernel_size', '-L', type=int, default=16, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
 parser.add_argument('--sep_hidden_channels', '-H', type=int, default=128, help='Hidden channels of separator')
@@ -63,7 +63,7 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
-    model = DPRNNTasNet(args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = DPRNNTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
