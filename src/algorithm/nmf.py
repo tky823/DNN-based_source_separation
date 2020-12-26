@@ -1,58 +1,64 @@
 import torch
-import torch.nn as nn
 
 EPS=1e-12
 
-__metrics__ = ['EU', 'KL', 'IS']
+__metrics__ = ['EUC', 'KL', 'IS']
 
-class NMF(nn.Module):
-    def __init__(self, K=2, metric='EU', eps=EPS):
+class NMF:
+    def __init__(self, K=2, metric='EUC', eps=EPS):
         """
         Args:
             K: number of bases
-            metric: 'EU', 'KL', 'IS'
+            metric: 'EUC', 'KL', 'IS'
         """
-        super().__init__()
-        
         assert metric in __metrics__, "metric is expected any of {}, given {}".format(metric, __metrics__)
 
         self.K = K
         self.metric = metric
         self.eps = eps
     
-    def forward(self, input, iteration=10):
-        """
-        Args:
-            input (F_bin, T_bin)
-            iteration : iterations of update
-        """
+    def update(self, iteration):
         K = self.K
-        self.x = input
+        self.target = input
         F_bin, T_bin = input.size()
 
         self.base = torch.rand(F_bin, K, dtype=torch.float) + 1
         self.activation = torch.rand(K, T_bin, dtype=torch.float) + 1
 
         for idx in range(iteration):
-            self.update()
-    
-    def update(self):
-        if self.metric == 'EU':
+            self.update_once()
+        
+    def update_once(self):
+        if self.metric == 'EUC':
             self.update_euc()
+        elif self.metric == 'KL':
+            self.update_kl()
         else:
             raise NotImplementedError("Not support {}".format(self.metric))
+    
 
     def update_euc(self):
         eps = self.eps
-        x = self.x
+        target = self.target
         base, activation = self.base, self.activation
         base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
+        reconstruction = torch.matmul(base, activation)
+
+        self.base =  base * (torch.matmul(target, activation_transpose) / (torch.matmul(reconstruction, activation_transpose) + eps))
+        self.activation = activation * (torch.matmul(base_transpose, target) / (torch.matmul(base_transpose, reconstruction) + eps))
+    
+    def update_kl(self):
+        eps = self.eps
+        target = self.target
+        base, activation = self.base, self.activation
+        base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
+        reconstruction = torch.matmul(base, activation)
+        division = target / (reconstruction + eps)
         
-        self.base =  base * (torch.matmul(x, activation_transpose) / (torch.matmul(base, torch.matmul(activation, activation_transpose)) + eps))
-        self.activation = activation * (torch.matmul(base_transpose, x) / (torch.matmul(torch.matmul(base_transpose, base), activation) + eps))
+        self.base =  base * (torch.matmul(division, activation_transpose) / (activation_transpose.sum(dim=1, keepdim=True) + eps))
+        self.activation = activation * (torch.matmul(base_transpose, division) / (base_transpose.sum(dim=0, keepdim=True) + eps))
 
-
-def _test(metric='EU'):
+def _test(metric='EUC'):
     torch.manual_seed(111)
 
     nmf = NMF()    
@@ -125,4 +131,5 @@ if __name__ == '__main__':
     from utils.utils_audio import read_wav, write_wav
     from algorithm.stft import BatchSTFT, BatchInvSTFT
 
-    _test(metric='EU')
+    _test(metric='EUC')
+    _test(metric='KL')
