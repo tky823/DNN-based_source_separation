@@ -69,3 +69,15 @@ class CumulativeLayerNorm1d(nn.Module):
         output = (input - cum_mean) / (torch.sqrt(cum_var) + eps) * self.gamma + self.beta
         
         return output
+
+if __name__ == '__main__':
+    batch_size, C, T = 2, 3, 5
+    causal = True
+    
+    norm = GlobalLayerNorm(C)
+    print(norm)
+    
+    input = torch.arange(batch_size*C*T, dtype=torch.float).view(batch_size, C, T)
+    output = norm(input)
+    print(input)
+    print(output)

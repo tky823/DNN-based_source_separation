@@ -465,7 +465,7 @@ if __name__ == '__main__':
     plt.figure()
     plt.plot(range(T), input[0,0].numpy())
     plt.plot(range(T), output[0,0].numpy())
-    plt.savefig('data/Fourier.png')
+    plt.savefig('data/Fourier.png', bbox_inches='tight')
     plt.close()
     
     basis = model.decoder.get_basis()
@@ -474,7 +474,7 @@ if __name__ == '__main__':
     plt.figure()
     plt.pcolormesh(basis, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
-    plt.savefig('data/basis.png')
+    plt.savefig('data/basis.png', bbox_inches='tight')
     plt.close()
 
     _, latent = model.extract_latent(input)
@@ -486,7 +486,7 @@ if __name__ == '__main__':
     plt.figure()
     plt.pcolormesh(power[0], cmap='bwr')
     plt.colorbar()
-    plt.savefig('data/power.png')
+    plt.savefig('data/power.png', bbox_inches='tight')
     plt.close()
     
     # LSTM-TasNet configuration
