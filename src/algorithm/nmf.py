@@ -85,7 +85,7 @@ def _test(metric='EUC'):
     plt.figure()
     plt.pcolormesh(log_spectrogram, cmap='jet')
     plt.colorbar()
-    plt.savefig('data/spectrogram.png', bbox_inches='tight')
+    plt.savefig('data/NMF/spectrogram.png', bbox_inches='tight')
     plt.close()
 
     nmf = NMF(n_bases, metric=metric)
@@ -101,7 +101,7 @@ def _test(metric='EUC'):
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
     estimated_signal = estimated_signal / np.abs(estimated_signal).max()
-    write_wav("data/music-8000-estimated_NMF-{}{}.wav".format(metric, iteration), signal=estimated_signal, sr=8000)
+    write_wav("data/NMF/{}/music-8000-estimated-iter{}.wav".format(metric, iteration), signal=estimated_signal, sr=8000)
 
     for idx in range(n_bases):
         estimated_power = torch.matmul(nmf.base[:, idx: idx+1], nmf.activation[idx: idx+1, :])
@@ -114,22 +114,26 @@ def _test(metric='EUC'):
         estimated_signal = istft(estimated_spectrogram, T=T)
         estimated_signal = estimated_signal.squeeze(dim=0).numpy()
         estimated_signal = estimated_signal / np.abs(estimated_signal).max()
-        write_wav("data/music-8000-estimated_NMF-{}{}-{}.wav".format(metric, iteration, idx), signal=estimated_signal, sr=8000)
+        write_wav("data/NMF/{}/music-8000-estimated-iter{}-base{}.wav".format(metric, iteration, idx), signal=estimated_signal, sr=8000)
 
         log_spectrogram = 10 * torch.log10(estimated_power + EPS).numpy()
         plt.figure()
         plt.pcolormesh(log_spectrogram, cmap='jet')
         plt.colorbar()
-        plt.savefig('data/estimated-spectrogram_NMF-{}{}-{}.png'.format(metric, iteration, idx), bbox_inches='tight')
+        plt.savefig('data/NMF/{}/estimated-spectrogram-iter{}-base{}.png'.format(metric, iteration, idx), bbox_inches='tight')
         plt.close()
 
 
 if __name__ == '__main__':
     import numpy as np
+    import os
     import matplotlib.pyplot as plt
     
     from utils.utils_audio import read_wav, write_wav
     from algorithm.stft import BatchSTFT, BatchInvSTFT
+
+    os.makedirs('data/NMF/EUC', exist_ok=True)
+    os.makedirs('data/NMF/KL', exist_ok=True)
 
     _test(metric='EUC')
     _test(metric='KL')
