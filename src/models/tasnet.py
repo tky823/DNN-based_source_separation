@@ -257,7 +257,7 @@ class Encoder(nn.Module):
             if nonlinear == 'relu':
                 self.nonlinear1d = nn.ReLU()
             else:
-                raise NotImplemetedError("Not support {}".format(nonlinear))
+                raise NotImplementedError("Not support {}".format(nonlinear))
             self.nonlinear = True
         else:
             self.nonlinear = False
