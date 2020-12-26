@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_audio import build_Fourier_basis, build_window, build_optimal_window
+from utils.utils_audio import build_Fourier_bases, build_window, build_optimal_window
 
 class BatchSTFT(nn.Module):
     def __init__(self, fft_size, hop_size=None, window_fn='hann', normalize=False):
@@ -16,12 +16,12 @@ class BatchSTFT(nn.Module):
     
         window = build_window(fft_size, window_fn=window_fn) # (fft_size,)
 
-        cos_basis, sin_basis = build_Fourier_basis(fft_size, normalize=normalize)
-        cos_basis, sin_basis = cos_basis[:fft_size//2+1] * window, - sin_basis[:fft_size//2+1] * window
+        cos_bases, sin_bases = build_Fourier_bases(fft_size, normalize=normalize)
+        cos_bases, sin_bases = cos_bases[:fft_size//2+1] * window, - sin_bases[:fft_size//2+1] * window
         
-        basis = torch.cat([cos_basis, sin_basis], dim=0)
+        bases = torch.cat([cos_bases, sin_bases], dim=0)
         
-        self.basis = nn.Parameter(basis.unsqueeze(dim=1), requires_grad=False)
+        self.bases = nn.Parameter(bases.unsqueeze(dim=1), requires_grad=False)
         
     def forward(self, input):
         """
@@ -40,7 +40,7 @@ class BatchSTFT(nn.Module):
         
         input = F.pad(input, (padding_left, padding_right))
         input = input.unsqueeze(dim=1)
-        output = F.conv1d(input, self.basis, stride=self.hop_size)
+        output = F.conv1d(input, self.bases, stride=self.hop_size)
         
         return output
 
@@ -56,16 +56,16 @@ class BatchInvSTFT(nn.Module):
         window = build_window(fft_size, window_fn=window_fn) # (fft_size,)
         optimal_window = build_optimal_window(window, hop_size=hop_size)
 
-        cos_basis, sin_basis = build_Fourier_basis(fft_size, normalize=normalize)
-        cos_basis, sin_basis = cos_basis[:fft_size//2+1] * optimal_window, - sin_basis[:fft_size//2+1] * optimal_window
+        cos_bases, sin_bases = build_Fourier_bases(fft_size, normalize=normalize)
+        cos_bases, sin_bases = cos_bases[:fft_size//2+1] * optimal_window, - sin_bases[:fft_size//2+1] * optimal_window
         
         if not normalize:
-            cos_basis = cos_basis / fft_size
-            sin_basis = sin_basis / fft_size
+            cos_bases = cos_bases / fft_size
+            sin_bases = sin_bases / fft_size
         
-        basis = torch.cat([cos_basis, sin_basis], dim=0)
+        bases = torch.cat([cos_bases, sin_bases], dim=0)
         
-        self.basis = nn.Parameter(basis.unsqueeze(dim=1), requires_grad=False)
+        self.bases = nn.Parameter(bases.unsqueeze(dim=1), requires_grad=False)
         
     def forward(self, input, T=None):
         """
@@ -84,9 +84,9 @@ class BatchInvSTFT(nn.Module):
         padding_right = padding - padding_left
         
         input = torch.cat([input, input[:,1:fft_size//2], input[:,-fft_size//2:-1]], axis=1)
-        basis = torch.cat([self.basis, self.basis[1:fft_size//2], self.basis[-fft_size//2:-1]], axis=0)
+        bases = torch.cat([self.bases, self.bases[1:fft_size//2], self.bases[-fft_size//2:-1]], axis=0)
         
-        output = F.conv_transpose1d(input, basis, stride=self.hop_size)
+        output = F.conv_transpose1d(input, bases, stride=self.hop_size)
         output = F.pad(output, (-padding_left, -padding_right))
         output = output.squeeze(dim=1)
         
