@@ -6,7 +6,7 @@ EPS=1e-12
 __metrics__ = ['EU', 'KL', 'IS']
 
 class NMF(nn.Module):
-    def __init__(self, K=2, metric='EU'):
+    def __init__(self, K=2, metric='EU', eps=EPS):
         """
         Args:
             K: number of bases
@@ -18,6 +18,7 @@ class NMF(nn.Module):
 
         self.K = K
         self.metric = metric
+        self.eps = eps
     
     def forward(self, input, iteration=10):
         """
@@ -42,14 +43,13 @@ class NMF(nn.Module):
             raise NotImplementedError("Not support {}".format(self.metric))
 
     def update_euc(self):
+        eps = self.eps
         x = self.x
         basis, activation = self.basis, self.activation
         basis_transpose, activation_transpose = basis.permute(1,0), activation.permute(1,0)
         
-        basis_next =  basis * torch.matmul(x, activation_transpose) / torch.matmul(basis, torch.matmul(activation, activation_transpose))
-        activation_next = activation * torch.matmul(basis_transpose, x) / torch.matmul(torch.matmul(basis_transpose, basis), activation)     
-        self.basis = torch.where(torch.isnan(basis_next), torch.zeros_like(basis_next), basis_next)
-        self.activation = torch.where(torch.isnan(activation_next), torch.zeros_like(activation_next), activation_next)
+        self.basis =  basis * (torch.matmul(x, activation_transpose) / (torch.matmul(basis, torch.matmul(activation, activation_transpose)) + eps))
+        self.activation = activation * (torch.matmul(basis_transpose, x) / (torch.matmul(torch.matmul(basis_transpose, basis), activation) + eps))
 
 
 if __name__ == '__main__':
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     nmf = NMF()    
     
     fft_size, hop_size = 1024, 256
-    n_basis = 8
+    n_basis = 6
     iteration = 100
     
     signal, sr = read_wav("data/music-8000.wav")
@@ -78,10 +78,10 @@ if __name__ == '__main__':
     spectrogram = stft(signal).squeeze(dim=0)
     real = spectrogram[:fft_size//2+1]
     imag = spectrogram[fft_size//2+1:]
-    amplitude = torch.sqrt(real**2+imag**2)
+    amplitude = torch.sqrt(real**2 + imag**2)
     power = amplitude**2
 
-    log_spectrogram = 10*torch.log10(power + EPS)
+    log_spectrogram = 10 * torch.log10(power + EPS)
     plt.figure()
     plt.pcolormesh(log_spectrogram, cmap='jet')
     plt.colorbar()
@@ -94,8 +94,8 @@ if __name__ == '__main__':
     estimated_power = torch.matmul(nmf.basis, nmf.activation)
     estimated_amplitude = torch.sqrt(estimated_power)
     ratio = estimated_amplitude / (amplitude + EPS)
-    real, imag = ratio * real, ratio * imag
-    estimated_spectrogram = torch.cat([real, imag], dim=0)
+    estimated_real, estimated_imag = ratio * real, ratio * imag
+    estimated_spectrogram = torch.cat([estimated_real, estimated_imag], dim=0)
     estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
 
     estimated_signal = istft(estimated_spectrogram, T=T)
@@ -105,7 +105,18 @@ if __name__ == '__main__':
 
     for idx in range(n_basis):
         estimated_power = torch.matmul(nmf.basis[:, idx: idx+1], nmf.activation[idx: idx+1, :])
-        log_spectrogram = 10*torch.log10(estimated_power + EPS).numpy()
+        estimated_amplitude = torch.sqrt(estimated_power)
+        ratio = estimated_amplitude / (amplitude + EPS)
+        estimated_real, estimated_imag = ratio * real, ratio * imag
+        estimated_spectrogram = torch.cat([estimated_real, estimated_imag], dim=0)
+        estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
+
+        estimated_signal = istft(estimated_spectrogram, T=T)
+        estimated_signal = estimated_signal.squeeze(dim=0).numpy()
+        estimated_signal = estimated_signal / np.abs(estimated_signal).max()
+        write_wav("data/music-8000-estimated_NMF-EU{}-{}.wav".format(iteration, idx), signal=estimated_signal, sr=8000)
+
+        log_spectrogram = 10 * torch.log10(estimated_power + EPS).numpy()
         plt.figure()
         plt.pcolormesh(log_spectrogram, cmap='jet')
         plt.colorbar()
