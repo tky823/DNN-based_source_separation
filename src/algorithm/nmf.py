@@ -52,13 +52,7 @@ class NMF(nn.Module):
         self.activation = activation * (torch.matmul(base_transpose, x) / (torch.matmul(torch.matmul(base_transpose, base), activation) + eps))
 
 
-if __name__ == '__main__':
-    import numpy as np
-    import matplotlib.pyplot as plt
-    
-    from utils.utils_audio import read_wav, write_wav
-    from algorithm.stft import BatchSTFT, BatchInvSTFT
-
+def _test(metric='EU'):
     torch.manual_seed(111)
 
     nmf = NMF()    
@@ -87,8 +81,8 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.savefig('data/spectrogram.png', bbox_inches='tight')
     plt.close()
-    
-    nmf = NMF(n_bases)
+
+    nmf = NMF(n_bases, metric=metric)
     nmf(power)
 
     estimated_power = torch.matmul(nmf.base, nmf.activation)
@@ -101,7 +95,7 @@ if __name__ == '__main__':
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
     estimated_signal = estimated_signal / np.abs(estimated_signal).max()
-    write_wav("data/music-8000-estimated_NMF-EU{}.wav".format(iteration), signal=estimated_signal, sr=8000)
+    write_wav("data/music-8000-estimated_NMF-{}{}.wav".format(metric, iteration), signal=estimated_signal, sr=8000)
 
     for idx in range(n_bases):
         estimated_power = torch.matmul(nmf.base[:, idx: idx+1], nmf.activation[idx: idx+1, :])
@@ -114,7 +108,7 @@ if __name__ == '__main__':
         estimated_signal = istft(estimated_spectrogram, T=T)
         estimated_signal = estimated_signal.squeeze(dim=0).numpy()
         estimated_signal = estimated_signal / np.abs(estimated_signal).max()
-        write_wav("data/music-8000-estimated_NMF-EU{}-{}.wav".format(iteration, idx), signal=estimated_signal, sr=8000)
+        write_wav("data/music-8000-estimated_NMF-{}{}-{}.wav".format(metric, iteration, idx), signal=estimated_signal, sr=8000)
 
         log_spectrogram = 10 * torch.log10(estimated_power + EPS).numpy()
         plt.figure()
@@ -122,3 +116,13 @@ if __name__ == '__main__':
         plt.colorbar()
         plt.savefig('data/estimated-spectrogram-{}.png'.format(idx), bbox_inches='tight')
         plt.close()
+
+
+if __name__ == '__main__':
+    import numpy as np
+    import matplotlib.pyplot as plt
+    
+    from utils.utils_audio import read_wav, write_wav
+    from algorithm.stft import BatchSTFT, BatchInvSTFT
+
+    _test(metric='EU')
