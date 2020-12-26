@@ -64,7 +64,7 @@ class NMF:
         base, activation, reconstruction = self.base, self.activation, self.reconstruction
         base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
 
-        self.base =  base * (torch.matmul(target, activation_transpose) / (torch.matmul(reconstruction, activation_transpose) + eps))
+        self.base = base * (torch.matmul(target, activation_transpose) / (torch.matmul(reconstruction, activation_transpose) + eps))
         self.activation = activation * (torch.matmul(base_transpose, target) / (torch.matmul(base_transpose, reconstruction) + eps))
     
     def update_kl(self):
@@ -74,7 +74,7 @@ class NMF:
         base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
         division = target / (reconstruction + eps)
         
-        self.base =  base * (torch.matmul(division, activation_transpose) / (activation_transpose.sum(dim=0, keepdim=True) + eps))
+        self.base = base * (torch.matmul(division, activation_transpose) / (activation_transpose.sum(dim=0, keepdim=True) + eps))
         self.activation = activation * (torch.matmul(base_transpose, division) / (base_transpose.sum(dim=1, keepdim=True) + eps))
     
     def update_is(self):
@@ -84,7 +84,7 @@ class NMF:
         base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
         division, reconstruction_inverse = target / (reconstruction + eps)**2, 1 / (reconstruction + eps)
         
-        self.base =  base * torch.sqrt(torch.matmul(division, activation_transpose) / (torch.matmul(reconstruction_inverse, activation_transpose) + eps))
+        self.base = base * torch.sqrt(torch.matmul(division, activation_transpose) / (torch.matmul(reconstruction_inverse, activation_transpose) + eps))
         self.activation = activation * torch.sqrt(torch.matmul(base_transpose, division) / (torch.matmul(base_transpose, reconstruction_inverse) + eps))
 
 def _test(metric='EUC'):
