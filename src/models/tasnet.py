@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_audio import build_Fourier_basis, build_window, build_optimal_window
+from utils.utils_audio import build_Fourier_bases, build_window, build_optimal_window
 
 EPS=1e-12
 
@@ -65,22 +65,22 @@ class TasNet(nn.Module):
     """
     LSTM-TasNet
     """
-    def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=1000, causal=False, n_sources=2, eps=EPS):
+    def __init__(self, in_channels, n_bases, kernel_size=16, stride=8, sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=1000, causal=False, n_sources=2, eps=EPS):
         super().__init__()
         
         assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
         
         self.in_channels = in_channels
-        self.n_basis = n_basis
+        self.n_bases = n_bases
         self.kernel_size, self.stride = kernel_size, stride
         self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
         self.causal = causal
         self.n_sources = n_sources
         self.eps = eps
         
-        self.encoder = GatedEncoder(in_channels, n_basis, kernel_size=kernel_size, stride=stride, eps=eps)
-        self.separator = Separator(n_basis, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
-        self.decoder = Decoder(n_basis, in_channels, kernel_size=kernel_size, stride=stride)
+        self.encoder = GatedEncoder(in_channels, n_bases, kernel_size=kernel_size, stride=stride, eps=eps)
+        self.separator = Separator(n_bases, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
+        self.decoder = Decoder(n_bases, in_channels, kernel_size=kernel_size, stride=stride)
         
         self.num_parameters = self._get_num_parameters()
         
@@ -101,7 +101,7 @@ class TasNet(nn.Module):
             input (batch_size, 1, T)
         Returns:
             output (batch_size, n_sources, T)
-            latent (batch_size, n_sources, n_basis, T'), where T' = (T-K)//S+1
+            latent (batch_size, n_sources, n_bases, T'), where T' = (T-K)//S+1
         """
         n_sources = self.n_sources
         kernel_size, stride = self.kernel_size, self.stride
@@ -120,7 +120,7 @@ class TasNet(nn.Module):
         w = w.unsqueeze(dim=1)
         w_hat = w * mask
         latent = w_hat
-        w_hat = w_hat.view(batch_size*n_sources, n_basis, -1)
+        w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
         x_hat = self.decoder(w_hat)
         x_hat = x_hat.view(batch_size, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
@@ -139,7 +139,7 @@ class TasNet(nn.Module):
     def get_package(self):
         package = {
             'in_channels': self.in_channels,
-            'n_basis': self.n_basis,
+            'n_bases': self.n_bases,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
             'sep_num_blocks': self.sep_num_blocks,
@@ -166,23 +166,23 @@ class FourierEncoder(nn.Module):
     
         window = build_window(kernel_size, window_fn=window_fn) # (kernel_size,)
 
-        cos_basis, sin_basis = build_Fourier_basis(kernel_size, normalize=True)
-        cos_basis, sin_basis = cos_basis * window, - sin_basis * window
+        cos_bases, sin_bases = build_Fourier_bases(kernel_size, normalize=True)
+        cos_bases, sin_bases = cos_bases * window, - sin_bases * window
         
-        basis = None
+        bases = None
         
         for idx in range(repeat):
-            rolled_cos_basis = torch.roll(cos_basis, kernel_size//repeat*idx, dims=1)
-            rolled_sin_basis = torch.roll(sin_basis, kernel_size//repeat*idx, dims=1)
-            if basis is None:
-                basis = torch.cat([rolled_cos_basis, rolled_sin_basis], dim=0)
+            rolled_cos_bases = torch.roll(cos_bases, kernel_size//repeat*idx, dims=1)
+            rolled_sin_bases = torch.roll(sin_bases, kernel_size//repeat*idx, dims=1)
+            if bases is None:
+                bases = torch.cat([rolled_cos_bases, rolled_sin_bases], dim=0)
             else:
-                basis = torch.cat([basis, rolled_cos_basis, rolled_sin_basis], dim=0)
+                bases = torch.cat([bases, rolled_cos_bases, rolled_sin_bases], dim=0)
         
-        self.basis = nn.Parameter(basis.unsqueeze(dim=1), requires_grad=trainable)
+        self.bases = nn.Parameter(bases.unsqueeze(dim=1), requires_grad=trainable)
         
     def forward(self, input):
-        output = F.conv1d(input, self.basis, stride=self.stride)
+        output = F.conv1d(input, self.bases, stride=self.stride)
         
         return output
     
@@ -194,8 +194,8 @@ class FourierEncoder(nn.Module):
         
         return s.format(**self.__dict__)
         
-    def get_basis(self):
-        return self.basis.squeeze(dim=1).detach().cpu().numpy()
+    def get_bases(self):
+        return self.bases.squeeze(dim=1).detach().cpu().numpy()
 
 class FourierDecoder(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, window_fn='hann', trainable=False):
@@ -212,23 +212,23 @@ class FourierDecoder(nn.Module):
         window = build_window(kernel_size, window_fn=window_fn) # (kernel_size,)
         optimal_window = build_optimal_window(window, hop_size=stride)
 
-        cos_basis, sin_basis = build_Fourier_basis(kernel_size, normalize=True)
-        cos_basis, sin_basis = cos_basis * optimal_window / repeat, - sin_basis * optimal_window / repeat
+        cos_bases, sin_bases = build_Fourier_bases(kernel_size, normalize=True)
+        cos_bases, sin_bases = cos_bases * optimal_window / repeat, - sin_bases * optimal_window / repeat
         
-        basis = None
+        bases = None
         
         for idx in range(repeat):
-            rolled_cos_basis = torch.roll(cos_basis, kernel_size//repeat*idx, dims=1)
-            rolled_sin_basis = torch.roll(sin_basis, kernel_size//repeat*idx, dims=1)
-            if basis is None:
-                basis = torch.cat([rolled_cos_basis, rolled_sin_basis], dim=0)
+            rolled_cos_bases = torch.roll(cos_bases, kernel_size//repeat*idx, dims=1)
+            rolled_sin_bases = torch.roll(sin_bases, kernel_size//repeat*idx, dims=1)
+            if bases is None:
+                bases = torch.cat([rolled_cos_bases, rolled_sin_bases], dim=0)
             else:
-                basis = torch.cat([basis, rolled_cos_basis, rolled_sin_basis], dim=0)
+                bases = torch.cat([bases, rolled_cos_bases, rolled_sin_bases], dim=0)
         
-        self.basis = nn.Parameter(basis.unsqueeze(dim=1), requires_grad=trainable)
+        self.bases = nn.Parameter(bases.unsqueeze(dim=1), requires_grad=trainable)
         
     def forward(self, input):
-        output = F.conv_transpose1d(input, self.basis, stride=self.stride)
+        output = F.conv_transpose1d(input, self.bases, stride=self.stride)
         
         return output
     
@@ -240,11 +240,11 @@ class FourierDecoder(nn.Module):
         
         return s.format(**self.__dict__)
         
-    def get_basis(self):
-        return self.basis.squeeze(dim=1).detach().cpu().numpy()
+    def get_bases(self):
+        return self.bases.squeeze(dim=1).detach().cpu().numpy()
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, nonlinear=None):
+    def __init__(self, in_channels, n_bases, kernel_size=16, stride=8, nonlinear=None):
         super().__init__()
         
         assert in_channels == 1, "in_channels is expected 1, given {}".format(in_channels)
@@ -252,7 +252,7 @@ class Encoder(nn.Module):
         self.kernel_size, self.stride = kernel_size, stride
         self.nonlinear = nonlinear
         
-        self.conv1d = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
+        self.conv1d = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False)
         if nonlinear is not None:
             if nonlinear == 'relu':
                 self.nonlinear1d = nn.ReLU()
@@ -273,44 +273,44 @@ class Encoder(nn.Module):
         
         return output
         
-    def get_basis(self):
-        basis = self.conv1d.weight.squeeze(dim=1).detach().cpu().numpy()
+    def get_bases(self):
+        bases = self.conv1d.weight.squeeze(dim=1).detach().cpu().numpy()
     
-        return basis
+        return bases
 
 class Decoder(nn.Module):
-    def __init__(self, n_basis, out_channels, kernel_size=16, stride=8):
+    def __init__(self, n_bases, out_channels, kernel_size=16, stride=8):
         super().__init__()
         
         assert out_channels == 1, "out_channels is expected 1, given {}".format(out_channels)
         
         self.kernel_size, self.stride = kernel_size, stride
         
-        self.conv_transpose1d = nn.ConvTranspose1d(n_basis, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
+        self.conv_transpose1d = nn.ConvTranspose1d(n_bases, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
         
     def forward(self, input):
         output = self.conv_transpose1d(input)
         
         return output
         
-    def get_basis(self):
-        basis = self.conv_transpose1d.weight.squeeze(dim=1).detach().cpu().numpy()
+    def get_bases(self):
+        bases = self.conv_transpose1d.weight.squeeze(dim=1).detach().cpu().numpy()
         
-        return basis
+        return bases
 
 """
     Modules for LSTM-TasNet
 """
 
 class GatedEncoder(nn.Module):
-    def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, eps=EPS):
+    def __init__(self, in_channels, n_bases, kernel_size=16, stride=8, eps=EPS):
         super().__init__()
         
         self.kernel_size, self.stride = kernel_size, stride
         self.eps = eps
         
-        self.conv1d_U = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
-        self.conv1d_V = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
+        self.conv1d_U = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False)
+        self.conv1d_V = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
         
@@ -329,25 +329,25 @@ class Separator(nn.Module):
     """
     Default separator of TasNet.
     """
-    def __init__(self, n_basis, num_blocks, num_layers, hidden_channels, causal=False, n_sources=2, eps=EPS):
+    def __init__(self, n_bases, num_blocks, num_layers, hidden_channels, causal=False, n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_blocks = num_blocks
-        self.n_basis, self.n_sources = n_basis, n_sources
+        self.n_bases, self.n_sources = n_bases, n_sources
         self.eps = eps
         
-        hidden_channels = n_sources*n_basis
+        hidden_channels = n_sources*n_bases
         
-        self.gamma = nn.Parameter(torch.Tensor(1, n_basis, 1))
-        self.beta = nn.Parameter(torch.Tensor(1, n_basis, 1))
+        self.gamma = nn.Parameter(torch.Tensor(1, n_bases, 1))
+        self.beta = nn.Parameter(torch.Tensor(1, n_bases, 1))
         
         net = []
         
         for idx in range(num_blocks):
             if idx == 0:
-                net.append(LSTMBlock(n_basis, n_sources*n_basis, hidden_channels=hidden_channels, num_layers=num_layers, causal=causal))
+                net.append(LSTMBlock(n_bases, n_sources*n_bases, hidden_channels=hidden_channels, num_layers=num_layers, causal=causal))
             else:
-                net.append(LSTMBlock(n_sources*n_basis, n_sources*n_basis, hidden_channels=hidden_channels, num_layers=num_layers))
+                net.append(LSTMBlock(n_sources*n_bases, n_sources*n_bases, hidden_channels=hidden_channels, num_layers=num_layers))
             
         self.net = nn.Sequential(*net)
             
@@ -359,7 +359,7 @@ class Separator(nn.Module):
         
     def forward(self, input):
         num_blocks = self.num_blocks
-        n_basis, n_sources = self.n_basis, self.n_sources
+        n_bases, n_sources = self.n_bases, self.n_sources
         eps = self.eps
         
         batch_size, _, T_bin = input.size()
@@ -376,7 +376,7 @@ class Separator(nn.Module):
             skip = x + skip
             
         x = skip
-        output = x.view(batch_size, n_sources, n_basis, T_bin)
+        output = x.view(batch_size, n_sources, n_bases, T_bin)
 
         return output
 
@@ -452,13 +452,13 @@ if __name__ == '__main__':
     T = 64
     kernel_size, stride = 8, 2
     repeat = 2
-    in_channels, n_basis = 1, kernel_size * repeat * 2
+    in_channels, n_bases = 1, kernel_size * repeat * 2
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
     
     window_fn = 'hamming'
     
-    model = TasNetBase(in_channels, n_basis, kernel_size=kernel_size, stride=stride, window_fn=window_fn)
+    model = TasNetBase(in_channels, n_bases, kernel_size=kernel_size, stride=stride, window_fn=window_fn)
     output = model(input)
     print(input.size(), output.size())
 
@@ -468,19 +468,19 @@ if __name__ == '__main__':
     plt.savefig('data/Fourier.png', bbox_inches='tight')
     plt.close()
     
-    basis = model.decoder.get_basis()
-    print(basis.shape)
+    bases = model.decoder.get_bases()
+    print(bases.shape)
     
     plt.figure()
-    plt.pcolormesh(basis, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.pcolormesh(bases, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
-    plt.savefig('data/basis.png', bbox_inches='tight')
+    plt.savefig('data/bases.png', bbox_inches='tight')
     plt.close()
 
     _, latent = model.extract_latent(input)
     print(latent.size())
-    real = latent[:,:n_basis//2,:]
-    imag = latent[:,n_basis//2:,:]
+    real = latent[:,:n_bases//2,:]
+    imag = latent[:,n_bases//2:,:]
     power = real**2+imag**2
     
     plt.figure()
@@ -495,7 +495,7 @@ if __name__ == '__main__':
     
     causal = False
 
-    model = TasNet(C, n_basis, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
+    model = TasNet(C, n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -505,7 +505,7 @@ if __name__ == '__main__':
     
     causal = True
     
-    model = TasNet(C, n_basis, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
+    model = TasNet(C, n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 

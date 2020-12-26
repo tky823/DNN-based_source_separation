@@ -3,24 +3,24 @@ from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
 EPS=1e-12
 
-def choose_basis(hidden_channels, kernel_size, stride=None, enc_basis='trainable', dec_basis='trainable', **kwargs):
-    if enc_basis == 'trainable':
+def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable', dec_bases='trainable', **kwargs):
+    if enc_bases == 'trainable':
         encoder = Encoder(1, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
-    elif enc_basis == 'Fourier':
+    elif enc_bases == 'Fourier':
         encoder = FourierEncoder(1, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
-    elif enc_basis == 'trainableFourier':
+    elif enc_bases == 'trainableFourier':
         encoder = FourierEncoder(1, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
     else:
-        raise NotImplementedError("Not support {} for encoder".format(enc_basis))
+        raise NotImplementedError("Not support {} for encoder".format(enc_bases))
         
-    if dec_basis == 'trainable':
+    if dec_bases == 'trainable':
         decoder = Decoder(hidden_channels, 1, kernel_size, stride=stride)
-    elif dec_basis == 'Fourier':
+    elif dec_bases == 'Fourier':
         decoder = FourierDecoder(hidden_channels, 1, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
-    elif dec_basis == 'trainableFourier':
+    elif dec_bases == 'trainableFourier':
         decoder = FourierDecoder(hidden_channels, 1, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
     else:
-        raise NotImplementedError("Not support {} for decoder".format(dec_basis))
+        raise NotImplementedError("Not support {} for decoder".format(dec_bases))
         
     return encoder, decoder
 

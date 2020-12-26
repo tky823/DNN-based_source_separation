@@ -20,7 +20,7 @@ def mu_law_compand(x, mu=255):
 def inv_mu_law_compand(y, mu=255):
     return np.sign(y) * ((1 + mu)**np.abs(y) - 1) / mu
 
-def build_Fourier_basis(fft_size, normalize=False):
+def build_Fourier_bases(fft_size, normalize=False):
     """
     Args:
         fft_size <int>:
@@ -30,15 +30,15 @@ def build_Fourier_basis(fft_size, normalize=False):
     n = torch.arange(0, fft_size, dtype=torch.float)
     k, n = torch.meshgrid(k, n)
 
-    cos_basis = torch.cos(2*math.pi*k*n/fft_size)
-    sin_basis = torch.sin(2*math.pi*k*n/fft_size)
+    cos_bases = torch.cos(2*math.pi*k*n/fft_size)
+    sin_bases = torch.sin(2*math.pi*k*n/fft_size)
     
     if normalize:
         norm = math.sqrt(fft_size)
-        cos_basis = cos_basis / norm
-        sin_basis = sin_basis / norm
+        cos_bases = cos_bases / norm
+        sin_bases = sin_bases / norm
     
-    return cos_basis, sin_basis
+    return cos_bases, sin_bases
     
 def build_window(fft_size, window_fn='hann'):
     if window_fn=='hann':
