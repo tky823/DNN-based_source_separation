@@ -3,6 +3,7 @@
 # outputs
 faithful.csv
 faithful-*.png
+estimated-spectrogram*.png
 *.wav
 
 # Byte-compiled / optimized / DLL files
