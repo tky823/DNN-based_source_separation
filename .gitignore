@@ -3,6 +3,9 @@
 # outputs
 faithful.csv
 faithful-*.png
+bases*.png
+Fourier.png
+power.png
 estimated-spectrogram*.png
 *.wav
 
