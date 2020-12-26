@@ -3,13 +3,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_basis, choose_layer_norm
+from utils.utils_tasnet import choose_bases, choose_layer_norm
 from models.dprnn import DPRNN
 
 EPS=1e-12
 
 class DPRNNTasNet(nn.Module):
-    def __init__(self, n_basis, kernel_size, stride=None, enc_basis=None, dec_basis=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, dilated=True, separable=True, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, dilated=True, separable=True, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
         super().__init__()
         
         if stride is None:
@@ -18,16 +18,16 @@ class DPRNNTasNet(nn.Module):
         assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
-        self.n_basis = n_basis
+        self.n_bases = n_bases
         self.kernel_size, self.stride = kernel_size, stride
-        self.enc_basis, self.dec_basis = enc_basis, dec_basis
+        self.enc_bases, self.dec_bases = enc_bases, dec_bases
         
-        if enc_basis == 'trainable':
+        if enc_bases == 'trainable':
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
         
-        if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']:
+        if enc_bases in ['Fourier', 'trainableFourier'] or dec_bases in ['Fourier', 'trainableFourier']:
             self.window_fn = kwargs['window_fn']
         else:
             self.window_fn = None
@@ -45,10 +45,10 @@ class DPRNNTasNet(nn.Module):
         self.eps = eps
         
         # Network configuration
-        encoder, decoder = choose_basis(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
+        encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
         
         self.encoder = encoder
-        self.separator = Separator(n_basis, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        self.separator = Separator(n_bases, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
@@ -64,10 +64,10 @@ class DPRNNTasNet(nn.Module):
             input (batch_size, 1, T)
         Returns:
             output (batch_size, n_sources, T)
-            latent (batch_size, n_sources, n_basis, T'), where T' = (T-K)//S+1
+            latent (batch_size, n_sources, n_bases, T'), where T' = (T-K)//S+1
         """
         n_sources = self.n_sources
-        n_basis = self.n_basis
+        n_bases = self.n_bases
         kernel_size, stride = self.kernel_size, self.stride
         
         batch_size, C_in, T = input.size()
@@ -84,7 +84,7 @@ class DPRNNTasNet(nn.Module):
         w = w.unsqueeze(dim=1)
         w_hat = w * mask
         latent = w_hat
-        w_hat = w_hat.view(batch_size*n_sources, n_basis, -1)
+        w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
         x_hat = self.decoder(w_hat)
         x_hat = x_hat.view(batch_size, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
@@ -93,11 +93,11 @@ class DPRNNTasNet(nn.Module):
     
     def get_package(self):
         package = {
-            'n_basis': self.n_basis,
+            'n_bases': self.n_bases,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
-            'enc_basis': self.enc_basis,
-            'dec_basis': self.dec_basis,
+            'enc_bases': self.enc_bases,
+            'dec_bases': self.dec_bases,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
             'sep_hidden_channels': self.sep_hidden_channels,
@@ -119,9 +119,9 @@ class DPRNNTasNet(nn.Module):
     def build_model(cls, model_path):
         package = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        n_basis = package['n_basis']
+        n_bases = package.get('n_bases') or package['n_basis']
         kernel_size, stride = package['kernel_size'], package['stride']
-        enc_basis, dec_basis = package['enc_basis'], package['dec_basis']
+        enc_bases, dec_bases = package.get('enc_bases') or package['enc_basis'], package.get('dec_bases') or package['dec_basis']
         enc_nonlinear = package['enc_nonlinear']
         window_fn = package['window_fn']
         
@@ -137,7 +137,7 @@ class DPRNNTasNet(nn.Module):
         
         eps = package['eps']
         
-        model = cls(n_basis, kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         
         return model
     
@@ -317,15 +317,15 @@ if __name__ == '__main__':
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
     
-    print("-"*10, "Trainable Basis & Non causal", "-"*10)
-    enc_basis, dec_basis = 'trainable', 'trainable'
+    print("-"*10, "Trainable Bases & Non causal", "-"*10)
+    enc_bases, dec_bases = 'trainable', 'trainable'
     enc_nonlinear = 'relu'
     
     causal = False
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -333,15 +333,15 @@ if __name__ == '__main__':
     print(input.size(), output.size())
     print()
     
-    print("-"*10, "Fourier Basis & Causal", "-"*10)
-    enc_basis, dec_basis = 'Fourier', 'Fourier'
+    print("-"*10, "Fourier Bases & Causal", "-"*10)
+    enc_bases, dec_bases = 'Fourier', 'Fourier'
     window_fn = 'hamming'
     
     causal = True
     mask_nonlinear = 'softmax'
     n_sources = 3
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_basis=enc_basis, dec_basis=dec_basis, window_fn=window_fn, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
