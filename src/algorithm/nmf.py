@@ -30,7 +30,7 @@ class NMF(nn.Module):
         self.x = input
         F_bin, T_bin = input.size()
 
-        self.basis = torch.rand(F_bin, K, dtype=torch.float) + 1
+        self.base = torch.rand(F_bin, K, dtype=torch.float) + 1
         self.activation = torch.rand(K, T_bin, dtype=torch.float) + 1
 
         for idx in range(iteration):
@@ -45,11 +45,11 @@ class NMF(nn.Module):
     def update_euc(self):
         eps = self.eps
         x = self.x
-        basis, activation = self.basis, self.activation
-        basis_transpose, activation_transpose = basis.permute(1,0), activation.permute(1,0)
+        base, activation = self.base, self.activation
+        base_transpose, activation_transpose = base.permute(1,0), activation.permute(1,0)
         
-        self.basis =  basis * (torch.matmul(x, activation_transpose) / (torch.matmul(basis, torch.matmul(activation, activation_transpose)) + eps))
-        self.activation = activation * (torch.matmul(basis_transpose, x) / (torch.matmul(torch.matmul(basis_transpose, basis), activation) + eps))
+        self.base =  base * (torch.matmul(x, activation_transpose) / (torch.matmul(base, torch.matmul(activation, activation_transpose)) + eps))
+        self.activation = activation * (torch.matmul(base_transpose, x) / (torch.matmul(torch.matmul(base_transpose, base), activation) + eps))
 
 
 if __name__ == '__main__':
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     nmf = NMF()    
     
     fft_size, hop_size = 1024, 256
-    n_basis = 6
+    n_bases = 6
     iteration = 100
     
     signal, sr = read_wav("data/music-8000.wav")
@@ -88,10 +88,10 @@ if __name__ == '__main__':
     plt.savefig('data/spectrogram.png', bbox_inches='tight')
     plt.close()
     
-    nmf = NMF(n_basis)
+    nmf = NMF(n_bases)
     nmf(power)
 
-    estimated_power = torch.matmul(nmf.basis, nmf.activation)
+    estimated_power = torch.matmul(nmf.base, nmf.activation)
     estimated_amplitude = torch.sqrt(estimated_power)
     ratio = estimated_amplitude / (amplitude + EPS)
     estimated_real, estimated_imag = ratio * real, ratio * imag
@@ -103,8 +103,8 @@ if __name__ == '__main__':
     estimated_signal = estimated_signal / np.abs(estimated_signal).max()
     write_wav("data/music-8000-estimated_NMF-EU{}.wav".format(iteration), signal=estimated_signal, sr=8000)
 
-    for idx in range(n_basis):
-        estimated_power = torch.matmul(nmf.basis[:, idx: idx+1], nmf.activation[idx: idx+1, :])
+    for idx in range(n_bases):
+        estimated_power = torch.matmul(nmf.base[:, idx: idx+1], nmf.activation[idx: idx+1, :])
         estimated_amplitude = torch.sqrt(estimated_power)
         ratio = estimated_amplitude / (amplitude + EPS)
         estimated_real, estimated_imag = ratio * real, ratio * imag
