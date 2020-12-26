@@ -23,14 +23,12 @@ if [ ! -e "${OUT_DIR}/train/train.json" ]; then
     prepare_dsd100.py \
     --source_dir "${DATASET_ROOT}/Sources/Dev" \
     --mixture_dir "${DATASET_ROOT}/Mixtures/Dev" \
-    --out_dir "${OUT_DIR}" \
-    --train_json_path "${OUT_DIR}/train/train.json"
+    --json_path "${OUT_DIR}/train/train.json"
 fi
 
 if [ ! -e "${OUT_DIR}/test/test.json" ]; then
     prepare_dsd100.py \
     --source_dir "${DATASET_ROOT}/Sources/Test" \
     --mixture_dir "${DATASET_ROOT}/Mixtures/Test" \
-    --out_dir "${OUT_DIR}" \
-    --test_json_path "${OUT_DIR}/test/test.json"
+    --json_path "${OUT_DIR}/test/test.json"
 fi
