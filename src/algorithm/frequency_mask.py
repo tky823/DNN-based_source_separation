@@ -44,7 +44,6 @@ def ideal_ratio_mask(input, eps=EPS):
     """
     Args:
         input (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
-        
     Returns:
         mask (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
     """
@@ -65,7 +64,6 @@ def wiener_filter_mask(input, eps=EPS):
     """
     Args:
         input (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
-        
     Returns:
         mask (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
     """
@@ -82,6 +80,19 @@ def wiener_filter_mask(input, eps=EPS):
     mask = power / (norm + eps)
 
     return mask
+
+"""
+Phase sensitive mask
+See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurrent Neural Networks"
+"""
+def phase_sensitive_mask(input, eps=EPS):
+    """
+    Args:
+        input (n_sources, 2*F_bin, T_bin) or (batch_size, 2*n_sources, F_bin, T_bin)
+    Returns:
+        mask (n_sources, 2*F_bin, T_bin) or (batch_size, 2*n_sources, F_bin, T_bin)
+    """
+    raise NotImplementedError("No implementation")
 
 
 if __name__ == '__main__':
