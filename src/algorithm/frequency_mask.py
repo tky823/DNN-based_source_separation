@@ -107,7 +107,7 @@ def _test(method='IBM'):
     estimated_amplitude = amplitude * mask
     
     real, imag = estimated_amplitude * torch.cos(phase_mixture), estimated_amplitude * torch.sin(phase_mixture)
-    estimated_spectrgram = torch.cat([real, imag], dim=1)
+    estimated_spectrgram = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3)
     estimated_signal = istft(estimated_spectrgram, T=T)
     estimated_signal = estimated_signal.detach().cpu().numpy()
     
@@ -148,21 +148,18 @@ if __name__ == '__main__':
     source2 = torch.Tensor(source2).unsqueeze(dim=0)
     
     spectrogram_mixture = stft(mixture)
-    real = spectrogram_mixture[:,:fft_size//2+1]
-    imag = spectrogram_mixture[:,fft_size//2+1:]
+    real, imag = spectrogram_mixture[...,0], spectrogram_mixture[...,1]
     power = real**2+imag**2
     amplitude_mixture = torch.sqrt(power)
     phase_mixture = torch.atan2(imag, real)
     
     spectrogram_source1 = stft(source1)
-    real = spectrogram_source1[:,:fft_size//2+1]
-    imag = spectrogram_source1[:,fft_size//2+1:]
+    real, imag = spectrogram_source1[...,0], spectrogram_source1[...,1]
     power = real**2+imag**2
     amplitude_source1 = torch.sqrt(power)
     
     spectrogram_source2 = stft(source2)
-    real = spectrogram_source2[:,:fft_size//2+1]
-    imag = spectrogram_source2[:,fft_size//2+1:]
+    real, imag = spectrogram_source2[...,0], spectrogram_source2[...,1]
     power = real**2+imag**2
     amplitude_source2 = torch.sqrt(power)
 
