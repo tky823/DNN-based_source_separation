@@ -94,15 +94,36 @@ def phase_sensitive_mask(input, eps=EPS):
     """
     raise NotImplementedError("No implementation")
 
+def _test(method='IBM'):
+    if method == 'IBM':
+        mask = ideal_binary_mask(amplitude)
+    elif method == 'IRM':
+        mask = ideal_ratio_mask(amplitude)
+    elif method == 'WFM':
+        mask = wiener_filter_mask(amplitude)
+    else:
+        raise NotImplementedError("Not support {}".format(method))
+    
+    estimated_amplitude = amplitude * mask
+    
+    real, imag = estimated_amplitude * torch.cos(phase_mixture), estimated_amplitude * torch.sin(phase_mixture)
+    estimated_spectrgram = torch.cat([real, imag], dim=1)
+    estimated_signal = istft(estimated_spectrgram, T=T)
+    estimated_signal = estimated_signal.detach().cpu().numpy()
+    
+    for signal, tag in zip(estimated_signal, ['man', 'woman']):
+        write_wav("data/frequency_mask/{}-estimated_{}.wav".format(tag, method), signal=signal, sr=16000)
+
 
 if __name__ == '__main__':
+    import os
     import numpy as np
     from scipy.signal import resample_poly
     
     from utils.utils_audio import read_wav, write_wav
     from stft import BatchSTFT, BatchInvSTFT
     
-    torch.manual_seed(111)
+    os.makedirs("data/frequency_mask", exist_ok=True)
     
     fft_size, hop_size = 1024, 256
     n_basis = 4
@@ -146,39 +167,7 @@ if __name__ == '__main__':
     amplitude_source2 = torch.sqrt(power)
 
     amplitude = torch.cat([amplitude_source1, amplitude_source2], dim=0)
-    
-    # Ideal binary mask
-    mask = ideal_binary_mask(amplitude)
-    estimated_amplitude = amplitude * mask
-    
-    real, imag = estimated_amplitude * torch.cos(phase_mixture), estimated_amplitude * torch.sin(phase_mixture)
-    estimated_spectrgram = torch.cat([real, imag], dim=1)
-    estimated_signal = istft(estimated_spectrgram, T=T)
-    estimated_signal = estimated_signal.detach().cpu().numpy()
-    
-    for signal, tag in zip(estimated_signal, ['man', 'woman']):
-        write_wav("data/{}-estimated_IBM.wav".format(tag), signal=signal, sr=16000)
-    
-    # Ideal ratio mask
-    mask = ideal_ratio_mask(amplitude)
-    estimated_amplitude = amplitude * mask
-    
-    real, imag = estimated_amplitude * torch.cos(phase_mixture), estimated_amplitude * torch.sin(phase_mixture)
-    estimated_spectrgram = torch.cat([real, imag], dim=1)
-    estimated_signal = istft(estimated_spectrgram, T=T)
-    estimated_signal = estimated_signal.detach().cpu().numpy()
-    
-    for signal, tag in zip(estimated_signal, ['man', 'woman']):
-        write_wav("data/{}-estimated_IRM.wav".format(tag), signal=signal, sr=16000)
-    
-    # Wiener filter like mask
-    mask = wiener_filter_mask(amplitude)
-    estimated_amplitude = amplitude * mask
-    
-    real, imag = estimated_amplitude * torch.cos(phase_mixture), estimated_amplitude * torch.sin(phase_mixture)
-    estimated_spectrgram = torch.cat([real, imag], dim=1)
-    estimated_signal = istft(estimated_spectrgram, T=T)
-    estimated_signal = estimated_signal.detach().cpu().numpy()
-    
-    for signal, tag in zip(estimated_signal, ['man', 'woman']):
-        write_wav("data/{}-estimated_WFM.wav".format(tag), signal=signal, sr=16000)
+
+    _test('IBM')
+    _test('IRM')
+    _test('WFM')
