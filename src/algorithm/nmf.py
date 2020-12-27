@@ -103,8 +103,8 @@ def _test(metric='EUC'):
     istft = BatchInvSTFT(fft_size=fft_size, hop_size=hop_size)
 
     spectrogram = stft(signal).squeeze(dim=0)
-    real = spectrogram[:fft_size//2+1]
-    imag = spectrogram[fft_size//2+1:]
+    real = spectrogram[...,0]
+    imag = spectrogram[...,1]
     amplitude = torch.sqrt(real**2 + imag**2)
     power = amplitude**2
 
@@ -122,8 +122,7 @@ def _test(metric='EUC'):
     estimated_amplitude = torch.sqrt(estimated_power)
     ratio = estimated_amplitude / (amplitude + EPS)
     estimated_real, estimated_imag = ratio * real, ratio * imag
-    estimated_spectrogram = torch.cat([estimated_real, estimated_imag], dim=0)
-    estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
+    estimated_spectrogram = torch.cat([estimated_real.unsqueeze(dim=2), estimated_imag.unsqueeze(dim=2)], dim=2).unsqueeze(dim=0)
 
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
@@ -135,8 +134,7 @@ def _test(metric='EUC'):
         estimated_amplitude = torch.sqrt(estimated_power)
         ratio = estimated_amplitude / (amplitude + EPS)
         estimated_real, estimated_imag = ratio * real, ratio * imag
-        estimated_spectrogram = torch.cat([estimated_real, estimated_imag], dim=0)
-        estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
+        estimated_spectrogram = torch.cat([estimated_real.unsqueeze(dim=2), estimated_imag.unsqueeze(dim=2)], dim=2).unsqueeze(dim=0)
 
         estimated_signal = istft(estimated_spectrogram, T=T)
         estimated_signal = estimated_signal.squeeze(dim=0).numpy()
