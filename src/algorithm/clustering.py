@@ -55,9 +55,11 @@ class Kmeans:
         return onehot_labels, centroids
 
 if __name__ == '__main__':
+    import os
     import pandas as pd
     import matplotlib.pyplot as plt
 
+    os.makedirs("data/clustering", exist_ok=True)
     random.seed(111)
 
     K = 2
@@ -74,7 +76,7 @@ if __name__ == '__main__':
 
     plt.figure()
     plt.scatter(data[:,0], data[:,1])
-    plt.savefig("data/faithful-0.png", bbox_inches='tight')
+    plt.savefig("data/clustering/faithful-0.png", bbox_inches='tight')
 
     kmeans = Kmeans(data, K=K)
     onehot_labels, centroids = kmeans(iteration=iteration) # (N, K), (K, D)
@@ -82,7 +84,7 @@ if __name__ == '__main__':
     plt.figure()
     plt.scatter(data[:,0], data[:,1])
     plt.scatter(centroids[:,0], centroids[:,1], c='red')
-    plt.savefig("data/faithful-last.png", bbox_inches='tight')
+    plt.savefig("data/clustering/faithful-last.png", bbox_inches='tight')
 
     # or same as ...
 
@@ -94,5 +96,5 @@ if __name__ == '__main__':
         plt.figure()
         plt.scatter(data[:,0], data[:,1])
         plt.scatter(centroids[:,0], centroids[:,1], c='red')
-        plt.savefig("data/faithful-{}.png".format(idx+1), bbox_inches='tight')
+        plt.savefig("data/clustering/faithful-{}.png".format(idx+1), bbox_inches='tight')
 

@@ -42,23 +42,25 @@ class GriffinLim(nn.Module):
             phase = sampler.sample((F_bin, T_bin)).to(amplitude.device)
         
         real, imag = amplitude * torch.cos(phase), amplitude * torch.sin(phase)
-        spectrogram = torch.cat([real, imag], dim=0).unsqueeze(dim=0) # (1, 2*F_bin, T_bin)
+        spectrogram = torch.cat([real.unsqueeze(dim=2), imag.unsqueeze(dim=2)], dim=2).unsqueeze(dim=0) # (1, F_bin, T_bin, 2)
         
         signal = self.istft(spectrogram)
         spectrogram = self.stft(signal)
         
         spectrogram = spectrogram.squeeze(dim=0)
-        real, imag = spectrogram[:F_bin], spectrogram[F_bin:]
+        real, imag = spectrogram[..., 0], spectrogram[..., 1]
         phase = torch.atan2(imag, real)
         
         return phase
             
 if __name__ == '__main__':
+    import os
     import numpy as np
     from scipy.signal import resample_poly
     
     from utils.utils_audio import read_wav, write_wav
     
+    os.makedirs("data/GriffinLim", exist_ok=True)
     torch.manual_seed(111)
     
     fft_size, hop_size = 1024, 256
@@ -82,8 +84,7 @@ if __name__ == '__main__':
     griffin_lim = GriffinLim(fft_size, hop_size=hop_size)
     
     spectrogram = spectrogram.squeeze(dim=0)
-    real = spectrogram[:fft_size//2+1]
-    imag = spectrogram[fft_size//2+1:]
+    real, imag = spectrogram[...,0], spectrogram[...,1]
     amplitude = torch.sqrt(real**2+imag**2)
     
     # Griffin-Lim iteration 10
@@ -91,22 +92,22 @@ if __name__ == '__main__':
     estimated_phase = griffin_lim(amplitude, iteration=iteration)
     
     real, imag = amplitude * torch.cos(estimated_phase), amplitude * torch.sin(estimated_phase)
-    estimated_spectrogram = torch.cat([real, imag], dim=0) # (2*F_bin, T_bin)
+    estimated_spectrogram = torch.cat([real.unsqueeze(dim=2), imag.unsqueeze(dim=2)], dim=2) # (F_bin, T_bin, 2)
     estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
     
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
-    write_wav("data/man-estimated_GL{}.wav".format(iteration), signal=estimated_signal, sr=16000)
+    write_wav("data/GriffinLim/man-estimated_iter{}.wav".format(iteration), signal=estimated_signal, sr=16000)
     
-    # Griffin-Lim iteration 10
-    iteration = 50
+    # Griffin-Lim iteration 100
+    iteration = 100
     estimated_phase = griffin_lim(amplitude, iteration=iteration)
     
     real, imag = amplitude * torch.cos(estimated_phase), amplitude * torch.sin(estimated_phase)
-    estimated_spectrogram = torch.cat([real, imag], dim=0) # (2*F_bin, T_bin)
+    estimated_spectrogram = torch.cat([real.unsqueeze(dim=2), imag.unsqueeze(dim=2)], dim=2) # (F_bin, T_bin, 2)
     estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
     
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
-    write_wav("data/man-estimated_GL{}.wav".format(iteration), signal=estimated_signal, sr=16000)
+    write_wav("data/GriffinLim/man-estimated_iter{}.wav".format(iteration), signal=estimated_signal, sr=16000)
     
