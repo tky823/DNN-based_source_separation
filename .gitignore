@@ -1,6 +1,7 @@
 .DS_Store
 
 # outputs
+data/
 faithful.csv
 faithful-*.png
 bases*.png
