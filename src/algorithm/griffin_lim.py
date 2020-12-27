@@ -54,11 +54,13 @@ class GriffinLim(nn.Module):
         return phase
             
 if __name__ == '__main__':
+    import os
     import numpy as np
     from scipy.signal import resample_poly
     
     from utils.utils_audio import read_wav, write_wav
     
+    os.makedirs("data/GriffinLim", exist_ok=True)
     torch.manual_seed(111)
     
     fft_size, hop_size = 1024, 256
@@ -96,10 +98,10 @@ if __name__ == '__main__':
     
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
-    write_wav("data/man-estimated_GL{}.wav".format(iteration), signal=estimated_signal, sr=16000)
+    write_wav("data/GriffinLim/man-estimated_iter{}.wav".format(iteration), signal=estimated_signal, sr=16000)
     
-    # Griffin-Lim iteration 10
-    iteration = 50
+    # Griffin-Lim iteration 100
+    iteration = 100
     estimated_phase = griffin_lim(amplitude, iteration=iteration)
     
     real, imag = amplitude * torch.cos(estimated_phase), amplitude * torch.sin(estimated_phase)
@@ -108,5 +110,5 @@ if __name__ == '__main__':
     
     estimated_signal = istft(estimated_spectrogram, T=T)
     estimated_signal = estimated_signal.squeeze(dim=0).numpy()
-    write_wav("data/man-estimated_GL{}.wav".format(iteration), signal=estimated_signal, sr=16000)
+    write_wav("data/GriffinLim/man-estimated_iter{}.wav".format(iteration), signal=estimated_signal, sr=16000)
     
