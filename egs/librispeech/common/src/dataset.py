@@ -5,7 +5,7 @@ import soundfile as sf
 import torch
 
 from algorithm.stft import BatchSTFT
-from algorithm.ideal_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
+from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
 EPS=1e-12
 
