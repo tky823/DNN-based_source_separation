@@ -61,3 +61,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 - v0.1.2: Conv-TasNetのレイヤー名の変更．DANetの入力特徴量をlog-magnitudeに変更．
 - v0.1.3: Wall Street Journal 0 (WSJ0) データセット用のスクリプトを追加．
 - v0.1.4: 非縁行列因子分解 (non-nagative matrix factorization; NMF)を追加．
+- v0.2.0: 短時間フーリエ変換の表現を変更．
