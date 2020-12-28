@@ -28,12 +28,12 @@ class BatchSTFT(nn.Module):
         Args:
             input (batch_size, T)
         Returns:
-            output (batch_size, F_bin, T_bin, 2): F_bin = fft_size//2+1, T_bin = (T - fft_size)//hop_size + 1. T_bin may be different because of padding.
+            output (batch_size, n_bins, n_frames, 2): n_bins = fft_size//2+1, n_frames = (T - fft_size)//hop_size + 1. n_frames may be different because of padding.
         """
         batch_size, T = input.size()
     
         fft_size, hop_size = self.fft_size, self.hop_size
-        F_bin = fft_size//2 + 1
+        n_bins = fft_size//2 + 1
         
         padding = (hop_size - (T - fft_size)%hop_size)%hop_size + 2 * fft_size # Assume that "fft_size%hop_size is 0"
         padding_left = padding // 2
@@ -42,7 +42,7 @@ class BatchSTFT(nn.Module):
         input = F.pad(input, (padding_left, padding_right))
         input = input.unsqueeze(dim=1)
         output = F.conv1d(input, self.bases, stride=self.hop_size)
-        real, imag = output[:, :F_bin], output[:, F_bin:]
+        real, imag = output[:, :n_bins], output[:, n_bins:]
         output = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3)
         
         return output
@@ -73,7 +73,7 @@ class BatchInvSTFT(nn.Module):
     def forward(self, input, T=None):
         """
         Args:
-            input (batch_size, F_bin, T_bin, 2): F_bin = fft_size//2+1, T_bin = (T - fft_size)//hop_size + 1. T_bin may be different because of padding.
+            input (batch_size, n_bins, n_frames, 2): n_bins = fft_size//2+1, n_frames = (T - fft_size)//hop_size + 1. n_frames may be different because of padding.
         Returns:
             output (batch_size, T):
         """
