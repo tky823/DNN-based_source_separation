@@ -18,63 +18,80 @@ class DSD100Dataset(torch.utils.data.Dataset):
         self.dsd100_root = dsd100_root
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixture/Dev')
-    
-    def _split(self):
+
         search_path = "{}/*".format(self.sources_dir)
         titles = [os.path.basename(path) for path in glob.glob(search_path)]
-        titles = sorted(titles)
-
-        json_data = []
-
-        for title in titles:
-            for source in __sources__:
-                path = os.path.join(self.sources_dir, title, '{}.wav'.format(source))
-                json_data.append()
-
-        self.titles = titles
-        self.json_data = json_data
+        self.titles = sorted(titles)
 
         
 
 class WaveDataset(DSD100Dataset):
     def __init__(self, dsd100_root):
         super().__init__(dsd100_root)
-        
+    
     def __getitem__(self, idx):
-        """
-        Returns:
-            mixture (1, T) <torch.Tensor>
-            sources (n_sources, T) <torch.Tensor>
-            segment_IDs (n_sources,) <list<str>>
-        """
-        data = self.json_data[idx]['sources']
-        mixture = 0
-        sources = None
-        segment_IDs = []
+        data = self.json_data[idx]
+
+        start_idx, end_idx = data['start'], data['end']
+        mixture_data = data['mixture']
+        sources_data = data['sources']
+
+        mixture, sr = sf.read(mixture_data['path'])
+        mixture = mixture[start_idx: end_idx].mean(axis=1)
         
-        for key in data.keys():
-            source_data = data[key]
-            start, end = source_data['start'], source_data['end']
-            wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, sr = sf.read(wav_path)
-            wave = np.array(wave)[start: end]
-            wave = wave[None]
-            mixture = mixture + wave
-        
-            if sources is None:
-                sources = wave
-            else:
-                sources = np.concatenate([sources, wave], axis=0)
-            
-            segment_IDs.append("{}_{}-{}".format(source_data['utterance-ID'], start, end))
-        
-        mixture = torch.Tensor(mixture).float()
-        sources = torch.Tensor(sources).float()
-        
-        return mixture, sources, segment_IDs
-        
+        sources = []
+
+        for _source in __sources__:
+            source, sr = sf.read(sources_data[_source]['path'])
+            source = source[start_idx: end_idx].mean(axis=1)
+            print(source.shape)
+            sources.append(sources)
+
+        return mixture, sources
+    
     def __len__(self):
         return len(self.json_data)
+    
+    def _split(self, samples, overlap=None):
+        if overlap is None:
+            overlap = samples // 2
+
+        self.json_data = []
+
+        for title in self.titles:
+            wave_path = os.path.join(self.sources_dir, title, 'vocals.wav')
+            wave, sr = sf.read(wave_path)
+
+            T = len(wave)
+
+            for start_idx in range(0, T, samples - overlap):
+                end_idx = start_idx + samples
+                if end_idx > T:
+                    break
+                data = {
+                    'title': title,
+                    'start': start_idx,
+                    'end': end_idx,
+                    'sources': {},
+                    'mixture': {}
+                }
+                    
+                for source in __sources__:
+                    source_data = {
+                        'path': os.path.join(self.sources_dir, title, '{}.wav'.format(source)),
+                        
+                    }
+                    data['sources'][source] = source_data
+                
+                mixture_data = {
+                    'path': os.path.join(self.mixture_dir, title, 'mixture.wav'),
+                }
+
+                data['mixture'] = mixture_data
+            
+                self.json_data.append(data)
+                
+            break
 
 class WaveTrainDataset(WaveDataset):
     def __init__(self, wav_root, json_path):
