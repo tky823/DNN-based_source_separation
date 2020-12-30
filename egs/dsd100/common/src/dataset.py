@@ -18,11 +18,11 @@ class DSD100Dataset(torch.utils.data.Dataset):
         self.dsd100_root = dsd100_root
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixture/Dev')
-
+    
+    def _search_titles(self):
         search_path = "{}/*".format(self.sources_dir)
         titles = [os.path.basename(path) for path in glob.glob(search_path)]
         self.titles = sorted(titles)
-
 
 class WaveDataset(DSD100Dataset):
     def __init__(self, dsd100_root, sources):
@@ -104,6 +104,7 @@ class WaveTrainDataset(WaveDataset):
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Dev')
 
+        self._search_titles()
         self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
@@ -124,6 +125,7 @@ class WaveEvalDataset(WaveDataset):
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
 
+        self._search_titles()
         self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
@@ -145,6 +147,7 @@ class WaveTestDataset(WaveDataset):
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
 
+        self._search_titles()
         self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
