@@ -17,6 +17,7 @@ parser.add_argument('--dsd100_root', type=str, default=None, help='Path for DSD1
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=4.0, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
+parser.add_argument('--sources', type=str, default="[vocals,bass]", help='Target sources')
 parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
 parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
@@ -36,7 +37,6 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -58,6 +58,9 @@ def main(args):
     samples = int(args.sr * args.duration)
     overlap = samples//2
     max_samples = int(args.sr * args.valid_duration)
+
+    sources = [source for source in args.sources.replace('[','').replace(']','').split(',')]
+    n_sources = len(sources)
     
     train_dataset = WaveTrainDataset(args.dsd100_root, samples, overlap=overlap)
     valid_dataset = WaveEvalDataset(args.dsd100_root, max_samples)
@@ -68,7 +71,7 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
