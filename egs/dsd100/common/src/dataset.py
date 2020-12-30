@@ -103,8 +103,10 @@ class WaveDataset(DSD100Dataset):
 # TODO: Fix validation dataset
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, dsd100_root, sources, sr, samples, overlap=None):
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None, n_train=40):
         super().__init__(dsd100_root, sources, sr)
+
+        self.n_train = n_train
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Dev')
@@ -121,11 +123,18 @@ class WaveTrainDataset(WaveDataset):
         mixture, sources, _, _, _ = super().__getitem__(idx)
 
         return mixture, sources
+    
+    def _search_titles(self):
+        super._search_titles()
+
+        self.titles = self.titles[:self.n_train]
 
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, dsd100_root, sources, sr, samples, overlap=None):
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None, n_train=40):
         super().__init__(dsd100_root, sources, sr)
+
+        self.n_train = n_train
 
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
@@ -143,6 +152,11 @@ class WaveEvalDataset(WaveDataset):
         mixture, sources, title, _, _ = super().__getitem__(idx)
     
         return mixture, sources, title
+    
+    def _search_titles(self):
+        super._search_titles()
+
+        self.titles = self.titles[self.n_train:]
 
 
 class WaveTestDataset(WaveDataset):
