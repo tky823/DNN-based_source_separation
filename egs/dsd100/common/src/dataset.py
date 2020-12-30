@@ -95,6 +95,7 @@ class WaveDataset(DSD100Dataset):
             
                 self.json_data.append(data)
 
+# TODO: Fix validation dataset
 
 class WaveTrainDataset(WaveDataset):
     def __init__(self, dsd100_root, sources, samples, overlap=None):
@@ -119,6 +120,11 @@ class WaveTrainDataset(WaveDataset):
 class WaveEvalDataset(WaveDataset):
     def __init__(self, dsd100_root, sources, samples, overlap=None):
         super().__init__(dsd100_root, sources)
+
+        self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
+        self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
+
+        self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
         """
