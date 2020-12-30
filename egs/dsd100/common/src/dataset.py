@@ -102,8 +102,8 @@ class WaveDataset(DSD100Dataset):
 # TODO: Fix validation dataset
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, dsd100_root, sources, samples, overlap=None):
-        super().__init__(dsd100_root, sources)
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None):
+        super().__init__(dsd100_root, sources, sr)
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Dev')
@@ -123,8 +123,8 @@ class WaveTrainDataset(WaveDataset):
 
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, dsd100_root, sources, samples, overlap=None):
-        super().__init__(dsd100_root, sources)
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None):
+        super().__init__(dsd100_root, sources, sr)
 
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
@@ -145,8 +145,8 @@ class WaveEvalDataset(WaveDataset):
 
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, dsd100_root, sources, samples, overlap=None):
-        super().__init__(dsd100_root, sources)
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None):
+        super().__init__(dsd100_root, sources, sr)
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
