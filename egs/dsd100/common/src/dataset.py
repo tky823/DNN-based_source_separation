@@ -40,15 +40,16 @@ class WaveDataset(DSD100Dataset):
         mixture_data = data['mixture']
         sources_data = data['sources']
 
-        mixture, sr = librosa.load(mixture_data['path'], sr)
-        mixture = mixture[start_idx: end_idx].mean(axis=1, keepdims=True).transpose(1,0)
+        mixture, sr = librosa.load(mixture_data['path'], sr, mono=True)
+        mixture = mixture[start_idx: end_idx]
+        mixture = mixture[np.newaxis,:]
 
         sources = []
         for _source in self.sources:
-            source, sr = librosa.load(sources_data[_source]['path'], sr)
-            source = source[start_idx: end_idx].mean(axis=1, keepdims=True)
+            source, sr = librosa.load(sources_data[_source]['path'], sr, mono=True)
+            source = source[start_idx: end_idx]
             sources.append(source)
-        sources = np.concatenate(sources, axis=1).transpose(1,0)
+        sources = np.array(sources)
 
         mixture = torch.Tensor(mixture).float()
         sources = torch.Tensor(sources).float()
@@ -68,7 +69,7 @@ class WaveDataset(DSD100Dataset):
 
         for title in self.titles:
             wave_path = os.path.join(self.sources_dir, title, 'vocals.wav')
-            wave, sr = librosa.load(wave_path, sr)
+            wave, sr = librosa.load(wave_path, sr, mono=True)
 
             T = len(wave)
 
