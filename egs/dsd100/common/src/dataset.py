@@ -125,7 +125,7 @@ class WaveTrainDataset(WaveDataset):
         return mixture, sources
     
     def _search_titles(self):
-        super._search_titles()
+        super()._search_titles()
 
         self.titles = self.titles[:self.n_train]
 
@@ -154,7 +154,7 @@ class WaveEvalDataset(WaveDataset):
         return mixture, sources, title
     
     def _search_titles(self):
-        super._search_titles()
+        super()._search_titles()
 
         self.titles = self.titles[self.n_train:]
 
