@@ -61,8 +61,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${sources}/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
-
+save_dir="${exp_dir}/${sources}/sr${sr}/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -78,11 +77,11 @@ time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="0"
 
 train.py \
+--sources ${sources} \
 --sr ${sr} \
 --dsd100_root ${dsd100_root} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
---sources ${sources} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
 --enc_nonlinear ${enc_nonlinear} \

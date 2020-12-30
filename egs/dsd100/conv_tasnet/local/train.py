@@ -55,15 +55,15 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
 
+    sources = [source for source in args.sources.replace('[','').replace(']','').split(',')]
+    n_sources = len(sources)
+
     samples = int(args.sr * args.duration)
     overlap = samples//2
     max_samples = int(args.sr * args.valid_duration)
 
-    sources = [source for source in args.sources.replace('[','').replace(']','').split(',')]
-    n_sources = len(sources)
-    
-    train_dataset = WaveTrainDataset(args.dsd100_root, samples, overlap=overlap)
-    valid_dataset = WaveEvalDataset(args.dsd100_root, max_samples)
+    train_dataset = WaveTrainDataset(args.dsd100_root, sources, samples, overlap=overlap)
+    valid_dataset = WaveEvalDataset(args.dsd100_root, sources, max_samples)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     

@@ -25,8 +25,10 @@ class DSD100Dataset(torch.utils.data.Dataset):
 
 
 class WaveDataset(DSD100Dataset):
-    def __init__(self, dsd100_root):
+    def __init__(self, dsd100_root, sources):
         super().__init__(dsd100_root)
+
+        self.sources = sources
     
     def __getitem__(self, idx):
         data = self.json_data[idx]
@@ -40,7 +42,7 @@ class WaveDataset(DSD100Dataset):
         mixture = mixture[start_idx: end_idx].mean(axis=1, keepdims=True).transpose(1,0)
 
         sources = []
-        for _source in __sources__:
+        for _source in self.sources:
             source, sr = sf.read(sources_data[_source]['path'])
             source = source[start_idx: end_idx].mean(axis=1, keepdims=True)
             sources.append(source)
@@ -95,8 +97,8 @@ class WaveDataset(DSD100Dataset):
 
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, dsd100_root, samples, overlap=None):
-        super().__init__(dsd100_root)
+    def __init__(self, dsd100_root, sources, samples, overlap=None):
+        super().__init__(dsd100_root, sources)
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Dev')
@@ -115,8 +117,8 @@ class WaveTrainDataset(WaveDataset):
 
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, dsd100_root, samples, overlap=None):
-        super().__init__(dsd100_root)
+    def __init__(self, dsd100_root, sources, samples, overlap=None):
+        super().__init__(dsd100_root, sources)
     
     def __getitem__(self, idx):
         """
@@ -131,8 +133,8 @@ class WaveEvalDataset(WaveDataset):
 
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, dsd100_root, samples, overlap=None):
-        super().__init__(dsd100_root)
+    def __init__(self, dsd100_root, sources, samples, overlap=None):
+        super().__init__(dsd100_root, sources)
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
