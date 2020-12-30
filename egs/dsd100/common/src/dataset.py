@@ -1,7 +1,7 @@
 import os
 import glob
 import numpy as np
-import soundfile as sf
+import librosa
 import torch
 
 from algorithm.stft import BatchSTFT
@@ -25,12 +25,14 @@ class DSD100Dataset(torch.utils.data.Dataset):
         self.titles = sorted(titles)
 
 class WaveDataset(DSD100Dataset):
-    def __init__(self, dsd100_root, sources):
+    def __init__(self, dsd100_root, sources, sr):
         super().__init__(dsd100_root)
 
         self.sources = sources
+        self.sr = sr
     
     def __getitem__(self, idx):
+        sr = self.sr
         data = self.json_data[idx]
 
         title = data['title']
@@ -38,12 +40,12 @@ class WaveDataset(DSD100Dataset):
         mixture_data = data['mixture']
         sources_data = data['sources']
 
-        mixture, sr = sf.read(mixture_data['path'])
+        mixture, sr = librosa.load(mixture_data['path'], sr)
         mixture = mixture[start_idx: end_idx].mean(axis=1, keepdims=True).transpose(1,0)
 
         sources = []
         for _source in self.sources:
-            source, sr = sf.read(sources_data[_source]['path'])
+            source, sr = librosa.load(sources_data[_source]['path'], sr)
             source = source[start_idx: end_idx].mean(axis=1, keepdims=True)
             sources.append(source)
         sources = np.concatenate(sources, axis=1).transpose(1,0)
@@ -57,6 +59,8 @@ class WaveDataset(DSD100Dataset):
         return len(self.json_data)
     
     def _split(self, samples, overlap=None):
+        sr = self.sr
+        
         if overlap is None:
             overlap = samples // 2
 
@@ -64,7 +68,7 @@ class WaveDataset(DSD100Dataset):
 
         for title in self.titles:
             wave_path = os.path.join(self.sources_dir, title, 'vocals.wav')
-            wave, sr = sf.read(wave_path)
+            wave, sr = librosa.load(wave_path, sr)
 
             T = len(wave)
 

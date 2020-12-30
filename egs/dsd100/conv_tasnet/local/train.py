@@ -62,8 +62,8 @@ def main(args):
     overlap = samples//2
     max_samples = int(args.sr * args.valid_duration)
 
-    train_dataset = WaveTrainDataset(args.dsd100_root, sources, samples, overlap=overlap)
-    valid_dataset = WaveEvalDataset(args.dsd100_root, sources, max_samples)
+    train_dataset = WaveTrainDataset(args.dsd100_root, sources, args.sr, samples, overlap=overlap)
+    valid_dataset = WaveEvalDataset(args.dsd100_root, sources, args.sr, max_samples)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
