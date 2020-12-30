@@ -9,7 +9,7 @@ from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener
 
 EPS=1e-12
 
-__sources__ = ['vocals', 'bass', 'drums', 'others']
+__sources__ = ['vocals', 'bass', 'drums', 'other']
 
 class DSD100Dataset(torch.utils.data.Dataset):
     def __init__(self, dsd100_root):
@@ -23,7 +23,6 @@ class DSD100Dataset(torch.utils.data.Dataset):
         titles = [os.path.basename(path) for path in glob.glob(search_path)]
         self.titles = sorted(titles)
 
-        
 
 class WaveDataset(DSD100Dataset):
     def __init__(self, dsd100_root):
@@ -32,22 +31,25 @@ class WaveDataset(DSD100Dataset):
     def __getitem__(self, idx):
         data = self.json_data[idx]
 
+        title = data['title']
         start_idx, end_idx = data['start'], data['end']
         mixture_data = data['mixture']
         sources_data = data['sources']
 
         mixture, sr = sf.read(mixture_data['path'])
-        mixture = mixture[start_idx: end_idx].mean(axis=1)
-        
-        sources = []
+        mixture = mixture[start_idx: end_idx].mean(axis=1, keepdims=True).transpose(1,0)
 
+        sources = []
         for _source in __sources__:
             source, sr = sf.read(sources_data[_source]['path'])
-            source = source[start_idx: end_idx].mean(axis=1)
-            print(source.shape)
-            sources.append(sources)
+            source = source[start_idx: end_idx].mean(axis=1, keepdims=True)
+            sources.append(source)
+        sources = np.concatenate(sources, axis=1).transpose(1,0)
 
-        return mixture, sources
+        mixture = torch.Tensor(mixture).float()
+        sources = torch.Tensor(sources).float()
+
+        return mixture, sources, title, start_idx, end_idx
     
     def __len__(self):
         return len(self.json_data)
@@ -90,44 +92,65 @@ class WaveDataset(DSD100Dataset):
                 data['mixture'] = mixture_data
             
                 self.json_data.append(data)
-                
-            break
+
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
-    
-    def __getitem__(self, idx):
-        mixture, sources, _ = super().__getitem__(idx)
+    def __init__(self, dsd100_root, samples, overlap=None):
+        super().__init__(dsd100_root)
         
-        return mixture, sources
+        self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
+        self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Dev')
 
-
-class WaveEvalDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
+        self._split(samples, overlap=overlap)
     
-    def __getitem__(self, idx):
-        mixture, sources, _ = super().__getitem__(idx)
-    
-        return mixture, sources
-
-
-class WaveTestDataset(WaveDataset):
-    def __init__(self, wav_root, json_path):
-        super().__init__(wav_root, json_path)
-        
     def __getitem__(self, idx):
         """
         Returns:
             mixture (1, T) <torch.Tensor>
             sources (n_sources, T) <torch.Tensor>
-            segment_IDs (n_sources,) <list<str>>
         """
-        mixture, sources, segment_IDs = super().__getitem__(idx)
-        
-        return mixture, sources, segment_IDs
+        mixture, sources, _, _, _ = super().__getitem__(idx)
 
+        return mixture, sources
+
+
+class WaveEvalDataset(WaveDataset):
+    def __init__(self, dsd100_root, samples, overlap=None):
+        super().__init__(dsd100_root)
+    
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, T) <torch.Tensor>
+            sources (n_sources, T) <torch.Tensor>
+            title <str>
+        """
+        mixture, sources, title, _, _ = super().__getitem__(idx)
+    
+        return mixture, sources, title
+
+
+class WaveTestDataset(WaveDataset):
+    def __init__(self, dsd100_root, samples, overlap=None):
+        super().__init__(dsd100_root)
+        
+        self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
+        self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
+
+        self._split(samples, overlap=overlap)
+    
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, T) <torch.Tensor>
+            sources (n_sources, T) <torch.Tensor>
+            title <str>
+            start_idx <int>
+            end_idx <int>
+        """
+        mixture, sources, title, start_idx, end_idx = super().__getitem__(idx)
+
+        return mixture, sources, title, start_idx, end_idx
 
 class SpectrogramDataset(WaveDataset):
     def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
