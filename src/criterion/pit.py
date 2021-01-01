@@ -82,6 +82,57 @@ class PIT2d(PIT):
         """
         super().__init__(criterion, n_sources)
 
+class ORPIT:
+    def __init__(self, criterion, n_sources=None):
+        self.criterion = criterion
+        self.n_sources = n_sources
+        patterns = list(itertools.permutations(range(2))) # 2 means 'one' and 'rest'
+        self.patterns = torch.Tensor(patterns).long()
+
+    def __call__(self, input, target, batch_mean=True):
+        """
+        Args:
+            input (batch_size, 2, *)
+            target (batch_size, n_sources, *)
+        Returns:
+            loss (batch_size,): minimum loss for each data
+            indices (batch_size,): most possible indices
+        """
+        n_sources = self.n_sources
+        criterion = self.criterion
+
+        if n_sources is None:
+            n_sources = target.size(1)
+
+        possible_loss = None
+        size_mask = target.size()[1:]
+    
+        for idx in range(n_sources):
+            mask_one = torch.zeros_like(size_mask)
+            mask_one[idx] = 1.0
+            mask_rest = torch.ones_like(size_mask) - mask_one
+            target_one = torch.sum(mask_one * target, dim=1, keepdim=True)
+            target_rest = torch.sum(mask_rest * target, dim=1, keepdim=True)
+            target_one_and_rest = torch.cat([target_one, target_rest], dim=1)
+
+            loss = criterion(input, target_one_and_rest, batch_mean=False)
+            if possible_loss is None:
+                possible_loss = loss.unsqueeze(dim=1)
+            else:
+                possible_loss = torch.cat([possible_loss, loss.unsqueeze(dim=1)], dim=1)
+        
+        # possible_loss (batch_size, n_sources)
+        if criterion.maximize:
+            loss, indices = torch.max(possible_loss, dim=1) # loss (batch_size,), indices (batch_size,)
+        else:
+            loss, indices = torch.min(possible_loss, dim=1) # loss (batch_size,), indices (batch_size,)
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+            
+        return loss, indices
+
+
 if __name__ == '__main__':
     import torch
     from criterion.sdr import SISDR
