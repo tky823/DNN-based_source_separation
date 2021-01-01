@@ -105,12 +105,11 @@ class ORPIT:
             n_sources = target.size(1)
 
         possible_loss = None
-        size_mask = target.size()[1:]
     
         for idx in range(n_sources):
-            mask_one = torch.zeros_like(size_mask)
-            mask_one[idx] = 1.0
-            mask_rest = torch.ones_like(size_mask) - mask_one
+            mask_one = torch.zeros_like(target)
+            mask_one[:,idx] = 1.0
+            mask_rest = torch.ones_like(target) - mask_one
             target_one = torch.sum(mask_one * target, dim=1, keepdim=True)
             target_rest = torch.sum(mask_rest * target, dim=1, keepdim=True)
             target_one_and_rest = torch.cat([target_one, target_rest], dim=1)
@@ -136,6 +135,7 @@ class ORPIT:
 if __name__ == '__main__':
     import torch
     from criterion.sdr import SISDR
+    from criterion.distance import L1Loss
     
     batch_size, C, T = 4, 2, 1024
     
@@ -144,6 +144,26 @@ if __name__ == '__main__':
     
     input = torch.randint(2, (batch_size, C, T), dtype=torch.float)
     target = torch.randint(2, (batch_size, C, T), dtype=torch.float)
-    loss = pit_criterion(input, target)
+    loss, pattern = pit_criterion(input, target)
     
     print(loss)
+    print(pattern)
+
+    batch_size, C, T = 4, 3, 5
+
+    criterion = L1Loss()
+    pit_criterion = ORPIT(criterion, n_sources=C)
+    
+    input = torch.randint(5, (batch_size, C, T), dtype=torch.float)
+    target = torch.randint(5, (batch_size, C, T), dtype=torch.float)
+    target[0] = input[0, torch.Tensor([2,0,1]).long()]
+    target[1] = input[1, torch.Tensor([0,1,2]).long()]
+    target[2] = input[2, torch.Tensor([0,2,1]).long()]
+    target[3] = input[3, torch.Tensor([1,2,0]).long()]
+    input_one = input[:, 0:1]
+    input_rest = input[:, 1:].sum(dim=1, keepdim=True)
+    input = torch.cat([input_one, input_rest], dim=1)
+    loss, indices = pit_criterion(input, target)
+    
+    print(loss)
+    print(indices)
