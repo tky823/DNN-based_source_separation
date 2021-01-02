@@ -308,6 +308,8 @@ class ORPITTrainer(Trainer):
                     output_rest = output_one_and_rest[:,1:]
                     output = torch.cat([output, output_one], dim=1)
                 
+                output = torch.cat([output, output_rest], dim=1)
+                
                 print(output.size())
                 
                 if idx < 5:
