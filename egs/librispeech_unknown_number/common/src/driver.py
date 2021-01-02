@@ -298,13 +298,13 @@ class ORPITTrainer(Trainer):
                     sources = sources.cuda()
                 
                 output_one_and_rest = self.model(mixture)
-                output_one = output_one_and_rest[:,0]
+                output_one = output_one_and_rest[:,0:1]
                 output_rest = output_one_and_rest[:,1:]
                 output = output_one
 
                 for source_idx in range(1, self.n_sources-1):
                     output_one_and_rest = self.model(output_rest)
-                    output_one = output_one_and_rest[:,0]
+                    output_one = output_one_and_rest[:,0:1]
                     output_rest = output_one_and_rest[:,1:]
                     output = torch.cat([output, output_one], dim=1)
                 
