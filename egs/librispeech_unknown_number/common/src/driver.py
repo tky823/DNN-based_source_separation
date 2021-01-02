@@ -7,7 +7,6 @@ import torch.nn as nn
 
 from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
-from algorithm.pit import PIT, ORPIT
 
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
