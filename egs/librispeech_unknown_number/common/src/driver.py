@@ -239,7 +239,6 @@ class ORPITTrainer(Trainer):
             package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
 
             self.start_epoch = package['epoch']
-            self.best_loss = package['best_loss']
             self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
             
             if isinstance(self.model, nn.DataParallel):
@@ -309,8 +308,6 @@ class ORPITTrainer(Trainer):
                     output = torch.cat([output, output_one], dim=1)
                 
                 output = torch.cat([output, output_rest], dim=1)
-                
-                print(output.size())
                 
                 if idx < 5:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
