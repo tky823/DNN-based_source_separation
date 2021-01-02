@@ -8,7 +8,7 @@ continue_from="$2"
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
-duration=2
+duration=4
 valid_duration=4
 max_or_min='min'
 
