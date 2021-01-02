@@ -1,7 +1,7 @@
 import os
 import glob
 import numpy as np
-import soundfile as sf
+import librosa
 import torch
 
 from algorithm.stft import BatchSTFT
@@ -18,17 +18,21 @@ class DSD100Dataset(torch.utils.data.Dataset):
         self.dsd100_root = dsd100_root
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixture/Dev')
-
+    
+    def _search_titles(self):
         search_path = "{}/*".format(self.sources_dir)
         titles = [os.path.basename(path) for path in glob.glob(search_path)]
         self.titles = sorted(titles)
 
-
 class WaveDataset(DSD100Dataset):
-    def __init__(self, dsd100_root):
+    def __init__(self, dsd100_root, sources, sr):
         super().__init__(dsd100_root)
+
+        self.sources = sources
+        self.sr = sr
     
     def __getitem__(self, idx):
+        sr = self.sr
         data = self.json_data[idx]
 
         title = data['title']
@@ -36,15 +40,16 @@ class WaveDataset(DSD100Dataset):
         mixture_data = data['mixture']
         sources_data = data['sources']
 
-        mixture, sr = sf.read(mixture_data['path'])
-        mixture = mixture[start_idx: end_idx].mean(axis=1, keepdims=True).transpose(1,0)
+        mixture, sr = librosa.load(mixture_data['path'], sr, mono=True)
+        mixture = mixture[start_idx: end_idx]
+        mixture = mixture[np.newaxis,:]
 
         sources = []
-        for _source in __sources__:
-            source, sr = sf.read(sources_data[_source]['path'])
-            source = source[start_idx: end_idx].mean(axis=1, keepdims=True)
+        for _source in self.sources:
+            source, sr = librosa.load(sources_data[_source]['path'], sr, mono=True)
+            source = source[start_idx: end_idx]
             sources.append(source)
-        sources = np.concatenate(sources, axis=1).transpose(1,0)
+        sources = np.array(sources)
 
         mixture = torch.Tensor(mixture).float()
         sources = torch.Tensor(sources).float()
@@ -55,6 +60,8 @@ class WaveDataset(DSD100Dataset):
         return len(self.json_data)
     
     def _split(self, samples, overlap=None):
+        sr = self.sr
+        
         if overlap is None:
             overlap = samples // 2
 
@@ -62,7 +69,7 @@ class WaveDataset(DSD100Dataset):
 
         for title in self.titles:
             wave_path = os.path.join(self.sources_dir, title, 'vocals.wav')
-            wave, sr = sf.read(wave_path)
+            wave, sr = librosa.load(wave_path, sr, mono=True)
 
             T = len(wave)
 
@@ -93,14 +100,18 @@ class WaveDataset(DSD100Dataset):
             
                 self.json_data.append(data)
 
+# TODO: Fix validation dataset
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, dsd100_root, samples, overlap=None):
-        super().__init__(dsd100_root)
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None, n_train=40):
+        super().__init__(dsd100_root, sources, sr)
+
+        self.n_train = n_train
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Dev')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Dev')
 
+        self._search_titles()
         self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
@@ -112,11 +123,24 @@ class WaveTrainDataset(WaveDataset):
         mixture, sources, _, _, _ = super().__getitem__(idx)
 
         return mixture, sources
+    
+    def _search_titles(self):
+        super()._search_titles()
+
+        self.titles = self.titles[:self.n_train]
 
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, dsd100_root, samples, overlap=None):
-        super().__init__(dsd100_root)
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None, n_train=40):
+        super().__init__(dsd100_root, sources, sr)
+
+        self.n_train = n_train
+
+        self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
+        self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
+
+        self._search_titles()
+        self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
         """
@@ -128,15 +152,21 @@ class WaveEvalDataset(WaveDataset):
         mixture, sources, title, _, _ = super().__getitem__(idx)
     
         return mixture, sources, title
+    
+    def _search_titles(self):
+        super()._search_titles()
+
+        self.titles = self.titles[self.n_train:]
 
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, dsd100_root, samples, overlap=None):
-        super().__init__(dsd100_root)
+    def __init__(self, dsd100_root, sources, sr, samples, overlap=None):
+        super().__init__(dsd100_root, sources, sr)
         
         self.sources_dir = os.path.join(dsd100_root, 'Sources/Test')
         self.mixture_dir = os.path.join(dsd100_root, 'Mixtures/Test')
 
+        self._search_titles()
         self._split(samples, overlap=overlap)
     
     def __getitem__(self, idx):
