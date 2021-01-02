@@ -46,7 +46,7 @@ weight_decay=1e-5
 batch_size=4
 epochs=100
 
-use_cuda=1
+use_cuda=0
 overwrite=0
 seed=111
 
