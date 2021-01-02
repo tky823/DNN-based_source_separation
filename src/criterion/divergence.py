@@ -6,9 +6,9 @@ EPS=1e-12
 def kl_divergence(input, target, eps=EPS):
     """
     Args:
-        input (C, ...)
+        input (C, *)
     Returns:
-        loss (...)
+        loss (*)
     """
     ratio = (target + eps) / (input + eps)
     loss = target * torch.log(ratio)
@@ -19,7 +19,7 @@ def kl_divergence(input, target, eps=EPS):
 def is_divergence(input, target, eps=EPS):
     """
     Args:
-        input (...)
+        input (*)
     """
     ratio = (target + eps) / (input + eps)
     loss = ratio - torch.log(ratio) - 1
@@ -29,7 +29,7 @@ def is_divergence(input, target, eps=EPS):
 def generalized_kl_divergence(input, target, eps=EPS):
     """
     Args:
-        input (...)
+        input (*)
     """
     ratio = (target + eps) / (input + eps)
     loss = target * torch.log(ratio) + input - target
@@ -41,7 +41,7 @@ def beta_divergence(input, target, beta=2):
     Beta divergence
 
     Args:
-        input (batch_size, ...)
+        input (batch_size, *)
     """
     beta_minus1 = beta - 1
 
@@ -54,19 +54,22 @@ def beta_divergence(input, target, beta=2):
 
 
 class KLdivergence(nn.Module):
-    def __init__(self, eps=EPS):
+    def __init__(self, reduction='sum', eps=EPS):
         super().__init__()
 
+        self.reduction = reduction
+        self.maximize = False
         self.eps = eps
     
-    def forward(self, input, target, reduction='sum', batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            input (batch_size, C, ...)
-            target (batch_size, C, ...)
+            input (batch_size, C, *)
+            target (batch_size, C, *)
         Returns:
             loss () or (batch_size, )
         """
+        reduction = self.reduction
         n_dim = input.dim()
 
         permuted_dims = [1, 0] + list(range(2, n_dim))
@@ -88,19 +91,22 @@ class KLdivergence(nn.Module):
         return loss
 
 class ISdivergence(nn.Module):
-    def __init__(self, eps=EPS):
+    def __init__(self, reduction='sum', eps=EPS):
         super().__init__()
 
+        self.reduction = reduction
+        self.maximize = False
         self.eps = eps
     
-    def forward(self, input, target, reduction='sum', batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            input (batch_size, ...)
-            target (batch_size, ...)
+            input (batch_size, *)
+            target (batch_size, *)
         Returns:
             loss () or (batch_size, )
         """
+        reduction = self.reduction
         n_dim = input.dim()
 
         loss = is_divergence(input, target, eps=self.eps)
@@ -120,19 +126,22 @@ class ISdivergence(nn.Module):
         return loss
 
 class GeneralizedKLdivergence(nn.Module):
-    def __init__(self, eps=EPS):
+    def __init__(self, reduction='sum', eps=EPS):
         super().__init__()
 
+        self.reduction = reduction
+        self.maximize = False
         self.eps = eps
     
-    def forward(self, input, target, reduction='sum', batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            input (batch_size, ...)
-            target (batch_size, ...)
+            input (batch_size, *)
+            target (batch_size, *)
         Returns:
             loss () or (batch_size, )
         """
+        reduction = self.reduction
         n_dim = input.dim()
 
         loss = generalized_kl_divergence(input, target, eps=self.eps)

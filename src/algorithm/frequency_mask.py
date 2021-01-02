@@ -5,35 +5,35 @@ EPS=1e-12
 def ideal_binary_mask(input):
     """
     Args:
-        input (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
     n_dim = input.dim()
     
     if n_dim == 3:
-        n_sources, F_bin, T_bin = input.size()
+        n_sources, n_bins, n_frames = input.size()
         
         input = input.permute(1,2,0).contiguous()
-        flatten_input = input.view(F_bin*T_bin, n_sources)
-        flatten_idx = torch.arange(0, F_bin*T_bin*n_sources, n_sources)
+        flatten_input = input.view(n_bins*n_frames, n_sources)
+        flatten_idx = torch.arange(0, n_bins*n_frames*n_sources, n_sources)
         flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
-        flatten_mask = torch.zeros(F_bin*T_bin*n_sources)
+        flatten_mask = torch.zeros(n_bins*n_frames*n_sources)
         flatten_mask[flatten_idx] = 1
         
-        mask = flatten_mask.view(F_bin, T_bin, n_sources)
+        mask = flatten_mask.view(n_bins, n_frames, n_sources)
         mask = mask.permute(2,0,1).contiguous()
     elif n_dim == 4:
-        batch_size, n_sources, F_bin, T_bin = input.size()
+        batch_size, n_sources, n_bins, n_frames = input.size()
         
         input = input.permute(0,2,3,1).contiguous()
-        flatten_input = input.view(batch_size*F_bin*T_bin, n_sources)
-        flatten_idx = torch.arange(0, batch_size*F_bin*T_bin*n_sources, n_sources)
+        flatten_input = input.view(batch_size*n_bins*n_frames, n_sources)
+        flatten_idx = torch.arange(0, batch_size*n_bins*n_frames*n_sources, n_sources)
         flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
-        flatten_mask = torch.zeros(batch_size*F_bin*T_bin*n_sources)
+        flatten_mask = torch.zeros(batch_size*n_bins*n_frames*n_sources)
         flatten_mask[flatten_idx] = 1
         
-        mask = flatten_mask.view(batch_size, F_bin, T_bin, n_sources)
+        mask = flatten_mask.view(batch_size, n_bins, n_frames, n_sources)
         mask = mask.permute(0,3,1,2).contiguous()
     else:
         raise ValueError("Not support {}-dimension".format(n_dim))
@@ -43,37 +43,37 @@ def ideal_binary_mask(input):
 def ideal_ratio_mask(input, eps=EPS):
     """
     Args:
-        input (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
     n_dim = input.dim()
     
     if n_dim == 3:
-        norm = input.sum(dim=0, keepdim=True) # (1, F_bin, T_bin)
+        norm = input.sum(dim=0, keepdim=True) # (1, n_bins, n_frames)
     elif n_dim == 4:
-        norm = input.sum(dim=1, keepdim=True) # (batch_size, 1, F_bin, T_bin)
+        norm = input.sum(dim=1, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
         raise ValueError("Not support {}-dimension".format(n_dim))
     
-    mask = input / (norm + eps) # (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+    mask = input / (norm + eps) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     
     return mask
 
 def wiener_filter_mask(input, eps=EPS):
     """
     Args:
-        input (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
     n_dim = input.dim()
-    power = input**2 # (n_sources, F_bin, T_bin) or (batch_size, n_sources, F_bin, T_bin)
+    power = input**2 # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     
     if n_dim == 3:
-        norm = power.sum(dim=0, keepdim=True) # (1, F_bin, T_bin)
+        norm = power.sum(dim=0, keepdim=True) # (1, n_bins, n_frames)
     elif n_dim == 4:
-        norm = power.sum(dim=1, keepdim=True) # (batch_size, 1, F_bin, T_bin)
+        norm = power.sum(dim=1, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
         raise ValueError("Not support {}-dimension".format(n_dim))
     
@@ -88,9 +88,9 @@ See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurr
 def phase_sensitive_mask(input, eps=EPS):
     """
     Args:
-        input (n_sources, 2*F_bin, T_bin) or (batch_size, 2*n_sources, F_bin, T_bin)
+        input (n_sources, 2*n_bins, n_frames) or (batch_size, 2*n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, 2*F_bin, T_bin) or (batch_size, 2*n_sources, F_bin, T_bin)
+        mask (n_sources, 2*n_bins, n_frames) or (batch_size, 2*n_sources, n_bins, n_frames)
     """
     raise NotImplementedError("No implementation")
 

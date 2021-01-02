@@ -1,13 +1,8 @@
 .DS_Store
 
 # outputs
+test/
 data/
-faithful.csv
-faithful-*.png
-bases*.png
-Fourier.png
-power.png
-*spectrogram*.png
 *.wav
 
 # Byte-compiled / optimized / DLL files

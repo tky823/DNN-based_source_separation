@@ -364,9 +364,9 @@ class AttractorTrainer(Trainer):
                 assignment = assignment.cuda()
                 threshold_weight = threshold_weight.cuda()
                 
-            real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+            real, imag = mixture[...,0], mixture[...,1]
             mixture_amplitude = torch.sqrt(real**2+imag**2)
-            real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+            real, imag = sources[...,0], sources[...,1]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
@@ -416,9 +416,9 @@ class AttractorTrainer(Trainer):
                     threshold_weight = threshold_weight.cuda()
                     assignment = assignment.cuda()
                 
-                real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+                real, imag = mixture[...,0], mixture[...,1]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
-                real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+                real, imag = sources[...,0], sources[...,1]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
@@ -432,9 +432,9 @@ class AttractorTrainer(Trainer):
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
                     estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+                    real, imag = mixture[...,0], mixture[...,1]
                     real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
+                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu().numpy()
                     
@@ -488,8 +488,8 @@ class AttractorTester(Tester):
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
-                mixture (1, 1, 2*F_bin, T_bin)
-                sources (1, n_sources, 2*F_bin, T_bin)
+                mixture (1, 1, F_bin, T_bin, 2)
+                sources (1, n_sources, F_bin, T_bin, 2)
                 assignment (1, n_sources, F_bin, T_bin)
                 threshold_weight (1, F_bin, T_bin)
                 T (1,)
@@ -500,9 +500,9 @@ class AttractorTester(Tester):
                     ideal_mask = ideal_mask.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+                real, imag = mixture[...,0], mixture[...,1]
                 mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
-                real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+                real, imag = sources[...,0], sources[...,1]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
@@ -515,9 +515,9 @@ class AttractorTester(Tester):
                 mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
                 estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
                 ratio = estimated_sources_amplitude / mixture_amplitude
-                real, imag = mixture[:,:F_bin], mixture[:,F_bin:] # -> (1, F_bin, T_bin), (1, F_bin, T_bin)
+                real, imag = mixture[...,0], mixture[...,1] # -> (1, F_bin, T_bin), (1, F_bin, T_bin)
                 real, imag = ratio * real, ratio * imag # -> (n_sources, F_bin, T_bin), (n_sources, F_bin, T_bin)
-                estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
+                estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
                 
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 T = T[0]  # -> ()
@@ -608,9 +608,9 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 sources = sources.cuda()
                 threshold_weight = threshold_weight.cuda()
             
-            real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+            real, imag = mixture[...,0], mixture[...,1]
             mixture_amplitude = torch.sqrt(real**2+imag**2)
-            real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+            real, imag = sources[...,0], sources[...,1]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=sources.size(1))
@@ -649,8 +649,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         with torch.no_grad():
             for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, 2*F_bin, T_bin)
+                mixture (batch_size, 1, F_bin, T_bin, 2)
+                sources (batch_size, n_sources, F_bin, T_bin, 2)
                 threshold_weight (batch_size, F_bin, T_bin)
                 """
                 if self.use_cuda:
@@ -658,9 +658,9 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                     sources = sources.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+                real, imag = mixture[...,0], mixture[...,1]
                 mixture_amplitude = torch.sqrt(real**2+imag**2)
-                real, imag = sources[:,:,:F_bin], sources[:,:,F_bin:]
+                real, imag = sources[...,0], sources[...,1]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
                 output = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
@@ -674,9 +674,9 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
                     estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[:,:F_bin], mixture[:,F_bin:]
+                    real, imag = mixture[...,0], mixture[...,1]
                     real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real, imag], dim=1) # -> (n_sources, 2*F_bin, T_bin)
+                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu().numpy()
                     
@@ -699,3 +699,140 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         valid_loss /= n_valid
         
         return valid_loss
+
+class ORPITTrainer(Trainer):
+    def __init__(self, model, loader, pit_criterion, optimizer, args):
+        self.train_loader, self.valid_loader = loader['train'], loader['valid']
+        
+        self.model = model
+        
+        self.pit_criterion = pit_criterion
+        self.optimizer = optimizer
+        
+        self._reset(args)
+    
+    def _reset(self, args):
+        self.sr = args.sr
+        self.n_sources = args.n_sources
+        self.max_norm = args.max_norm
+        
+        self.model_dir = args.model_dir
+        self.loss_dir = args.loss_dir
+        self.sample_dir = args.sample_dir
+        
+        os.makedirs(self.model_dir, exist_ok=True)
+        os.makedirs(self.loss_dir, exist_ok=True)
+        os.makedirs(self.sample_dir, exist_ok=True)
+        
+        self.epochs = args.epochs
+        self.train_loss = torch.empty(self.epochs)
+        
+        self.use_cuda = args.use_cuda
+        
+        if args.continue_from:
+            package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
+
+            self.start_epoch = package['epoch']
+            self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
+            
+            if isinstance(self.model, nn.DataParallel):
+                self.model.module.load_state_dict(package['state_dict'])
+            else:
+                self.model.load_state_dict(package['state_dict'])
+            
+            self.optimizer.load_state_dict(package['optim_dict'])
+        else:
+            # TODO: redundant? last.pth never exists
+            model_path = os.path.join(self.model_dir, "last.pth")
+            
+            if os.path.exists(model_path):
+                if args.overwrite:
+                    print("Overwrite models.")
+                else:
+                    raise ValueError("{} already exists. If you continue to run, set --overwrite to be True.".format(model_path))
+            
+            self.start_epoch = 0
+    
+    def run(self):
+        for epoch in range(self.start_epoch, self.epochs):
+            start = time.time()
+            train_loss = self.run_one_epoch(epoch)
+            end = time.time()
+            
+            print("[Epoch {}/{}] loss (train): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, end - start), flush=True)
+            
+            self.train_loss[epoch] = train_loss
+            
+            model_path = os.path.join(self.model_dir, "last.pth")
+            self.save_model(epoch, model_path)
+            
+            save_path = os.path.join(self.loss_dir, "loss.png")
+            draw_loss_curve(train_loss=self.train_loss[:epoch+1], save_path=save_path)
+    
+    def run_one_epoch(self, epoch):
+        """
+        Training
+        """
+        train_loss = self.run_one_epoch_train(epoch)
+        _ = self.run_one_epoch_eval(epoch)
+
+        return train_loss
+    
+    def run_one_epoch_eval(self, epoch):
+        """
+        Validation
+        """
+        self.model.eval()
+
+        with torch.no_grad():
+            for idx, (mixture, sources) in enumerate(self.valid_loader):
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                
+                output_one_and_rest = self.model(mixture)
+                output_one = output_one_and_rest[:,0:1]
+                output_rest = output_one_and_rest[:,1:]
+                output = output_one
+
+                for source_idx in range(1, self.n_sources-1):
+                    output_one_and_rest = self.model(output_rest)
+                    output_one = output_one_and_rest[:,0:1]
+                    output_rest = output_one_and_rest[:,1:]
+                    output = torch.cat([output, output_one], dim=1)
+                
+                output = torch.cat([output, output_rest], dim=1)
+                
+                if idx < 5:
+                    mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
+                    estimated_sources = output[0].detach().cpu().numpy()
+                    
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    os.makedirs(save_dir, exist_ok=True)
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    norm = np.abs(mixture).max()
+                    mixture = mixture / norm
+                    write_wav(save_path, signal=mixture, sr=self.sr)
+                    
+                    for source_idx, estimated_source in enumerate(estimated_sources):
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        norm = np.abs(estimated_source).max()
+                        estimated_source = estimated_source / norm
+                        write_wav(save_path, signal=estimated_source, sr=self.sr)
+        
+        return -1
+    
+    def save_model(self, epoch, model_path='./tmp.pth'):
+        if isinstance(self.model, nn.DataParallel):
+            package = self.model.module.get_package()
+            package['state_dict'] = self.model.module.state_dict()
+        else:
+            package = self.model.get_package()
+            package['state_dict'] = self.model.state_dict()
+            
+        package['optim_dict'] = self.optimizer.state_dict()
+        
+        package['epoch'] = epoch + 1
+        package['train_loss'] = self.train_loss
+        
+        torch.save(package, model_path)
