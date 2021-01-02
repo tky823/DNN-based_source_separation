@@ -9,7 +9,7 @@ n_sources=3
 
 wav_root="../../../dataset/LibriSpeech"
 train_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.json"
-valid_json_path="../../../dataset/LibriSpeech/dev-clean/test-${n_sources}mix.json"
+valid_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.json"
 
 sr=16000
 
