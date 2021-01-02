@@ -62,3 +62,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 - v0.1.3: Add scripts for Wall Street Journal 0 (WSJ0) dataset.
 - v0.1.4: Add non-nagative matrix factorization (NMF).
 - v0.2.0: Change the representation of short time Fourier transform (STFT).
+- v0.2.1: `conv_tasnet` directory is renamed to `conv-tasnet`. Add one-and-rest PIT (ORPIT).
