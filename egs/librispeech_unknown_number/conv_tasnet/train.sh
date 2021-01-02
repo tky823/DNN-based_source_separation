@@ -43,10 +43,10 @@ optimizer='adam'
 lr=1e-3
 weight_decay=1e-5
 
-batch_size=4
+batch_size=16
 epochs=100
 
-use_cuda=0
+use_cuda=1
 overwrite=0
 seed=111
 
