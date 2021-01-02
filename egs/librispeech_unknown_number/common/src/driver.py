@@ -308,6 +308,8 @@ class ORPITTrainer(Trainer):
                     output_rest = output_one_and_rest[:,1:]
                     output = torch.cat([output, output_one], dim=1)
                 
+                print(output.size())
+                
                 if idx < 5:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()

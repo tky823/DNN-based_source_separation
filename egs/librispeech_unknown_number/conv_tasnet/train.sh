@@ -43,7 +43,7 @@ optimizer='adam'
 lr=1e-3
 weight_decay=1e-5
 
-batch_size=16
+batch_size=4
 epochs=100
 
 use_cuda=0
