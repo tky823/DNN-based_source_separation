@@ -8,8 +8,8 @@ continue_from="$2"
 n_sources=3
 
 wav_root="../../../dataset/LibriSpeech"
-train_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.json"
-valid_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.json"
+train_json_path="../../../dataset/LibriSpeech/train-clean-100/train-100-${n_sources}mix.json"
+valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.json"
 
 sr=16000
 
@@ -18,16 +18,16 @@ enc_bases='trainable'
 dec_bases='trainable'
 enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
-N=32
+N=64
 L=16
 
 # Separator
-H=64
-B=32
-Sc=32
+H=256
+B=128
+Sc=128
 P=3
-X=4
-R=2
+X=6
+R=3
 dilated=1
 separable=1
 causal=0
@@ -43,7 +43,7 @@ optimizer='adam'
 lr=1e-3
 weight_decay=1e-5
 
-batch_size=16
+batch_size=4
 epochs=100
 
 use_cuda=1
