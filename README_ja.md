@@ -32,7 +32,7 @@ cd <REPOSITORY_ROOT>/egs/librispeech/common/
 
 ### 1. 学習
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 . ./train.sh <OUTPUT_DIR>
 ```
 
@@ -43,13 +43,13 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 
 ### 2. 評価
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 . ./test.sh <OUTPUT_DIR>
 ```
 
 ### 3. デモンストレーション
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 . ./demo.sh
 ```
 
