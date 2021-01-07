@@ -4,3 +4,6 @@
 *.png
 *.wav
 *.pth
+
+# ipython notebook
+*.ipynb
