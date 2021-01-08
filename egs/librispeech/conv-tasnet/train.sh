@@ -63,7 +63,6 @@ fi
 
 save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
-
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
