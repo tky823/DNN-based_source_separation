@@ -32,7 +32,7 @@ cd <REPOSITORY_ROOT>/egs/librispeech/common/
 
 ### 1. 学習
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 . ./train.sh <OUTPUT_DIR>
 ```
 
@@ -43,13 +43,13 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 
 ### 2. 評価
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 . ./test.sh <OUTPUT_DIR>
 ```
 
 ### 3. デモンストレーション
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 . ./demo.sh
 ```
 
@@ -60,6 +60,6 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 - v0.1.1: DANetを追加．
 - v0.1.2: Conv-TasNetのレイヤー名の変更．DANetの入力特徴量をlog-magnitudeに変更．
 - v0.1.3: Wall Street Journal 0 (WSJ0) データセット用のスクリプトを追加．
-- v0.1.4: 非縁行列因子分解 (non-nagative matrix factorization; NMF)を追加．
+- v0.1.4: 非負値行列因子分解 (non-nagative matrix factorization; NMF)を追加．
 - v0.2.0: 短時間フーリエ変換の表現を変更．
 - v0.2.1: `conv_tasnet`ディレクトリの名前を`conv-tasnet`に変更．ORPIT (one-and-rest PIT)を追加．

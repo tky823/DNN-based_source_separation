@@ -17,7 +17,7 @@ cd <REPOSITORY_ROOT>/egs/librispeech/common/
 
 ### 1. Training
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./train.sh <OUTPUT_DIR>
 ```
 
@@ -28,13 +28,13 @@ If you want to resume training,
 
 ### 2. Evaluation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./test.sh <OUTPUT_DIR>
 ```
 
 ### 3. Demo
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
 . ./demo.sh
 ```
 
