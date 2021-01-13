@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
-from driver import Trainer
+from driver import ORPITTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import ORPIT
@@ -104,7 +104,7 @@ def main(args):
     
     pit_criterion = ORPIT(criterion, n_sources=args.n_sources)
     
-    trainer = Trainer(model, loader, pit_criterion, optimizer, args)
+    trainer = ORPITTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     
