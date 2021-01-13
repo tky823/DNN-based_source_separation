@@ -250,7 +250,31 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
             sources (n_sources, T) <torch.Tensor>
             segment_IDs (n_sources,) <list<str>>
         """
-        mixture, sources, segment_ID = super().__getitem__(idx)
+        data = self.json_data[idx]
+        sources = []
+        
+        for key in data['sources'].keys():
+            source_data = data['sources'][key]
+            start, end = source_data['start'], source_data['end']
+            wav_path = os.path.join(self.wav_root, source_data['path'])
+            wave, sr = read_wav(wav_path)
+            wave = np.array(wave)[start: end]
+            wave = wave[None]
+            sources.append(wave)
+        
+        sources = np.concatenate(sources, axis=0)
+        
+        mixture_data = data['mixture']
+        start, end = mixture_data['start'], mixture_data['end']
+        wav_path = os.path.join(self.wav_root, mixture_data['path'])
+        wave, sr = read_wav(wav_path)
+        wave = np.array(wave)[start: end]
+        mixture = wave[None]
+            
+        segment_ID = self.json_data[idx]['ID'] + '_{}-{}'.format(start, end)
+        
+        mixture = torch.Tensor(mixture).float()
+        sources = torch.Tensor(sources).float()
         
         return mixture, sources, segment_ID
         
