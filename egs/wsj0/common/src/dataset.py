@@ -258,8 +258,8 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
         return len(self.json_data)
 
 class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
-    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, max_n_sources=2):
+        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, max_n_sources=max_n_sources)
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
