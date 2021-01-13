@@ -62,7 +62,7 @@ def main(args):
     samples = int(args.sr * args.duration)
     overlap = samples//2
     max_samples = int(args.sr * args.valid_duration)
-    max_n_sources = [int(number) for number in args.n_sources.split('+')]
+    max_n_sources = max([int(number) for number in args.n_sources.split('+')])
     
     train_dataset = MixedNumberSourcesWaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, max_n_sources=max_n_sources)
     valid_dataset = MixedNumberSourcesWaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, max_n_sources=max_n_sources)
