@@ -5,7 +5,7 @@
 exp_dir="$1"
 continue_from="$2"
 
-n_sources=3
+n_sources='2+3'
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
 duration=4

@@ -7,7 +7,7 @@ from utils.utils_audio import read_wav
 EPS=1e-12
 
 class WSJ0Dataset(torch.utils.data.Dataset):
-    def __init__(self, wav_root, list_path, n_sources=2):
+    def __init__(self, wav_root, list_path):
         super().__init__()
         
         self.wav_root = wav_root
@@ -16,7 +16,7 @@ class WSJ0Dataset(torch.utils.data.Dataset):
 
 class WaveDataset(WSJ0Dataset):
     def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, n_sources=n_sources)
+        super().__init__(wav_root, list_path)
         
         if overlap is None:
             overlap = samples//2
@@ -186,6 +186,144 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         super().__init__(*args, **kwargs)
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
+"""
+Dataset for unknown number of sources.
+"""
+
+class MixedNumberSourcesWaveDataset(WSJ0Dataset):
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, max_n_sources=3):
+        super().__init__(wav_root, list_path)
+        
+        if overlap is None:
+            overlap = samples//2
+        
+        self.json_data = []
+        
+        with open(list_path) as f:
+            for line in f:
+                ID = line.strip()
+                wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
+                
+                y, sr = read_wav(wav_path)
+                T_total = len(y)
+
+                n_sources = 0
+
+                for source_idx in range(max_n_sources):
+                    wav_path = os.path.join(wav_root, 's{}'.format(source_idx+1), '{}.wav'.format(ID))
+                    if not os.path.exists(wav_path):
+                        break
+                    n_sources += 1
+                
+                for start_idx in range(0, T_total, samples - overlap):
+                    end_idx = start_idx + samples
+                    if end_idx > T_total:
+                        break
+                    data = {
+                        'sources': {},
+                        'mixture': {}
+                    }
+                    
+                    for source_idx in range(n_sources):
+                        source_data = {
+                            'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                            'start': start_idx,
+                            'end': end_idx
+                        }
+                        data['sources']['s{}'.format(source_idx+1)] = source_data
+                    
+                    mixture_data = {
+                        'path': os.path.join('mix', '{}.wav'.format(ID)),
+                        'start': start_idx,
+                        'end': end_idx
+                    }
+                    data['mixture'] = mixture_data
+                    data['ID'] = ID
+                
+                    self.json_data.append(data)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, T) <torch.Tensor>
+            sources (n_sources, T) <torch.Tensor>
+            segment_IDs (n_sources,) <list<str>>
+        """
+        mixture, sources, segment_ID = super().__getitem__(idx)
+        
+        return mixture, sources, segment_ID
+        
+    def __len__(self):
+        return len(self.json_data)
+
+class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
+    def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
+    
+    def __getitem__(self, idx):
+        mixture, sources, _ = super().__getitem__(idx)
+        
+        return mixture, sources
+
+class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
+    def __init__(self, wav_root, list_path, max_samples=None, max_n_sources=3):
+        super().__init__(wav_root, list_path, max_n_sources=max_n_sources)
+        
+        self.json_data = []
+        
+        with open(list_path) as f:
+            for line in f:
+                ID = line.strip()
+                wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
+                
+                y, sr = read_wav(wav_path)
+                T_total = len(y)
+                
+                if max_samples is None:
+                    samples = T_total
+                else:
+                    if T_total < max_samples:
+                        samples = T_total
+                    else:
+                        samples = max_samples
+                
+                n_sources = 0
+
+                for source_idx in range(max_n_sources):
+                    wav_path = os.path.join(wav_root, 's{}'.format(source_idx+1), '{}.wav'.format(ID))
+                    if not os.path.exists(wav_path):
+                        break
+                    n_sources += 1
+                
+                data = {
+                    'sources': {},
+                    'mixture': {}
+                }
+                
+                for source_idx in range(n_sources):
+                    source_data = {
+                        'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                        'start': 0,
+                        'end': samples
+                    }
+                    data['sources']['s{}'.format(source_idx+1)] = source_data
+                
+                mixture_data = {
+                    'path': os.path.join('mix', '{}.wav'.format(ID)),
+                    'start': 0,
+                    'end': samples
+                }
+                data['mixture'] = mixture_data
+                data['ID'] = ID
+            
+                self.json_data.append(data)
+    
+    def __getitem__(self, idx):
+        mixture, sources, _ = super().__getitem__(idx)
+        segment_ID = self.json_data[idx]['ID']
+    
+        return mixture, sources, segment_ID
 
 
 if __name__ == '__main__':
