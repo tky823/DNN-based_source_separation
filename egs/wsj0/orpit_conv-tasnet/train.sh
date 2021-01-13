@@ -5,35 +5,40 @@
 exp_dir="$1"
 continue_from="$2"
 
-n_sources=2
+n_sources=3
+sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
+sr=${sr_k}000
+duration=4
+valid_duration=4
+max_or_min='min'
 
-wav_root="../../../dataset/LibriSpeech"
-train_json_path="../../../dataset/LibriSpeech/train-clean-100/train-100-${n_sources}mix.json"
-valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.json"
+train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
+valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
 
-sr=16000
+train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
+valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 # Encoder & decoder
 enc_bases='trainable'
 dec_bases='trainable'
 enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
-N=64
+N=512
 L=16
 
 # Separator
-H=256
+H=512
 B=128
 Sc=128
 P=3
-X=6
+X=8
 R=3
 dilated=1
 separable=1
 causal=0
 sep_nonlinear='prelu'
 sep_norm=1
-mask_nonlinear='sigmoid'
+mask_nonlinear='softmax'
 
 # Criterion
 criterion='sisdr'
@@ -41,8 +46,7 @@ criterion='sisdr'
 # Optimizer
 optimizer='adam'
 lr=1e-3
-weight_decay=0
-max_norm=5
+weight_decay=1e-5
 
 batch_size=4
 epochs=100
@@ -61,7 +65,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -77,10 +81,13 @@ time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="0"
 
 train.py \
---wav_root ${wav_root} \
---train_json_path ${train_json_path} \
---valid_json_path ${valid_json_path} \
+--train_wav_root ${train_wav_root} \
+--valid_wav_root ${valid_wav_root} \
+--train_list_path ${train_list_path} \
+--valid_list_path ${valid_list_path} \
 --sr ${sr} \
+--duration ${duration} \
+--valid_duration ${valid_duration} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
 --enc_nonlinear ${enc_nonlinear} \
@@ -104,7 +111,6 @@ train.py \
 --optimizer ${optimizer} \
 --lr ${lr} \
 --weight_decay ${weight_decay} \
---max_norm ${max_norm} \
 --batch_size ${batch_size} \
 --epochs ${epochs} \
 --model_dir "${model_dir}" \
