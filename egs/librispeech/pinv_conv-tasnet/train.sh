@@ -16,7 +16,7 @@ sr=16000
 # Encoder & decoder
 enc_bases='trainable'
 dec_bases='pinv'
-enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
+# enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=64
 L=16
@@ -83,7 +83,6 @@ train.py \
 --sr ${sr} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
---enc_nonlinear ${enc_nonlinear} \
 --window_fn ${window_fn} \
 -N ${N} \
 -L ${L} \
