@@ -79,7 +79,7 @@ time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="0"
 
 test.py \
---wav_root ${wav_root} \
+--test_wav_root ${wav_root} \
 --test_list_path ${test_list_path} \
 --sr ${sr} \
 --n_sources ${n_sources} \
