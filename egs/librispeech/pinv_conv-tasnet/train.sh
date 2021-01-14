@@ -16,7 +16,7 @@ sr=16000
 # Encoder & decoder
 enc_bases='trainable'
 dec_bases='pinv'
-# enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
+enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=64
 L=16
