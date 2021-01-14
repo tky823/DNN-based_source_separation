@@ -22,7 +22,7 @@ class ConvTasNet(nn.Module):
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_bases, self.dec_bases = enc_bases, dec_bases
         
-        if enc_bases == 'trainable':
+        if enc_bases == 'trainable' and not dec_bases == 'pinv':
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
@@ -194,6 +194,7 @@ class Separator(nn.Module):
         return output
         
 if __name__ == '__main__':
+    import numpy as np
     import matplotlib.pyplot as plt
     from matplotlib.colors import Normalize
     
@@ -253,6 +254,7 @@ if __name__ == '__main__':
     
     output = model(input)
     print(input.size(), output.size())
+    print()
     
     bases = model.encoder.get_bases()
     
@@ -261,3 +263,23 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.savefig('data/bases_enc-Fourier.png', bbox_inches='tight')
     plt.close()
+
+    # Pseudo inverse
+    print("-"*10, "Decoder is a pseudo inverse of encoder", "-"*10)
+    enc_bases, dec_bases = 'trainable', 'pinv'
+    enc_nonlinear = None
+    causal = False
+    mask_nonlinear = 'sigmoid'
+    n_sources = 2
+
+    model = ConvTasNet(N, kernel_size=L, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=R, sep_num_layers=X, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    output = model(input)
+    print(input.size(), output.size())
+    
+    weight = model.encoder.get_bases()
+    weight_pinverse = model.decoder.get_bases().T
+    reconstruction = np.matmul(weight_pinverse, weight)
+    print(reconstruction)

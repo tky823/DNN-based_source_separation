@@ -14,9 +14,9 @@ valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.js
 sr=16000
 
 # Encoder & decoder
-enc_bases='trainable'
-dec_bases='trainable'
-enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
+enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
+dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
+enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=64
 L=16
@@ -53,8 +53,8 @@ seed=111
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' ]; then
-    prefix="${preffix}enc-${enc_nonlinear}_"
+if [ ${enc_bases} = 'trainable' -a ${dec_bases} -ne 'pinv']; then
+    prefix="${preffix}enc-${enc_nonlinear}_"    
 fi
 
 if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then

@@ -6,18 +6,21 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTrainDataset, TrainDataLoader
-from driver import Trainer
-from models.dprnn_tasnet import DPRNNTasNet
+from dataset import MixedNumberSourcesWaveTrainDataset, MixedNumberSourcesWaveEvalDataset, TrainDataLoader, EvalDataLoader
+from driver import ORPITTrainer
+from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
-from criterion.pit import PIT1d
+from criterion.pit import ORPIT
 
-parser = argparse.ArgumentParser(description="Training of DPRNN-TasNet")
+parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
-parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
-parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
-parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
+parser.add_argument('--train_wav_root', type=str, default=None, help='Path for training dataset ROOT directory')
+parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
+parser.add_argument('--train_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tr_mix')
+parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--duration', type=float, default=2, help='Duration')
+parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
 parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
@@ -25,16 +28,19 @@ parser.add_argument('--window_fn', type=str, default='hamming', help='Window fun
 parser.add_argument('--n_bases', '-N', type=int, default=512, help='# bases')
 parser.add_argument('--kernel_size', '-L', type=int, default=16, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
+parser.add_argument('--sep_bottleneck_channels', '-B', type=int, default=128, help='Bottleneck channels of separator')
 parser.add_argument('--sep_hidden_channels', '-H', type=int, default=128, help='Hidden channels of separator')
-parser.add_argument('--sep_chunk_size', '-K', type=int, default=100, help='Chunk size of separator')
-parser.add_argument('--sep_hop_size', '-P', type=int, default=50, help='Hop size of separator')
-parser.add_argument('--sep_num_blocks', '-B', type=int, default=3, help='# blocks of separator. Each block has R layers')
+parser.add_argument('--sep_skip_channels', '-Sc', type=int, default=128, help='Skip connection channels of separator')
+parser.add_argument('--sep_kernel_size', '-P', type=int, default=3, help='Skip connection channels of separator')
+parser.add_argument('--sep_num_layers', '-X', type=int, default=8, help='# layers of separator')
+parser.add_argument('--sep_num_blocks', '-R', type=int, default=3, help='# blocks of separator. Each block has R layers')
 parser.add_argument('--dilated', type=int, default=1, help='Dilated convolution')
 parser.add_argument('--separable', type=int, default=1, help='Depthwise-separable convolution')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
+parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
+parser.add_argument('--n_sources', type=str, default='2+3', help='# speakers. `2+3` means 2 speakers & 3 speakers.')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -53,16 +59,21 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    train_dataset = WaveTrainDataset(args.wav_root, args.train_json_path)
-    valid_dataset = WaveTrainDataset(args.wav_root, args.valid_json_path)
+    samples = int(args.sr * args.duration)
+    overlap = samples//2
+    max_samples = int(args.sr * args.valid_duration)
+    max_n_sources = max([int(number) for number in args.n_sources.split('+')])
+    
+    train_dataset = MixedNumberSourcesWaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, max_n_sources=max_n_sources)
+    valid_dataset = MixedNumberSourcesWaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, max_n_sources=max_n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
+    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    model = DPRNNTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=2)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -75,7 +86,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-    
+        
     # Optimizer
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -92,9 +103,9 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
+    pit_criterion = ORPIT(criterion, n_sources=args.n_sources)
     
-    trainer = Trainer(model, loader, pit_criterion, optimizer, args)
+    trainer = ORPITTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     

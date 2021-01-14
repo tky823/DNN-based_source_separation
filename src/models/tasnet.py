@@ -298,6 +298,48 @@ class Decoder(nn.Module):
         
         return bases
 
+class PinvEncoder(nn.Module):
+    def __init__(self, encoder: Encoder):
+        super().__init__()
+
+        if encoder.nonlinear:
+            raise ValueError("Not support pseudo inverse of 'Conv1d + nonlinear'.")
+
+        self.kernel_size, self.stride = encoder.kernel_size, encoder.stride
+        self.weight = encoder.conv1d.weight
+
+        n_rows, _, n_columns = self.weight.size()
+        if n_rows < n_columns:
+            raise ValueError("Cannot compute the left inverse of encoder's weight. In encoder, `out_channels` must be equal to or greater than `kernel_size`.")
+
+    def forward(self, input):
+        kernel_size, stride = self.kernel_size, self.stride
+        duplicate = kernel_size//stride
+        weight = self.weight.permute(1,0,2).contiguous()
+        weight_pinverse = torch.pinverse(weight).permute(2,0,1).contiguous() / duplicate
+
+        output = F.conv_transpose1d(input, weight_pinverse, stride=stride)
+
+        return output
+    
+    def extra_repr(self):
+        in_channels, out_channels, _ = self.weight.size()
+        
+        s = "{}, {}".format(in_channels, out_channels)
+        s += ", kernel_size={kernel_size}, stride={stride}"
+        
+        return s.format(**self.__dict__)
+    
+    def get_bases(self):
+        kernel_size, stride = self.kernel_size, self.stride
+        duplicate = kernel_size//stride
+        weight = self.weight.permute(1,0,2).contiguous()
+        weight_pinverse = torch.pinverse(weight).permute(2,0,1).contiguous() / duplicate
+
+        bases = weight_pinverse.squeeze(dim=1).detach().cpu().numpy()
+
+        return bases
+
 """
     Modules for LSTM-TasNet
 """
@@ -489,10 +531,13 @@ if __name__ == '__main__':
     plt.savefig('data/power.png', bbox_inches='tight')
     plt.close()
     
+    print("="*10, "LSTM-TasNet", "="*10)
     # LSTM-TasNet configuration
     sep_num_blocks, sep_num_layers, sep_hidden_channels = 2, 2, 32
     n_sources = 3
     
+    # Non causal
+    print("-"*10, "Non causal", "-"*10)
     causal = False
 
     model = TasNet(C, n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
@@ -503,6 +548,8 @@ if __name__ == '__main__':
     print(input.size(), output.size())
     print()
     
+    # Causal
+    print("-"*10, "Causal", "-"*10)
     causal = True
     
     model = TasNet(C, n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
@@ -511,3 +558,17 @@ if __name__ == '__main__':
 
     output = model(input)
     print(input.size(), output.size())
+    print()
+
+    print("="*10, "Encoder and pseudo inverse of encoder", "="*10)
+    encoder = Encoder(C, n_bases, kernel_size, stride=stride)
+    decoder = PinvEncoder(encoder)
+    latent = encoder(input)
+    output = decoder(latent)
+    print(input.size(), output.size())
+
+    plt.figure()
+    plt.plot(range(T), input[0,0].detach().numpy())
+    plt.plot(range(T), output[0,0].detach().numpy())
+    plt.savefig('data/pinverse.png', bbox_inches='tight')
+    plt.close()
