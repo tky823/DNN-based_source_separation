@@ -27,6 +27,8 @@ class ConvTasNet(nn.Module):
         else:
             self.enc_nonlinear = None
         
+        raise ValueError("self.enc_nonlinear is {}".format(self.enc_nonlinear))
+        
         if enc_bases in ['Fourier', 'trainableFourier'] or dec_bases in ['Fourier', 'trainableFourier']:
             self.window_fn = kwargs['window_fn']
         else:
