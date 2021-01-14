@@ -1,4 +1,4 @@
-# LibriSpeech separation using Conv-TasNet
+# DSD100 separation using Conv-TasNet
 
 ## Google Colaboratory
 You can use Google Colaboratory environment. Please see `train_conv-tasnet.ipynb`
@@ -11,13 +11,13 @@ Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
 
 ### 0. Preparation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/common/
+cd <REPOSITORY_ROOT>/egs/dsd100/common/
 . ./prepare.sh <DATASET_DIR> <#SPEAKERS>
 ```
 
 ### 1. Training
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/dsd100/conv-tasnet/
 . ./train.sh <OUTPUT_DIR>
 ```
 
@@ -28,13 +28,13 @@ If you want to resume training,
 
 ### 2. Evaluation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/dsd100/conv-tasnet/
 . ./test.sh <OUTPUT_DIR>
 ```
 
 ### 3. Demo
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv_tasnet/
+cd <REPOSITORY_ROOT>/egs/dsd100/conv-tasnet/
 . ./demo.sh
 ```
 

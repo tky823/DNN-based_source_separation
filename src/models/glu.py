@@ -62,7 +62,6 @@ class GLU1d(nn.Module):
         x = self.map(input)
         x_sigmoid = self.map_gate(input)
         output = x * torch.sigmoid(x_sigmoid)
-        output = output.permute(*permutation)
         
         return output
 
@@ -91,7 +90,6 @@ class GLU2d(nn.Module):
         x = self.map(input)
         x_sigmoid = self.map_gate(input)
         output = x * torch.sigmoid(x_sigmoid)
-        output = output.permute(*permutation)
         
         return output
 
@@ -112,6 +110,19 @@ if __name__ == '__main__':
     output = glu1d(input)
     print(input.size(), output.size())
     print()
+
+    # 1-D
+    print("-"*10, "GLU1d", "-"*10)
+    T = 128
+    
+    input = torch.randint(0, 5, (batch_size, in_channels, T), dtype=torch.float)
+
+    glu1d = GLU1d(in_channels, out_channels)
+    print(glu1d)
+
+    output = glu1d(input)
+    print(input.size(), output.size())
+    print()
     
     # 2-D
     print("-"*10, "GLU2d", "-"*10)
@@ -120,6 +131,18 @@ if __name__ == '__main__':
     input = torch.randint(0, 5, (batch_size, in_channels, H, W), dtype=torch.float)
 
     glu2d = GLU(in_channels, out_channels)
+    print(glu2d)
+
+    output = glu2d(input)
+    print(input.size(), output.size())
+    print()
+
+    print("-"*10, "GLU2d", "-"*10)
+    H, W = 512, 256
+
+    input = torch.randint(0, 5, (batch_size, in_channels, H, W), dtype=torch.float)
+
+    glu2d = GLU2d(in_channels, out_channels)
     print(glu2d)
 
     output = glu2d(input)

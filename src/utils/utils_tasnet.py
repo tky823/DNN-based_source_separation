@@ -1,11 +1,14 @@
-from models.tasnet import FourierEncoder, FourierDecoder, Encoder, Decoder
+from models.tasnet import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvEncoder
 from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
 EPS=1e-12
 
 def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable', dec_bases='trainable', **kwargs):
     if enc_bases == 'trainable':
-        encoder = Encoder(1, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
+        if dec_bases == 'pinv':
+            encoder = Encoder(1, hidden_channels, kernel_size, stride=stride)
+        else:
+            encoder = Encoder(1, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
     elif enc_bases == 'Fourier':
         encoder = FourierEncoder(1, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
     elif enc_bases == 'trainableFourier':
@@ -19,6 +22,11 @@ def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable
         decoder = FourierDecoder(hidden_channels, 1, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
     elif dec_bases == 'trainableFourier':
         decoder = FourierDecoder(hidden_channels, 1, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
+    elif dec_bases == 'pinv':
+        if enc_bases == 'trainable':
+            decoder = PinvEncoder(encoder)
+        else:
+            raise NotImplementedError("Not support {} for decoder".format(dec_bases))
     else:
         raise NotImplementedError("Not support {} for decoder".format(dec_bases))
         
