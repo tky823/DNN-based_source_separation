@@ -19,7 +19,7 @@ parser.add_argument('--train_json_path', type=str, default=None, help='Path for 
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
-parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Decoder type')
+parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--n_bases', '-N', type=int, default=512, help='# bases')
@@ -53,13 +53,12 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    loader = {}
-    
     train_dataset = WaveTrainDataset(args.wav_root, args.train_json_path)
     valid_dataset = WaveTrainDataset(args.wav_root, args.valid_json_path)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
+    loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     

@@ -5,7 +5,10 @@ EPS=1e-12
 
 def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable', dec_bases='trainable', **kwargs):
     if enc_bases == 'trainable':
-        encoder = Encoder(1, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
+        if dec_bases == 'pinv':
+            encoder = Encoder(1, hidden_channels, kernel_size, stride=stride)
+        else:
+            encoder = Encoder(1, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
     elif enc_bases == 'Fourier':
         encoder = FourierEncoder(1, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
     elif enc_bases == 'trainableFourier':

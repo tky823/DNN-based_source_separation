@@ -6,23 +6,20 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from dataset import WaveTrainDataset, TrainDataLoader
 from driver import Trainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Training of Conv-TasNet with pseudo-inverse decoder")
 
-parser.add_argument('--train_wav_root', type=str, default=None, help='Path for training dataset ROOT directory')
-parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
-parser.add_argument('--train_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tr_mix')
-parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
+parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
+parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
+parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
-parser.add_argument('--duration', type=float, default=2, help='Duration')
-parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
-parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
+parser.add_argument('--dec_bases', type=str, default='pinv', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--n_bases', '-N', type=int, default=512, help='# bases')
@@ -57,20 +54,18 @@ parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 
 parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
+    assert args.dec_bases == 'pinv', "args.dec_bases must be 'pinv'."
+
     set_seed(args.seed)
     
-    samples = int(args.sr * args.duration)
-    overlap = samples//2
-    max_samples = int(args.sr * args.valid_duration)
-    
-    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
-    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
+    train_dataset = WaveTrainDataset(args.wav_root, args.train_json_path)
+    valid_dataset = WaveTrainDataset(args.wav_root, args.valid_json_path)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
     model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
     print(model)
