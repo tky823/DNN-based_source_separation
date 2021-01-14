@@ -308,6 +308,10 @@ class PinvEncoder(nn.Module):
         self.kernel_size, self.stride = encoder.kernel_size, encoder.stride
         self.weight = encoder.conv1d.weight
 
+        n_rows, _, n_columns = self.weight.size()
+        if n_rows < n_columns:
+            raise ValueError("Cannot compute the left inverse of encoder's weight. In encoder, `out_channels` must be equal to or greater than `kernel_size`.")
+
     def forward(self, input):
         kernel_size, stride = self.kernel_size, self.stride
         duplicate = kernel_size//stride
