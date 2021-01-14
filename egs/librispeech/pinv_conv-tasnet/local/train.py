@@ -58,13 +58,12 @@ def main(args):
 
     set_seed(args.seed)
     
-    loader = {}
-    
     train_dataset = WaveTrainDataset(args.wav_root, args.train_json_path)
     valid_dataset = WaveTrainDataset(args.wav_root, args.valid_json_path)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
+    loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
     
