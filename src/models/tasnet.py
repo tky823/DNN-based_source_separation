@@ -318,6 +318,11 @@ class PinvEncoder(nn.Module):
 
         return output
     
+    def extra_repr(self):
+        s = "kernel_size={kernel_size}, stride={stride}"
+        
+        return s.format(**self.__dict__)
+    
     def get_bases(self):
         kernel_size, stride = self.kernel_size, self.stride
         duplicate = kernel_size//stride
