@@ -5,7 +5,7 @@
 exp_dir="$1"
 continue_from="$2"
 
-n_sources=3
+n_sources='2+3'
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
 duration=4
@@ -19,9 +19,9 @@ train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 # Encoder & decoder
-enc_bases='trainable'
-dec_bases='trainable'
-enc_nonlinear='relu' # window_fn is activated if enc_bases='trainable'
+enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
+dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
+enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=512
 L=16
