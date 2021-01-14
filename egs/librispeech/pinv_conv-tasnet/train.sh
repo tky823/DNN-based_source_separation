@@ -45,7 +45,7 @@ weight_decay=0
 max_norm=5
 
 batch_size=4
-epochs=100
+epochs=1
 
 use_cuda=1
 overwrite=0
