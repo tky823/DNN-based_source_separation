@@ -319,7 +319,10 @@ class PinvEncoder(nn.Module):
         return output
     
     def extra_repr(self):
-        s = "kernel_size={kernel_size}, stride={stride}"
+        in_channels, out_channels, _ = self.weight.size()
+        
+        s = "{}, {}".format(in_channels, out_channels)
+        s += ", kernel_size={kernel_size}, stride={stride}"
         
         return s.format(**self.__dict__)
     
