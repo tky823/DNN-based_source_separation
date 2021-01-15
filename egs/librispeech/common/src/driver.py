@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 import numpy as np
+from mir_eval.separation import bss_eval_sources
 import torch
 import torch.nn as nn
 
@@ -244,8 +245,13 @@ class Tester:
         
         test_loss = 0
         test_loss_improvement = 0
+        test_sdr_improvement = 0
+        test_sir_improvement = 0
+        test_sar = 0
         test_pesq = 0
         n_test = len(self.loader.dataset)
+
+        print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
@@ -266,6 +272,20 @@ class Tester:
                 estimated_sources = output[0].cpu().numpy() # -> (n_sources, T)
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 segment_IDs = segment_IDs[0] # -> (n_sources,)
+
+                repeated_mixture = np.tile(mixture, reps=(self.n_sources, 1))
+                result_estimated = bss_eval_sources(
+                    reference_sources=sources,
+                    estimated_sources=estimated_sources
+                )
+                result_mixed = bss_eval_sources(
+                    reference_sources=sources,
+                    estimated_sources=repeated_mixture
+                )
+        
+                sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
+                sir_improvement = np.mean(result_estimated[1] - result_mixed[1])
+                sar = np.mean(result_estimated[2])
                 
                 norm = np.abs(mixture).max()
                 mixture /= norm
@@ -319,13 +339,19 @@ class Tester:
                 
                 test_loss += loss.item()
                 test_loss_improvement += loss_improvement
+                test_sdr_improvement += sdr_improvement
+                test_sir_improvement += sir_improvement
+                test_sar += sar
                 test_pesq += pesq
         
         test_loss /= n_test
         test_loss_improvement /= n_test
+        test_sdr_improvement /= n_test
+        test_sir_improvement /= n_test
+        test_sar /= n_test
         test_pesq /= n_test
             
-        print("Loss: {:.3f}, loss improvement: {:3f}, PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_pesq))
+        print("Loss: {:.3f}, loss improvement: {:3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
 
 class AttractorTrainer(Trainer):
     def __init__(self, model, loader, criterion, optimizer, args):
