@@ -65,3 +65,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.1.4: Add non-nagative matrix factorization (NMF).
 - v0.2.0: Change the representation of short time Fourier transform (STFT).
 - v0.2.1: `conv_tasnet` directory is renamed to `conv-tasnet`. Add one-and-rest PIT (ORPIT).
+- v0.3.0: `wsj0` is renamed to `wsj0-mix`. The result is updated.
