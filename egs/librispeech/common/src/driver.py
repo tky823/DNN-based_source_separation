@@ -335,7 +335,7 @@ class Tester:
                     subprocess.call("rm {}".format(estimated_path), shell=True)
                 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, pesq), flush=True)
+                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, sdr_improvement, sir_improvement, sar, pesq), flush=True)
                 
                 test_loss += loss.item()
                 test_loss_improvement += loss_improvement
