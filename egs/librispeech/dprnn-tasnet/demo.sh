@@ -49,7 +49,7 @@ fi
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a ${dec_bases} -ne 'pinv']; then
+if [ ${enc_bases} = 'trainable' -a ${dec_bases} != 'pinv' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"    
 fi
 

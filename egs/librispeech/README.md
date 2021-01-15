@@ -37,14 +37,15 @@ cd <REPOSITORY_ROOT>/egs/librispeech/<MODEL_NAME>/
 ```
 
 ## Results
-Evaluation for test data.
+Evaluation for test data of 2 speakers.
 Models are placed in sub-directory. These models are trained on Google Colaboratory.
 Network configuration may be different from original papers.
 
-| Model | SI-SDRi [dB] | PESQ |
-| :---: | :---: | :---: |
-| DANet |  |  |
-| ADANet |  |  |
-| TasNet |  |  |
-| Conv-TasNet |  |  |
-| DPRNN-TasNet |  |  |
+| Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| DANet |  |  |  |
+| ADANet |  |  |  |
+| TasNet |  |  |  |
+| Conv-TasNet |  |  |  |
+| DPRNN-TasNet |  |  |  |
+
