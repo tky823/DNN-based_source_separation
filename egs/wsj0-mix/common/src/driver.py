@@ -258,7 +258,7 @@ class Tester:
         test_pesq = 0
         n_test = len(self.loader.dataset)
 
-        print("ID, Loss, Loss improvement, PESQ", flush=True)
+        print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
