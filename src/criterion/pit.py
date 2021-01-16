@@ -135,6 +135,7 @@ class ORPIT:
             else:
                 batch_loss, batch_indices = torch.min(possible_loss, dim=1) # loss (batch_size,), batch_indices (batch_size,)
         else:
+            print(n_sources)
             batch_size = input.size(0)
             batch_loss, indices = None, None
 
