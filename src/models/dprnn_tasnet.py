@@ -22,11 +22,8 @@ class DPRNNTasNet(nn.Module):
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_bases, self.dec_bases = enc_bases, dec_bases
         
-        if enc_bases == 'trainable' and not dec_bases == 'pinv':
-            if kwargs['enc_nonlinear']:
-                self.enc_nonlinear = kwargs['enc_nonlinear']
-            else:
-                self.enc_nonlinear = None
+        if enc_bases == 'trainable' and not dec_bases == 'pinv':    
+            self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
         
