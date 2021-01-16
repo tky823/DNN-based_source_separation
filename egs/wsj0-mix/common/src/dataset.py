@@ -440,11 +440,17 @@ def mixed_number_sources_eval_collate_fn(batch):
             batched_sources = sources
         else:
             if n_sources > max_n_sources:
-                padding_size = sources.size() # (1, n_sources, *)
+                padding_size = list(batched_sources.size()) # (1, n_sources, *)
                 padding_size[1] = n_sources - max_n_sources
                 padding = torch.zeros(padding_size, dtype=torch.float) # (1, n_sources - max_n_sources, *)
-                sources = torch.cat([sources, padding], dim=1) # (1, n_sources, *)
+                batched_sources = torch.cat([batched_sources, padding], dim=1) # (1, n_sources, *)
                 max_n_sources = n_sources
+            elif n_sources < max_n_sources:
+                padding_size = list(sources.size()) # (1, n_sources, *)
+                padding_size[1] = max_n_sources - n_sources
+                padding = torch.zeros(padding_size, dtype=torch.float) # (1, max_n_sources - n_sources, *)
+                sources = torch.cat([sources, padding], dim=1) # (1, n_sources, *)
+
             batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
             batched_sources = torch.cat([batched_sources, sources], dim=0)
         
@@ -452,26 +458,6 @@ def mixed_number_sources_eval_collate_fn(batch):
         batched_n_sources.append(n_sources)
     
     return batched_mixture, batched_sources, batched_segment_ID, batched_n_sources
-
-
-def test_collate_fn(batch):
-    batched_mixture, batched_sources = None, None
-    batched_segment_ID = []
-    
-    for mixture, sources, segmend_ID in batch:
-        mixture = mixture.unsqueeze(dim=0)
-        sources = sources.unsqueeze(dim=0)
-        
-        if batched_mixture is None:
-            batched_mixture = mixture
-            batched_sources = sources
-        else:
-            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
-            batched_sources = torch.cat([batched_sources, sources], dim=0)
-        
-        batched_segment_ID.append(segmend_ID)
-    
-    return batched_mixture, batched_sources, batched_segment_ID
 
 
 if __name__ == '__main__':
