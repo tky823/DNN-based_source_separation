@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import MixedNumberSourcesWaveTrainDataset, MixedNumberSourcesWaveEvalDataset, TrainDataLoader, EvalDataLoader
-from driver import ORPITTrainer
+from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import ORPIT
@@ -107,7 +107,7 @@ def main(args):
     
     pit_criterion = ORPIT(criterion, n_sources=args.n_sources)
     
-    trainer = ORPITTrainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     
