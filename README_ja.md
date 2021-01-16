@@ -66,3 +66,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.2.0: 短時間フーリエ変換の表現を変更．
 - v0.2.1: `conv_tasnet`ディレクトリの名前を`conv-tasnet`に変更．ORPIT (one-and-rest PIT)を追加．
 - v0.3.0: `wsj0`を`wsj0-mix`へ名前を変更．実験結果の更新．
+- v0.3.1: TasNetにおける線形のencoderに対応．
