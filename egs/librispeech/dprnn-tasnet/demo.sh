@@ -49,8 +49,8 @@ fi
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a ${dec_bases} != 'pinv' ]; then
-    prefix="${preffix}enc-${enc_nonlinear}_"    
+if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
+    prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
 if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
