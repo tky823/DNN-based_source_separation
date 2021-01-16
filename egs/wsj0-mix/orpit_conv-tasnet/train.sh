@@ -21,7 +21,7 @@ valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
-enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
+enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=512
 L=16
@@ -57,7 +57,7 @@ seed=111
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a ${dec_bases} != 'pinv' ]; then
+if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
@@ -90,7 +90,7 @@ train.py \
 --valid_duration ${valid_duration} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
---enc_nonlinear ${enc_nonlinear} \
+--enc_nonlinear "${enc_nonlinear}" \
 --window_fn ${window_fn} \
 -N ${N} \
 -L ${L} \
