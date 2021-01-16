@@ -177,51 +177,7 @@ class ORPITTrainer(TrainerBase):
                         write_wav(save_path, signal=estimated_source, sr=self.sr)
         
         return -1
-    
-    def run_one_epoch_eval(self, epoch):
-        """
-        Validation
-        """
-        self.model.eval()
-
-        with torch.no_grad():
-            for idx, (mixture, sources) in enumerate(self.valid_loader):
-                if self.use_cuda:
-                    mixture = mixture.cuda()
-                    sources = sources.cuda()
-                
-                output_one_and_rest = self.model(mixture)
-                output_one = output_one_and_rest[:,0:1]
-                output_rest = output_one_and_rest[:,1:]
-                output = output_one
-
-                for source_idx in range(1, self.n_sources-1):
-                    output_one_and_rest = self.model(output_rest)
-                    output_one = output_one_and_rest[:,0:1]
-                    output_rest = output_one_and_rest[:,1:]
-                    output = torch.cat([output, output_one], dim=1)
-                
-                output = torch.cat([output, output_rest], dim=1)
-                
-                if idx < 5:
-                    mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
-                    estimated_sources = output[0].detach().cpu().numpy()
-                    
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
-                    os.makedirs(save_dir, exist_ok=True)
-                    save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
-                    mixture = mixture / norm
-                    write_wav(save_path, signal=mixture, sr=self.sr)
-                    
-                    for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
-                        norm = np.abs(estimated_source).max()
-                        estimated_source = estimated_source / norm
-                        write_wav(save_path, signal=estimated_source, sr=self.sr)
-        
-        return -1
-    
+     
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
             package = self.model.module.get_package()
