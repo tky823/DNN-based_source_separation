@@ -105,7 +105,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = ORPIT(criterion, n_sources=args.n_sources)
+    pit_criterion = ORPIT(criterion)
     
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()

@@ -195,7 +195,6 @@ class TestDataLoader(torch.utils.data.DataLoader):
         
         self.collate_fn = test_collate_fn
 
-
 def test_collate_fn(batch):
     batched_mixture, batched_sources = None, None
     batched_segment_ID = []
@@ -315,8 +314,9 @@ class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
+        n_sources = sources.size(0)
         
-        return mixture, sources
+        return mixture, sources, n_sources
 
 class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __init__(self, wav_root, list_path, max_samples=None, max_n_sources=3):
@@ -376,6 +376,60 @@ class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
         segment_ID = self.json_data[idx]['ID']
     
         return mixture, sources, segment_ID
+
+
+class MixedNumberSourcesTrainDataLoader(TrainDataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.collate_fn = mixed_number_sources_collate_fn
+
+def mixed_number_sources_collate_fn(batch):
+    batched_mixture, batched_sources = None, None
+    batched_n_sources = []
+    max_n_sources = 0
+
+    for mixture, sources, n_sources in batch:
+        mixture = mixture.unsqueeze(dim=0)
+        sources = sources.unsqueeze(dim=0)
+        
+        if batched_mixture is None:
+            max_n_sources = n_sources
+            batched_mixture = mixture
+            batched_sources = sources
+        else:
+            if n_sources > max_n_sources:
+                padding_size = sources.size() # (1, n_sources, *)
+                padding_size[1] = n_sources - max_n_sources
+                padding = torch.zeros(padding_size, dtype=torch.float) # (1, n_sources - max_n_sources, *)
+                sources = torch.cat([sources, padding], dim=1) # (1, n_sources, *)
+                max_n_sources = n_sources
+            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
+            batched_sources = torch.cat([batched_sources, sources], dim=0)
+        
+        batched_n_sources.append(n_sources)
+    
+    return batched_mixture, batched_sources, batched_n_sources
+
+
+def test_collate_fn(batch):
+    batched_mixture, batched_sources = None, None
+    batched_segment_ID = []
+    
+    for mixture, sources, segmend_ID in batch:
+        mixture = mixture.unsqueeze(dim=0)
+        sources = sources.unsqueeze(dim=0)
+        
+        if batched_mixture is None:
+            batched_mixture = mixture
+            batched_sources = sources
+        else:
+            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
+            batched_sources = torch.cat([batched_sources, sources], dim=0)
+        
+        batched_segment_ID.append(segmend_ID)
+    
+    return batched_mixture, batched_sources, batched_segment_ID
 
 
 if __name__ == '__main__':
