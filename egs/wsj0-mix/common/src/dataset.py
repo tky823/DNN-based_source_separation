@@ -405,6 +405,7 @@ def mixed_number_sources_train_collate_fn(batch):
             batched_mixture = mixture
             batched_sources = sources
         else:
+            print("Before", batched_mixture.size(), mixture.size(), batched_sources.size(), sources.size())
             if n_sources > max_n_sources:
                 padding_size = list(sources.size()) # (1, n_sources, *)
                 padding_size[1] = n_sources - max_n_sources
