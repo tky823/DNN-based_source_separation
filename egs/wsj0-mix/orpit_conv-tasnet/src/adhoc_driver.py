@@ -57,33 +57,12 @@ class ORPITTrainer(TrainerBase):
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
             start = time.time()
-            train_loss, valid_loss = self.run_one_epoch(epoch)
+            train_loss = self.run_one_epoch(epoch)
             end = time.time()
             
             print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
-            self.valid_loss[epoch] = valid_loss
-            
-            if valid_loss < self.best_loss:
-                self.best_loss = valid_loss
-                self.no_improvement = 0
-                model_path = os.path.join(self.model_dir, "best.pth")
-                self.save_model(epoch, model_path)
-            else:
-                if valid_loss >= self.prev_loss:
-                    self.no_improvement += 1
-                    if self.no_improvement >= 3:
-                        optim_dict = self.optimizer.state_dict()
-                        lr = optim_dict['param_groups'][0]['lr']
-                        optim_dict['param_groups'][0]['lr'] = 0.5 * lr
-                        self.optimizer.load_state_dict(optim_dict)
-
-                        print("Learning rate: {} -> {}".format(lr, 0.5 * lr))
-                else:
-                    self.no_improvement = 0
-            
-            self.prev_loss = valid_loss
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
