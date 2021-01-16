@@ -53,7 +53,7 @@ seed=111
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a -n ${enc_nonlinear} -a ${dec_bases} != 'pinv' ]; then
+if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
@@ -83,7 +83,7 @@ train.py \
 --sr ${sr} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
---enc_nonlinear ${enc_nonlinear} \
+--enc_nonlinear "${enc_nonlinear}" \
 --window_fn ${window_fn} \
 -N ${N} \
 -L ${L} \

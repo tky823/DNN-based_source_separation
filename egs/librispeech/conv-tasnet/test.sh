@@ -51,7 +51,7 @@ seed=111
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a -n ${enc_nonlinear} -a ${dec_bases} != 'pinv' ]; then
+if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
