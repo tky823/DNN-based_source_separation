@@ -100,6 +100,40 @@ class ORPITTrainer(TrainerBase):
 
         return train_loss
     
+    def run_one_epoch_train(self, epoch):
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+        
+        for idx, (mixture, sources, n_sources) in enumerate(self.train_loader):
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+            
+            estimated_sources = self.model(mixture)
+            loss, _ = self.pit_criterion(estimated_sources, sources, n_sources=n_sources)
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            train_loss += loss.item()
+            
+            if (idx + 1)%100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
+    
     def run_one_epoch_eval(self, epoch):
         """
         Validation
@@ -107,7 +141,7 @@ class ORPITTrainer(TrainerBase):
         self.model.eval()
         
         with torch.no_grad():
-            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, segment_IDs, n_sources) in enumerate(self.valid_loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
@@ -117,7 +151,7 @@ class ORPITTrainer(TrainerBase):
                 output_rest = output_one_and_rest[:,1:]
                 output = output_one
 
-                for source_idx in range(1, self.n_sources-1):
+                for source_idx in range(1, n_sources - 1):
                     output_one_and_rest = self.model(output_rest)
                     output_one = output_one_and_rest[:,0:1]
                     output_rest = output_one_and_rest[:,1:]
