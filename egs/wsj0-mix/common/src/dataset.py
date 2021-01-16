@@ -406,22 +406,17 @@ def mixed_number_sources_train_collate_fn(batch):
             batched_sources = sources
         else:
             if n_sources > max_n_sources:
-                print("Before", batched_sources.size(), sources.size())
                 padding_size = list(batched_sources.size()) # (1, n_sources, *)
                 padding_size[1] = n_sources - max_n_sources
                 padding = torch.zeros(padding_size, dtype=torch.float) # (1, n_sources - max_n_sources, *)
-                # print(padding.size())
                 batched_sources = torch.cat([batched_sources, padding], dim=1) # (1, n_sources, *)
                 max_n_sources = n_sources
-                print("Before", batched_sources.size(), sources.size())
             elif n_sources < max_n_sources:
-                print("Before", batched_sources.size(), sources.size())
                 padding_size = list(sources.size()) # (1, n_sources, *)
                 padding_size[1] = max_n_sources - n_sources
                 padding = torch.zeros(padding_size, dtype=torch.float) # (1, max_n_sources - n_sources, *)
-                # print(padding.size())
                 sources = torch.cat([sources, padding], dim=1) # (1, n_sources, *)
-                print("After", batched_sources.size(), sources.size())
+
             batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
             batched_sources = torch.cat([batched_sources, sources], dim=0)
         
