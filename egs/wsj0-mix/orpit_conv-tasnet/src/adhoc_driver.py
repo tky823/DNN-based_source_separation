@@ -130,7 +130,6 @@ class ORPITTrainer(TrainerBase):
                 output_rest = output_one_and_rest[:,1:]
                 output = output_one
 
-                print(n_sources)
                 for source_idx in range(1, n_sources[0] - 1):
                     output_one_and_rest = self.model(output_rest)
                     output_one = output_one_and_rest[:,0:1]
