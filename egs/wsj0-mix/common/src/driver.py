@@ -11,7 +11,7 @@ from utils.utils_audio import write_wav
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
-class Trainer:
+class TrainerBase:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
@@ -219,7 +219,7 @@ class Trainer:
         
         torch.save(package, model_path)
 
-class Tester:
+class TesterBase:
     def __init__(self, model, loader, pit_criterion, args):
         self.loader = loader
         
@@ -359,7 +359,15 @@ class Tester:
             
         print("Loss: {:.3f}, loss improvement: {:3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
 
-class AttractorTrainer(Trainer):
+class Trainer(TrainerBase):
+    def __init__(self, model, loader, pit_criterion, optimizer, args):
+        super().__init__(model, loader, pit_criterion, optimizer, args)
+
+class Tester(TesterBase):
+    def __init__(self, model, loader, pit_criterion, args):
+        super().__init__(model, loader, pit_criterion, args)
+
+class AttractorTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
@@ -490,7 +498,7 @@ class AttractorTrainer(Trainer):
         
         return valid_loss
 
-class AttractorTester(Tester):
+class AttractorTester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):
         self.loader = loader
         
@@ -731,7 +739,7 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         
         return valid_loss
 
-class ORPITTrainer(Trainer):
+class ORPITTrainer(TrainerBase):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         

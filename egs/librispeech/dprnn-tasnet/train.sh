@@ -19,7 +19,7 @@ dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', o
 enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=64
-L=16
+L=16 # L corresponds to the window length (samples) in this script.
 
 # Separator
 H=256
