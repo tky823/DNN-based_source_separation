@@ -7,5 +7,5 @@
 | DANet |  |  |  |
 | ADANet |  |  |  |
 | TasNet |  |  |  |
-| Conv-TasNet | 15.6 |  | 3.29 |
+| Conv-TasNet | 15.6 | 15.9 | 3.29 |
 | DPRNN-TasNet |  |  |  |
