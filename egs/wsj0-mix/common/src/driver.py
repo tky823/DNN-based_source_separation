@@ -608,7 +608,12 @@ class AttractorTester(TesterBase):
                     command += " | grep Prediction | awk '{print $5}'"
                     pesq_output = subprocess.check_output(command, shell=True)
                     pesq_output = pesq_output.decode().strip()
-                    pesq += float(pesq_output)
+
+                    if pesq_output == '':
+                        # If processing error occurs in PESQ software, it is regarded as PESQ score is 0.
+                        pesq += 0
+                    else:
+                        pesq += float(pesq_output)
                     
                     subprocess.call("rm {}".format(source_path), shell=True)
                     subprocess.call("rm {}".format(estimated_path), shell=True)
