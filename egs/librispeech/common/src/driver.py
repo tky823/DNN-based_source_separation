@@ -249,6 +249,7 @@ class Tester:
         test_sir_improvement = 0
         test_sar = 0
         test_pesq = 0
+        n_pesq_error = 0
         n_test = len(self.loader.dataset)
 
         print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
@@ -329,7 +330,12 @@ class Tester:
                     command += " | grep Prediction | awk '{print $5}'"
                     pesq_output = subprocess.check_output(command, shell=True)
                     pesq_output = pesq_output.decode().strip()
-                    pesq += float(pesq_output)
+                    
+                    if pesq_output == '':
+                        # If processing error occurs in PESQ software, it is regarded as PESQ score is 0.
+                        n_pesq_error += 1
+                    else:
+                        pesq += float(pesq_output)
                     
                     subprocess.call("rm {}".format(source_path), shell=True)
                     subprocess.call("rm {}".format(estimated_path), shell=True)
@@ -352,6 +358,7 @@ class Tester:
         test_pesq /= n_test
             
         print("Loss: {:.3f}, loss improvement: {:3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
+        print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
 class AttractorTrainer(Trainer):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -509,6 +516,7 @@ class AttractorTester(Tester):
         
         test_loss = 0
         test_pesq = 0
+        n_pesq_error = 0
         n_test = len(self.loader.dataset)
         
         with torch.no_grad():
@@ -598,7 +606,7 @@ class AttractorTester(Tester):
                     
                     if pesq_output == '':
                         # If processing error occurs in PESQ software, it is regarded as PESQ score is 0.
-                        pesq += 0
+                        n_pesq_error += 1
                     else:
                         pesq += float(pesq_output)
                     
@@ -615,7 +623,7 @@ class AttractorTester(Tester):
         test_pesq /= n_test
                 
         print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
-
+        print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
 class AnchoredAttractorTrainer(AttractorTrainer):
     def __init__(self, model, loader, criterion, optimizer, args):
