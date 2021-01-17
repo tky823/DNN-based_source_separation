@@ -138,7 +138,7 @@ class ORPITTrainer(TrainerBase):
                 
                 output = torch.cat([output, output_rest], dim=1)
 
-                if idx < 5:
+                if idx < 5 or idx >= len(self.valid_loader - 5):
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()
                     
