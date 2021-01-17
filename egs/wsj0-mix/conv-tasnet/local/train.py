@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
-from driver import Trainer
+from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
@@ -106,7 +106,7 @@ def main(args):
     
     pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
     
-    trainer = Trainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     

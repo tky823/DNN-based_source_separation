@@ -7,8 +7,8 @@ exp_dir="$1"
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
-duration=2
-max_or_min='max'
+duration=4
+max_or_min='min'
 
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
