@@ -118,6 +118,8 @@ class ORPITTrainer(TrainerBase):
         Validation
         """
         self.model.eval()
+
+        n_sources_count = {}
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs, n_sources) in enumerate(self.valid_loader):
@@ -138,7 +140,10 @@ class ORPITTrainer(TrainerBase):
                 
                 output = torch.cat([output, output_rest], dim=1)
 
-                if idx < 5 or idx >= len(self.valid_loader) - 5:
+                if not n_sources[0] in n_sources_count.keys():
+                    n_sources_count[n_sources[0]] = 0
+                
+                if n_sources_count[n_sources[0]] < 5:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()
                     
@@ -154,6 +159,8 @@ class ORPITTrainer(TrainerBase):
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         write_wav(save_path, signal=estimated_source, sr=self.sr)
+                
+                n_sources_count[n_sources[0]] += 1
         
         return -1
      
@@ -179,3 +186,5 @@ class Tester(TesterBase):
 class AdhocTrainer(ORPITTrainer):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
+
+class AdhocFinetuneTrainer
