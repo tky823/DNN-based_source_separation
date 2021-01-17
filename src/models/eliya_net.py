@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_bases
+from models.tasnet import Encoder
 from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 from models.mulcat_rnn import MulCatDPRNN
 
@@ -16,7 +16,7 @@ We have to name the model.
 """
 
 class EliyaNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=False, n_sources=2, eps=EPS, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=False, n_sources=2, eps=EPS, **kwargs):
         super().__init__()
         
         if stride is None:
@@ -27,17 +27,8 @@ class EliyaNet(nn.Module):
         # Encoder-decoder
         self.n_bases = n_bases
         self.kernel_size, self.stride = kernel_size, stride
-        self.enc_bases, self.dec_bases = enc_bases, dec_bases
-        
-        if enc_bases == 'trainable' and not dec_bases == 'pinv':    
-            self.enc_nonlinear = kwargs['enc_nonlinear']
-        else:
-            self.enc_nonlinear = None
-        
-        if enc_bases in ['Fourier', 'trainableFourier'] or dec_bases in ['Fourier', 'trainableFourier']:
-            self.window_fn = kwargs['window_fn']
-        else:
-            self.window_fn = None
+               
+        self.enc_nonlinear = kwargs['enc_nonlinear']
         
         # Separator configuration
         self.sep_hidden_channels = sep_hidden_channels
@@ -48,11 +39,9 @@ class EliyaNet(nn.Module):
         self.eps = eps
         
         # Network configuration
-        encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
-        
-        self.encoder = encoder
+        self.encoder = Encoder(1, n_bases, kernel_size=kernel_size, stride=stride)
         self.separator = Separator(n_bases, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, n_sources=n_sources, eps=eps)
-        self.decoder = decoder
+        self.decoder = OverlapAddDecoder(n_bases, 1, kernel_size=kernel_size, stride=stride)
         
         self.num_parameters = self._get_num_parameters()
         
@@ -84,8 +73,8 @@ class EliyaNet(nn.Module):
 
         input = F.pad(input, (padding_left, padding_right))
         x = self.encoder(input)
-        latent = self.separator(x) # (batch_size, num_blocks//2, n_sources, num_features, n_frames)
-        x = latent.view(batch_size*num_blocks_half*n_sources, n_bases, -1)
+        latent = self.separator(x) # (batch_size, num_blocks//2, n_sources, num_features, n_frames)    
+        x = latent.view(batch_size, num_blocks_half*n_sources, n_bases, -1) / kernel_size
         x_hat = self.decoder(x)
         x_hat = x_hat.view(batch_size, num_blocks_half, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
@@ -140,6 +129,13 @@ class Separator(nn.Module):
         
         return output
 
+class OverlapAddDecoder(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None):
+        super().__init__()
+
+    def forward(self, input):
+        return input
+
 
 if __name__ == '__main__':
     batch_size = 4
@@ -160,14 +156,19 @@ if __name__ == '__main__':
     print(input.size(), output.size())
     print()
 
-    N, L = 8, 16
-    C, T = 1, 64
+    N, L = 128, 8
+    H = 256
+    K, P = 100, 50
+    B = 6
+    C, T = 1, 1024
 
     input = torch.randint(0, 10, (batch_size, C, T), dtype=torch.float)
     
-    model = EliyaNet(N, L, enc_bases='trainable', dec_bases='trainable', sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, n_sources=2, enc_nonlinear=None)
+    model = EliyaNet(N, L, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, n_sources=2, enc_nonlinear=None)
 
     print(model)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
 
     output = model(input)
     print(input.size(), output.size())
