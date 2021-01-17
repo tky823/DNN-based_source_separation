@@ -187,4 +187,8 @@ class AdhocTrainer(ORPITTrainer):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
 
-class AdhocFinetuneTrainer
+class AdhocFinetuneTrainer(TrainerBase):
+    def __init__(self, model, loader, pit_criterion, optimizer, args):
+        super().__init__(model, loader, pit_criterion, optimizer, args)
+
+        raise NotImplementedError("Implement AdhocFinetuneTrainer.")
