@@ -37,14 +37,14 @@ cd <REPOSITORY_ROOT>/egs/librispeech/<MODEL_NAME>/
 ```
 
 ## 結果
-テストデータによる評価
+2話者混合のテストデータによる評価．
 学習済みモデルはサブディレクトリに保存されている．これらは全てGoogle Colaboratory上で学習されたもの．
 ただし，時間制約の都合上，ネットワーク構造は元の論文と変えている可能性があるため注意すること．
 
-| モデル | SI-SDRi [dB] | PESQ |
-| :---: | :---: | :---: |
-| DANet |  |  |
-| ADANet |  |  |
-| TasNet |  |  |
-| Conv-TasNet |  |  |
-| DPRNN-TasNet |  |  |
+| モデル | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| DANet |  |  |  |
+| ADANet |  |  |  |
+| TasNet |  |  |  |
+| Conv-TasNet |  |  |  |
+| DPRNN-TasNet |  |  |  |

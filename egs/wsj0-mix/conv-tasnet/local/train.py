@@ -6,11 +6,11 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import MixedNumberSourcesWaveTrainDataset, MixedNumberSourcesWaveEvalDataset, TrainDataLoader, EvalDataLoader
-from driver import ORPITTrainer
+from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
-from criterion.pit import ORPIT
+from criterion.pit import PIT1d
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
@@ -40,7 +40,7 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--n_sources', type=str, default='2+3', help='# speakers. `2+3` means 2 speakers & 3 speakers.')
+parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -62,10 +62,9 @@ def main(args):
     samples = int(args.sr * args.duration)
     overlap = samples//2
     max_samples = int(args.sr * args.valid_duration)
-    max_n_sources = max([int(number) for number in args.n_sources.split('+')])
     
-    train_dataset = MixedNumberSourcesWaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, max_n_sources=max_n_sources)
-    valid_dataset = MixedNumberSourcesWaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, max_n_sources=max_n_sources)
+    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
+    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
@@ -73,7 +72,9 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=2)
+    if not args.enc_nonlinear:
+        args.enc_nonlinear = None
+    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -103,9 +104,9 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = ORPIT(criterion, n_sources=args.n_sources)
+    pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
     
-    trainer = ORPITTrainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     

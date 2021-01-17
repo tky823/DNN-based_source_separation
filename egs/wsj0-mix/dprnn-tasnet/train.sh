@@ -8,8 +8,8 @@ continue_from="$2"
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
-duration=2
-valid_duration=4
+duration=4
+valid_duration=10
 max_or_min='min'
 
 train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
@@ -21,16 +21,16 @@ valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
-enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
+enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=64
-L=16
+L=2 # L corresponds to the window length (samples) in this script.
 
 # Separator
 H=256
-K=100
-P=50
-B=3
+K=250
+P=125
+B=6
 dilated=1
 separable=1
 causal=0
@@ -55,7 +55,7 @@ seed=111
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a ${dec_bases} -ne 'pinv']; then
+if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
@@ -88,7 +88,7 @@ train.py \
 --valid_duration ${valid_duration} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
---enc_nonlinear ${enc_nonlinear} \
+--enc_nonlinear "${enc_nonlinear}" \
 --window_fn ${window_fn} \
 -N ${N} \
 -L ${L} \

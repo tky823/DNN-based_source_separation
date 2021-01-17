@@ -28,7 +28,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
+    test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
