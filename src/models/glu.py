@@ -6,7 +6,7 @@ class GLU(nn.Module):
     """
     Gated Linear Units
     """
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, out_nonlinear=None):
         super().__init__()
         
         if out_channels is None:
@@ -16,6 +16,14 @@ class GLU(nn.Module):
 
         self.map = nn.Linear(in_channels, out_channels)
         self.map_gate = nn.Linear(in_channels, out_channels)
+
+        if out_nonlinear is None:
+            self.out_nonlinear = None
+        else:
+            if out_nonlinear == 'tanh':
+                self.out_nonlinear = nn.Tanh()
+            else:
+                raise ValueError("Not support non-linearity {}".format(out_nonlinear))
         
     def forward(self, input):
         """
@@ -29,9 +37,14 @@ class GLU(nn.Module):
         permutation = axis[0:1] + axis[:0:-1]
         
         input = input.permute(*permutation)
-        x = self.map(input)
-        x_sigmoid = self.map_gate(input)
-        output = x * torch.sigmoid(x_sigmoid)
+        x_output = self.map(input)
+        x_gate = self.map_gate(input)
+
+        if self.out_nonlinear is not None:
+            x_output = self.out_nonlinear(x_output)
+        
+        x_gate = torch.sigmoid(x_gate)
+        output = x_output * x_gate
         output = output.permute(*permutation)
         
         return output
