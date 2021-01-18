@@ -80,8 +80,8 @@ train.py \
 --sr ${sr} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
---enc_nonlinear ${enc_nonlinear} \
---window_fn ${window_fn} \
+--enc_nonlinear "${enc_nonlinear}" \
+--window_fn "${window_fn}" \
 -N ${N} \
 -L ${L} \
 -H ${H} \
