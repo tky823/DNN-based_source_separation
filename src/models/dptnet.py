@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_bases, choose_layer_norm
-from models.glu import GLU
+from models.gtu import GTU1d
 from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 
 EPS=1e-12
@@ -102,7 +102,7 @@ class DPTNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, out_nonlinear='tanh', mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
+    def __init__(self, num_features, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_features, self.n_sources = num_features, n_sources
@@ -111,7 +111,7 @@ class Separator(nn.Module):
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.dprnn = DualPathTransformer(num_features, hidden_channels, num_blocks=num_blocks, causal=causal)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
-        self.glu = GLU(num_features, n_sources*num_features, out_nonlinear=out_nonlinear)
+        self.gtu = GTU1d(num_features, n_sources*num_features)
         
         if mask_nonlinear == 'relu':
             self.mask_nonlinear = nn.ReLU()
@@ -143,7 +143,7 @@ class Separator(nn.Module):
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
         # x = self.prelu(x)
-        x = self.glu(x)
+        x = self.gtu(x)
         x = self.mask_nonlinear(x)
         output = x.view(batch_size, n_sources, num_features, T_bin)
         
