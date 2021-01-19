@@ -12,7 +12,7 @@ class GLU(nn.Module):
     """
     Gated Linear Units
     """
-    def __init__(self, in_channels, out_channels, out_nonlinear=None):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
         
         if out_channels is None:
@@ -22,14 +22,6 @@ class GLU(nn.Module):
 
         self.map = nn.Linear(in_channels, out_channels)
         self.map_gate = nn.Linear(in_channels, out_channels)
-
-        if out_nonlinear is None:
-            self.out_nonlinear = None
-        else:
-            if out_nonlinear == 'tanh':
-                self.out_nonlinear = nn.Tanh()
-            else:
-                raise ValueError("Not support non-linearity {}".format(out_nonlinear))
         
     def forward(self, input):
         """
@@ -45,11 +37,8 @@ class GLU(nn.Module):
         input = input.permute(*permutation)
         x_output = self.map(input)
         x_gate = self.map_gate(input)
-
-        if self.out_nonlinear is not None:
-            x_output = self.out_nonlinear(x_output)
-        
         x_gate = torch.sigmoid(x_gate)
+
         output = x_output * x_gate
         output = output.permute(*permutation)
         
@@ -60,7 +49,7 @@ class GLU1d(nn.Module):
     """
     Gated Linear Units
     """
-    def __init__(self, in_channels, out_channels, out_nonlinear=None):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
         
         if out_channels is None:
@@ -70,14 +59,6 @@ class GLU1d(nn.Module):
 
         self.map = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1)
         self.map_gate = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1)
-
-        if out_nonlinear is None:
-            self.out_nonlinear = None
-        else:
-            if out_nonlinear == 'tanh':
-                self.out_nonlinear = nn.Tanh()
-            else:
-                raise ValueError("Not support non-linearity {}".format(out_nonlinear))
         
     def forward(self, input):
         """
@@ -89,9 +70,6 @@ class GLU1d(nn.Module):
         x_output = self.map(input)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
-
-        if self.out_nonlinear is not None:
-            x_output = self.out_nonlinear(x_output)
         
         output = x_output * x_gate
         
@@ -101,7 +79,7 @@ class GLU2d(nn.Module):
     """
     Gated Linear Units
     """
-    def __init__(self, in_channels, out_channels, out_nonlinear=None):
+    def __init__(self, in_channels, out_channels):
         super().__init__()
         
         if out_channels is None:
@@ -122,9 +100,6 @@ class GLU2d(nn.Module):
         x_output = self.map(input)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
-
-        if self.out_nonlinear is not None:
-            x_output = self.out_nonlinear(x_output)
         
         output = x_output * x_gate
         

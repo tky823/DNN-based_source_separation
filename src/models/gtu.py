@@ -1,0 +1,3 @@
+"""
+Gated Tanh Unit
+"""
