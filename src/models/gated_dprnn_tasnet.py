@@ -15,7 +15,7 @@ https://arxiv.org/abs/2003.01531
 We have to name the model.
 """
 
-class EliyaNet(nn.Module):
+class GatedDPRNNTasNet(nn.Module):
     def __init__(self, n_bases, kernel_size, stride=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=False, n_sources=2, eps=EPS, **kwargs):
         super().__init__()
         
@@ -164,7 +164,7 @@ if __name__ == '__main__':
 
     input = torch.randint(0, 10, (batch_size, C, T), dtype=torch.float)
     
-    model = EliyaNet(N, L, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, n_sources=2, enc_nonlinear=None)
+    model = GatedDPRNNTasNet(N, L, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, n_sources=2, enc_nonlinear=None)
 
     print(model)
     print(model)
