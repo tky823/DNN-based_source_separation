@@ -42,7 +42,7 @@ class GTU(nn.Module):
         
         input = input.permute(*permutation)
         x_output = self.map(input)
-        x_output = F.tanh(x_output)
+        x_output = torch.tanh(x_output)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
 
@@ -80,7 +80,7 @@ class GTU1d(nn.Module):
             output (batch_size, out_channels, T)
         """
         x_output = self.map(input)
-        x_output = F.tanh(x_output)
+        x_output = torch.tanh(x_output)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
         
@@ -116,7 +116,7 @@ class GTU2d(nn.Module):
             output (batch_size, out_channels, H, W)
         """
         x_output = self.map(input)
-        x_output = F.tanh(x_output)
+        x_output = torch.tanh(x_output)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
         
