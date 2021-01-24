@@ -287,7 +287,7 @@ def _test_overlap_add():
 
 def _test_separator():
     batch_size, T_bin = 2, 5
-    N, H = 16, 32
+    N, H = 16, 32 # H is the number of channels for each direction
     K, P = 3, 2
     B = 3
     
@@ -314,7 +314,7 @@ def _test_dprnn_tasnet():
     L, N = 8, 16
     
     # Separator
-    H = 32
+    H = 32 # for each direction
     B = 4
     sep_norm = True
     
@@ -360,7 +360,7 @@ def _test_dprnn_tasnet_paper():
     L, N = 2, 64
     
     # Separator
-    H = 256
+    H = 128 # for each direction
     B = 6
     sep_norm = True
     

@@ -55,8 +55,8 @@ class IntraChunkRNN(nn.Module):
         num_directions = 2 # bi-direction
         self.norm = norm
         
-        self.rnn = nn.LSTM(num_features, hidden_channels//num_directions, batch_first=True, bidirectional=True)
-        self.fc = nn.Linear(hidden_channels, num_features)
+        self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=True)
+        self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
         if self.norm:
             self.norm1d = choose_layer_norm(num_features, causal=False, eps=eps)
@@ -74,7 +74,7 @@ class IntraChunkRNN(nn.Module):
         residual = input
         x = input.permute(0,2,3,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, S, chunk_size, num_features)
         x = x.view(batch_size*S, chunk_size, num_features)
-        x, (_, _) = self.rnn(x) # (batch_size*S, chunk_size, num_features) -> (batch_size*S, chunk_size, hidden_channels)
+        x, (_, _) = self.rnn(x) # (batch_size*S, chunk_size, num_features) -> (batch_size*S, chunk_size, num_directions*hidden_channels)
         x = self.fc(x) # -> (batch_size*S, chunk_size, num_features)
         x = x.permute(0,2,1) # -> (batch_size*S, num_features, chunk_size)
         if self.norm:
@@ -93,11 +93,13 @@ class InterChunkRNN(nn.Module):
         self.norm = norm
         
         if causal: # uni-direction
+            num_directions = 1
             self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=False)
         else: # bi-direction
-            self.rnn = nn.LSTM(num_features, hidden_channels//2, batch_first=True, bidirectional=True)
+            num_directions = 2
+            self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=True)
         
-        self.fc = nn.Linear(hidden_channels, num_features)
+        self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
         if self.norm:
             self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
@@ -115,7 +117,7 @@ class InterChunkRNN(nn.Module):
         residual = input
         x = input.permute(0,3,2,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, chunk_size, S, num_features)
         x = x.view(batch_size*chunk_size, S, num_features) # -> (batch_size*chunk_size, S, num_features)
-        x, (_, _) = self.rnn(x) # -> (batch_size*chunk_size, S, hidden_channels)
+        x, (_, _) = self.rnn(x) # -> (batch_size*chunk_size, S, num_directions*hidden_channels)
         x = self.fc(x) # -> (batch_size*chunk_size, S, num_features)
         x = x.permute(0,2,1) # -> (batch_size*chunk_size, num_features, S)
         if self.norm:

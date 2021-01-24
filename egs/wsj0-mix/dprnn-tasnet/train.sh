@@ -27,7 +27,7 @@ N=64
 L=2 # L corresponds to the window length (samples) in this script.
 
 # Separator
-H=256
+H=128
 K=250
 P=125
 B=6
