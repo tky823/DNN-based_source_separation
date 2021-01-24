@@ -259,43 +259,11 @@ class OverlapAdd1d(nn.Module):
     def extra_repr(self):
         s = "chunk_size={chunk_size}, hop_size={hop_size}".format(chunk_size=self.chunk_size, hop_size=self.hop_size)
         return s
-    
-def _test_dprnn_tasnet():
-    batch_size, num_features = 2, 3
-    K, P = 3, 2
-    
-    # Encoder & decoder
-    C, T = 1, 128
-    L, N = 2, 64
-    
-    # Separator
-    H = 256
-    B = 6
-    sep_norm = True
-    
-    input = torch.randn((batch_size, C, T), dtype=torch.float)
-    
-    print("-"*10, "Trainable Bases & Non causal", "-"*10)
-    enc_bases, dec_bases = 'trainable', 'trainable'
-    enc_nonlinear = 'relu'
-    
-    causal = False
-    mask_nonlinear = 'sigmoid'
-    n_sources = 2
-    
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
-    print(model)
-    print("# Parameters: {}".format(model.num_parameters))
-    
-    output = model(input)
-    print(input.size(), output.size())
 
-if __name__ == '__main__':
+def _test_segment():
     batch_size, num_features, T_bin = 2, 3, 5
     K, P = 3, 2
-    S = (T_bin-K)//P + 1
-    
-    print("="*10, "Segment", "="*10)
+
     input = torch.randint(0, 10, (batch_size, num_features, T_bin), dtype=torch.float)
     
     segment = Segment1d(K, hop_size=P)
@@ -304,9 +272,12 @@ if __name__ == '__main__':
     print(input.size(), output.size())
     print(input)
     print(output)
-    print()
-    
-    print("="*10, "OverlapAdd", "="*10)
+
+def _test_overlap_add():
+    batch_size, num_features, T_bin = 2, 3, 5
+    K, P = 3, 2
+    S = (T_bin-K)//P + 1
+
     input = torch.randint(0, 10, (batch_size, num_features, S, K), dtype=torch.float)
     
     overlap_add = OverlapAdd1d(K, hop_size=P)
@@ -315,10 +286,11 @@ if __name__ == '__main__':
     print(input.size(), output.size())
     print(input)
     print(output)
-    print()
-    
-    print("="*10, "Separator", "="*10)
+
+def _test_separator():
+    batch_size, T_bin = 2, 5
     N, H = 16, 32
+    K, P = 3, 2
     B = 3
     
     sep_norm = True
@@ -327,15 +299,18 @@ if __name__ == '__main__':
     causal = True
     n_sources = 2
     
-    input = torch.randint(0, 10, (batch_size, N, T_bin), dtype=torch.float)
+    input = torch.randn((batch_size, N, T_bin), dtype=torch.float)
     
     separator = Separator(N, hidden_channels=H, chunk_size=K, hop_size=P, num_blocks=B, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
-    
+    print(separator)
+
     output = separator(input)
     print(input.size(), output.size())
-    print()
-    
-    print("="*10, "DPRNN-TasNet", "="*10)
+
+def _test_dprnn_tasnet():
+    batch_size, T_bin = 2, 5
+    K, P = 3, 2
+
     # Encoder & decoder
     C, T = 1, 128
     L, N = 8, 16
@@ -377,8 +352,54 @@ if __name__ == '__main__':
     
     output = model(input)
     print(input.size(), output.size())
-    print()
+    
+def _test_dprnn_tasnet_paper():
+    batch_size = 2
+    K, P = 3, 2
+    
+    # Encoder & decoder
+    C, T = 1, 128
+    L, N = 2, 64
+    
+    # Separator
+    H = 256
+    B = 6
+    sep_norm = True
+    
+    input = torch.randn((batch_size, C, T), dtype=torch.float)
+    
+    print("-"*10, "Trainable Bases & Non causal", "-"*10)
+    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_nonlinear = 'relu'
+    
+    causal = False
+    mask_nonlinear = 'sigmoid'
+    n_sources = 2
+    
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    output = model(input)
+    print(input.size(), output.size())
 
+if __name__ == '__main__':
+    print("="*10, "Segment", "="*10)
+    _test_segment()
+    print()
+    
+    print("="*10, "OverlapAdd", "="*10)
+    _test_overlap_add()
+    print()
+    
+    print("="*10, "Separator", "="*10)
+    _test_separator()
+    print()
+    
     print("="*10, "DPRNN-TasNet", "="*10)
     _test_dprnn_tasnet()
+    print()
+
+    print("="*10, "DPRNN-TasNet (same configuration in paper)", "="*10)
+    _test_dprnn_tasnet_paper()
     print()
