@@ -192,9 +192,9 @@ def _test_dptnet():
     d_ff = 8 # depth of feed-forward network
     K = 10 # local chunk length
     B = 6 # number of dual path transformer processing
-    h = 3 # multihead attention in transformer
+    h = 4 # multihead attention in transformer
     mask_nonlinear = 'relu'
-    n_sources = 4
+    n_sources = 3
 
     input = torch.rand(batch_size, 1, T)
     
