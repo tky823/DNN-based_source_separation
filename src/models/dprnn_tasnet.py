@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_bases, choose_layer_norm
+from utils.utils_tasnet import choose_bases
 from models.dprnn import DPRNN
 
 EPS=1e-12
