@@ -259,6 +259,36 @@ class OverlapAdd1d(nn.Module):
     def extra_repr(self):
         s = "chunk_size={chunk_size}, hop_size={hop_size}".format(chunk_size=self.chunk_size, hop_size=self.hop_size)
         return s
+    
+def _test_dprnn_tasnet():
+    batch_size, num_features = 2, 3
+    K, P = 3, 2
+    
+    # Encoder & decoder
+    C, T = 1, 128
+    L, N = 2, 64
+    
+    # Separator
+    H = 256
+    B = 6
+    sep_norm = True
+    
+    input = torch.randn((batch_size, C, T), dtype=torch.float)
+    
+    print("-"*10, "Trainable Bases & Non causal", "-"*10)
+    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_nonlinear = 'relu'
+    
+    causal = False
+    mask_nonlinear = 'sigmoid'
+    n_sources = 2
+    
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    output = model(input)
+    print(input.size(), output.size())
 
 if __name__ == '__main__':
     batch_size, num_features, T_bin = 2, 3, 5
@@ -347,4 +377,8 @@ if __name__ == '__main__':
     
     output = model(input)
     print(input.size(), output.size())
+    print()
+
+    print("="*10, "DPRNN-TasNet", "="*10)
+    _test_dprnn_tasnet()
     print()
