@@ -32,8 +32,6 @@ parser.add_argument('--sep_hidden_channels', '-H', type=int, default=128, help='
 parser.add_argument('--sep_chunk_size', '-K', type=int, default=100, help='Chunk size of separator')
 parser.add_argument('--sep_hop_size', '-P', type=int, default=50, help='Hop size of separator')
 parser.add_argument('--sep_num_blocks', '-B', type=int, default=6, help='# blocks of separator. Each block has B layers')
-parser.add_argument('--dilated', type=int, default=1, help='Dilated convolution')
-parser.add_argument('--separable', type=int, default=1, help='Depthwise-separable convolution')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
@@ -72,7 +70,7 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    model = DPRNNTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = DPRNNTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks, causal=args.causal, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
