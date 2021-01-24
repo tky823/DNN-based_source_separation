@@ -6,14 +6,14 @@ from utils.utils_tasnet import choose_layer_norm
 EPS=1e-12
 
 class DPRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, causal=False, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, causal=False, norm=True, eps=EPS):
         super().__init__()
         
         # Network confguration
         net = []
         
         for _ in range(num_blocks):
-            net.append(DPRNNBlock(num_features, hidden_channels, causal=causal, eps=eps))
+            net.append(DPRNNBlock(num_features, hidden_channels, causal=causal, norm=norm, eps=eps))
             
         self.net = nn.Sequential(*net)
 
@@ -29,11 +29,11 @@ class DPRNN(nn.Module):
         return output
 
 class DPRNNBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal, eps=EPS):
+    def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
         super().__init__()
         
-        self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels, eps=eps)
-        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, causal=causal, eps=eps)
+        self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels, norm=norm, eps=eps)
+        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, causal=causal, norm=norm, eps=eps)
         
     def forward(self, input):
         """
@@ -48,15 +48,18 @@ class DPRNNBlock(nn.Module):
         return output
 
 class IntraChunkRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, eps=EPS):
+    def __init__(self, num_features, hidden_channels, norm=True, eps=EPS):
         super().__init__()
         
         self.num_features, self.hidden_channels = num_features, hidden_channels
         num_directions = 2 # bi-direction
+        self.norm = norm
         
         self.rnn = nn.LSTM(num_features, hidden_channels//num_directions, batch_first=True, bidirectional=True)
         self.fc = nn.Linear(hidden_channels, num_features)
-        self.norm1d = choose_layer_norm(num_features, causal=False, eps=eps)
+
+        if self.norm:
+            self.norm1d = choose_layer_norm(num_features, causal=False, eps=eps)
         
     def forward(self, input):
         """
@@ -74,7 +77,8 @@ class IntraChunkRNN(nn.Module):
         x, (_, _) = self.rnn(x) # (batch_size*S, chunk_size, num_features) -> (batch_size*S, chunk_size, hidden_channels)
         x = self.fc(x) # -> (batch_size*S, chunk_size, num_features)
         x = x.permute(0,2,1) # -> (batch_size*S, num_features, chunk_size)
-        x = self.norm1d(x) # (batch_size*S, num_features, chunk_size)
+        if self.norm:
+            x = self.norm1d(x) # (batch_size*S, num_features, chunk_size)
         x = x.view(batch_size, S, num_features, chunk_size) # (batch_size, S, num_features, chunk_size)
         x = x.permute(0,2,1,3) # (batch_size, num_features, S, chunk_size)
         output = x + residual
@@ -82,10 +86,11 @@ class IntraChunkRNN(nn.Module):
         return output
 
 class InterChunkRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal, eps=EPS):
+    def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
         super().__init__()
         
         self.num_features, self.hidden_channels = num_features, hidden_channels
+        self.norm = norm
         
         if causal: # uni-direction
             self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=False)
@@ -93,7 +98,9 @@ class InterChunkRNN(nn.Module):
             self.rnn = nn.LSTM(num_features, hidden_channels//2, batch_first=True, bidirectional=True)
         
         self.fc = nn.Linear(hidden_channels, num_features)
-        self.norm1d = choose_layer_norm(num_features, causal=False, eps=eps)
+
+        if self.norm:
+            self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         
     def forward(self, input):
         """
@@ -111,7 +118,8 @@ class InterChunkRNN(nn.Module):
         x, (_, _) = self.rnn(x) # -> (batch_size*chunk_size, S, hidden_channels)
         x = self.fc(x) # -> (batch_size*chunk_size, S, num_features)
         x = x.permute(0,2,1) # -> (batch_size*chunk_size, num_features, S)
-        x = self.norm1d(x) # -> (batch_size*chunk_size, num_features, S)
+        if self.norm:
+            x = self.norm1d(x) # -> (batch_size*chunk_size, num_features, S)
         x = x.view(batch_size, chunk_size, num_features, S) # -> (batch_size, chunk_size, num_features, S)
         x = x.permute(0,2,3,1).contiguous() # -> (batch_size, num_features, S, chunk_size)
         
