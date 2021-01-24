@@ -105,7 +105,7 @@ class ImprovedTransformer(nn.Module):
         super().__init__()
 
         self.multihead_attn_block = MultiheadAttentionBlock(num_features, num_heads, causal=causal, norm=norm, eps=eps)
-        self.subnet = FeedForwardBlock(num_features, hidden_channels, causal=causal, eps=eps)
+        self.subnet = FeedForwardBlock(num_features, hidden_channels, causal=causal, norm=norm, eps=eps)
 
     def forward(self, input):
         """
