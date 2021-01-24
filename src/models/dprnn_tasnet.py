@@ -9,7 +9,7 @@ from models.dprnn import DPRNN
 EPS=1e-12
 
 class DPRNNTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, dilated=True, separable=True, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
         super().__init__()
         
         if stride is None:
@@ -37,7 +37,7 @@ class DPRNNTasNet(nn.Module):
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
         self.sep_num_blocks = sep_num_blocks
         
-        self.dilated, self.separable, self.causal = dilated, separable, causal
+        self.causal = causal
         self.sep_norm = sep_norm
         self.mask_nonlinear = mask_nonlinear
         
@@ -104,8 +104,6 @@ class DPRNNTasNet(nn.Module):
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,
             'sep_num_blocks': self.sep_num_blocks,
-            'dilated': self.dilated,
-            'separable': self.separable,
             'causal': self.causal,
             'sep_norm': self.sep_norm,
             'mask_nonlinear': self.mask_nonlinear,
@@ -129,7 +127,7 @@ class DPRNNTasNet(nn.Module):
         sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
         sep_num_blocks = package['sep_num_blocks']
         
-        dilated, separable, causal = package['dilated'], package['separable'], package['causal']
+        causal = package['causal']
         sep_norm = package['sep_norm']
         mask_nonlinear = package['mask_nonlinear']
         
@@ -137,7 +135,7 @@ class DPRNNTasNet(nn.Module):
         
         eps = package['eps']
         
-        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         
         return model
     
@@ -318,7 +316,7 @@ def _test_dprnn_tasnet():
     # Separator
     H = 32
     B = 4
-    dilated, separable, sep_norm = True, True, True
+    sep_norm = True
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
     
@@ -330,7 +328,7 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -346,7 +344,7 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'softmax'
     n_sources = 3
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, dilated=dilated, separable=separable, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
