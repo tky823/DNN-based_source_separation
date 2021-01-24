@@ -192,6 +192,7 @@ class DualPathTransformerBlock(nn.Module):
         
         return output
 
+
 class IntraChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, eps=EPS):
         super().__init__()
@@ -211,67 +212,134 @@ class InterChunkTransformer(nn.Module):
         raise NotImplementedError
 
 class ImprovedTransformer(nn.Module):
-    def __init__(self, embed_dim, num_heads, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, eps=EPS):
         super().__init__()
 
-        self.multihead_attn_block = MultiheadAttentionBlock(embed_dim, num_heads, eps=eps)
+        self.multihead_attn_block = MultiheadAttentionBlock(num_features, num_heads, causal=causal, eps=eps)
+        self.subnet = FeedForwardBlock(num_features, hidden_channels, causal=causal, eps=eps)
 
     def forward(self, input):
         """
         Args:
-            input (batch_size, C, T)
+            input (T, batch_size, num_features)
         Returns:
-            output (batch_size, C, T)
+            output (T, batch_size, num_features)
         """
-        x = input
-        x = self.multihead_attn_block(x)
+        x = self.multihead_attn_block(input)
+        output = self.subnet(x)
         
-        return input
+        return output
 
 class MultiheadAttentionBlock(nn.Module):
-    def __init__(self, embed_dim, num_heads, eps=EPS):
+    def __init__(self, embed_dim, num_heads, causal=False, eps=EPS):
         super().__init__()
 
-        self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads, bias=True)
-        self.norm1d = choose_layer_norm(embed_dim, causal=False, eps=eps)
+        self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
+        self.norm1d = choose_layer_norm(embed_dim, causal=causal, eps=eps)
     
     def forward(self, input):
         """
         Args:
-            input (batch_size, C, T)
+            input (T, batch_size, embed_dim)
         Returns:
-            output (batch_size, C, T)
+            output (T, batch_size, embed_dim)
         """
-        #query = torch.rand(T_tgt, batch_size, embed_dim)
-        #key = torch.rand(T_src, batch_size, kdim)
-        #value = torch.rand(T_src, batch_size, vdim)
-        residual = input.permute(2,0,1).contiguous() # (T, batch_size, C)
-        attn_output, attn_output_weights = self.multihead_attn(input, input, input) # (T_tgt, batch_size, C), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
-        x = residual + attn_output
-        x = x.permute(1,2,0).contiguous() # (batch_size, C, T)
-        output = self.norm1d(x) # (batch_size, C, T)
+        x = input # (T, batch_size, embed_dim)
+
+        residual = x
+        x, attn_output_weights = self.multihead_attn(x, x, x) # (T_tgt, batch_size, embed_dim), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
+        x = x + residual
+        x = x.permute(1,2,0) # (batch_size, embed_dim, T)
+        x = self.norm1d(x) # (batch_size, embed_dim, T)
+        output = x.permute(2,0,1) # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
 
         return output
 
 class FeedForwardBlock(nn.Module):
-    def __init__(self, causal=False, eps=EPS):
+    def __init__(self, num_features, hidden_channels, causal=False, eps=EPS):
         super().__init__()
 
-        self.norm1d = choose_layer_norm(causal=causal, eps=eps)
+        if causal:
+            bidirectional = False
+            num_directions = 1 # uni-direction
+        else:
+            bidirectional = True
+            num_directions = 2 # bi-direction
+
+        self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=False, bidirectional=bidirectional)
+        self.relu = nn.ReLU()
+        self.fc = nn.Linear(num_directions*hidden_channels, num_features)
+        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
     
     def forward(self, input):
         """
         Args:
-            input (batch_size, C, T)
+            input (T, batch_size, num_features)
         Returns:
-            output (batch_size, C, T)
+            output (T, batch_size, num_features)
         """
-        x = self.norm1d(input)
+        x = input # (T, batch_size, num_features)
 
-        output = x
+        residual = x
+        x, (_, _) = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
+        x = self.relu(x) # -> (T, batch_size, num_directions*hidden_channels)
+        x = self.fc(x) # (T, batch_size, num_directions*hidden_channels) -> (T, batch_size, num_features)
+        x = x + residual
+        x = x.permute(1,2,0) # (T, batch_size, num_features) -> (batch_size, num_features, T)
+        x = self.norm1d(x) # (batch_size, num_features, T)
+        output = x.permute(2,0,1) # (batch_size, num_features, T) -> (T, batch_size, num_features)
+
         return output
 
 if __name__ == '__main__':
+    batch_size = 2
+    T = 16
+
+    print('='*10, "Multihead attention block", '='*10)
+    embed_dim = 8
+    num_heads = 4
+    input = torch.rand(T, batch_size, embed_dim)
+
+    print('-'*10, "Non causal", '-'*10)
+    causal = False
+    
+    model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, causal=causal)
+    print(model)
+
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
+    print('='*10, "feed-forward block", '='*10)
+    num_features = 3
+    hidden_channels = 5
+    input = torch.rand(T, batch_size, num_features)
+
+    print('-'*10, "Causal", '-'*10)
+    causal = True
+    
+    model = FeedForwardBlock(num_features, hidden_channels, causal=causal)
+    print(model)
+
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
+    
+    print('='*10, "improved transformer", '='*10)
+    print('-'*10, "Non causal", '-'*10)
+    num_features, hidden_channels = 12, 10
+    num_heads = 4
+    causal = False
+    input = torch.rand(T, batch_size, num_features)
+
+    model = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal)
+    print(model)
+
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
     print('='*10, "Dual path transformer network", '='*10)
 
 
