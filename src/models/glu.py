@@ -11,8 +11,14 @@ https://arxiv.org/abs/1612.08083
 class GLU(nn.Module):
     """
     Gated Linear Units
+    You can use GTU1d and GTU2d as well.
     """
     def __init__(self, in_channels, out_channels):
+        """
+        Args:
+            in_channels <int>
+            out_channels <int>
+        """
         super().__init__()
         
         if out_channels is None:
@@ -47,9 +53,14 @@ class GLU(nn.Module):
 
 class GLU1d(nn.Module):
     """
-    Gated Linear Units
+    Gated Linear Units for 1D inputs
     """
     def __init__(self, in_channels, out_channels):
+        """
+        Args:
+            in_channels <int>
+            out_channels <int>
+        """
         super().__init__()
         
         if out_channels is None:
@@ -77,9 +88,14 @@ class GLU1d(nn.Module):
 
 class GLU2d(nn.Module):
     """
-    Gated Linear Units
+    Gated Linear Units for 2D inputs
     """
     def __init__(self, in_channels, out_channels):
+        """
+        Args:
+            in_channels <int>
+            out_channels <int>
+        """
         super().__init__()
         
         if out_channels is None:
@@ -114,7 +130,7 @@ if __name__ == '__main__':
     print("-"*10, "GLU1d", "-"*10)
     T = 128
     
-    input = torch.randint(0, 5, (batch_size, in_channels, T), dtype=torch.float)
+    input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
 
     glu1d = GLU(in_channels, out_channels)
     print(glu1d)
@@ -127,7 +143,7 @@ if __name__ == '__main__':
     print("-"*10, "GLU1d", "-"*10)
     T = 128
     
-    input = torch.randint(0, 5, (batch_size, in_channels, T), dtype=torch.float)
+    input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
 
     glu1d = GLU1d(in_channels, out_channels)
     print(glu1d)
@@ -140,7 +156,7 @@ if __name__ == '__main__':
     print("-"*10, "GLU2d", "-"*10)
     H, W = 512, 256
 
-    input = torch.randint(0, 5, (batch_size, in_channels, H, W), dtype=torch.float)
+    input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
 
     glu2d = GLU(in_channels, out_channels)
     print(glu2d)
@@ -152,7 +168,7 @@ if __name__ == '__main__':
     print("-"*10, "GLU2d", "-"*10)
     H, W = 512, 256
 
-    input = torch.randint(0, 5, (batch_size, in_channels, H, W), dtype=torch.float)
+    input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
 
     glu2d = GLU2d(in_channels, out_channels)
     print(glu2d)

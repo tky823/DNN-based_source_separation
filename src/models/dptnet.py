@@ -195,11 +195,84 @@ class DualPathTransformerBlock(nn.Module):
 class IntraChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, eps=EPS):
         super().__init__()
+
+        self.num_features, self.hidden_channels = num_features, hidden_channels
+        num_directions = 2 # bi-direction
         
-        raise NotImplementedError
+        self.rnn = nn.LSTM(num_features, hidden_channels//num_directions, batch_first=True, bidirectional=True)
+        self.fc = nn.Linear(hidden_channels, num_features)
+        self.norm1d = choose_layer_norm(num_features, causal=False, eps=eps)
+
 
 class InterChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, causal, eps=EPS):
         super().__init__()
         
         raise NotImplementedError
+
+class ImprovedTransformer(nn.Module):
+    def __init__(self, embed_dim, num_heads, eps=EPS):
+        super().__init__()
+
+        self.multihead_attn_block = MultiheadAttentionBlock(embed_dim, num_heads, eps=eps)
+
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, C, T)
+        Returns:
+            output (batch_size, C, T)
+        """
+        x = input
+        x = self.multihead_attn_block(x)
+        
+        return input
+
+class MultiheadAttentionBlock(nn.Module):
+    def __init__(self, embed_dim, num_heads, eps=EPS):
+        super().__init__()
+
+        self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads, bias=True)
+        self.norm1d = choose_layer_norm(embed_dim, causal=False, eps=eps)
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, C, T)
+        Returns:
+            output (batch_size, C, T)
+        """
+        #query = torch.rand(T_tgt, batch_size, embed_dim)
+        #key = torch.rand(T_src, batch_size, kdim)
+        #value = torch.rand(T_src, batch_size, vdim)
+        residual = input.permute(2,0,1).contiguous() # (T, batch_size, C)
+        attn_output, attn_output_weights = self.multihead_attn(input, input, input) # (T_tgt, batch_size, C), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
+        x = residual + attn_output
+        x = x.permute(1,2,0).contiguous() # (batch_size, C, T)
+        output = self.norm1d(x) # (batch_size, C, T)
+
+        return output
+
+class FeedForwardBlock(nn.Module):
+    def __init__(self, causal=False, eps=EPS):
+        super().__init__()
+
+        self.norm1d = choose_layer_norm(causal=causal, eps=eps)
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, C, T)
+        Returns:
+            output (batch_size, C, T)
+        """
+        x = self.norm1d(input)
+
+        output = x
+        return output
+
+if __name__ == '__main__':
+    print('='*10, "Dual path transformer network", '='*10)
+
+
+    print()
