@@ -169,7 +169,7 @@ def _test_separator():
     num_blocks = 6
     num_heads = 3 # multihead attention in transformer
 
-    input = torch.rand(batch_size, num_features, T_bin)
+    input = torch.randn((batch_size, num_features, T_bin), dtype=torch.float)
     
     causal = False
 
@@ -196,7 +196,7 @@ def _test_dptnet():
     mask_nonlinear = 'relu'
     n_sources = 3
 
-    input = torch.rand(batch_size, 1, T)
+    input = torch.randn((batch_size, 1, T), dtype=torch.float)
     
     causal = False
 

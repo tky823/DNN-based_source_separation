@@ -202,7 +202,7 @@ def _test_multihead_attn_block():
     T = 10
     embed_dim = 8
     num_heads = 4
-    input = torch.rand(T, batch_size, embed_dim)
+    input = torch.randn((T, batch_size, embed_dim), dtype=torch.float)
 
     print('-'*10, "Non causal", '-'*10)
     causal = False
@@ -220,7 +220,7 @@ def _test_feedforward_block():
 
     print('-'*10, "Causal", '-'*10)
     causal = True
-    input = torch.rand(T, batch_size, num_features)
+    input = torch.randn((T, batch_size, num_features), dtype=torch.float)
     
     model = FeedForwardBlock(num_features, hidden_channels, causal=causal)
     print(model)
@@ -235,7 +235,7 @@ def _test_improved_transformer():
     num_heads = 4
     print('-'*10, "Non causal", '-'*10)
     causal = False
-    input = torch.rand(T, batch_size, num_features)
+    input = torch.randn((T, batch_size, num_features), dtype=torch.float)
 
     model = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal)
     print(model)
@@ -248,7 +248,7 @@ def _test_transformer_block():
     num_features, hidden_channels = 12, 8
     S, chunk_size = 10, 5 # global length and local length
     num_heads = 3
-    input = torch.rand(batch_size, num_features, S, chunk_size)
+    input = torch.randn((batch_size, num_features, S, chunk_size), dtype=torch.float)
 
     print('-'*10, "transformer block for intra chunk", '-'*10)
     model = IntraChunkTransformer(num_features, hidden_channels=hidden_channels, num_heads=num_heads)
@@ -272,7 +272,7 @@ def _test_dptransformer():
     S, chunk_size = 10, 5 # global length and local length
     num_blocks = 6
     num_heads = 3
-    input = torch.rand(batch_size, num_features, S, chunk_size)
+    input = torch.randn((batch_size, num_features, S, chunk_size), dtype=torch.float)
     causal = True
 
     model = DualPathTransformer(num_features, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal)
