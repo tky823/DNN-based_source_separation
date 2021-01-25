@@ -76,3 +76,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.3.0: `wsj0` is renamed to `wsj0-mix`. The result is updated.
 - v0.3.1: Implement Linear encoder for TasNet.
 - v0.3.2: Change the definition of `hidden_channels` in dual-path RNN.
+- v0.3.3: Fix trained models due to the update v0.3.2.
