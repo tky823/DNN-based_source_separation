@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 
 from utils.utils_audio import read_wav
 
@@ -314,9 +315,10 @@ class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
-        n_sources = sources.size(0)
+        # n_sources = sources.size(0)
         
-        return mixture, sources, n_sources
+        return mixture, sources
+        # return mixture, sources, n_sources
 
 class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __init__(self, wav_root, list_path, max_samples=None, max_n_sources=3):
@@ -392,6 +394,19 @@ class MixedNumberSourcesEvalDataLoader(EvalDataLoader):
         self.collate_fn = mixed_number_sources_eval_collate_fn
 
 def mixed_number_sources_train_collate_fn(batch):
+    batched_mixture, batched_sources = [], []
+
+    for mixture, sources in batch:
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
+
+    batched_mixture = nn.utils.rnn.pad_sequence(batched_mixture, batch_first=True)
+    batched_sources = nn.utils.rnn.pack_sequence(batched_sources, enforce_sorted=False) # n_sources is different from data to data
+    
+    return batched_mixture, batched_sources
+
+"""
+def mixed_number_sources_train_collate_fn(batch):
     batched_mixture, batched_sources = None, None
     batched_n_sources = []
     max_n_sources = 0
@@ -423,6 +438,7 @@ def mixed_number_sources_train_collate_fn(batch):
         batched_n_sources.append(n_sources)
     
     return batched_mixture, batched_sources, batched_n_sources
+"""
 
 def mixed_number_sources_eval_collate_fn(batch):
     batched_mixture, batched_sources = None, None

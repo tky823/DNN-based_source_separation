@@ -88,13 +88,13 @@ class ORPITTrainer(TrainerBase):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources, n_sources) in enumerate(self.train_loader):
+        for idx, (mixture, sources) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
             
             estimated_sources = self.model(mixture)
-            loss, _ = self.pit_criterion(estimated_sources, sources, n_sources=n_sources)
+            loss, _ = self.pit_criterion(estimated_sources, sources)
             
             self.optimizer.zero_grad()
             loss.backward()
