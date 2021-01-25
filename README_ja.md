@@ -76,3 +76,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.3.0: `wsj0`を`wsj0-mix`へ名前を変更．実験結果の更新．
 - v0.3.1: TasNetにおける線形のencoderに対応．
 - v0.3.2: dual-path RNNのチャネル数の定義を変更．
+- v0.3.3: v0.3.2の影響により，学習済みモデルを更新．
