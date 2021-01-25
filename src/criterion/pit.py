@@ -111,7 +111,7 @@ class ORPIT:
         # TODO: batch process
 
         batch_size = input.size(0)
-        batch_loss, indices = None, None
+        batch_loss, batch_indices = None, None
 
         for batch_idx in range(batch_size):
             n_sources = lens_unpacked[batch_idx] # <int>
