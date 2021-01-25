@@ -122,10 +122,12 @@ class ORPITTrainer(TrainerBase):
         n_sources_count = {}
         
         with torch.no_grad():
-            for idx, (mixture, sources, segment_IDs, n_sources) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
+                
+                sources, n_sources = nn.utils.rnn.pad_packed_sequence(sources, batch_first=True)
                 
                 output_one_and_rest = self.model(mixture)
                 output_one = output_one_and_rest[:,0:1]

@@ -376,9 +376,10 @@ class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
         segment_ID = self.json_data[idx]['ID']
-        n_sources = sources.size(0)
+        # n_sources = sources.size(0)
     
-        return mixture, sources, segment_ID, n_sources
+        return mixture, sources, segment_ID
+        # return mixture, sources, segment_ID, n_sources
 
 
 class MixedNumberSourcesTrainDataLoader(TrainDataLoader):
@@ -441,6 +442,21 @@ def mixed_number_sources_train_collate_fn(batch):
 """
 
 def mixed_number_sources_eval_collate_fn(batch):
+    batched_mixture, batched_sources, segment_ID = [], []
+    batched_segment_ID = []
+
+    for mixture, sources in batch:
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
+        batched_segment_ID.append(segment_ID)
+
+    batched_mixture = nn.utils.rnn.pad_sequence(batched_mixture, batch_first=True)
+    batched_sources = nn.utils.rnn.pack_sequence(batched_sources, enforce_sorted=False) # n_sources is different from data to data
+    
+    return batched_mixture, batched_sources, batched_segment_ID
+
+"""
+def mixed_number_sources_eval_collate_fn(batch):
     batched_mixture, batched_sources = None, None
     batched_segment_ID = []
     batched_n_sources = []
@@ -474,7 +490,7 @@ def mixed_number_sources_eval_collate_fn(batch):
         batched_n_sources.append(n_sources)
     
     return batched_mixture, batched_sources, batched_segment_ID, batched_n_sources
-
+"""
 
 if __name__ == '__main__':
     torch.manual_seed(111)
