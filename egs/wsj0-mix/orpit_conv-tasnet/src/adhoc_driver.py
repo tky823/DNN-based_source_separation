@@ -128,6 +128,7 @@ class ORPITTrainer(TrainerBase):
                     sources = sources.cuda()
                 
                 sources, n_sources = nn.utils.rnn.pad_packed_sequence(sources, batch_first=True)
+                n_sources = n_sources.tolist()
                 
                 output_one_and_rest = self.model(mixture)
                 output_one = output_one_and_rest[:,0:1]
