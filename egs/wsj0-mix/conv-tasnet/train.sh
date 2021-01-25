@@ -9,7 +9,7 @@ n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
 duration=4
-valid_duration=4
+valid_duration=10
 max_or_min='min'
 
 train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
@@ -92,7 +92,7 @@ train.py \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
 --enc_nonlinear "${enc_nonlinear}" \
---window_fn ${window_fn} \
+--window_fn "${window_fn}" \
 -N ${N} \
 -L ${L} \
 -B ${B} \

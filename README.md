@@ -17,6 +17,8 @@ A PyTorch implementation of DNN-based source separation.
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | FurcaNet | [FurcaNet: An End-to-End Deep Gated Convolutional, Long Short-term Memory, Deep Neural Networks for Single Channel Speech Separation](https://arxiv.org/abs/1902.00651) |  |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
+| DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) |  |
+| GALR | [Effective Low-Cost Time-Domain Audio Separation Uing Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) |  |
 
 ## Method related to training
 | Method | Reference | Done |
@@ -73,3 +75,5 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.2.1: `conv_tasnet` directory is renamed to `conv-tasnet`. Add one-and-rest PIT (ORPIT).
 - v0.3.0: `wsj0` is renamed to `wsj0-mix`. The result is updated.
 - v0.3.1: Implement Linear encoder for TasNet.
+- v0.3.2: Change the definition of `hidden_channels` in dual-path RNN.
+- v0.3.3: Fix trained models due to the update v0.3.2.

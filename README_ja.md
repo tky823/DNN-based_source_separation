@@ -17,6 +17,8 @@ DNNによる音源分離（PyTorch実装）
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | FurcaNet | [FurcaNet: An End-to-End Deep Gated Convolutional, Long Short-term Memory, Deep Neural Networks for Single Channel Speech Separation](https://arxiv.org/abs/1902.00651) |  |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
+| DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) |  |
+| GALR | [Effective Low-Cost Time-Domain Audio Separation Uing Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) |  |
 
 ## 学習に関する方法
 | 方法 | 参考文献 | 実装 |
@@ -73,3 +75,5 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.2.1: `conv_tasnet`ディレクトリの名前を`conv-tasnet`に変更．ORPIT (one-and-rest PIT)を追加．
 - v0.3.0: `wsj0`を`wsj0-mix`へ名前を変更．実験結果の更新．
 - v0.3.1: TasNetにおける線形のencoderに対応．
+- v0.3.2: dual-path RNNのチャネル数の定義を変更．
+- v0.3.3: v0.3.2の影響により，学習済みモデルを更新．
