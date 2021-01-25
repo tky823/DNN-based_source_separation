@@ -315,10 +315,8 @@ class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
-        # n_sources = sources.size(0)
         
         return mixture, sources
-        # return mixture, sources, n_sources
 
 class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __init__(self, wav_root, list_path, max_samples=None, max_n_sources=3):
@@ -410,7 +408,7 @@ def mixed_number_sources_eval_collate_fn(batch):
     batched_mixture, batched_sources, segment_ID = [], [], []
     batched_segment_ID = []
 
-    for mixture, sources in batch:
+    for mixture, sources, segment_ID in batch:
         batched_mixture.append(mixture)
         batched_sources.append(sources)
         batched_segment_ID.append(segment_ID)
