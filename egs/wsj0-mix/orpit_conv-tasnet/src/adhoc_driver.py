@@ -88,13 +88,13 @@ class ORPITTrainer(TrainerBase):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources, n_sources) in enumerate(self.train_loader):
+        for idx, (mixture, sources) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
             
             estimated_sources = self.model(mixture)
-            loss, _ = self.pit_criterion(estimated_sources, sources, n_sources=n_sources)
+            loss, _ = self.pit_criterion(estimated_sources, sources)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -122,10 +122,13 @@ class ORPITTrainer(TrainerBase):
         n_sources_count = {}
         
         with torch.no_grad():
-            for idx, (mixture, sources, segment_IDs, n_sources) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
+                
+                sources, n_sources = nn.utils.rnn.pad_packed_sequence(sources, batch_first=True)
+                n_sources = n_sources.tolist()
                 
                 output_one_and_rest = self.model(mixture)
                 output_one = output_one_and_rest[:,0:1]

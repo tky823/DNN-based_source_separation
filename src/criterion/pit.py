@@ -1,5 +1,6 @@
 import itertools
 import torch
+import torch.nn as nn
 
 """
     Permutation invariant training
@@ -91,11 +92,11 @@ class ORPIT:
         patterns = list(itertools.permutations(range(2))) # 2 means 'one' and 'rest'
         self.patterns = torch.Tensor(patterns).long()
 
-    def __call__(self, input, target, n_sources=None, batch_mean=True):
+    def __call__(self, input, target, batch_mean=True):
         """
         Args:
             input (batch_size, 2, *)
-            target (batch_size, max(n_sources), *): `n_sources` is different for every input.
+            target <packed_sequence>: `n_sources` is different for every input.
             n_sources (batch_size,): The number of sources per input. If `None`, the number is regarded same among the batch.
         Returns:
             loss (batch_size,): minimum loss for each data
@@ -105,84 +106,55 @@ class ORPIT:
 
         criterion = self.criterion
 
-        if n_sources is None:
-            # Batch process
-            n_sources = target.size(1)
-        
-            input_one, input_rest = input[:, 0], input[:, 1] # (batch_size, *), (batch_size, *)
+        target, lens_unpacked = nn.utils.rnn.pad_packed_sequence(target, batch_first=True)
+
+        # TODO: batch process
+
+        batch_size = input.size(0)
+        batch_loss, batch_indices = None, None
+
+        for batch_idx in range(batch_size):
+            n_sources = lens_unpacked[batch_idx] # <int>
+            _input, _target = input[batch_idx: batch_idx+1], target[batch_idx: batch_idx+1, : n_sources] # (1, 2, *), (1, n_sources, *)
+            input_one, input_rest = _input[:, 0], _input[:, 1] # (1, *), (1, *)
 
             possible_loss = None
-        
+    
             for idx in range(n_sources):
-                mask_one = torch.zeros_like(target)
+                mask_one = torch.zeros_like(_target)
                 mask_one[:,idx] = 1.0
-                mask_rest = torch.ones_like(target) - mask_one
-                target_one = torch.sum(mask_one * target, dim=1)
-                target_rest = torch.sum(mask_rest * target, dim=1)
-
+                mask_rest = torch.ones_like(_target) - mask_one
+                target_one = torch.sum(mask_one * _target, dim=1) # (1, *)
+                target_rest = torch.sum(mask_rest * _target, dim=1) # (1, *)
+                
                 loss_one = criterion(input_one, target_one, batch_mean=False)
                 loss_rest = criterion(input_rest, target_rest, batch_mean=False)
                 loss = loss_one + loss_rest / (n_sources - 1)
 
                 if possible_loss is None:
-                    possible_loss = loss.unsqueeze(dim=1)
+                    possible_loss = loss
                 else:
-                    possible_loss = torch.cat([possible_loss, loss.unsqueeze(dim=1)], dim=1)
-            
-            # possible_loss (batch_size, n_sources)
-            if criterion.maximize:
-                batch_loss, batch_indices = torch.max(possible_loss, dim=1) # loss (batch_size,), batch_indices (batch_size,)
-            else:
-                batch_loss, batch_indices = torch.min(possible_loss, dim=1) # loss (batch_size,), batch_indices (batch_size,)
-        else:
-            batch_size = input.size(0)
-            batch_loss, indices = None, None
-
-            for batch_idx in range(batch_size):
-                _n_sources = n_sources[batch_idx] # <int>
-                _input, _target = input[batch_idx: batch_idx+1], target[batch_idx: batch_idx+1, : _n_sources] # (1, 2, *), (1, n_sources, *)
-                input_one, input_rest = _input[:, 0], _input[:, 1] # (1, *), (1, *)
-
-                possible_loss = None
-        
-                for idx in range(_n_sources):
-                    mask_one = torch.zeros_like(_target)
-                    mask_one[:,idx] = 1.0
-                    mask_rest = torch.ones_like(_target) - mask_one
-                    target_one = torch.sum(mask_one * _target, dim=1) # (1, *)
-                    target_rest = torch.sum(mask_rest * _target, dim=1) # (1, *)
-                    
-                    loss_one = criterion(input_one, target_one, batch_mean=False)
-                    loss_rest = criterion(input_rest, target_rest, batch_mean=False)
-                    loss = loss_one + loss_rest / (_n_sources - 1)
-
-                    if possible_loss is None:
-                        possible_loss = loss
-                    else:
-                        possible_loss = torch.cat([possible_loss, loss], dim=0)
-                    
-                if criterion.maximize:
-                    loss, indices = torch.max(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
-                else:
-                    loss, indices = torch.min(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
+                    possible_loss = torch.cat([possible_loss, loss], dim=0)
                 
-                if batch_loss is None:
-                    batch_loss = loss
-                    batch_indices = indices
-                else:
-                    batch_loss = torch.cat([batch_loss, loss], dim=0)
-                    batch_indices = torch.cat([batch_indices, indices], dim=0)
+            if criterion.maximize:
+                loss, indices = torch.max(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
+            else:
+                loss, indices = torch.min(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
+            
+            if batch_loss is None:
+                batch_loss = loss
+                batch_indices = indices
+            else:
+                batch_loss = torch.cat([batch_loss, loss], dim=0)
+                batch_indices = torch.cat([batch_indices, indices], dim=0)
          
         if batch_mean:
             batch_loss = batch_loss.mean(dim=0)
             
         return batch_loss, batch_indices
 
-
-if __name__ == '__main__':
-    import torch
+def _test_pit():
     from criterion.sdr import SISDR
-    from criterion.distance import L1Loss
 
     torch.manual_seed(111)
 
@@ -197,52 +169,73 @@ if __name__ == '__main__':
     
     print(loss)
     print(pattern)
+
+def _test_orpit():
+    from criterion.sdr import SISDR
+    from criterion.distance import L1Loss
+    
+    torch.manual_seed(111)
+
+    T = 6
+
+    print('-'*10, "SI-SDR", '-'*10)
+    permutations = [[2, 1, 0], [0, 1], [0, 2, 1], [1, 0]]
+    input, target = [], []
+
+    for indice in permutations:
+        n_sources = len(indice)
+        _input = torch.randint(5, (n_sources, T), dtype=torch.float)
+        _target = _input[torch.Tensor(indice).long()]
+
+        _input_one = _input[0:1]
+        _input_rest = _input[1:].sum(dim=0, keepdim=True)
+        _input = torch.cat([_input_one, _input_rest], dim=0)
+
+        input.append(_input)
+        target.append(_target)
+        
+    input = nn.utils.rnn.pad_sequence(input, batch_first=True)
+    target = nn.utils.rnn.pack_sequence(target, enforce_sorted=False)
+
+    criterion = SISDR()
+    pit_criterion = ORPIT(criterion)
+    loss, indices = pit_criterion(input, target)
+
+    print(loss)
+    print(indices)
     print()
 
-    batch_size, C, T = 4, 3, 5
+    print('-'*10, "L1Loss", '-'*10)
+    permutations = [[2, 3, 1, 0], [1, 0], [0, 1, 2], [2, 1, 0], [0, 1]]
+    input, target = [], []
 
-    input = torch.randint(5, (batch_size, C, T), dtype=torch.float)
-    target = torch.randint(5, (batch_size, C, T), dtype=torch.float)
+    for indice in permutations:
+        n_sources = len(indice)
+        _input = torch.randint(5, (n_sources, T), dtype=torch.float)
+        _target = _input[torch.Tensor(indice).long()]
 
-    target[0] = input[0, torch.Tensor([2,1,0]).long()]
-    target[1] = input[1, torch.Tensor([0,1,2]).long()]
-    target[2] = input[2, torch.Tensor([0,2,1]).long()]
-    target[3] = input[3, torch.Tensor([1,0,2]).long()]
+        _input_one = _input[0:1]
+        _input_rest = _input[1:].sum(dim=0, keepdim=True)
+        _input = torch.cat([_input_one, _input_rest], dim=0)
 
-    input_one = input[:, 0:1]
-    input_rest = input[:, 1:].sum(dim=1, keepdim=True)
-    input = torch.cat([input_one, input_rest], dim=1)
+        input.append(_input)
+        target.append(_target)
+
+    input = nn.utils.rnn.pad_sequence(input, batch_first=True)
+    target = nn.utils.rnn.pack_sequence(target, enforce_sorted=False)
 
     criterion = L1Loss()
     pit_criterion = ORPIT(criterion)
     loss, indices = pit_criterion(input, target)
-    
+
     print(loss)
     print(indices)
+
+if __name__ == '__main__':
+    print('='*10, "Permutation invariant training", '='*10)
+    _test_pit()
     print()
 
-    input = torch.randint(5, (batch_size, C, T), dtype=torch.float)
-    target = torch.randint(5, (batch_size, C, T), dtype=torch.float)
-    n_sources = torch.Tensor([3,2,3,2]).long()
-    
-    target[0] = input[0, torch.Tensor([2,1,0]).long()]
-    target[1] = input[1, torch.Tensor([0,1,2]).long()]
-    target[2] = input[2, torch.Tensor([0,2,1]).long()]
-    target[3] = input[3, torch.Tensor([1,0,2]).long()]
-
-    input[1,2] = 0
-    input[3,2] = 0
-    target[1,2] = 0
-    target[3,2] = 0
-
-    input_one = input[:, 0:1]
-    input_rest = input[:, 1:].sum(dim=1, keepdim=True)
-    input = torch.cat([input_one, input_rest], dim=1)
-
-    criterion = SISDR()
-    pit_criterion = ORPIT(criterion)
-    loss, indices = pit_criterion(input, target, n_sources=n_sources)
-
-    print(loss)
-    print(indices)
+    print('='*10, "One-and-Rest permutation invariant training", '='*10)
+    _test_orpit()
     print()
