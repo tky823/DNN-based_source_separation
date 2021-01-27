@@ -38,7 +38,7 @@ criterion='sisdr'
 optimizer='adam'
 lr=1e-3
 weight_decay=0
-max_norm=5
+max_norm=0
 
 batch_size=4
 epochs=100
