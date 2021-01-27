@@ -22,6 +22,7 @@ N=64
 L=16 # L corresponds to the window length (samples) in this script.
 
 # Separator
+F=64
 H=128
 K=100
 P=50
@@ -37,7 +38,7 @@ criterion='sisdr'
 optimizer='adam'
 lr=1e-3
 weight_decay=0
-max_norm=5
+max_norm=0
 
 batch_size=4
 epochs=100
@@ -56,7 +57,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -82,6 +83,7 @@ train.py \
 --window_fn "${window_fn}" \
 -N ${N} \
 -L ${L} \
+-F ${F} \
 -H ${H} \
 -K ${K} \
 -P ${P} \
