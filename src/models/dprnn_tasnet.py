@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_bases
+from utils.utils_tasnet import choose_bases, choose_layer_norm
 from models.dprnn import DPRNN
 
 EPS=1e-12
 
 class DPRNNTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
         super().__init__()
         
         if stride is None:
@@ -32,7 +32,7 @@ class DPRNNTasNet(nn.Module):
             self.window_fn = None
         
         # Separator configuration
-        self.sep_hidden_channels = sep_hidden_channels
+        self.sep_hidden_channels, self.sep_bottleneck_channels = sep_hidden_channels, sep_bottleneck_channels
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
         self.sep_num_blocks = sep_num_blocks
         
@@ -100,6 +100,7 @@ class DPRNNTasNet(nn.Module):
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
             'sep_hidden_channels': self.sep_hidden_channels,
+            'sep_bottleneck_channels': self.sep_bottleneck_channels,
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,
             'sep_num_blocks': self.sep_num_blocks,
@@ -122,7 +123,7 @@ class DPRNNTasNet(nn.Module):
         enc_nonlinear = package['enc_nonlinear']
         window_fn = package['window_fn']
         
-        sep_hidden_channels = package['sep_hidden_channels']
+        sep_hidden_channels, sep_bottleneck_channels = package['sep_hidden_channels'], package['sep_bottleneck_channels']
         sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
         sep_num_blocks = package['sep_num_blocks']
         
@@ -134,7 +135,7 @@ class DPRNNTasNet(nn.Module):
         
         eps = package['eps']
         
-        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         
         return model
     
@@ -148,18 +149,21 @@ class DPRNNTasNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
+    def __init__(self, num_features, bottleneck_channels=64, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
+        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
+        self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
+        
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.dprnn = DPRNN(num_features, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm)
+        self.dprnn = DPRNN(bottleneck_channels, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         
         self.prelu = nn.PReLU()
-        self.mask_conv1d = nn.Conv1d(num_features, n_sources*num_features, kernel_size=1, stride=1)
+        self.mask_conv1d = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
         
         if mask_nonlinear == 'sigmoid':
             self.mask_nonlinear = nn.Sigmoid()
@@ -183,7 +187,9 @@ class Separator(nn.Module):
         padding_left = padding//2
         padding_right = padding - padding_left
         
-        x = F.pad(input, (padding_left, padding_right))
+        x = self.norm1d(input)    
+        x = self.bottleneck_conv1d(x)
+        x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x)
         x = self.dprnn(x)
         x = self.overlap_add1d(x)
@@ -313,6 +319,7 @@ def _test_dprnn_tasnet():
     L, N = 8, 16
     
     # Separator
+    f = N
     H = 32 # for each direction
     B = 4
     sep_norm = True
@@ -327,7 +334,7 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -343,7 +350,7 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'softmax'
     n_sources = 3
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -351,6 +358,7 @@ def _test_dprnn_tasnet():
     print(input.size(), output.size())
     
 def _test_dprnn_tasnet_paper():
+    print("Only K and P is different from original, but it doesn't affect the # parameters.")
     batch_size = 2
     K, P = 3, 2
     
@@ -359,6 +367,7 @@ def _test_dprnn_tasnet_paper():
     L, N = 2, 64
     
     # Separator
+    f = N
     H = 128 # for each direction
     B = 6
     sep_norm = True
@@ -367,13 +376,13 @@ def _test_dprnn_tasnet_paper():
     
     print("-"*10, "Trainable Bases & Non causal", "-"*10)
     enc_bases, dec_bases = 'trainable', 'trainable'
-    enc_nonlinear = 'relu'
+    enc_nonlinear = None
     
     causal = False
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
