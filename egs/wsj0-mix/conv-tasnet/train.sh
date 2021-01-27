@@ -22,7 +22,7 @@ valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
 enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
-window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
+window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=512
 L=16
 
