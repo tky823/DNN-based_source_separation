@@ -48,7 +48,7 @@ class AdhocTrainer(TrainerBase):
             real, imag = sources[...,0], sources[...,1]
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
-            print(torch.isnan(mixture_amplitude).any(), torch.isnan(assignment).any(), torch.isnan(threshold_weight).any(), flush=True)
+            print(mixture_amplitude.size())
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
             print("estimated_sources_amplitude", torch.isnan(estimated_sources_amplitude).any(), flush=True)
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
