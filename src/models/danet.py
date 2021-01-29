@@ -43,11 +43,11 @@ class DANet(nn.Module):
     def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
-            input (batch_size, 1, n_bins, T_bin): Amplitude
-            assignment (batch_size, n_sources, n_bins, T_bin): Speaker assignment when training
-            threshold_weight (batch_size, 1, n_bins, T_bin) or <float>
+            input (batch_size, 1, n_bins, n_frames): Amplitude
+            assignment (batch_size, n_sources, n_bins, n_frames): Speaker assignment when training
+            threshold_weight (batch_size, 1, n_bins, n_frames) or <float>
         Returns:
-            output (batch_size, n_sources, n_bins, T_bin)
+            output (batch_size, n_sources, n_bins, n_frames)
         """
         output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=None)
         
@@ -56,9 +56,9 @@ class DANet(nn.Module):
     def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
-            input (batch_size, 1, n_bins, T_bin) <torch.Tensor>
-            assignment (batch_size, n_sources, n_bins, T_bin) <torch.Tensor>
-            threshold_weight (batch_size, 1, n_bins, T_bin) or <float>
+            input (batch_size, 1, n_bins, n_frames) <torch.Tensor>
+            assignment (batch_size, n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (batch_size, 1, n_bins, n_frames) or <float>
         """
         if iter_clustering is None:
             iter_clustering = self.iter_clustering
@@ -74,34 +74,34 @@ class DANet(nn.Module):
         embed_dim = self.embed_dim
         eps = self.eps
         
-        batch_size, _, n_bins, T_bin = input.size()
+        batch_size, _, n_bins, n_frames = input.size()
         
         log_amplitude = torch.log(input + eps)
-        x = log_amplitude.squeeze(dim=1).permute(0,2,1) # -> (batch_size, T_bin, n_bins)
-        x, (_, _) = self.lstm(x) # -> (batch_size, T_bin, n_bins)
-        x = self.fc(x) # -> (batch_size, T_bin, embed_dim*n_bins)
-        x = x.view(batch_size, T_bin, embed_dim, n_bins)
-        x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, n_bins, T_bin)
-        latent = x.view(batch_size, embed_dim, n_bins*T_bin)
+        x = log_amplitude.squeeze(dim=1).permute(0,2,1) # -> (batch_size, n_frames, n_bins)
+        x, (_, _) = self.lstm(x) # -> (batch_size, n_frames, n_bins)
+        x = self.fc(x) # -> (batch_size, n_frames, embed_dim*n_bins)
+        x = x.view(batch_size, n_frames, embed_dim, n_bins)
+        x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, n_bins, n_frames)
+        latent = x.view(batch_size, embed_dim, n_bins*n_frames)
         
         if assignment is None:
             # TODO: test threshold
             if self.training:
                 raise ValueError("assignment is required.")
-            latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, n_bins*T_bin)
-            latent_kmeans = latent_kmeans.permute(1,0) # -> (n_bins*T_bin, embed_dim)
+            latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, n_bins*n_frames)
+            latent_kmeans = latent_kmeans.permute(1,0) # -> (n_bins*n_frames, embed_dim)
             kmeans = Kmeans(latent_kmeans, K=n_sources)
-            _, centroids = kmeans(iteration=iter_clustering) # (n_bins*T_bin, n_sources), (n_sources, embed_dim)
+            _, centroids = kmeans(iteration=iter_clustering) # (n_bins*n_frames, n_sources), (n_sources, embed_dim)
             attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
         else:
-            threshold_weight = threshold_weight.view(batch_size, 1, n_bins*T_bin)
-            assignment = assignment.view(batch_size, n_sources, n_bins*T_bin) # -> (batch_size, n_sources, n_bins*T_bin)
+            threshold_weight = threshold_weight.view(batch_size, 1, n_bins*n_frames)
+            assignment = assignment.view(batch_size, n_sources, n_bins*n_frames) # -> (batch_size, n_sources, n_bins*n_frames)
             assignment = threshold_weight * assignment
             attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, embed_dim)
         
-        similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, n_bins*T_bin)
-        similarity = similarity.view(batch_size, n_sources, n_bins, T_bin)
-        mask = self.mask_nonlinear2d(similarity) # -> (batch_size, n_sources, n_bins, T_bin)
+        similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, n_bins*n_frames)
+        similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
+        mask = self.mask_nonlinear2d(similarity) # -> (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
         
         return output, latent
@@ -155,15 +155,15 @@ def _test_danet():
     H = 32
     B = 4
     
-    n_bins, T_bin = 4, 128
+    n_bins, n_frames = 4, 128
     C = 2
     causal = False
     mask_nonlinear = 'sigmoid'
     
-    sources = torch.randn((batch_size, C, n_bins, T_bin), dtype=torch.float)
+    sources = torch.randn((batch_size, C, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = ideal_binary_mask(sources)
-    threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, T_bin), dtype=torch.float)
+    threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
     model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=C)
     print(model)
@@ -182,15 +182,15 @@ def _test_danet_paper():
     H = 600
     B = 4
     
-    n_bins, T_bin = 4, 128
+    n_bins, n_frames = 4, 128
     C = 2
     causal = False
     mask_nonlinear = 'sigmoid'
     
-    sources = torch.randn((batch_size, C, n_bins, T_bin), dtype=torch.float)
+    sources = torch.randn((batch_size, C, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = ideal_binary_mask(sources)
-    threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, T_bin), dtype=torch.float)
+    threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
     model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=C)
     print(model)
