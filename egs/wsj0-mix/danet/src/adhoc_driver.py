@@ -49,9 +49,9 @@ class AdhocTrainer(TrainerBase):
             sources_amplitude = torch.sqrt(real**2+imag**2)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
-            print("estimated_sources_amplitude", torch.isnan(estimated_sources_amplitude))
+            print("estimated_sources_amplitude", torch.isnan(estimated_sources_amplitude), flush=True)
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
-            print("loss", torch.isnan(loss))
+            print("loss", torch.isnan(loss), flush=True)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -62,7 +62,6 @@ class AdhocTrainer(TrainerBase):
             self.optimizer.step()
             
             train_loss += loss.item()
-            print("train_loss", torch.isnan(train_loss))
             
             if (idx + 1)%100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
