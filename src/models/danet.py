@@ -115,6 +115,7 @@ class DANet(nn.Module):
             'num_blocks': self.num_blocks,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
+            'iter_clustering': self.iter_clustering,
             'eps': self.eps
         }
         
@@ -131,10 +132,11 @@ class DANet(nn.Module):
         
         causal = package['causal']
         mask_nonlinear = package['mask_nonlinear']
+        iter_clustering = package.get('iter_clustering') or 10
         
         eps = package['eps']
         
-        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps)
+        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
         
         return model
     
