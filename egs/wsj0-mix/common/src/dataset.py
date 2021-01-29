@@ -263,6 +263,8 @@ class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
         """
         mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
+
+        print(torch.isnan(mixture).any(), torch.isnan(sources).any(), torch.isnan(ideal_mask).any(), torch.isnan(threshold_weight).any(), flush=True)
         
         return mixture, sources, ideal_mask, threshold_weight
 
