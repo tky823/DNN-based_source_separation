@@ -123,7 +123,7 @@ class Separator(nn.Module):
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.norm2d = choose_layer_norm(bottleneck_channels, causal=causal, eps=eps)
 
-        self.dprnn = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
+        self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         self.gtu = GTU1d(bottleneck_channels, n_sources*num_features)
         
@@ -154,7 +154,7 @@ class Separator(nn.Module):
         x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x)
-        x = self.dprnn(x)
+        x = self.dptransformer(x)
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
         x = self.gtu(x)
