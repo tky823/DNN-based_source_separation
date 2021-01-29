@@ -73,6 +73,10 @@ train.py \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
+--ideal_mask ${ideal_mask} \
+--threshold ${threshold} \
+--fft_size ${fft_size} \
+--hop_size ${hop_size} \
 -K ${K} \
 -H ${H} \
 -B ${B} \
