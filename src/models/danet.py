@@ -132,7 +132,7 @@ class DANet(nn.Module):
         
         causal = package['causal']
         mask_nonlinear = package['mask_nonlinear']
-        iter_clustering = package.get('iter_clustering') or 10
+        iter_clustering = package['iter_clustering']
         
         eps = package['eps']
         
