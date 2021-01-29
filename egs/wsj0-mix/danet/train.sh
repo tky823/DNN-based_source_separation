@@ -18,10 +18,11 @@ valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max
 train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
 valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
-# Encoder & decoder
 window_fn='hann'
 fft_size=256
 hop_size=64
+ideal_mask='ibm'
+threshold=40
 
 # Embedding dimension
 K=20
