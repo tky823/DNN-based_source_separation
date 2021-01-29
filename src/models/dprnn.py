@@ -70,6 +70,8 @@ class IntraChunkRNN(nn.Module):
         """
         num_features, hidden_channels = self.num_features, self.hidden_channels
         batch_size, _, S, chunk_size = input.size()
+
+        self.rnn.flatten_parameters()
         
         residual = input
         x = input.permute(0,2,3,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, S, chunk_size, num_features)
@@ -113,6 +115,8 @@ class InterChunkRNN(nn.Module):
         """
         num_features, hidden_channels = self.num_features, self.hidden_channels
         batch_size, _, S, chunk_size = input.size()
+
+        self.rnn.flatten_parameters()
         
         residual = input
         x = input.permute(0,3,2,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, chunk_size, S, num_features)
