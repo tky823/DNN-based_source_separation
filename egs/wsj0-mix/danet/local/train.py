@@ -93,9 +93,9 @@ def main(args):
     
     # Criterion
     if args.criterion == 'l1loss':
-        criterion = L1Loss()
+        criterion = L1Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     elif args.criterion == 'l2loss':
-        criterion = L2Loss()
+        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
