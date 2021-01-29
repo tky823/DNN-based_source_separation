@@ -49,10 +49,18 @@ class GALRBlock(nn.Module):
         return output
 
 class GloballyAttentiveBlock(nn.Module):
+    """
+    TODO: similarity of `MultiheadAttentionBlock`?
+    """
     def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
         super().__init__()
-        
-        pass
+
+        self.norm = norm
+
+        if self.norm:    
+            self.norm1d = choose_layer_norm(embed_dim, causal=causal, eps=eps)
+
+        self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
         
     def forward(self, input):
         """
@@ -61,7 +69,20 @@ class GloballyAttentiveBlock(nn.Module):
         Returns:
             output (batch_size, num_features, S, chunk_size)
         """
-        pass
+        x = input # (T, batch_size, embed_dim)
+
+        residual = x
+        x, _ = self.multihead_attn(x, x, x) # (T_tgt, batch_size, embed_dim), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
+        x = x + residual
+        
+        if self.norm:
+            x = x.permute(1,2,0) # (batch_size, embed_dim, T)
+            x = self.norm1d(x) # (batch_size, embed_dim, T)
+            x = x.permute(2,0,1).contiguous() # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
+        
+        output = x
+
+        return output
 
 def _test_global_attentive_block():
     pass

@@ -118,9 +118,9 @@ class GALRNet(nn.Module):
     def build_model(cls, model_path):
         package = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        n_bases = package.get('n_bases') or package['n_basis']
+        n_bases = package['n_bases']
         kernel_size, stride = package['kernel_size'], package['stride']
-        enc_bases, dec_bases = package.get('enc_bases') or package['enc_basis'], package.get('dec_bases') or package['dec_basis']
+        enc_bases, dec_bases = package['enc_bases'], package['dec_bases']
         enc_nonlinear = package['enc_nonlinear']
         window_fn = package['window_fn']
         
