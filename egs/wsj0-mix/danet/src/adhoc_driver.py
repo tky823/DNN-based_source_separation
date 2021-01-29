@@ -8,7 +8,7 @@ from utils.utils_audio import write_wav
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
-class AttractorTrainer(TrainerBase):
+class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
