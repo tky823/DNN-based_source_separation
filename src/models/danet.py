@@ -24,7 +24,7 @@ class DANet(nn.Module):
         
         self.mask_nonlinear = mask_nonlinear
         
-        self.lstm = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional)
+        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
         
         if mask_nonlinear == 'sigmoid':
@@ -74,10 +74,12 @@ class DANet(nn.Module):
         eps = self.eps
         
         batch_size, _, n_bins, n_frames = input.size()
+
+        self.rnn.flatten_parameters()
         
         log_amplitude = torch.log(input + eps)
-        x = log_amplitude.squeeze(dim=1).permute(0,2,1) # -> (batch_size, n_frames, n_bins)
-        x, (_, _) = self.lstm(x) # -> (batch_size, n_frames, n_bins)
+        x = log_amplitude.squeeze(dim=1).permute(0,2,1).contiguous() # -> (batch_size, n_frames, n_bins)
+        x, (_, _) = self.rnn(x) # -> (batch_size, n_frames, n_bins)
         x = self.fc(x) # -> (batch_size, n_frames, embed_dim*n_bins)
         x = x.view(batch_size, n_frames, embed_dim, n_bins)
         x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, n_bins, n_frames)
