@@ -57,7 +57,7 @@ class AdhocTrainer(TrainerBase):
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
-            self.optimizer.step() # may cause error
+            self.optimizer.step()
             
             train_loss += loss.item()
             
