@@ -202,10 +202,12 @@ class SpectrogramDataset(WaveDataset):
         
         T = mixture.size(-1)
         
-        print(mixture.size(), sources.size())
+        print(mixture.size(), sources.size(), end='->')
 
         mixture = self.stft(mixture) # (1, n_bins, n_frames, 2)
         sources = self.stft(sources) # (n_sources, n_bins, n_frames, 2)
+
+        print(mixture.size(), sources.size())
         
         return mixture, sources, T, segment_IDs
 
