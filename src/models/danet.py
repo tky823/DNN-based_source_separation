@@ -178,7 +178,7 @@ def _test_danet_paper():
     batch_size = 2
     K = 20
     
-    H = 600
+    H = 300
     B = 4
     
     n_bins, n_frames = 129, 256
