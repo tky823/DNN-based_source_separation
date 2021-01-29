@@ -155,16 +155,16 @@ def _test_danet():
     B = 4
     
     n_bins, n_frames = 4, 128
-    C = 2
+    n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
     
-    sources = torch.randn((batch_size, C, n_bins, n_frames), dtype=torch.float)
+    sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = ideal_binary_mask(sources)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
-    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=C)
+    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
@@ -181,17 +181,17 @@ def _test_danet_paper():
     H = 600
     B = 4
     
-    n_bins, n_frames = 4, 128
-    C = 2
+    n_bins, n_frames = 129, 256
+    n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
     
-    sources = torch.randn((batch_size, C, n_bins, n_frames), dtype=torch.float)
+    sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = ideal_binary_mask(sources)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
-    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=C)
+    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
