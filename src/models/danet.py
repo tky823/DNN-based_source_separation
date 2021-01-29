@@ -102,8 +102,6 @@ class DANet(nn.Module):
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
         mask = self.mask_nonlinear2d(similarity) # -> (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
-        
-        # print(torch.isnan(output).any(), torch.isnan(latent).any(), flush=True)
 
         return output, latent
     
