@@ -51,7 +51,7 @@ def main(args):
     set_seed(args.seed)
     
     samples = int(args.sr * args.duration)
-    overlap = samples
+    overlap = 0
     max_samples = int(args.sr * args.valid_duration)
 
     train_dataset = IdealMaskSpectrogramTrainDataset(args.train_wav_root, args.train_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, samples=samples, overlap=overlap, n_sources=args.n_sources)
