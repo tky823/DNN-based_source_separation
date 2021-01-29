@@ -101,7 +101,7 @@ class AdhocTrainer(TrainerBase):
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
-                loss, _ = pit(output, sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
