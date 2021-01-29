@@ -24,7 +24,6 @@ class DANet(nn.Module):
         
         self.mask_nonlinear = mask_nonlinear
         
-        # self.lstm = StackedLSTM(n_bins, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal)
         self.lstm = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
         
