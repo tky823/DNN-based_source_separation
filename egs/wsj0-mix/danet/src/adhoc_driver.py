@@ -59,17 +59,7 @@ class AdhocTrainer(TrainerBase):
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
-            print("Before")
-
-            for p in self.model.parameters():
-                if torch.isnan(p).any():
-                    raise ValueError("NaN")
-            self.optimizer.step()
-
-            print("After")
-            for p in self.model.parameters():
-                if torch.isnan(p).any():
-                    raise ValueError("NaN")
+            self.optimizer.step() # may cause error
             
             train_loss += loss.item()
             
