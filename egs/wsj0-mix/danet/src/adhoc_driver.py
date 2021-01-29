@@ -1,10 +1,12 @@
 import os
+import time
 import numpy as np
 import torch
 import torch.nn as nn
 
-from driver import TrainerBase
+from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
+from driver import TrainerBase
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
@@ -25,6 +27,51 @@ class AdhocTrainer(TrainerBase):
         
         self.n_bins = args.n_bins
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+
+        self.lr_decay = (args.lr_end / args.lr)**(1/self.epochs)
+    
+    def run(self):
+        for epoch in range(self.start_epoch, self.epochs):
+            start = time.time()
+            train_loss, valid_loss = self.run_one_epoch(epoch)
+            end = time.time()
+            
+            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
+            
+            self.train_loss[epoch] = train_loss
+            self.valid_loss[epoch] = valid_loss
+
+            # Learning rate scheduling
+            # torch.optim.lr_scheduler.ExponentialLR may be useful.
+            lr_decay = self.lr_decay
+            optim_dict = self.optimizer.state_dict()
+            lr = optim_dict['param_groups'][0]['lr']
+            print("Learning rate: {} -> {}".format(lr, lr_decay * lr))
+            
+            optim_dict['param_groups'][0]['lr'] = lr_decay * lr
+            self.optimizer.load_state_dict(optim_dict)
+            
+            if valid_loss < self.best_loss:
+                self.best_loss = valid_loss
+                self.no_improvement = 0
+                model_path = os.path.join(self.model_dir, "best.pth")
+                self.save_model(epoch, model_path)
+            else:
+                if valid_loss >= self.prev_loss:
+                    self.no_improvement += 1
+                    if self.no_improvement >= 10:
+                        print("Stop training")
+                        break
+                else:
+                    self.no_improvement = 0
+            
+            self.prev_loss = valid_loss
+            
+            model_path = os.path.join(self.model_dir, "last.pth")
+            self.save_model(epoch, model_path)
+            
+            save_path = os.path.join(self.loss_dir, "loss.png")
+            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
     
     def run_one_epoch_train(self, epoch):
         # Override

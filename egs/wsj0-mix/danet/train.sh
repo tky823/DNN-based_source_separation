@@ -39,6 +39,7 @@ criterion='l2loss'
 # Optimizer
 optimizer='rmsprop'
 lr=1e-4
+lr_end=3e-6
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
@@ -49,7 +50,7 @@ use_cuda=1
 overwrite=0
 seed=111
 
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-${lr_end}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -86,6 +87,7 @@ train.py \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
+--lr_end ${lr_end} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
