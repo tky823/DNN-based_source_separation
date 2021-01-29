@@ -326,8 +326,8 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
-        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
 
     def __getitem__(self, idx):
         """
