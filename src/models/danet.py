@@ -6,7 +6,7 @@ from algorithm.clustering import Kmeans
 EPS=1e-12
 
 class DANet(nn.Module):
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS, **kwargs):
+    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS, **kwargs):
         super().__init__()
         
         self.n_bins = n_bins
