@@ -53,24 +53,20 @@ class AdhocTrainer(TrainerBase):
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
             print("loss", torch.isnan(loss).any(), flush=True)
             
-            print("Before")
-            for p in self.model.parameters():
-                if torch.isnan(p).any():
-                    raise ValueError("NaN")
             self.optimizer.zero_grad()
             loss.backward()
-
-            print("After")
-            for p in self.model.parameters():
-                if torch.isnan(p).any():
-                    raise ValueError("NaN")
             
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
+            print("Before")
+
+            for p in self.model.parameters():
+                if torch.isnan(p).any():
+                    raise ValueError("NaN")
             self.optimizer.step()
 
-            print("After2")
+            print("After")
             for p in self.model.parameters():
                 if torch.isnan(p).any():
                     raise ValueError("NaN")
