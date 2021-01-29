@@ -155,7 +155,7 @@ class Separator(nn.Module):
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
-        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
+        # self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
@@ -187,8 +187,9 @@ class Separator(nn.Module):
         padding_left = padding//2
         padding_right = padding - padding_left
         
-        x = self.norm1d(input)    
-        x = self.bottleneck_conv1d(x)
+        # x = self.norm1d(input)
+        # x = self.bottleneck_conv1d(x)
+        x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x)
         x = self.dprnn(x)
