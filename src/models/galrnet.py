@@ -4,11 +4,11 @@ import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_bases, choose_layer_norm
 from models.transform import Segment1d, OverlapAdd1d
-from models.dprnn import DPRNN
+from models.galr import GALR
 
 EPS=1e-12
 
-class DPRNNTasNet(nn.Module):
+class GALRNet(nn.Module):
     def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
         super().__init__()
         
@@ -118,9 +118,9 @@ class DPRNNTasNet(nn.Module):
     def build_model(cls, model_path):
         package = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        n_bases = package.get('n_bases') or package['n_basis']
+        n_bases = package['n_bases']
         kernel_size, stride = package['kernel_size'], package['stride']
-        enc_bases, dec_bases = package.get('enc_bases') or package['enc_basis'], package.get('dec_bases') or package['dec_basis']
+        enc_bases, dec_bases = package['enc_bases'], package['dec_bases']
         enc_nonlinear = package['enc_nonlinear']
         window_fn = package['window_fn']
         
@@ -155,15 +155,12 @@ class Separator(nn.Module):
         
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
-        self.norm = norm
-
-        if self.norm:
-            self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         
+        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.dprnn = DPRNN(bottleneck_channels, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm)
+        self.galr = GALR(bottleneck_channels, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         
         self.prelu = nn.PReLU()
@@ -179,37 +176,34 @@ class Separator(nn.Module):
     def forward(self, input):
         """
         Args:
-            input (batch_size, num_features, T_bin)
+            input (batch_size, num_features, n_frames)
         Returns:
-            output (batch_size, n_sources, num_features, T_bin)
+            output (batch_size, n_sources, num_features, n_frames)
         """
         num_features, n_sources = self.num_features, self.n_sources
         chunk_size, hop_size = self.chunk_size, self.hop_size
-        batch_size, num_features, T_bin = input.size()
+        batch_size, num_features, n_frames = input.size()
         
-        padding = (hop_size-(T_bin-chunk_size)%hop_size)%hop_size
+        padding = (hop_size-(n_frames-chunk_size)%hop_size)%hop_size
         padding_left = padding//2
         padding_right = padding - padding_left
         
-        if self.norm:
-            x = self.norm1d(input)
-        else:
-            x = input
+        x = self.norm1d(input)    
         x = self.bottleneck_conv1d(x)
         x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x)
-        x = self.dprnn(x)
+        x = self.galr(x)
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
         x = self.prelu(x)
         x = self.mask_conv1d(x)
         x = self.mask_nonlinear(x)
-        output = x.view(batch_size, n_sources, num_features, T_bin)
+        output = x.view(batch_size, n_sources, num_features, n_frames)
         
         return output
 
 def _test_separator():
-    batch_size, T_bin = 2, 5
+    batch_size, n_frames = 2, 5
     N, H = 16, 32 # H is the number of channels for each direction
     K, P = 3, 2
     B = 3
@@ -220,7 +214,7 @@ def _test_separator():
     causal = True
     n_sources = 2
     
-    input = torch.randn((batch_size, N, T_bin), dtype=torch.float)
+    input = torch.randn((batch_size, N, n_frames), dtype=torch.float)
     
     separator = Separator(N, hidden_channels=H, chunk_size=K, hop_size=P, num_blocks=B, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(separator)
@@ -228,8 +222,8 @@ def _test_separator():
     output = separator(input)
     print(input.size(), output.size())
 
-def _test_dprnn_tasnet():
-    batch_size, T_bin = 2, 5
+def _test_galrnet():
+    batch_size, n_frames = 2, 5
     K, P = 3, 2
 
     # Encoder & decoder
@@ -252,7 +246,7 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = GALRNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -268,14 +262,14 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'softmax'
     n_sources = 3
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = GALRNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
     output = model(input)
     print(input.size(), output.size())
     
-def _test_dprnn_tasnet_paper():
+def _test_galrnet_paper():
     print("Only K and P is different from original, but it doesn't affect the # parameters.")
     batch_size = 2
     K, P = 3, 2
@@ -300,7 +294,7 @@ def _test_dprnn_tasnet_paper():
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = GALRNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=f, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -312,10 +306,10 @@ if __name__ == '__main__':
     _test_separator()
     print()
     
-    print("="*10, "DPRNN-TasNet", "="*10)
-    _test_dprnn_tasnet()
+    print("="*10, "GALRNet", "="*10)
+    _test_galrnet()
     print()
 
-    print("="*10, "DPRNN-TasNet (same configuration in paper)", "="*10)
-    _test_dprnn_tasnet_paper()
+    print("="*10, "GALRNet (same configuration in paper)", "="*10)
+    _test_galrnet_paper()
     print()

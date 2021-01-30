@@ -3,14 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 """
-Gated Linear Units
-See "Language Modeling with Gated Convolutional Networks"
+Gated Tanh Units
+See "Language Modeling with Gated Convolutional Network"
 https://arxiv.org/abs/1612.08083
 """
-        
-class GLU(nn.Module):
+
+class GTU(nn.Module):
     """
-    Gated Linear Units
+    Gated Tanh Units
     You can use GTU1d and GTU2d as well.
     """
     def __init__(self, in_channels, out_channels):
@@ -42,6 +42,7 @@ class GLU(nn.Module):
         
         input = input.permute(*permutation)
         x_output = self.map(input)
+        x_output = torch.tanh(x_output)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
 
@@ -51,9 +52,9 @@ class GLU(nn.Module):
         return output
 
 
-class GLU1d(nn.Module):
+class GTU1d(nn.Module):
     """
-    Gated Linear Units for 1D inputs
+    Gated Tanh Units for 1D inputs
     """
     def __init__(self, in_channels, out_channels):
         """
@@ -79,6 +80,7 @@ class GLU1d(nn.Module):
             output (batch_size, out_channels, T)
         """
         x_output = self.map(input)
+        x_output = torch.tanh(x_output)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
         
@@ -86,9 +88,9 @@ class GLU1d(nn.Module):
         
         return output
 
-class GLU2d(nn.Module):
+class GTU2d(nn.Module):
     """
-    Gated Linear Units for 2D inputs
+    Gated Tanh Units for 2D inputs
     """
     def __init__(self, in_channels, out_channels):
         """
@@ -114,6 +116,7 @@ class GLU2d(nn.Module):
             output (batch_size, out_channels, H, W)
         """
         x_output = self.map(input)
+        x_output = torch.tanh(x_output)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
         
@@ -125,53 +128,53 @@ if __name__ == '__main__':
     batch_size = 4
     in_channels, out_channels = 3, 16
     
-    print("="*10, "Gated Linear Units (GLU)", "="*10)
+    print("="*10, "Gated Tanh Units (GTU)", "="*10)
     # 1-D
-    print("-"*10, "GLU1d", "-"*10)
+    print("-"*10, "GTU1d", "-"*10)
     T = 128
     
     input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
 
-    glu1d = GLU(in_channels, out_channels)
-    print(glu1d)
+    gtu1d = GTU(in_channels, out_channels)
+    print(gtu1d)
 
-    output = glu1d(input)
+    output = gtu1d(input)
     print(input.size(), output.size())
     print()
 
     # 1-D
-    print("-"*10, "GLU1d", "-"*10)
+    print("-"*10, "GTU1d", "-"*10)
     T = 128
     
     input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
 
-    glu1d = GLU1d(in_channels, out_channels)
-    print(glu1d)
+    gtu1d = GTU1d(in_channels, out_channels)
+    print(gtu1d)
 
-    output = glu1d(input)
+    output = gtu1d(input)
     print(input.size(), output.size())
     print()
     
     # 2-D
-    print("-"*10, "GLU2d", "-"*10)
+    print("-"*10, "GTU2d", "-"*10)
     H, W = 512, 256
 
     input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
 
-    glu2d = GLU(in_channels, out_channels)
-    print(glu2d)
+    gtu2d = GTU(in_channels, out_channels)
+    print(gtu2d)
 
-    output = glu2d(input)
+    output = gtu2d(input)
     print(input.size(), output.size())
     print()
 
-    print("-"*10, "GLU2d", "-"*10)
+    print("-"*10, "GTU2d", "-"*10)
     H, W = 512, 256
 
     input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
 
-    glu2d = GLU2d(in_channels, out_channels)
-    print(glu2d)
+    gtu2d = GTU2d(in_channels, out_channels)
+    print(gtu2d)
 
-    output = glu2d(input)
+    output = gtu2d(input)
     print(input.size(), output.size())
