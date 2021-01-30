@@ -308,14 +308,6 @@ def _test_dprnn_tasnet_paper():
     print(input.size(), output.size())
 
 if __name__ == '__main__':
-    print("="*10, "Segment", "="*10)
-    _test_segment()
-    print()
-    
-    print("="*10, "OverlapAdd", "="*10)
-    _test_overlap_add()
-    print()
-    
     print("="*10, "Separator", "="*10)
     _test_separator()
     print()
