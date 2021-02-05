@@ -1,8 +1,11 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 
 from utils.utils_audio import read_wav
+from algorithm.stft import BatchSTFT
+from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
 EPS=1e-12
 
@@ -175,6 +178,174 @@ class WaveTestDataset(WaveEvalDataset):
         
         return mixture, sources, segment_ID
 
+class SpectrogramDataset(WaveDataset):
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
+        
+        if hop_size is None:
+            hop_size = fft_size//2
+        
+        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_bins = fft_size//2 + 1
+        
+        self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>, first n_bins is real, the latter n_bins is iamginary part.
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            T (), <int>: Number of samples in time-domain
+            segment_IDs (n_sources,) <list<str>>
+        """
+        mixture, sources, segment_IDs = super().__getitem__(idx)
+        
+        T = mixture.size(-1)
+
+        mixture = self.stft(mixture) # (1, n_bins, n_frames, 2)
+        sources = self.stft(sources) # (n_sources, n_bins, n_frames, 2)
+        
+        return mixture, sources, T, segment_IDs
+
+class IdealMaskSpectrogramDataset(SpectrogramDataset):
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, samples=samples, overlap=overlap, n_sources=n_sources)
+        
+        if mask_type == 'ibm':
+            self.generate_mask = ideal_binary_mask
+        elif mask_type == 'irm':
+            self.generate_mask = ideal_ratio_mask
+        elif mask_type == 'wfm':
+            self.generate_mask = wiener_filter_mask
+        else:
+            raise NotImplementedError("Not support mask {}".format(mask_type))
+        
+        self.threshold = threshold
+        self.eps = eps
+    
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
+            T (), <int>: Number of samples in time-domain
+            segment_IDs (n_sources,) <list<str>>
+        """
+        threshold = self.threshold
+        eps = self.eps
+        
+        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames, 2), (n_sources, n_bins, n_frames, 2)
+        real, imag = sources[...,0], sources[...,1]
+        sources_amplitude = torch.sqrt(real**2+imag**2)
+        ideal_mask = self.generate_mask(sources_amplitude)
+        
+        real, imag = mixture[...,0], mixture[...,1]
+        mixture_amplitude = torch.sqrt(real**2+imag**2)
+        log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
+        max_log_amplitude = torch.max(log_amplitude)
+        threshold = 10**((max_log_amplitude - threshold) / 20)
+        threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        
+        return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
+
+class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, samples=samples, overlap=overlap, n_sources=n_sources, eps=eps)
+    
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
+        """
+        mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
+        
+        return mixture, sources, ideal_mask, threshold_weight
+
+
+class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
+
+        self.json_data = []
+        
+        with open(list_path) as f:
+            for line in f:
+                ID = line.strip()
+                wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
+                
+                y, sr = read_wav(wav_path)
+                
+                T_total = len(y)
+                
+                if max_samples is None:
+                    samples = T_total
+                else:
+                    if T_total < max_samples:
+                        samples = T_total
+                    else:
+                        samples = max_samples
+                
+                data = {
+                    'sources': {},
+                    'mixture': {}
+                }
+                
+                for source_idx in range(n_sources):
+                    source_data = {
+                        'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                        'start': 0,
+                        'end': samples
+                    }
+                    data['sources']['s{}'.format(source_idx+1)] = source_data
+                
+                mixture_data = {
+                    'path': os.path.join('mix', '{}.wav'.format(ID)),
+                    'start': 0,
+                    'end': samples
+                }
+                data['mixture'] = mixture_data
+                data['ID'] = ID
+            
+                self.json_data.append(data)
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
+        """
+        mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
+    
+        return mixture, sources, ideal_mask, threshold_weight
+
+class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
+            T () <int>
+            segment_IDs (n_sources,) <list<str>>
+        """
+        mixture, sources, ideal_mask, threshold_weight, T, segment_IDs = super().__getitem__(idx)
+
+        return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
+
+"""
+    Data loader
+"""
 
 class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
@@ -314,9 +485,8 @@ class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
-        n_sources = sources.size(0)
         
-        return mixture, sources, n_sources
+        return mixture, sources
 
 class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __init__(self, wav_root, list_path, max_samples=None, max_n_sources=3):
@@ -374,9 +544,8 @@ class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
         segment_ID = self.json_data[idx]['ID']
-        n_sources = sources.size(0)
     
-        return mixture, sources, segment_ID, n_sources
+        return mixture, sources, segment_ID
 
 
 class MixedNumberSourcesTrainDataLoader(TrainDataLoader):
@@ -392,73 +561,30 @@ class MixedNumberSourcesEvalDataLoader(EvalDataLoader):
         self.collate_fn = mixed_number_sources_eval_collate_fn
 
 def mixed_number_sources_train_collate_fn(batch):
-    batched_mixture, batched_sources = None, None
-    batched_n_sources = []
-    max_n_sources = 0
+    batched_mixture, batched_sources = [], []
 
-    for mixture, sources, n_sources in batch:
-        mixture = mixture.unsqueeze(dim=0)
-        sources = sources.unsqueeze(dim=0)
-        
-        if batched_mixture is None:
-            max_n_sources = n_sources
-            batched_mixture = mixture
-            batched_sources = sources
-        else:
-            if n_sources > max_n_sources:
-                padding_size = list(batched_sources.size()) # (1, n_sources, *)
-                padding_size[1] = n_sources - max_n_sources
-                padding = torch.zeros(padding_size, dtype=torch.float) # (1, n_sources - max_n_sources, *)
-                batched_sources = torch.cat([batched_sources, padding], dim=1) # (1, n_sources, *)
-                max_n_sources = n_sources
-            elif n_sources < max_n_sources:
-                padding_size = list(sources.size()) # (1, n_sources, *)
-                padding_size[1] = max_n_sources - n_sources
-                padding = torch.zeros(padding_size, dtype=torch.float) # (1, max_n_sources - n_sources, *)
-                sources = torch.cat([sources, padding], dim=1) # (1, n_sources, *)
+    for mixture, sources in batch:
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
 
-            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
-            batched_sources = torch.cat([batched_sources, sources], dim=0)
-        
-        batched_n_sources.append(n_sources)
+    batched_mixture = nn.utils.rnn.pad_sequence(batched_mixture, batch_first=True)
+    batched_sources = nn.utils.rnn.pack_sequence(batched_sources, enforce_sorted=False) # n_sources is different from data to data
     
-    return batched_mixture, batched_sources, batched_n_sources
+    return batched_mixture, batched_sources
 
 def mixed_number_sources_eval_collate_fn(batch):
-    batched_mixture, batched_sources = None, None
+    batched_mixture, batched_sources, segment_ID = [], [], []
     batched_segment_ID = []
-    batched_n_sources = []
-    max_n_sources = 0
 
-    for mixture, sources, segment_ID, n_sources in batch:
-        mixture = mixture.unsqueeze(dim=0)
-        sources = sources.unsqueeze(dim=0)
-        
-        if batched_mixture is None:
-            max_n_sources = n_sources
-            batched_mixture = mixture
-            batched_sources = sources
-        else:
-            if n_sources > max_n_sources:
-                padding_size = list(batched_sources.size()) # (1, n_sources, *)
-                padding_size[1] = n_sources - max_n_sources
-                padding = torch.zeros(padding_size, dtype=torch.float) # (1, n_sources - max_n_sources, *)
-                batched_sources = torch.cat([batched_sources, padding], dim=1) # (1, n_sources, *)
-                max_n_sources = n_sources
-            elif n_sources < max_n_sources:
-                padding_size = list(sources.size()) # (1, n_sources, *)
-                padding_size[1] = max_n_sources - n_sources
-                padding = torch.zeros(padding_size, dtype=torch.float) # (1, max_n_sources - n_sources, *)
-                sources = torch.cat([sources, padding], dim=1) # (1, n_sources, *)
-
-            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
-            batched_sources = torch.cat([batched_sources, sources], dim=0)
-        
+    for mixture, sources, segment_ID in batch:
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
         batched_segment_ID.append(segment_ID)
-        batched_n_sources.append(n_sources)
-    
-    return batched_mixture, batched_sources, batched_segment_ID, batched_n_sources
 
+    batched_mixture = nn.utils.rnn.pad_sequence(batched_mixture, batch_first=True)
+    batched_sources = nn.utils.rnn.pack_sequence(batched_sources, enforce_sorted=False) # n_sources is different from data to data
+    
+    return batched_mixture, batched_sources, batched_segment_ID
 
 if __name__ == '__main__':
     torch.manual_seed(111)

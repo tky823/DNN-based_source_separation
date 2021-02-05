@@ -15,11 +15,12 @@ sr=16000
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
 enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
-window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
+window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=64
 L=16 # L corresponds to the window length (samples) in this script.
 
 # Separator
+F=64
 H=128
 K=100
 P=50
@@ -35,7 +36,7 @@ criterion='sisdr'
 optimizer='adam'
 lr=1e-3
 weight_decay=0
-max_norm=5
+max_norm=0
 
 batch_size=4
 epochs=100
@@ -54,7 +55,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_choice="best"
 

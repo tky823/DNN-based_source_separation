@@ -17,7 +17,7 @@ test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
 enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
-window_fn='hamming' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
+window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=512
 L=16
 
@@ -44,7 +44,7 @@ lr=1e-3
 weight_decay=0
 max_norm=5
 
-batch_size=4
+batch_size=2
 epochs=100
 
 use_cuda=0
