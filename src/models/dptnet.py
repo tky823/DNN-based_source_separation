@@ -223,19 +223,19 @@ def _test_dptnet_paper():
     enc_nonlinear = 'relu'
     
     # Separator
-    d = 256
+    d = 32
     d_ff = 4 * d # depth of feed-forward network
     K = 10 # local chunk length
     B, h = 6, 4 # number of dual path transformer processing block, and multihead attention in transformer
     
     mask_nonlinear = 'relu'
-    n_sources = 3
+    n_sources = 2
 
     input = torch.randn((batch_size, 1, T), dtype=torch.float)
     
     causal = False
 
-    model = DPTNet(N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=d_ff, sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPTNet(N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_bottleneck_channels=N, sep_hidden_channels=d_ff, sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
 
     output = model(input)
@@ -251,6 +251,6 @@ if __name__ == '__main__':
     _test_dptnet()
     print()
 
-    # print('='*10, "Dual path transformer network (same configuration in the paper)", '='*10)
-    # _test_dptnet_paper()
-    # print()
+    print('='*10, "Dual path transformer network (same configuration in the paper)", '='*10)
+    _test_dptnet_paper()
+    print()
