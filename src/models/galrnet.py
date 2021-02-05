@@ -91,55 +91,6 @@ class GALRNet(nn.Module):
         
         return output, latent
     
-    def get_package(self):
-        package = {
-            'n_bases': self.n_bases,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            'enc_bases': self.enc_bases,
-            'dec_bases': self.dec_bases,
-            'enc_nonlinear': self.enc_nonlinear,
-            'window_fn': self.window_fn,
-            'sep_hidden_channels': self.sep_hidden_channels,
-            'sep_bottleneck_channels': self.sep_bottleneck_channels,
-            'sep_chunk_size': self.sep_chunk_size,
-            'sep_hop_size': self.sep_hop_size,
-            'sep_num_blocks': self.sep_num_blocks,
-            'causal': self.causal,
-            'sep_norm': self.sep_norm,
-            'mask_nonlinear': self.mask_nonlinear,
-            'n_sources': self.n_sources,
-            'eps': self.eps
-        }
-    
-        return package
-    
-    @classmethod
-    def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
-        n_bases = package['n_bases']
-        kernel_size, stride = package['kernel_size'], package['stride']
-        enc_bases, dec_bases = package['enc_bases'], package['dec_bases']
-        enc_nonlinear = package['enc_nonlinear']
-        window_fn = package['window_fn']
-        
-        sep_hidden_channels, sep_bottleneck_channels = package['sep_hidden_channels'], package['sep_bottleneck_channels']
-        sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
-        sep_num_blocks = package['sep_num_blocks']
-        
-        causal = package['causal']
-        sep_norm = package['sep_norm']
-        mask_nonlinear = package['mask_nonlinear']
-        
-        n_sources = package['n_sources']
-        
-        eps = package['eps']
-        
-        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
-        
-        return model
-    
     def _get_num_parameters(self):
         num_parameters = 0
         
