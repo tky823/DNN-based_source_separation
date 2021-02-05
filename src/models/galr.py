@@ -52,15 +52,15 @@ class GloballyAttentiveBlock(nn.Module):
     """
     TODO: similarity of `MultiheadAttentionBlock`?
     """
-    def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
+    def __init__(self, num_features, num_heads, causal=False, norm=True, eps=EPS):
         super().__init__()
 
         self.norm = norm
 
         if self.norm:    
-            self.norm1d = choose_layer_norm(embed_dim, causal=causal, eps=eps)
+            self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
 
-        self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
+        self.multihead_attn = nn.MultiheadAttention(num_features, num_heads)
         
     def forward(self, input):
         """
@@ -69,16 +69,27 @@ class GloballyAttentiveBlock(nn.Module):
         Returns:
             output (batch_size, num_features, S, chunk_size)
         """
-        x = input # (T, batch_size, embed_dim)
+        batch_size, num_features, S, chunk_size = input.size()
+
+        x = input # (batch_size, num_features, S, chunk_size)
+
+        if self.norm:
+            x = x.view(batch_size, num_features, S*chunk_size) # -> (batch_size*chunk_size, num_features, S)
+
+        x = x.permute(2, 0, 3, 1).contiguous() # -> (S, batch_size, chunk_size, num_features)
+        x = x.view(S, batch_size*chunk_size, num_features) # -> (S, batch_size*chunk_size, num_features)
+
+        if self.norm:
+            x = x.permute(1, 2, 0) # -> (batch_size*chunk_size, num_features, S)
 
         residual = x
-        x, _ = self.multihead_attn(x, x, x) # (T_tgt, batch_size, embed_dim), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
+        x, _ = self.multihead_attn(x, x, x) # (T_tgt, batch_size, num_features), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
         x = x + residual
         
         if self.norm:
-            x = x.permute(1,2,0) # (batch_size, embed_dim, T)
-            x = self.norm1d(x) # (batch_size, embed_dim, T)
-            x = x.permute(2,0,1).contiguous() # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
+            x = x.permute(1,2,0) # (batch_size, num_features, T)
+            x = self.norm1d(x) # (batch_size, num_features, T)
+            x = x.permute(2,0,1).contiguous() # (batch_size, num_features, T) -> (T, batch_size, num_features)
         
         output = x
 
