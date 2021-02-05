@@ -192,54 +192,21 @@ class Separator(nn.Module):
         output = x.view(batch_size, n_sources, num_features, T_bin)
         
         return output
-        
-if __name__ == '__main__':
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import Normalize
-    
-    torch.manual_seed(111)
-    
+
+def _test_conv_tasnet():
     batch_size = 4
     C = 1
     T = 64
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
-    
-    print("="*10, "Conv-TasNet", "="*10)
-    # Conv-TasNet configuration
-    L, stride = 8, 2
-    
+
+    L, stride = 16, 8
     N = 64
     H, B, Sc = 128, 64, 64
     P = 3
-    R, X = 4, 3
+    R, X = 3, 8
     sep_norm = True
-    
-    # Non causal
-    print("-"*10, "Trainable Bases & Non causal", "-"*10)
-    enc_bases, dec_bases = 'trainable', 'trainable'
-    enc_nonlinear = 'relu'
-    causal = False
-    mask_nonlinear = 'sigmoid'
-    n_sources = 2
 
-    model = ConvTasNet(N, kernel_size=L, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=R, sep_num_layers=X, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
-    print(model)
-    print("# Parameters: {}".format(model.num_parameters))
-    
-    output = model(input)
-    print(input.size(), output.size())
-    print()
-    
-    bases = model.encoder.get_bases()
-    
-    plt.figure()
-    plt.pcolormesh(bases, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
-    plt.colorbar()
-    plt.savefig('data/bases_enc-trainable.png', bbox_inches='tight')
-    plt.close()
-    
     # Causal
     print("-"*10, "Fourier Bases & Causal", "-"*10)
     enc_bases, dec_bases = 'Fourier', 'Fourier'
@@ -283,3 +250,57 @@ if __name__ == '__main__':
     weight_pinverse = model.decoder.get_bases().T
     reconstruction = np.matmul(weight_pinverse, weight)
     print(reconstruction)
+
+
+def _test_conv_tasnet_paper():
+    batch_size = 4
+    C = 1
+    T = 64
+    
+    input = torch.randn((batch_size, C, T), dtype=torch.float)
+
+    L, stride = 16, 8
+    N = 512
+    H, B, Sc = 512, 128, 128
+    P = 3
+    R, X = 3, 8
+    sep_norm = True
+    
+    # Non causal
+    print("-"*10, "Trainable Bases & Non causal", "-"*10)
+    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_nonlinear = None
+    causal = False
+    mask_nonlinear = 'sigmoid'
+    n_sources = 2
+
+    model = ConvTasNet(N, kernel_size=L, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=R, sep_num_layers=X, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    output = model(input)
+    print(input.size(), output.size())
+
+    bases = model.encoder.get_bases()
+
+    plt.figure()
+    plt.pcolormesh(bases, cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.colorbar()
+    plt.savefig('data/bases_enc-trainable.png', bbox_inches='tight')
+    plt.close()
+
+        
+if __name__ == '__main__':
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import Normalize
+    
+    torch.manual_seed(111)
+
+    print("="*10, "Conv-TasNet", "="*10)
+    _test_conv_tasnet()
+    print()
+
+    print("="*10, "Conv-TasNet (same configuration in the paper)", "="*10)
+    _test_conv_tasnet_paper()
+    print()
