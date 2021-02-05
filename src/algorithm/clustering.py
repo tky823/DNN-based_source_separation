@@ -2,7 +2,7 @@ import random
 import torch
 
 class Kmeans:
-    def __init__(self, data, K=2):
+    def __init__(self, data, K=2, init_centroids='kmeans++'):
         """
         Args:
             data (num_data, dimension) <torch.Tensor>
@@ -11,7 +11,10 @@ class Kmeans:
         
         num_data = len(data)
         
-        centroid_id = random.sample(range(num_data), K)
+        if init_centroids == 'kmeans++':
+            centroid_id = self._init_kmeans_pp(data, K=K)
+        else:
+            centroid_id = random.sample(range(num_data), K)
         centroids = data[centroid_id]
         
         data = data.unsqueeze(dim=1)
@@ -21,8 +24,33 @@ class Kmeans:
         self.onehot_labels = torch.eye(K)[cluster_id].to(data.device)
         self.num_data = num_data
         self.data = data
+    
+    def _init_kmeans_pp(self, data, K=2):
+        """
+        Args:
+            data (num_data, dimension) <torch.Tensor>
+        Returns:
+            centroid_id <list<int>>: where len(centroid_id) = K
+        """
+        num_data = len(data)
+        centroid_id = random.choices(range(num_data), k=1)
+
+        while len(centroid_id) < K:
+            centroids = data[centroid_id]
+
+            data = data.unsqueeze(dim=1)
+            distance = torch.norm(data - centroids, dim=2) # (num_data, K)
+            distance, _ = torch.min(distance, dim=1)
+            distance = distance**2
+            weights = distance / torch.sum(distance)
+
+            centroid_id += random.choices(range(num_data), k=1, weights=weights)
+
+        return centroid_id
         
     def __call__(self, iteration=10):
+        onehot_labels, centroids = None, None
+        
         for idx in range(iteration):
             onehot_labels, centroids = self.update_once()
         
@@ -54,7 +82,7 @@ class Kmeans:
     
         return onehot_labels, centroids
 
-if __name__ == '__main__':
+def _test_kmeans():
     import os
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -97,4 +125,8 @@ if __name__ == '__main__':
         plt.scatter(data[:,0], data[:,1])
         plt.scatter(centroids[:,0], centroids[:,1], c='red')
         plt.savefig("data/Kmeans/faithful-{}.png".format(idx+1), bbox_inches='tight')
+
+
+if __name__ == '__main__':
+    _test_kmeans()
 
