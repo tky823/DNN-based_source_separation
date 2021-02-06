@@ -13,6 +13,9 @@ EPS=1e-12
 class GlobalLayerNorm(nn.Module):
     def __init__(self, num_features, eps=EPS):
         super().__init__()
+
+        self.num_features = num_features
+        self.eps = eps
         
         self.norm = nn.GroupNorm(1, num_features, eps=eps)
         
@@ -26,6 +29,12 @@ class GlobalLayerNorm(nn.Module):
         output = self.norm(input)
         
         return output
+    
+    def __repr__(self):
+        s = '{}'.format(self.__class__.__name__)
+        s += '({num_features}, eps={eps})'
+        
+        return s.format(**self.__dict__)
 
 """
     Cumulative layer normalization
@@ -37,6 +46,7 @@ class CumulativeLayerNorm1d(nn.Module):
     def __init__(self, num_features, eps=EPS):
         super().__init__()
         
+        self.num_features = num_features
         self.eps = eps
 
         self.gamma = nn.Parameter(torch.Tensor(1, num_features, 1))
@@ -69,6 +79,16 @@ class CumulativeLayerNorm1d(nn.Module):
         output = (input - cum_mean) / (torch.sqrt(cum_var) + eps) * self.gamma + self.beta
         
         return output
+    
+    def __repr__(self):
+        s = '{}'.format(self.__class__.__name__)
+        s += '({num_features}, eps={eps})'
+        
+        return s.format(**self.__dict__)
+
+"""
+TODO: Virtual batch normalization
+"""
 
 if __name__ == '__main__':
     batch_size, C, T = 2, 3, 5
