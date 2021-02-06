@@ -211,7 +211,8 @@ class Separator(nn.Module):
         
         x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
-        x = self.segment1d(x)
+        x = self.segment1d(x) # -> (batch_size, C, S, chunk_size)
+        x = self.norm2d(x)
         x = self.dptransformer(x)
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
