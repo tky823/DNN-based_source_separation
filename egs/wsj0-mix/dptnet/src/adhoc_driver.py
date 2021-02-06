@@ -112,7 +112,7 @@ class AdhocTrainer(TrainerBase):
         prev_lr = None
 
         for param_group in self.optimizer.param_groups:
-            if prev_lr is None:
+            if (step + 1) % 100 == 0 and prev_lr is None:
                 prev_lr = param_group['lr']
                 print("Learning rate: {} -> {}".format(prev_lr, lr))
             param_group['lr'] = lr
