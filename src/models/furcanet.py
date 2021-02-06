@@ -3,6 +3,8 @@ import torch.nn as nn
 
 from models.glu import GLU1d
 
+EPS=1e-12
+
 class FurcaNetBase(nn.Module):
     def __init__(self, num_conv_blocks, num_lstm_blocks, causal=False):
         super().__init__()
