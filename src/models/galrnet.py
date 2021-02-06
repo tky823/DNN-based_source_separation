@@ -9,7 +9,7 @@ from models.galr import GALR
 EPS=1e-12
 
 class GALRNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, sep_num_heads=4, causal=True, sep_norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
         super().__init__()
         
         if stride is None:
@@ -48,7 +48,7 @@ class GALRNet(nn.Module):
         encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
         
         self.encoder = encoder
-        self.separator = Separator(n_bases, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        self.separator = Separator(n_bases, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, num_heads=sep_num_heads, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
@@ -101,7 +101,7 @@ class GALRNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, bottleneck_channels=64, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
+    def __init__(self, num_features, bottleneck_channels=64, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, num_heads=4, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_features, self.n_sources = num_features, n_sources
@@ -111,7 +111,7 @@ class Separator(nn.Module):
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.galr = GALR(bottleneck_channels, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm)
+        self.galr = GALR(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         
         self.prelu = nn.PReLU()

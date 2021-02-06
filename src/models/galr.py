@@ -7,14 +7,14 @@ from models.dprnn import IntraChunkRNN as LocallyRecurrentBlock
 EPS=1e-12
 
 class GALR(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, causal=False, norm=True, eps=EPS):
         super().__init__()
         
         # Network confguration
         net = []
         
         for _ in range(num_blocks):
-            net.append(GALRBlock(num_features, hidden_channels, causal=causal, norm=norm, eps=eps))
+            net.append(GALRBlock(num_features, hidden_channels, num_heads=num_heads, causal=causal, norm=norm, eps=eps))
             
         self.net = nn.Sequential(*net)
 
@@ -30,11 +30,11 @@ class GALR(nn.Module):
         return output
 
 class GALRBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_heads, causal, norm=True, eps=EPS):
         super().__init__()
         
-        self.intra_chunk_block = LocallyRecurrentBlock(num_features, hidden_channels, norm=norm, eps=eps)
-        self.inter_chunk_block = GloballyAttentiveBlock(num_features, hidden_channels, causal=causal, norm=norm, eps=eps)
+        self.intra_chunk_block = LocallyRecurrentBlock(num_features, hidden_channels=hidden_channels, norm=norm, eps=eps)
+        self.inter_chunk_block = GloballyAttentiveBlock(num_features, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
         
     def forward(self, input):
         """
