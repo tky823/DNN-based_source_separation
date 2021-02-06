@@ -122,6 +122,32 @@ class DPTNet(nn.Module):
         
         return output, latent
     
+    def get_package(self):
+        package = {
+            'n_bases': self.n_bases,
+            'kernel_size': self.kernel_size,
+            'stride': self.stride,
+            'enc_bases': self.enc_bases,
+            'dec_bases': self.dec_bases,
+            'enc_nonlinear': self.enc_nonlinear,
+            'window_fn': self.window_fn,
+            'sep_hidden_channels': self.sep_hidden_channels,
+            'sep_bottleneck_channels': self.sep_bottleneck_channels,
+            'sep_chunk_size': self.sep_chunk_size,
+            'sep_hop_size': self.sep_hop_size,
+            'sep_num_blocks': self.sep_num_blocks,
+            'sep_num_heads': self.sep_num_heads,
+            'sep_norm': self.sep_norm,
+            'sep_nonlinear': self.sep_nonlinear,
+            'sep_dropout': self.sep_dropout,
+            'mask_nonlinear': self.mask_nonlinear,
+            'causal': self.causal,
+            'n_sources': self.n_sources,
+            'eps': self.eps
+        }
+    
+        return package
+    
     def _get_num_parameters(self):
         num_parameters = 0
         
