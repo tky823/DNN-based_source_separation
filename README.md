@@ -78,3 +78,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.3.2: Change the definition of `hidden_channels` in dual-path RNN.
 - v0.3.3: Fix trained models due to the update v0.3.2.
 - v0.4.0: Fix the network architecture of DPRNN-TasNet.
+- v0.4.1: Add DPTNet and GALRNet. Re-fix DPRNN-TasNet.
