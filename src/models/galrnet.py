@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_bases, choose_layer_norm
+from models.gtu import GTU1d
 from models.transform import Segment1d, OverlapAdd1d
 from models.galr import GALR
 
@@ -107,17 +108,16 @@ class Separator(nn.Module):
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
-        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
-        
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.galr = GALR(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm)
+        self.norm2d = choose_layer_norm(bottleneck_channels, causal=causal, eps=eps)
+        self.galr = GALR(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
+        self.gtu = GTU1d(bottleneck_channels, n_sources*num_features)
         
-        self.prelu = nn.PReLU()
-        self.mask_conv1d = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
-        
-        if mask_nonlinear == 'sigmoid':
+        if mask_nonlinear == 'relu':
+            self.mask_nonlinear = nn.ReLU()
+        elif mask_nonlinear == 'sigmoid':
             self.mask_nonlinear = nn.Sigmoid()
         elif mask_nonlinear == 'softmax':
             self.mask_nonlinear = nn.Softmax(dim=1)
@@ -139,15 +139,14 @@ class Separator(nn.Module):
         padding_left = padding//2
         padding_right = padding - padding_left
         
-        x = self.norm1d(input)    
-        x = self.bottleneck_conv1d(x)
+        x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
-        x = self.segment1d(x)
+        x = self.segment1d(x) # -> (batch_size, C, S, chunk_size)
+        x = self.norm2d(x)
         x = self.galr(x)
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
-        x = self.prelu(x)
-        x = self.mask_conv1d(x)
+        x = self.gtu(x)
         x = self.mask_nonlinear(x)
         output = x.view(batch_size, n_sources, num_features, n_frames)
         
