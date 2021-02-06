@@ -401,7 +401,6 @@ def _test_big_galrnet_paper():
     print(input.size(), output.size())
 
 if __name__ == '__main__':
-    """
     print("="*10, "Separator", "="*10)
     _test_separator()
     print()
@@ -413,7 +412,6 @@ if __name__ == '__main__':
     print("="*10, "GALRNet (same configuration in paper)", "="*10)
     _test_galrnet_paper()
     print()
-    """
 
     print("="*10, "Bigger GALRNet (same configuration in paper)", "="*10)
     _test_big_galrnet_paper()
