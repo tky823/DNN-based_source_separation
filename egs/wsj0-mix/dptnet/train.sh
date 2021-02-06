@@ -43,7 +43,9 @@ criterion='sisdr'
 
 # Optimizer
 optimizer='adam'
-lr=1e-3
+k1=2e-1
+k2=4e-4
+warmup_steps=4000
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
@@ -64,7 +66,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}_d-ff${d_ff}_h${h}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}_d-ff${d_ff}_h${h}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-k1${k1}-k2${k2}-decay${weight_decay}-warmup${warmup_steps}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -105,8 +107,10 @@ train.py \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
---lr ${lr} \
+--k1 ${k1} \
+--k2 ${k2} \
 --weight_decay ${weight_decay} \
+--warmup_steps ${warmup_steps} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
 --epochs ${epochs} \
