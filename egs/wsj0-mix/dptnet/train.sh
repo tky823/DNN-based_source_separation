@@ -47,7 +47,7 @@ criterion='sisdr'
 optimizer='adam'
 k1=2e-1
 k2=4e-4
-warmup_steps=4000
+warmup_steps=4e+3
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
