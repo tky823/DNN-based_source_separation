@@ -9,7 +9,7 @@ from models.dprnn import DPRNN
 EPS=1e-12
 
 class DPRNNTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
         super().__init__()
         
         if stride is None:
