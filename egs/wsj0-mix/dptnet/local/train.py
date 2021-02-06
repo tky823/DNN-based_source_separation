@@ -94,7 +94,7 @@ def main(args):
     # The learning rate is computed in AdhocTrainer. In fact, You don't have to specify learning rate in advance.
     warmup_steps = args.warmup_steps
     k = args.k1
-    d_model = args.bottleneck_channels
+    d_model = args.sep_bottleneck_channels
     init_lr = k * d_model ** (-0.5) * warmup_steps ** (-1.5)
 
     if args.optimizer == 'sgd':
