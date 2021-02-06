@@ -34,7 +34,6 @@ parser.add_argument('--sep_chunk_size', '-K', type=int, default=100, help='Chunk
 parser.add_argument('--sep_hop_size', '-P', type=int, default=50, help='Hop size of separator')
 parser.add_argument('--sep_num_blocks', '-B', type=int, default=6, help='# blocks of separator. Each block has B layers')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
-parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
