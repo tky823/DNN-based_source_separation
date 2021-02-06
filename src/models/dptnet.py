@@ -183,7 +183,9 @@ class Separator(nn.Module):
 
         self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
-        self.gtu = GTU1d(bottleneck_channels, n_sources*num_features)
+        self.prelu = nn.PReLU()
+        self.map = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
+        self.gtu = GTU1d(num_features, num_features)
         
         if mask_nonlinear == 'relu':
             self.mask_nonlinear = nn.ReLU()
@@ -197,15 +199,15 @@ class Separator(nn.Module):
     def forward(self, input):
         """
         Args:
-            input (batch_size, num_features, T_bin)
+            input (batch_size, num_features, n_frames)
         Returns:
-            output (batch_size, n_sources, num_features, T_bin)
+            output (batch_size, n_sources, num_features, n_frames)
         """
         num_features, n_sources = self.num_features, self.n_sources
         chunk_size, hop_size = self.chunk_size, self.hop_size
-        batch_size, num_features, T_bin = input.size()
+        batch_size, num_features, n_frames = input.size()
         
-        padding = (hop_size-(T_bin-chunk_size)%hop_size)%hop_size
+        padding = (hop_size-(n_frames-chunk_size)%hop_size)%hop_size
         padding_left = padding//2
         padding_right = padding - padding_left
         
@@ -216,9 +218,12 @@ class Separator(nn.Module):
         x = self.dptransformer(x)
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
-        x = self.gtu(x)
-        x = self.mask_nonlinear(x)
-        output = x.view(batch_size, n_sources, num_features, T_bin)
+        x = self.prelu(x) # -> (batch_size, C, n_frames)
+        x = self.map(x) # -> (batch_size, n_sources*C, n_frames)
+        x = x.view(batch_size*n_sources, num_features, n_frames) # -> (batch_size*n_sources, num_features, n_frames)
+        x = self.gtu(x) # -> (batch_size*n_sources, num_features, n_frames)
+        x = self.mask_nonlinear(x) # -> (batch_size*n_sources, num_features, n_frames)
+        output = x.view(batch_size, n_sources, num_features, n_frames)
         
         return output
 
