@@ -9,7 +9,7 @@ from models.dprnn import DPRNN
 EPS=1e-12
 
 class DPRNNTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='sigmoid', n_sources=2, **kwargs):
+    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
         super().__init__()
         
         if stride is None:
@@ -156,9 +156,6 @@ class Separator(nn.Module):
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         self.norm = norm
-
-        if self.norm:
-            self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
         
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
@@ -191,11 +188,7 @@ class Separator(nn.Module):
         padding_left = padding//2
         padding_right = padding - padding_left
         
-        if self.norm:
-            x = self.norm1d(input)
-        else:
-            x = input
-        x = self.bottleneck_conv1d(x)
+        x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x)
         x = self.dprnn(x)

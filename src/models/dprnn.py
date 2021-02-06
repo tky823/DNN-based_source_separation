@@ -73,16 +73,16 @@ class IntraChunkRNN(nn.Module):
 
         self.rnn.flatten_parameters()
         
-        residual = input
-        x = input.permute(0,2,3,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, S, chunk_size, num_features)
+        residual = input # (batch_size, num_features, S, chunk_size)
+        x = input.permute(0,2,3,1).contiguous() # -> (batch_size, S, chunk_size, num_features)
         x = x.view(batch_size*S, chunk_size, num_features)
         x, (_, _) = self.rnn(x) # (batch_size*S, chunk_size, num_features) -> (batch_size*S, chunk_size, num_directions*hidden_channels)
         x = self.fc(x) # -> (batch_size*S, chunk_size, num_features)
-        x = x.permute(0,2,1) # -> (batch_size*S, num_features, chunk_size)
+        x = x.view(batch_size, S*chunk_size, num_features) # (batch_size, S*chunk_size, num_features)
+        x = x.permute(0,2,1).contiguous() # -> (batch_size, num_features, S*chunk_size)
         if self.norm:
-            x = self.norm1d(x) # (batch_size*S, num_features, chunk_size)
-        x = x.view(batch_size, S, num_features, chunk_size) # (batch_size, S, num_features, chunk_size)
-        x = x.permute(0,2,1,3) # (batch_size, num_features, S, chunk_size)
+            x = self.norm1d(x) # (batch_size, num_features, S*chunk_size)
+        x = x.view(batch_size, num_features, S, chunk_size) # -> (batch_size, num_features, S, chunk_size)
         output = x + residual
         
         return output
@@ -118,16 +118,17 @@ class InterChunkRNN(nn.Module):
 
         self.rnn.flatten_parameters()
         
-        residual = input
+        residual = input # (batch_size, num_features, S, chunk_size)
         x = input.permute(0,3,2,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, chunk_size, S, num_features)
         x = x.view(batch_size*chunk_size, S, num_features) # -> (batch_size*chunk_size, S, num_features)
         x, (_, _) = self.rnn(x) # -> (batch_size*chunk_size, S, num_directions*hidden_channels)
         x = self.fc(x) # -> (batch_size*chunk_size, S, num_features)
-        x = x.permute(0,2,1) # -> (batch_size*chunk_size, num_features, S)
+        x = x.view(batch_size, chunk_size*S, num_features) # -> (batch_size, chunk_size*S, num_features)
+        x = x.permute(0,2,1).contiguous() # -> (batch_size, num_features, chunk_size*S)
         if self.norm:
-            x = self.norm1d(x) # -> (batch_size*chunk_size, num_features, S)
-        x = x.view(batch_size, chunk_size, num_features, S) # -> (batch_size, chunk_size, num_features, S)
-        x = x.permute(0,2,3,1).contiguous() # -> (batch_size, num_features, S, chunk_size)
+            x = self.norm1d(x) # -> (batch_size, num_features, chunk_size*S)
+        x = x.view(batch_size, num_features, chunk_size, S) # -> (batch_size, num_features, chunk_size, S)
+        x = x.permute(0,1,3,2).contiguous() # -> (batch_size, num_features, S, chunk_size)
         
         output = x + residual
         
