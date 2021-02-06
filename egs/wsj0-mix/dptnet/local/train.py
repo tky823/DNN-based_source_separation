@@ -35,8 +35,9 @@ parser.add_argument('--sep_hop_size', '-P', type=int, default=50, help='Hop size
 parser.add_argument('--sep_num_blocks', '-B', type=int, default=6, help='# blocks of separator. Each block has B layers')
 parser.add_argument('--sep_num_heads', type=int, default=4, help='Number of heads in multi-head attention')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
-parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
+parser.add_argument('--sep_nonlinear', type=str, default='relu', help='Non-linear function of separator')
+parser.add_argument('--sep_dropout', type=float, default=0, help='Dropout')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
@@ -76,7 +77,16 @@ def main(args):
         args.enc_nonlinear = None
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
-    model = DPTNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks, sep_num_heads=args.sep_num_heads, causal=args.causal, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = DPTNet(
+        args.n_bases, args.kernel_size, stride=args.stride,
+        enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
+        sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels,
+        sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks,
+        sep_num_heads=args.sep_num_heads, sep_norm=args.sep_norm, sep_nonlinear=args.sep_nonlinear, sep_dropout=args.sep_dropout,
+        mask_nonlinear=args.mask_nonlinear,
+        causal=args.causal,
+        n_sources=args.n_sources
+    )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 

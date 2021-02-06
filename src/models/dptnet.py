@@ -13,7 +13,19 @@ class DPTNet(nn.Module):
     """
     Dual-path transformer based network
     """
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_bottleneck_channels=64, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=None, sep_num_blocks=6, sep_num_heads=4, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='relu', n_sources=2, **kwargs):
+    def __init__(
+        self,
+        n_bases, kernel_size, stride=None,
+        enc_bases=None, dec_bases=None,
+        sep_bottleneck_channels=64, sep_hidden_channels=256,
+        sep_chunk_size=100, sep_hop_size=None, sep_num_blocks=6,
+        sep_num_heads=4, sep_norm=True, sep_nonlinear='relu', sep_dropout=0,
+        mask_nonlinear='relu',
+        causal=False,
+        n_sources=2,
+        eps=EPS,
+        **kwargs
+    ):
         super().__init__()
         
         if stride is None:
@@ -45,9 +57,11 @@ class DPTNet(nn.Module):
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
         self.sep_num_blocks = sep_num_blocks
         self.sep_num_heads = sep_num_heads
-        
-        self.causal = causal
         self.sep_norm = sep_norm
+        self.sep_nonlinear = sep_nonlinear
+        self.sep_dropout = sep_dropout
+
+        self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         
         self.n_sources = n_sources
@@ -57,7 +71,15 @@ class DPTNet(nn.Module):
         encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
         
         self.encoder = encoder
-        self.separator = Separator(n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, num_heads=sep_num_heads, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        self.separator = Separator(
+            n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
+            chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks,
+            num_heads=sep_num_heads, norm=sep_norm, nonlinear=sep_nonlinear, dropout=sep_dropout,
+            mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
@@ -110,7 +132,17 @@ class DPTNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, bottleneck_channels=32, hidden_channels=128, chunk_size=100, hop_size=None, num_blocks=6, num_heads=4, causal=True, norm=True, mask_nonlinear='relu', n_sources=2, eps=EPS):
+    def __init__(
+        self,
+        num_features, bottleneck_channels=32, hidden_channels=128,
+        chunk_size=100, hop_size=None, num_blocks=6,
+        num_heads=4,
+        norm=True, nonlinear='relu', dropout=0,
+        mask_nonlinear='relu',
+        causal=True,
+        n_sources=2,
+        eps=EPS
+    ):
         super().__init__()
 
         if hop_size is None:
@@ -123,7 +155,7 @@ class Separator(nn.Module):
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.norm2d = choose_layer_norm(bottleneck_channels, causal=causal, eps=eps)
 
-        self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
+        self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         self.gtu = GTU1d(bottleneck_channels, n_sources*num_features)
         
