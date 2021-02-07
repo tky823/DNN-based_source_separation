@@ -290,8 +290,7 @@ class GatedConv1d(nn.Module):
         
         return output
 
-if __name__ == '__main__':
-    # You have to export python path like: export PYTHONPATH="../:$PYTHONPATH"
+def _test_wavenet():
     batch_size, T = 4, 1024
     hidden_channels, skip_channels = 128, 256
     kernel_size = 2
@@ -299,7 +298,7 @@ if __name__ == '__main__':
     nonlinear = 'gated'
 
     # Example 1: w/o conditioning
-    print("Example 1: w/o conditioning")
+    print('-'*10, "Example 1: w/o conditioning", '-'*10)
 
     in_channels, out_channels = 1, 1
     dilated, separable, causal = False, False, True
@@ -316,8 +315,7 @@ if __name__ == '__main__':
     print()
     
     # Example 2: global conditioning
-    print("Example 2: global conditioning")
-    
+    print('-'*10, "Example 2: global conditioning", '-'*10)
     in_channels, out_channels = 128, 128
     dilated, separable, causal = True, True, False
     norm = True
@@ -336,7 +334,7 @@ if __name__ == '__main__':
     print()
     
     # Example 3: w/ local conditioning
-    print("Example 3: w/ local conditioning")
+    print('-'*10, "Example 3: w/ local conditioning", '-'*10)
     
     in_channels, out_channels = 1, 2
     dilated, separable, causal = True, False, False
@@ -349,8 +347,13 @@ if __name__ == '__main__':
     model = WaveNet(in_channels=in_channels, out_channels=out_channels, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm, output_nonlinear=output_nonlinear, conditioning=conditioning, enc_dim=enc_dim, enc_kernel_size=enc_kernel_size, enc_stride=enc_stride)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     input = torch.randint(0, 10, (batch_size, in_channels, T), dtype=torch.float)
     enc_h = torch.randint(0, 10, (batch_size, enc_dim, enc_T), dtype=torch.float)
     output = model(input, enc_h=enc_h)
     print(input.size(), enc_h.size(), output.size())
+
+if __name__ == '__main__':
+    # You have to export python path like: export PYTHONPATH="../:$PYTHONPATH"
+    print('='*10, "Wave Net", '='*10)
+    _test_wavenet()

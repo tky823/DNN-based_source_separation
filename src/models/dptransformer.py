@@ -7,14 +7,14 @@ from utils.utils_tasnet import choose_layer_norm
 EPS=1e-12
 
 class DualPathTransformer(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
         
         # Network confguration
         net = []
         
         for _ in range(num_blocks):
-            net.append(DualPathTransformerBlock(num_features, hidden_channels, num_heads=num_heads, causal=causal, norm=norm, eps=eps))
+            net.append(DualPathTransformerBlock(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps))
             
         self.net = nn.Sequential(*net)
 
@@ -30,11 +30,11 @@ class DualPathTransformer(nn.Module):
         return output
 
 class DualPathTransformerBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
         
-        self.intra_chunk_block = IntraChunkTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, eps=eps)
-        self.inter_chunk_block = InterChunkTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
+        self.intra_chunk_block = IntraChunkTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, eps=eps)
+        self.inter_chunk_block = InterChunkTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal, norm=norm, nonlinear=nonlinear, dropout=dropout, eps=eps)
         
     def forward(self, input):
         """
@@ -49,12 +49,12 @@ class DualPathTransformerBlock(nn.Module):
         return output
 
 class IntraChunkTransformer(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
         
         self.num_features = num_features
 
-        self.transformer = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=False, norm=norm, eps=eps)
+        self.transformer = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=False, eps=eps)
         
     def forward(self, input):
         """
@@ -75,12 +75,12 @@ class IntraChunkTransformer(nn.Module):
         return output
 
 class InterChunkTransformer(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
         
         self.num_features = num_features
 
-        self.transformer = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
+        self.transformer = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps)
         
     def forward(self, input):
         """
@@ -101,11 +101,11 @@ class InterChunkTransformer(nn.Module):
         return output
 
 class ImprovedTransformer(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
 
-        self.multihead_attn_block = MultiheadAttentionBlock(num_features, num_heads, causal=causal, norm=norm, eps=eps)
-        self.subnet = FeedForwardBlock(num_features, hidden_channels, causal=causal, norm=norm, eps=eps)
+        self.multihead_attn_block = MultiheadAttentionBlock(num_features, num_heads, norm=norm, dropout=dropout, causal=causal, eps=eps)
+        self.subnet = FeedForwardBlock(num_features, hidden_channels, norm=norm, nonlinear=nonlinear, causal=causal, eps=eps)
 
     def forward(self, input):
         """
@@ -121,13 +121,20 @@ class ImprovedTransformer(nn.Module):
 
 
 class MultiheadAttentionBlock(nn.Module):
-    def __init__(self, embed_dim, num_heads, causal=False, norm=True, eps=EPS):
+    def __init__(self, embed_dim, num_heads, norm=True, dropout=0, causal=False, eps=EPS):
         super().__init__()
 
+        if dropout == 0:
+            self.dropout = False
+        else:
+            self.dropout = True
+        
         self.norm = norm
 
         self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
 
+        if self.dropout:
+            self.dropout1d = nn.Dropout(p=dropout)
         if self.norm:    
             self.norm1d = choose_layer_norm(embed_dim, causal=causal, eps=eps)
     
@@ -143,6 +150,9 @@ class MultiheadAttentionBlock(nn.Module):
         residual = x
         x, _ = self.multihead_attn(x, x, x) # (T_tgt, batch_size, embed_dim), (batch_size, T_tgt, T_src), where T_tgt = T_src = T
         x = x + residual
+
+        if self.dropout:
+            x = self.dropout1d(x)
         
         if self.norm:
             x = x.permute(1,2,0) # (batch_size, embed_dim, T)
@@ -154,7 +164,7 @@ class MultiheadAttentionBlock(nn.Module):
         return output
 
 class FeedForwardBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, norm=True, nonlinear='relu', causal=False, eps=EPS):
         super().__init__()
 
         if causal:
@@ -167,7 +177,10 @@ class FeedForwardBlock(nn.Module):
         self.norm = norm
 
         self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=False, bidirectional=bidirectional)
-        self.relu = nn.ReLU()
+        if nonlinear == 'relu':
+            self.nonlinear1d = nn.ReLU()
+        else:
+            raise ValueError("Not support nonlinear function {}.".format(nonlinear))
         self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
         if self.norm:
@@ -184,7 +197,7 @@ class FeedForwardBlock(nn.Module):
 
         residual = x
         x, (_, _) = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
-        x = self.relu(x) # -> (T, batch_size, num_directions*hidden_channels)
+        x = self.nonlinear1d(x) # -> (T, batch_size, num_directions*hidden_channels)
         x = self.fc(x) # (T, batch_size, num_directions*hidden_channels) -> (T, batch_size, num_features)
         x = x + residual
         
@@ -204,10 +217,22 @@ def _test_multihead_attn_block():
     num_heads = 4
     input = torch.randn((T, batch_size, embed_dim), dtype=torch.float)
 
-    print('-'*10, "Non causal", '-'*10)
+    print('-'*10, "Non causal & No dropout", '-'*10)
     causal = False
+    dropout = 0
     
-    model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, causal=causal)
+    model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, dropout=dropout, causal=causal)
+    print(model)
+
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
+    print('-'*10, "Causal & Dropout (p=0.3)", '-'*10)
+    causal = True
+    dropout = 0.3
+    
+    model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, dropout=dropout, causal=causal)
     print(model)
 
     output = model(input)
@@ -218,11 +243,13 @@ def _test_feedforward_block():
     T = 10
     num_features, hidden_channels = 12, 10
 
+    input = torch.randn((T, batch_size, num_features), dtype=torch.float)
+
     print('-'*10, "Causal", '-'*10)
     causal = True
-    input = torch.randn((T, batch_size, num_features), dtype=torch.float)
+    nonlinear = 'relu'
     
-    model = FeedForwardBlock(num_features, hidden_channels, causal=causal)
+    model = FeedForwardBlock(num_features, hidden_channels, nonlinear=nonlinear, causal=causal)
     print(model)
 
     output = model(input)
@@ -233,10 +260,12 @@ def _test_improved_transformer():
     T = 10
     num_features, hidden_channels = 12, 10
     num_heads = 4
-    print('-'*10, "Non causal", '-'*10)
-    causal = False
+
     input = torch.randn((T, batch_size, num_features), dtype=torch.float)
 
+    print('-'*10, "Non causal", '-'*10)
+    causal = False
+    
     model = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal)
     print(model)
 
