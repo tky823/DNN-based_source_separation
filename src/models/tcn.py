@@ -195,7 +195,7 @@ class DepthwiseSeparableConv1d(nn.Module):
         
         return output, skip
 
-if __name__ == '__main__':
+def _test_tcn():
     batch_size = 4
     T = 128
     in_channels, out_channels, skip_channels = 16, 16, 32
@@ -216,4 +216,6 @@ if __name__ == '__main__':
     output = model(input)
     
     print(input.size(), output.size())
-    
+
+if __name__ == '__main__':
+    _test_tcn()
