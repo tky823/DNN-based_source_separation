@@ -13,7 +13,19 @@ class DPTNet(nn.Module):
     """
     Dual-path transformer based network
     """
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_bottleneck_channels=64, sep_hidden_channels=256, sep_chunk_size=100, sep_hop_size=None, sep_num_blocks=6, sep_num_heads=4, causal=True, sep_norm=True, eps=EPS, mask_nonlinear='relu', n_sources=2, **kwargs):
+    def __init__(
+        self,
+        n_bases, kernel_size, stride=None,
+        enc_bases=None, dec_bases=None,
+        sep_bottleneck_channels=64, sep_hidden_channels=256,
+        sep_chunk_size=100, sep_hop_size=None, sep_num_blocks=6,
+        sep_num_heads=4, sep_norm=True, sep_nonlinear='relu', sep_dropout=0,
+        mask_nonlinear='relu',
+        causal=False,
+        n_sources=2,
+        eps=EPS,
+        **kwargs
+    ):
         super().__init__()
         
         if stride is None:
@@ -45,9 +57,11 @@ class DPTNet(nn.Module):
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
         self.sep_num_blocks = sep_num_blocks
         self.sep_num_heads = sep_num_heads
-        
-        self.causal = causal
         self.sep_norm = sep_norm
+        self.sep_nonlinear = sep_nonlinear
+        self.sep_dropout = sep_dropout
+
+        self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         
         self.n_sources = n_sources
@@ -57,7 +71,15 @@ class DPTNet(nn.Module):
         encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
         
         self.encoder = encoder
-        self.separator = Separator(n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, num_heads=sep_num_heads, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        self.separator = Separator(
+            n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
+            chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks,
+            num_heads=sep_num_heads, norm=sep_norm, nonlinear=sep_nonlinear, dropout=sep_dropout,
+            mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
@@ -100,6 +122,32 @@ class DPTNet(nn.Module):
         
         return output, latent
     
+    def get_package(self):
+        package = {
+            'n_bases': self.n_bases,
+            'kernel_size': self.kernel_size,
+            'stride': self.stride,
+            'enc_bases': self.enc_bases,
+            'dec_bases': self.dec_bases,
+            'enc_nonlinear': self.enc_nonlinear,
+            'window_fn': self.window_fn,
+            'sep_hidden_channels': self.sep_hidden_channels,
+            'sep_bottleneck_channels': self.sep_bottleneck_channels,
+            'sep_chunk_size': self.sep_chunk_size,
+            'sep_hop_size': self.sep_hop_size,
+            'sep_num_blocks': self.sep_num_blocks,
+            'sep_num_heads': self.sep_num_heads,
+            'sep_norm': self.sep_norm,
+            'sep_nonlinear': self.sep_nonlinear,
+            'sep_dropout': self.sep_dropout,
+            'mask_nonlinear': self.mask_nonlinear,
+            'causal': self.causal,
+            'n_sources': self.n_sources,
+            'eps': self.eps
+        }
+    
+        return package
+    
     def _get_num_parameters(self):
         num_parameters = 0
         
@@ -110,7 +158,17 @@ class DPTNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, bottleneck_channels=32, hidden_channels=128, chunk_size=100, hop_size=None, num_blocks=6, num_heads=4, causal=True, norm=True, mask_nonlinear='relu', n_sources=2, eps=EPS):
+    def __init__(
+        self,
+        num_features, bottleneck_channels=32, hidden_channels=128,
+        chunk_size=100, hop_size=None, num_blocks=6,
+        num_heads=4,
+        norm=True, nonlinear='relu', dropout=0,
+        mask_nonlinear='relu',
+        causal=True,
+        n_sources=2,
+        eps=EPS
+    ):
         super().__init__()
 
         if hop_size is None:
@@ -123,9 +181,11 @@ class Separator(nn.Module):
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.norm2d = choose_layer_norm(bottleneck_channels, causal=causal, eps=eps)
 
-        self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, causal=causal, norm=norm, eps=eps)
+        self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
-        self.gtu = GTU1d(bottleneck_channels, n_sources*num_features)
+        self.prelu = nn.PReLU()
+        self.map = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
+        self.gtu = GTU1d(num_features, num_features)
         
         if mask_nonlinear == 'relu':
             self.mask_nonlinear = nn.ReLU()
@@ -139,27 +199,31 @@ class Separator(nn.Module):
     def forward(self, input):
         """
         Args:
-            input (batch_size, num_features, T_bin)
+            input (batch_size, num_features, n_frames)
         Returns:
-            output (batch_size, n_sources, num_features, T_bin)
+            output (batch_size, n_sources, num_features, n_frames)
         """
         num_features, n_sources = self.num_features, self.n_sources
         chunk_size, hop_size = self.chunk_size, self.hop_size
-        batch_size, num_features, T_bin = input.size()
+        batch_size, num_features, n_frames = input.size()
         
-        padding = (hop_size-(T_bin-chunk_size)%hop_size)%hop_size
+        padding = (hop_size-(n_frames-chunk_size)%hop_size)%hop_size
         padding_left = padding//2
         padding_right = padding - padding_left
         
         x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
-        x = self.segment1d(x)
+        x = self.segment1d(x) # -> (batch_size, C, S, chunk_size)
+        x = self.norm2d(x)
         x = self.dptransformer(x)
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
-        x = self.gtu(x)
-        x = self.mask_nonlinear(x)
-        output = x.view(batch_size, n_sources, num_features, T_bin)
+        x = self.prelu(x) # -> (batch_size, C, n_frames)
+        x = self.map(x) # -> (batch_size, n_sources*C, n_frames)
+        x = x.view(batch_size*n_sources, num_features, n_frames) # -> (batch_size*n_sources, num_features, n_frames)
+        x = self.gtu(x) # -> (batch_size*n_sources, num_features, n_frames)
+        x = self.mask_nonlinear(x) # -> (batch_size*n_sources, num_features, n_frames)
+        output = x.view(batch_size, n_sources, num_features, n_frames)
         
         return output
 
@@ -223,19 +287,19 @@ def _test_dptnet_paper():
     enc_nonlinear = 'relu'
     
     # Separator
-    d = 256
+    d = 32
     d_ff = 4 * d # depth of feed-forward network
     K = 10 # local chunk length
     B, h = 6, 4 # number of dual path transformer processing block, and multihead attention in transformer
     
     mask_nonlinear = 'relu'
-    n_sources = 3
+    n_sources = 2
 
     input = torch.randn((batch_size, 1, T), dtype=torch.float)
     
     causal = False
 
-    model = DPTNet(N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=d_ff, sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPTNet(N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_bottleneck_channels=N, sep_hidden_channels=d_ff, sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
     print(model)
 
     output = model(input)
@@ -251,6 +315,6 @@ if __name__ == '__main__':
     _test_dptnet()
     print()
 
-    # print('='*10, "Dual path transformer network (same configuration in the paper)", '='*10)
-    # _test_dptnet_paper()
-    # print()
+    print('='*10, "Dual path transformer network (same configuration in the paper)", '='*10)
+    _test_dptnet_paper()
+    print()
