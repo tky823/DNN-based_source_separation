@@ -59,8 +59,24 @@ class CumulativeLayerNorm1d(nn.Module):
         self.beta.data.zero_()
         
     def forward(self, input):
+        """
+        Args:
+            input (batch_size, C, T) or (batch_size, C, S, chunk_size):
+        Returns:
+            output (batch_size, C, T) or (batch_size, C, S, chunk_size): same shape as the input
+        """
         eps = self.eps
-        batch_size, C, T = input.size()
+
+        n_dim = input.dim()
+
+        if n_dim == 3:
+            batch_size, C, T = input.size()
+        elif n_dim == 4:
+            batch_size, C, S, chunk_size = input.size()
+            T = S * chunk_size
+            input = input.view(batch_size, C, T)
+        else:
+            raise ValueError("Only support 3D or 4D input, but given {}D".format(input.dim()))
         
         step_sum = input.sum(dim=1) # -> (batch_size, T)
         input_pow = input**2
@@ -77,6 +93,9 @@ class CumulativeLayerNorm1d(nn.Module):
         cum_var = cum_var.unsqueeze(dim=1)
         
         output = (input - cum_mean) / (torch.sqrt(cum_var) + eps) * self.gamma + self.beta
+
+        if n_dim == 4:
+            output = output.view(batch_size, C, S, chunk_size)
         
         return output
     
