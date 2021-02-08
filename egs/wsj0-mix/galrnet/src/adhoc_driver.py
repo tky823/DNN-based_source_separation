@@ -18,6 +18,14 @@ class AdhocTrainer(TrainerBase):
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
+
+            if (epoch + 1) % 2 == 0:
+                optim_dict = self.optimizer.state_dict()
+                lr = optim_dict['param_groups'][0]['lr']
+                optim_dict['param_groups'][0]['lr'] = 0.96 * lr
+                self.optimizer.load_state_dict(optim_dict)
+
+                print("Learning rate: {} -> {}".format(lr, 0.96 * lr))
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
@@ -27,13 +35,6 @@ class AdhocTrainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 3:
-                        optim_dict = self.optimizer.state_dict()
-                        lr = optim_dict['param_groups'][0]['lr']
-                        optim_dict['param_groups'][0]['lr'] = 0.5 * lr
-                        self.optimizer.load_state_dict(optim_dict)
-
-                        print("Learning rate: {} -> {}".format(lr, 0.5 * lr))
                 else:
                     self.no_improvement = 0
             
@@ -44,6 +45,10 @@ class AdhocTrainer(TrainerBase):
             
             save_path = os.path.join(self.loss_dir, "loss.png")
             draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+
+            if self.no_improvement >= 10:
+                print("Stop training")
+                break
 
 class Tester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):
