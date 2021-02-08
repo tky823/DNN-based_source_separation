@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+from conv import DepthwiseSeparableConv1d, DepthwiseSeparableConvTranspose1d, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
+
 class UNetBase(nn.Module):
     def __init__(self):
         super().__init__()
@@ -76,6 +78,8 @@ class UNet1d(UNetBase):
         self.encoder = Encoder1d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv1d(channels[-1], channels[-1], kernel_size=1, stride=1)
         self.decoder = Decoder1d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
+
+        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -119,6 +123,8 @@ class UNet2d(UNetBase):
         self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
         self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
+
+        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -132,7 +138,7 @@ class UNet2d(UNetBase):
 """
 
 class Encoder1d(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear='relu'):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
         Args:
             channels <list<int>>
@@ -164,7 +170,7 @@ class Encoder1d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(EncoderBlock1d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, nonlinear=nonlinear))
+            net.append(EncoderBlock1d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear))
         
         self.net = nn.Sequential(*net)
         
@@ -182,7 +188,7 @@ class Encoder1d(nn.Module):
 
 
 class Encoder2d(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear='relu'):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
         Args:
             channels <list<int>>
@@ -215,7 +221,7 @@ class Encoder2d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(EncoderBlock2d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, nonlinear=nonlinear[n]))
+            net.append(EncoderBlock2d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
         
         self.net = nn.Sequential(*net)
         
@@ -236,7 +242,7 @@ class Encoder2d(nn.Module):
 """
 
 class Decoder1d(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear='relu'):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
         Args:
             channels <list<int>>
@@ -268,7 +274,7 @@ class Decoder1d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(DecoderBlock1d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, nonlinear=nonlinear[n]))
+            net.append(DecoderBlock1d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
             # channels[n+1]//2: because of skip connection
     
         self.net = nn.Sequential(*net)
@@ -293,7 +299,7 @@ class Decoder1d(nn.Module):
         return output
 
 class Decoder2d(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear='relu'):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
         Args:
             channels <list<int>>
@@ -325,7 +331,7 @@ class Decoder2d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(DecoderBlock2d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, nonlinear=nonlinear[n]))
+            net.append(DecoderBlock2d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
             # channels[n+1]//2: because of skip connection
         
         self.net = nn.Sequential(*net)
@@ -355,15 +361,18 @@ class Decoder2d(nn.Module):
 """
 
 class EncoderBlock1d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, nonlinear='relu'):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
         super().__init__()
 
         if stride is None:
             stride = kernel_size
     
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
-    
-        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
+
+        if separable:
+            self.conv1d = DepthwiseSeparableConv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
+        else:
+            self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         self.batch_norm1d = nn.BatchNorm1d(out_channels)
         
         if nonlinear == 'relu':
@@ -397,7 +406,7 @@ class EncoderBlock1d(nn.Module):
 
 
 class EncoderBlock2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, nonlinear='relu'):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
         super().__init__()
         
         kernel_size = _pair(kernel_size)
@@ -409,7 +418,10 @@ class EncoderBlock2d(nn.Module):
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
 
-        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
+        if separable:
+            self.conv2d = DepthwiseSeparableConv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
+        else:
+            self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         self.batch_norm2d = nn.BatchNorm2d(out_channels)
         
         if nonlinear == 'relu':
@@ -450,15 +462,18 @@ class EncoderBlock2d(nn.Module):
 """
 
 class DecoderBlock1d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, nonlinear='relu'):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
         super().__init__()
         
         if stride is None:
             stride = kernel_size
 
-        self.kernel_size, self.stride, dilation = kernel_size, stride, dilation
+        self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
 
-        self.deconv1d = nn.ConvTranspose1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
+        if separable:
+            self.deconv1d = DepthwiseSeparableConvTranspose1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
+        else:
+            self.deconv1d = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
         self.batch_norm1d = nn.BatchNorm1d(out_channels)
         
         if nonlinear == 'relu':
@@ -475,7 +490,7 @@ class DecoderBlock1d(nn.Module):
             skip (batch_size, C2, T)
                 where C = C1 + C2
         """
-        kernel_size, stride, dilation = self.kernel_size, self.stride, dilation
+        kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
         
         kernel_size = (kernel_size - 1) * dilation + 1
         
@@ -550,8 +565,7 @@ class DecoderBlock2d(nn.Module):
         
         return output
 
-
-if __name__ == '__main__':
+def _test_unet():
     batch_size = 4
     C = 3
     channels = [C, 8, 16, 16, 32]
@@ -566,6 +580,7 @@ if __name__ == '__main__':
 
     unet2d = UNet2d(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear_enc=nonlinear_enc, nonlinear_dec=nonlinear_dec, out_channels=1)
     print(unet2d)
+    print("# Parameters: {}".format(unet2d.num_parameters))
 
     output = unet2d(input)
     print(output.size())
@@ -574,3 +589,7 @@ if __name__ == '__main__':
     model_path = "unet.pth"
     torch.save(package, model_path)
     model = UNet2d.build_model(model_path)
+
+
+if __name__ == '__main__':
+    _test_unet()
