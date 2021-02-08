@@ -35,7 +35,7 @@ N=6
 J=8
 sep_norm=1
 sep_nonlinear='relu'
-sep_dropout=0
+sep_dropout=1e-1
 mask_nonlinear='relu'
 causal=0
 
@@ -45,7 +45,7 @@ criterion='sisdr'
 # Optimizer
 optimizer='adam'
 lr=1e-3
-weight_decay=0
+weight_decay=1e-6
 max_norm=5 # 0 is handled as no clipping
 
 batch_size=4
