@@ -72,7 +72,6 @@ class ConvBlock1d(nn.Module):
         skip_connection = 0
         
         for idx in range(num_layers):
-            residual = x
             x, skip = self.net[idx](x)
             skip_connection = skip_connection + skip
 
