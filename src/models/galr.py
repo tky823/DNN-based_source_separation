@@ -84,7 +84,7 @@ class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
         self.norm = norm
 
         if self.norm:
-            self.norm2d_in = choose_layer_norm(num_features, causal=causal, eps=eps)
+            self.norm2d_in = LayerNormAlongChannel(num_features, eps=eps)
 
         self.multihead_attn = nn.MultiheadAttention(num_features, num_heads)
 
@@ -141,7 +141,7 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
         self.fc_map = nn.Linear(chunk_size, down_chunk_size)
 
         if self.norm:
-            self.norm2d_in = choose_layer_norm(num_features, causal=causal, eps=eps)
+            self.norm2d_in = LayerNormAlongChannel(num_features, eps=eps)
 
         self.multihead_attn = nn.MultiheadAttention(num_features, num_heads)
 
@@ -193,6 +193,38 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
         output = x.view(batch_size, num_features, S, K)
 
         return output
+
+class LayerNormAlongChannel(nn.Module):
+    def __init__(self, num_features, eps=EPS):
+        super().__init__()
+
+        self.num_features = num_features
+        self.eps = eps
+        
+        self.norm = nn.LayerNorm(num_features, eps=eps)
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, num_features, *)
+        Returns:
+            output (batch_size, num_features, *)
+        """
+        n_dim = input.dim()
+        dims = list(range(n_dim))
+        permuted_dims = dims[0:1] + dims[2:] + dims[1:2]
+        x = input.permute(*permuted_dims)
+        x = self.norm(x)
+        permuted_dims = dims[0:1] + dims[-1:] + dims[1:-1]
+        output = x.permute(*permuted_dims).contiguous()
+
+        return output
+    
+    def __repr__(self):
+        s = '{}'.format(self.__class__.__name__)
+        s += '({num_features}, eps={eps})'
+        
+        return s.format(**self.__dict__)
 
 def _test_globally_attentive_block():
     batch_size = 4

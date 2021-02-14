@@ -21,20 +21,23 @@ valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
-enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
+enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
-N=64
-L=2 # L corresponds to the window length (samples) in this script.
+D=64
+M=16 # M corresponds to the window length (samples) in this script.
 
 # Separator
-F=64
 H=128
-K=250
-P=125
-B=6
-causal=0
+K=100
+P=50
+Q=32
+N=6
+J=8
 sep_norm=1
-mask_nonlinear='sigmoid'
+sep_nonlinear='relu'
+sep_dropout=1e-1
+mask_nonlinear='relu'
+causal=0
 
 # Criterion
 criterion='sisdr'
@@ -42,10 +45,10 @@ criterion='sisdr'
 # Optimizer
 optimizer='adam'
 lr=1e-3
-weight_decay=0
+weight_decay=1e-6
 max_norm=5 # 0 is handled as no clipping
 
-batch_size=2
+batch_size=4
 epochs=100
 
 use_cuda=1
@@ -62,8 +65,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-# save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/D${D}_M${M}_H${H}_K${K}_P${P}_Q${Q}_H${H}_N${N}_J${J}/${prefix}causal${causal}_norm${sep_norm}_drop${sep_dropout}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -90,15 +92,17 @@ train.py \
 --dec_bases ${dec_bases} \
 --enc_nonlinear "${enc_nonlinear}" \
 --window_fn "${window_fn}" \
--N ${N} \
--L ${L} \
+-D ${D} \
+-M ${M} \
 -H ${H} \
--F ${F} \
 -K ${K} \
 -P ${P} \
--B ${B} \
+-Q ${Q} \
+-N ${N} \
+-J ${J} \
 --causal ${causal} \
 --sep_norm ${sep_norm} \
+--sep_dropout ${sep_dropout} \
 --mask_nonlinear ${mask_nonlinear} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
