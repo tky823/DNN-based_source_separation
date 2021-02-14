@@ -13,7 +13,7 @@ class GALRNet(nn.Module):
     def __init__(
         self,
         n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None,
-        sep_bottleneck_channels=64, sep_hidden_channels=128,
+        sep_hidden_channels=128,
         sep_chunk_size=100, sep_hop_size=50, sep_down_chunk_size=None, sep_num_blocks=6,
         sep_num_heads=8, sep_norm=True, sep_dropout=0.1,
         mask_nonlinear='relu',
@@ -46,7 +46,7 @@ class GALRNet(nn.Module):
             self.window_fn = None
         
         # Separator configuration
-        self.sep_hidden_channels, self.sep_bottleneck_channels = sep_hidden_channels, sep_bottleneck_channels
+        self.sep_hidden_channels = sep_hidden_channels
         self.sep_chunk_size, self.sep_hop_size, self.sep_down_chunk_size = sep_chunk_size, sep_hop_size, sep_down_chunk_size
         self.sep_num_blocks = sep_num_blocks
         self.sep_num_heads = sep_num_heads
@@ -66,7 +66,7 @@ class GALRNet(nn.Module):
         
         self.encoder = encoder
         self.separator = Separator(
-            n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
+            n_bases, hidden_channels=sep_hidden_channels,
             chunk_size=sep_chunk_size, hop_size=sep_hop_size, down_chunk_size=sep_down_chunk_size, num_blocks=sep_num_blocks,
             num_heads=sep_num_heads, norm=sep_norm, dropout=sep_dropout, mask_nonlinear=mask_nonlinear,
             low_dimension=low_dimension,
@@ -127,7 +127,6 @@ class GALRNet(nn.Module):
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
             'sep_hidden_channels': self.sep_hidden_channels,
-            'sep_bottleneck_channels': self.sep_bottleneck_channels,
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,
             'sep_down_chunk_size': self.sep_down_chunk_size,
@@ -156,7 +155,7 @@ class GALRNet(nn.Module):
 class Separator(nn.Module):
     def __init__(
         self,
-        num_features, bottleneck_channels=64, hidden_channels=128,
+        num_features, hidden_channels=128,
         chunk_size=100, hop_size=50, down_chunk_size=None, num_blocks=6, num_heads=4,
         norm=True, dropout=0.1, mask_nonlinear='relu',
         low_dimension=True,
@@ -169,19 +168,33 @@ class Separator(nn.Module):
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
-        self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.norm2d = choose_layer_norm(bottleneck_channels, causal=causal, eps=eps)
+        self.norm2d = choose_layer_norm(num_features, causal=causal, eps=eps)
         if low_dimension:
             # If low-dimension representation, latent_dim and chunk_size are required
             if down_chunk_size is None:
                 raise ValueError("Specify down_chunk_size")
-            self.galr = GALR(bottleneck_channels, hidden_channels, chunk_size=chunk_size, down_chunk_size=down_chunk_size, num_blocks=num_blocks, num_heads=num_heads, norm=norm, dropout=dropout, causal=causal, low_dimension=low_dimension, eps=eps)
+            self.galr = GALR(
+                num_features, hidden_channels,
+                chunk_size=chunk_size, down_chunk_size=down_chunk_size,
+                num_blocks=num_blocks, num_heads=num_heads,
+                norm=norm, dropout=dropout,
+                low_dimension=low_dimension,
+                causal=causal,
+                eps=eps
+            )
         else:
-            self.galr = GALR(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, norm=norm, dropout=dropout, causal=causal, low_dimension=low_dimension, eps=eps)
+            self.galr = GALR(
+                num_features, hidden_channels,
+                num_blocks=num_blocks, num_heads=num_heads,
+                norm=norm, dropout=dropout,
+                low_dimension=low_dimension,
+                causal=causal,
+                eps=eps
+            )
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         self.prelu = nn.PReLU()
-        self.map = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
+        self.map = nn.Conv1d(num_features, n_sources*num_features, kernel_size=1, stride=1)
         self.gtu = GTU1d(num_features, num_features)
         
         if mask_nonlinear == 'relu':
@@ -208,8 +221,7 @@ class Separator(nn.Module):
         padding_left = padding//2
         padding_right = padding - padding_left
         
-        x = self.bottleneck_conv1d(input)
-        x = F.pad(x, (padding_left, padding_right))
+        x = F.pad(input, (padding_left, padding_right))
         x = self.segment1d(x) # -> (batch_size, C, S, chunk_size)
         x = self.norm2d(x)
         x = self.galr(x)
@@ -280,7 +292,7 @@ def _test_galrnet():
     
     model = GALRNet(
         D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
-        sep_hidden_channels=H, sep_bottleneck_channels=D,
+        sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
         sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
@@ -305,7 +317,7 @@ def _test_galrnet():
     
     model = GALRNet(
         D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn,
-        sep_hidden_channels=H, sep_bottleneck_channels=D,
+        sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
         sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
@@ -345,7 +357,7 @@ def _test_galrnet_paper():
     
     model = GALRNet(
         D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
-        sep_hidden_channels=H, sep_bottleneck_channels=D,
+        sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
         sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
@@ -386,7 +398,7 @@ def _test_big_galrnet_paper():
     
     model = GALRNet(
         D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
-        sep_hidden_channels=H, sep_bottleneck_channels=D,
+        sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
         sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
