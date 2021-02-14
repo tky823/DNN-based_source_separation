@@ -9,7 +9,18 @@ from models.dprnn import DPRNN
 EPS=1e-12
 
 class DPRNNTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=128, sep_bottleneck_channels=64, sep_chunk_size=100, sep_hop_size=50, sep_num_blocks=6, causal=True, sep_norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
+    def __init__(
+        self,
+        n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None,
+        sep_hidden_channels=128, sep_bottleneck_channels=64,
+        sep_chunk_size=100, sep_hop_size=50,
+        sep_num_blocks=6,
+        sep_norm=True, mask_nonlinear='sigmoid',
+        causal=True,
+        n_sources=2,
+        eps=EPS,
+        **kwargs
+    ):
         super().__init__()
         
         if stride is None:
@@ -33,7 +44,6 @@ class DPRNNTasNet(nn.Module):
             self.window_fn = None
         
         # Separator configuration
-        # self.sep_hidden_channels = sep_hidden_channels
         self.sep_hidden_channels, self.sep_bottleneck_channels = sep_hidden_channels, sep_bottleneck_channels
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
         self.sep_num_blocks = sep_num_blocks
@@ -49,7 +59,14 @@ class DPRNNTasNet(nn.Module):
         encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
         
         self.encoder = encoder
-        self.separator = Separator(n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels, chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        self.separator = Separator(
+            n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
+            chunk_size=sep_chunk_size, hop_size=sep_hop_size,
+            num_blocks=sep_num_blocks, norm=sep_norm, mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
@@ -102,7 +119,7 @@ class DPRNNTasNet(nn.Module):
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
             'sep_hidden_channels': self.sep_hidden_channels,
-            # 'sep_bottleneck_channels': self.sep_bottleneck_channels,
+            'sep_bottleneck_channels': self.sep_bottleneck_channels,
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,
             'sep_num_blocks': self.sep_num_blocks,
@@ -125,20 +142,28 @@ class DPRNNTasNet(nn.Module):
         enc_nonlinear = package['enc_nonlinear']
         window_fn = package['window_fn']
         
-        # sep_hidden_channels = package['sep_hidden_channels']
         sep_hidden_channels, sep_bottleneck_channels = package['sep_hidden_channels'], package['sep_bottleneck_channels']
         sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
         sep_num_blocks = package['sep_num_blocks']
         
-        causal = package['causal']
         sep_norm = package['sep_norm']
         mask_nonlinear = package['mask_nonlinear']
-        
+
+        causal = package['causal']
         n_sources = package['n_sources']
         
         eps = package['eps']
         
-        model = cls(n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        model = cls(
+            n_bases, kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn,
+            sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels,
+            sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size,
+            sep_num_blocks=sep_num_blocks,
+            sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
         
         return model
     
@@ -152,7 +177,16 @@ class DPRNNTasNet(nn.Module):
         return num_parameters
 
 class Separator(nn.Module):
-    def __init__(self, num_features, bottleneck_channels=64, hidden_channels=128, chunk_size=100, hop_size=50, num_blocks=6, causal=True, norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
+    def __init__(
+        self,
+        num_features, bottleneck_channels=64, hidden_channels=128,
+        chunk_size=100, hop_size=50,
+        num_blocks=6,
+        norm=True, mask_nonlinear='sigmoid',
+        causal=True,
+        n_sources=2,
+        eps=EPS
+    ):
         super().__init__()
         
         self.num_features, self.n_sources = num_features, n_sources
@@ -219,7 +253,14 @@ def _test_separator():
     
     input = torch.randn((batch_size, N, T_bin), dtype=torch.float)
     
-    separator = Separator(N, bottleneck_channels=F, hidden_channels=H, chunk_size=K, hop_size=P, num_blocks=B, causal=causal, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    separator = Separator(
+        N, bottleneck_channels=F, hidden_channels=H,
+        chunk_size=K, hop_size=P,
+        num_blocks=B,
+        norm=sep_norm, mask_nonlinear=mask_nonlinear,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(separator)
 
     output = separator(input)
@@ -249,7 +290,15 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=F, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(
+        N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        sep_hidden_channels=H, sep_bottleneck_channels=F,
+        sep_chunk_size=K, sep_hop_size=P,
+        sep_num_blocks=B,
+        sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -265,7 +314,14 @@ def _test_dprnn_tasnet():
     mask_nonlinear = 'softmax'
     n_sources = 3
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn, sep_hidden_channels=H, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(
+        N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn,
+        sep_hidden_channels=H, sep_bottleneck_channels=F,
+        sep_chunk_size=K, sep_hop_size=P,
+        sep_num_blocks=B, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -297,7 +353,15 @@ def _test_dprnn_tasnet_paper():
     mask_nonlinear = 'sigmoid'
     n_sources = 2
     
-    model = DPRNNTasNet(N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=F, sep_chunk_size=K, sep_hop_size=P, sep_num_blocks=B, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPRNNTasNet(
+        N, kernel_size=L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        sep_hidden_channels=H, sep_bottleneck_channels=F,
+        sep_num_blocks=B,
+        sep_chunk_size=K, sep_hop_size=P,
+        sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

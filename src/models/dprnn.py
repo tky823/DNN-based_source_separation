@@ -6,14 +6,14 @@ from utils.utils_tasnet import choose_layer_norm
 EPS=1e-12
 
 class DPRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, causal=False, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, norm=True, causal=False, eps=EPS):
         super().__init__()
         
         # Network confguration
         net = []
         
         for _ in range(num_blocks):
-            net.append(DPRNNBlock(num_features, hidden_channels, causal=causal, norm=norm, eps=eps))
+            net.append(DPRNNBlock(num_features, hidden_channels, norm=norm, causal=causal, eps=eps))
             
         self.net = nn.Sequential(*net)
 
@@ -33,7 +33,7 @@ class DPRNNBlock(nn.Module):
         super().__init__()
         
         self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels, norm=norm, eps=eps)
-        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, causal=causal, norm=norm, eps=eps)
+        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, norm=norm, causal=causal, eps=eps)
         
     def forward(self, input):
         """
