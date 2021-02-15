@@ -316,7 +316,7 @@ class TesterBase:
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
                         write_wav(source_path, signal=source, sr=self.sr)
-                    source_path = "tmp-{}-target.wav_{}".format(order_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(order_idx, random_ID)
                     write_wav(source_path, signal=source, sr=self.sr)
                     
                     # Estimated source
