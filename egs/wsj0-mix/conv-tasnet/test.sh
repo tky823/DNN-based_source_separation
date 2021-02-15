@@ -47,7 +47,7 @@ max_norm=5
 batch_size=2
 epochs=100
 
-use_cuda=0
+use_cuda=1
 overwrite=0
 seed=111
 

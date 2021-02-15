@@ -79,3 +79,5 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.3.3: v0.3.2の影響により，学習済みモデルを更新．
 - v0.4.0: DPRNN-TasNetのネットワーク構造を変更．
 - v0.4.1: DPTNetおよびGALRNetを追加．DPRNN-TasNetを再修正．
+- v0.4.2: GALRNet用の学習スクリプトを追加．
+- v0.4.3: DPRNN-TasNetを再修正．
