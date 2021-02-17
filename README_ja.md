@@ -43,18 +43,18 @@ cd <REPOSITORY_ROOT>/egs/librispeech/common/
 ### 1. 学習
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./train.sh <OUTPUT_DIR>
+. ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 学習を途中から再開したい場合，
 ```
-. ./train.sh <OUTPUT_DIR> <MODEL_PATH>
+. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. 評価
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./test.sh <OUTPUT_DIR>
+. ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. デモンストレーション
@@ -81,3 +81,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.4.1: DPTNetおよびGALRNetを追加．DPRNN-TasNetを再修正．
 - v0.4.2: GALRNet用の学習スクリプトを追加．
 - v0.4.3: DPRNN-TasNetを再修正．
+- v0.5.0: `parse_options.sh`を追加．
