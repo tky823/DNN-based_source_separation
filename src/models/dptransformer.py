@@ -15,7 +15,7 @@ class DualPathTransformer(nn.Module):
         
         for _ in range(num_blocks):
             net.append(DualPathTransformerBlock(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps))
-            
+        
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
@@ -33,8 +33,17 @@ class DualPathTransformerBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
         
-        self.intra_chunk_block = IntraChunkTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, eps=eps)
-        self.inter_chunk_block = InterChunkTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal, norm=norm, nonlinear=nonlinear, dropout=dropout, eps=eps)
+        self.intra_chunk_block = IntraChunkTransformer(
+            num_features, hidden_channels, num_heads=num_heads,
+            norm=norm, nonlinear=nonlinear, dropout=dropout,
+            eps=eps
+        )
+        self.inter_chunk_block = InterChunkTransformer(
+            num_features, hidden_channels, num_heads=num_heads,
+            norm=norm, nonlinear=nonlinear, dropout=dropout,
+            causal=causal,
+            eps=eps
+        )
         
     def forward(self, input):
         """
@@ -54,7 +63,12 @@ class IntraChunkTransformer(nn.Module):
         
         self.num_features = num_features
 
-        self.transformer = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=False, eps=eps)
+        self.transformer = ImprovedTransformer(
+            num_features, hidden_channels, num_heads=num_heads,
+            norm=norm, nonlinear=nonlinear, dropout=dropout,
+            causal=False,
+            eps=eps
+        )
         
     def forward(self, input):
         """
@@ -66,11 +80,11 @@ class IntraChunkTransformer(nn.Module):
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
         
-        x = input.permute(3,0,2,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (chunk_size, batch_size, S, num_features)
+        x = input.permute(3, 0, 2, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (chunk_size, batch_size, S, num_features)
         x = x.view(chunk_size, batch_size*S, num_features) # (chunk_size, batch_size, S, num_features) -> (chunk_size, batch_size*S, num_features)
         x = self.transformer(x) # -> (chunk_size, batch_size*S, num_features)
         x = x.view(chunk_size, batch_size, S, num_features) # (chunk_size, batch_size*S, num_features) -> (chunk_size, batch_size, S, num_features)
-        output = x.permute(1,3,2,0) # (chunk_size, batch_size, S, num_features) -> (batch_size, num_features, S, chunk_size)
+        output = x.permute(1, 3, 2, 0) # (chunk_size, batch_size, S, num_features) -> (batch_size, num_features, S, chunk_size)
 
         return output
 
@@ -80,7 +94,12 @@ class InterChunkTransformer(nn.Module):
         
         self.num_features = num_features
 
-        self.transformer = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps)
+        self.transformer = ImprovedTransformer(
+            num_features, hidden_channels, num_heads=num_heads,
+            norm=norm, nonlinear=nonlinear, dropout=dropout,
+            causal=causal,
+            eps=eps
+        )
         
     def forward(self, input):
         """
@@ -92,11 +111,11 @@ class InterChunkTransformer(nn.Module):
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
         
-        x = input.permute(2,0,3,1).contiguous() # (batch_size, num_features, S, chunk_size) -> (S, batch_size, chunk_size, num_features)
+        x = input.permute(2, 0, 3, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (S, batch_size, chunk_size, num_features)
         x = x.view(S, batch_size*chunk_size, num_features) # (S, batch_size, chunk_size, num_features) -> (S, batch_size*chunk_size, num_features)
         x = self.transformer(x) # -> (S, batch_size*chunk_size, num_features)
         x = x.view(S, batch_size, chunk_size, num_features) # (S, batch_size*chunk_size, num_features) -> (S, batch_size, chunk_size, num_features)
-        output = x.permute(1,3,0,2) # (S, batch_size, chunk_size, num_features) -> (batch_size, num_features, S, chunk_size)
+        output = x.permute(1, 3, 0, 2) # (S, batch_size, chunk_size, num_features) -> (batch_size, num_features, S, chunk_size)
 
         return output
 
@@ -155,9 +174,9 @@ class MultiheadAttentionBlock(nn.Module):
             x = self.dropout1d(x)
         
         if self.norm:
-            x = x.permute(1,2,0) # (batch_size, embed_dim, T)
+            x = x.permute(1, 2, 0) # (batch_size, embed_dim, T)
             x = self.norm1d(x) # (batch_size, embed_dim, T)
-            x = x.permute(2,0,1).contiguous() # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
+            x = x.permute(2, 0, 1).contiguous() # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
         
         output = x
 
@@ -202,9 +221,9 @@ class FeedForwardBlock(nn.Module):
         x = x + residual
         
         if self.norm:
-            x = x.permute(1,2,0) # (T, batch_size, num_features) -> (batch_size, num_features, T)
+            x = x.permute(1, 2, 0) # (T, batch_size, num_features) -> (batch_size, num_features, T)
             x = self.norm1d(x) # (batch_size, num_features, T)
-            x = x.permute(2,0,1).contiguous() # (batch_size, num_features, T) -> (T, batch_size, num_features)
+            x = x.permute(2, 0, 1).contiguous() # (batch_size, num_features, T) -> (T, batch_size, num_features)
 
         output = x
 
