@@ -1,8 +1,6 @@
 #!/bin/bash
 
-. ./path.sh
-
-exp_dir="$1"
+exp_dir="./exp"
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
@@ -47,9 +45,12 @@ max_norm=5
 batch_size=2
 epochs=100
 
-use_cuda=0
+use_cuda=1
 overwrite=0
 seed=111
+
+. ./path.sh
+. parse_options.sh || exit 1
 
 prefix=""
 

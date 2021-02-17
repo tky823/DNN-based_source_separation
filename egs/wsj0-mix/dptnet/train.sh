@@ -1,9 +1,7 @@
 #!/bin/bash
 
-. ./path.sh
-
-exp_dir="$1"
-continue_from="$2"
+exp_dir="./exp"
+continue_from=""
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
@@ -49,7 +47,7 @@ k1=2e-1
 k2=4e-4
 warmup_steps=4000
 weight_decay=0
-max_norm=0 # 0 is handled as no clipping
+max_norm=5 # 0 is handled as no clipping
 
 batch_size=1
 epochs=100
@@ -57,6 +55,9 @@ epochs=100
 use_cuda=1
 overwrite=0
 seed=111
+
+. ./path.sh
+. parse_options.sh || exit 1
 
 prefix=""
 

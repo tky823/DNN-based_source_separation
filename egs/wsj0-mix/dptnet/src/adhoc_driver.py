@@ -145,4 +145,4 @@ class AdhocTrainer(TrainerBase):
 
 class Tester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):
-        super().__init__(self, model, loader, pit_criterion, args)
+        super().__init__(model, loader, pit_criterion, args)
