@@ -43,6 +43,9 @@ use_cuda=0
 overwrite=0
 seed=111
 
+. ./path.sh
+. parse_options.sh || exit 1
+
 prefix=""
 
 if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
@@ -61,9 +64,6 @@ model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
 out_dir="${save_dir}/test"
-
-. ./path.sh
-. parse_options.sh || exit 1
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"

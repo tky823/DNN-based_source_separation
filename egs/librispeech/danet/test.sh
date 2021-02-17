@@ -37,6 +37,9 @@ use_cuda=0
 overwrite=0
 seed=111
 
+. ./path.sh
+. parse_options.sh || exit 1
+
 prefix=""
 
 save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
@@ -47,9 +50,6 @@ model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
 out_dir="${save_dir}/test"
-
-. ./path.sh
-. parse_options.sh || exit 1
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
