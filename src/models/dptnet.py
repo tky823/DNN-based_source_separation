@@ -148,6 +148,45 @@ class DPTNet(nn.Module):
     
         return package
     
+    @classmethod
+    def build_model(cls, model_path):
+        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        n_bases = package['n_bases']
+        kernel_size, stride = package['kernel_size'], package['stride']
+        enc_bases, dec_bases = package['enc_bases'], package['dec_bases']
+        enc_nonlinear = package['enc_nonlinear']
+        window_fn = package['window_fn']
+        
+        sep_hidden_channels, sep_bottleneck_channels = package['sep_hidden_channels'], package['sep_bottleneck_channels']
+        sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
+        sep_num_blocks = package['sep_num_blocks']
+        sep_num_heads = package['sep_num_heads']
+        sep_norm, sep_nonlinear, sep_dropout = package['sep_norm'], package['sep_nonlinear'], package['sep_dropout']
+        
+        sep_nonlinear, sep_norm = package['sep_nonlinear'], package['sep_norm']
+        mask_nonlinear = package['mask_nonlinear']
+
+        causal = package['causal']
+        n_sources = package['n_sources']
+        
+        eps = package['eps']
+
+        model = cls(
+            n_bases, kernel_size, stride=stride,
+            enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn,
+            sep_bottleneck_channels=sep_bottleneck_channels, sep_hidden_channels=sep_hidden_channels,
+            sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks,
+            sep_num_heads=sep_num_heads,
+            sep_norm=sep_norm, sep_nonlinear=sep_nonlinear, sep_dropout=sep_dropout,
+            mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
+        
+        return model
+    
     def _get_num_parameters(self):
         num_parameters = 0
         
