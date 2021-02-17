@@ -2,8 +2,8 @@
 
 . ./path.sh
 
-exp_dir="$1"
-continue_from="$2"
+exp_dir="./exp"
+continue_from=""
 
 n_sources=2
 
