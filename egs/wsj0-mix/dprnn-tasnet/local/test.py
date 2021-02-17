@@ -12,7 +12,7 @@ from models.dprnn_tasnet import DPRNNTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Evaluation of DPRNN-TasNet")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
