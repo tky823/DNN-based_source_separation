@@ -43,18 +43,18 @@ cd <REPOSITORY_ROOT>/egs/librispeech/common/
 ### 1. Training
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./train.sh <OUTPUT_DIR>
+. ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 If you want to resume training,
 ```
-. ./train.sh <OUTPUT_DIR> <MODEL_PATH>
+. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. Evaluation
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./test.sh <OUTPUT_DIR>
+. ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
@@ -81,3 +81,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.4.1: Add DPTNet and GALRNet. Re-fix DPRNN-TasNet.
 - v0.4.2: Add training script for GALRNet.
 - v0.4.3: Re-fix DPRNN-TasNet.
+- v0.5.0: Add `parse_options.sh`.
