@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTestDataset, TestDataLoader
-from driver import Tester
+from adhoc_driver import Tester
 from models.dprnn_tasnet import DPRNNTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
