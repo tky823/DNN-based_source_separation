@@ -1,7 +1,5 @@
 #!/bin/bash
 
-. ./path.sh
-
 exp_dir="./exp"
 continue_from=""
 
@@ -67,6 +65,9 @@ model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
 log_dir="${save_dir}/log"
+
+. ./path.sh
+. parse_options.sh || exit 1
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"

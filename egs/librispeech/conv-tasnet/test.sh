@@ -1,8 +1,6 @@
 #!/bin/bash
 
-. ./path.sh
-
-exp_dir="$1"
+exp_dir="./exp"
 
 n_sources=2
 
@@ -67,6 +65,9 @@ model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
 out_dir="${save_dir}/test"
+
+. ./path.sh
+. parse_options.sh || exit 1
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
