@@ -181,7 +181,12 @@ class Separator(nn.Module):
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.norm2d = choose_layer_norm(bottleneck_channels, causal=causal, eps=eps)
 
-        self.dptransformer = DualPathTransformer(bottleneck_channels, hidden_channels, num_blocks=num_blocks, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps)
+        self.dptransformer = DualPathTransformer(
+            bottleneck_channels, hidden_channels,
+            num_blocks=num_blocks, num_heads=num_heads,
+            norm=norm, nonlinear=nonlinear, dropout=dropout,
+            causal=causal, eps=eps
+        )
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         self.prelu = nn.PReLU()
         self.map = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
@@ -243,7 +248,12 @@ def _test_separator():
     
     causal = False
 
-    separator = Separator(num_features, hidden_channels=d_ff, bottleneck_channels=d, chunk_size=chunk_size, num_blocks=num_blocks, num_heads=num_heads, causal=causal, n_sources=n_sources)
+    separator = Separator(
+        num_features, hidden_channels=d_ff, bottleneck_channels=d,
+        chunk_size=chunk_size, num_blocks=num_blocks, num_heads=num_heads,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(separator)
 
     output = separator(input)
@@ -270,7 +280,14 @@ def _test_dptnet():
     
     causal = False
 
-    model = DPTNet(N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_bottleneck_channels=d, sep_hidden_channels=d_ff, sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPTNet(
+        N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        sep_bottleneck_channels=d, sep_hidden_channels=d_ff,
+        sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h,
+        mask_nonlinear=mask_nonlinear,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(model)
 
     output = model(input)
@@ -299,7 +316,14 @@ def _test_dptnet_paper():
     
     causal = False
 
-    model = DPTNet(N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_bottleneck_channels=N, sep_hidden_channels=d_ff, sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DPTNet(
+        N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        sep_bottleneck_channels=N, sep_hidden_channels=d_ff,
+        sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h,
+        mask_nonlinear=mask_nonlinear,
+        causal=causal,
+        n_sources=n_sources
+    )
     print(model)
 
     output = model(input)
