@@ -13,7 +13,8 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
         super().__init__()
         
-        self.wav_root = wav_root
+        self.wav_root = os.path.abspath(wav_root)
+        json_path = os.path.abspath(json_path)
         
         with open(json_path) as f:
             self.json_data = json.load(f)
