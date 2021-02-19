@@ -230,6 +230,7 @@ class Tester:
         self.out_dir = args.out_dir
         
         if self.out_dir is not None:
+            self.out_dir = os.path.abspath(self.out_dir)
             os.makedirs(self.out_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
@@ -254,6 +255,10 @@ class Tester:
         n_test = len(self.loader.dataset)
 
         print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+
+        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        os.chdir(tmp_dir)
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
@@ -359,6 +364,8 @@ class Tester:
         test_sir_improvement /= n_test
         test_sar /= n_test
         test_pesq /= n_test
+
+        os.chdir("../") # back to the original directory
             
         print("Loss: {:.3f}, loss improvement: {:3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_loss_improvement, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))

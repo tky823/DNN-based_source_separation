@@ -237,6 +237,7 @@ class TesterBase:
         self.out_dir = args.out_dir
         
         if self.out_dir is not None:
+            self.out_dir = os.path.abspath(args.out_dir)
             os.makedirs(self.out_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
@@ -541,7 +542,11 @@ class AttractorTester(TesterBase):
         test_pesq = 0
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
-        
+
+        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        os.chdir(tmp_dir)
+
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
@@ -644,7 +649,9 @@ class AttractorTester(TesterBase):
         
         test_loss /= n_test
         test_pesq /= n_test
-                
+        
+        os.chdir("../") # back to the original directory
+
         print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
         print("Evaluation of PESQ returns error {} times.".format(n_pesq_error))
 
