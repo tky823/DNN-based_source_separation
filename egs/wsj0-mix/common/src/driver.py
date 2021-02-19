@@ -261,6 +261,10 @@ class TesterBase:
         n_test = len(self.loader.dataset)
 
         print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+
+        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        os.chdir(tmp_dir)
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
@@ -359,6 +363,8 @@ class TesterBase:
                 test_sar += sar
                 test_pesq += pesq
         
+        os.chdir("../") # back to the original directory
+
         test_loss /= n_test
         test_loss_improvement /= n_test
         test_sdr_improvement /= n_test
