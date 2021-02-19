@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import time
 import uuid
@@ -258,6 +259,7 @@ class Tester:
 
         tmp_dir = os.path.join(os.getcwd(), 'tmp')
         os.makedirs(tmp_dir, exist_ok=True)
+        shutil.copy('./PESQ', os.path.join(tmp_dir, 'PESQ'))
         os.chdir(tmp_dir)
         
         with torch.no_grad():
