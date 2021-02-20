@@ -30,7 +30,15 @@ class FurcaNetBase(nn.Module):
         return output
 
 class FurcaNet(nn.Module):
-    def __init__(self, conv_hidden_channels, rnn_hidden_channels, num_conv_blocks=10, num_rnn_blocks=2, kernel_size=3, stride=1, nonlinear='sigmoid', norm=True, causal=False, n_sources=2, eps=EPS):
+    def __init__(
+        self, conv_hidden_channels, rnn_hidden_channels,
+        num_conv_blocks=10, num_rnn_blocks=2,
+        kernel_size=3, stride=1,
+        nonlinear='sigmoid', norm=True,
+        causal=False,
+        n_sources=2,
+        eps=EPS
+    ):
         super().__init__()
         
         self.num_conv_blocks, self.num_rnn_blocks = num_conv_blocks, num_rnn_blocks
