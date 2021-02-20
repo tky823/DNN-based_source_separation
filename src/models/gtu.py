@@ -156,9 +156,10 @@ def _test_gtu2d():
     in_channels, out_channels = 3, 16
     H, W = 512, 256
 
+    input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
+
     print("-"*10, "By using GLU", "-"*10)
     
-    input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
     glu2d = GTU(in_channels, out_channels)
     print(glu2d)
     output = glu2d(input)
