@@ -124,57 +124,58 @@ class GTU2d(nn.Module):
         
         return output
 
-if __name__ == '__main__':
+def _test_gtu1d():
+    torch.manual_seed(111)
+
     batch_size = 4
     in_channels, out_channels = 3, 16
-    
-    print("="*10, "Gated Tanh Units (GTU)", "="*10)
-    # 1-D
-    print("-"*10, "GTU1d", "-"*10)
     T = 128
-    
+
     input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
 
-    gtu1d = GTU(in_channels, out_channels)
-    print(gtu1d)
+    print("-"*10, "By using GLU", "-"*10)
 
-    output = gtu1d(input)
+    glu1d = GTU(in_channels, out_channels)
+    print(glu1d)
+    output = glu1d(input)
     print(input.size(), output.size())
     print()
 
     # 1-D
-    print("-"*10, "GTU1d", "-"*10)
-    T = 128
-    
-    input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
+    print("-"*10, "By using GLU1d", "-"*10)
 
-    gtu1d = GTU1d(in_channels, out_channels)
-    print(gtu1d)
-
-    output = gtu1d(input)
+    glu1d = GTU1d(in_channels, out_channels)
+    print(glu1d)
+    output = glu1d(input)
     print(input.size(), output.size())
-    print()
-    
-    # 2-D
-    print("-"*10, "GTU2d", "-"*10)
+
+def _test_gtu2d():
+    torch.manual_seed(111)
+
+    batch_size = 4
+    in_channels, out_channels = 3, 16
     H, W = 512, 256
 
+    print("-"*10, "By using GLU", "-"*10)
+    
     input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
-
-    gtu2d = GTU(in_channels, out_channels)
-    print(gtu2d)
-
-    output = gtu2d(input)
+    glu2d = GTU(in_channels, out_channels)
+    print(glu2d)
+    output = glu2d(input)
     print(input.size(), output.size())
     print()
 
-    print("-"*10, "GTU2d", "-"*10)
-    H, W = 512, 256
+    print("-"*10, "By using GLU2d", "-"*10)
 
-    input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
-
-    gtu2d = GTU2d(in_channels, out_channels)
-    print(gtu2d)
-
-    output = gtu2d(input)
+    glu2d = GTU2d(in_channels, out_channels)
+    print(glu2d)
+    output = glu2d(input)
     print(input.size(), output.size())
+
+if __name__ == '__main__':
+    print("="*10, "Gated Tanh Units (GTU) 1D", "="*10)
+    _test_gtu1d()
+    print()
+
+    print("="*10, "Gated Tanh Units (GTU) 2D", "="*10)
+    _test_gtu2d()
