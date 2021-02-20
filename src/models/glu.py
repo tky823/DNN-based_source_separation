@@ -8,54 +8,13 @@ See "Language Modeling with Gated Convolutional Networks"
 https://arxiv.org/abs/1612.08083
 """
 
-class GLU(nn.Module):
-    """
-    Gated Linear Units
-    You can use GTU1d and GTU2d as well.
-    """
-    def __init__(self, in_channels, out_channels):
-        """
-        Args:
-            in_channels <int>
-            out_channels <int>
-        """
-        super().__init__()
-        
-        if out_channels is None:
-            out_channels = in_channels
-            
-        self.in_channels, self.out_channels = in_channels, out_channels
-
-        self.map = nn.Linear(in_channels, out_channels)
-        self.map_gate = nn.Linear(in_channels, out_channels)
-        
-    def forward(self, input):
-        """
-        Args:
-            input (batch_size, in_channels, *)
-        Returns:
-            output (batch_size, out_channels, *)
-        """
-        dim = input.dim()
-        axis = tuple(range(dim))
-        permutation = axis[0:1] + axis[:0:-1]
-        
-        input = input.permute(*permutation)
-        x_output = self.map(input)
-        x_gate = self.map_gate(input)
-        x_gate = torch.sigmoid(x_gate)
-
-        output = x_output * x_gate
-        output = output.permute(*permutation)
-        
-        return output
-
+# TODO: Kernel size
 
 class GLU1d(nn.Module):
     """
     Gated Linear Units for 1D inputs
     """
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1):
         """
         Args:
             in_channels <int>
@@ -68,8 +27,8 @@ class GLU1d(nn.Module):
             
         self.in_channels, self.out_channels = in_channels, out_channels
 
-        self.map = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1)
-        self.map_gate = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1)
+        self.map = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
+        self.map_gate = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
         
     def forward(self, input):
         """
@@ -90,7 +49,7 @@ class GLU2d(nn.Module):
     """
     Gated Linear Units for 2D inputs
     """
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1):
         """
         Args:
             in_channels <int>
@@ -100,11 +59,11 @@ class GLU2d(nn.Module):
         
         if out_channels is None:
             out_channels = in_channels
-            
+        
         self.in_channels, self.out_channels = in_channels, out_channels
 
-        self.map = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1))
-        self.map_gate = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1))
+        self.map = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
+        self.map_gate = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
         
     def forward(self, input):
         """
@@ -126,22 +85,14 @@ def _test_glu1d():
 
     batch_size = 4
     in_channels, out_channels = 3, 16
+    kernel_size, stride = 3, 2
     T = 128
 
     input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
 
-    print("-"*10, "By using GLU", "-"*10)
+    print("-"*10, "using GLU1d", "-"*10)
 
-    glu1d = GLU(in_channels, out_channels)
-    print(glu1d)
-    output = glu1d(input)
-    print(input.size(), output.size())
-    print()
-
-    # 1-D
-    print("-"*10, "By using GLU1d", "-"*10)
-
-    glu1d = GLU1d(in_channels, out_channels)
+    glu1d = GLU1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
     print(glu1d)
     output = glu1d(input)
     print(input.size(), output.size())
@@ -151,21 +102,14 @@ def _test_glu2d():
 
     batch_size = 4
     in_channels, out_channels = 3, 16
+    kernel_size, stride = 3, 2
     H, W = 512, 256
 
     input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
 
-    print("-"*10, "By using GLU", "-"*10)
-    
-    glu2d = GLU(in_channels, out_channels)
-    print(glu2d)
-    output = glu2d(input)
-    print(input.size(), output.size())
-    print()
+    print("-"*10, "GLU2d", "-"*10)
 
-    print("-"*10, "By using GLU2d", "-"*10)
-
-    glu2d = GLU2d(in_channels, out_channels)
+    glu2d = GLU2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride)
     print(glu2d)
     output = glu2d(input)
     print(input.size(), output.size())
