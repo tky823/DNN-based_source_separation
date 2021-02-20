@@ -7,7 +7,7 @@ Gated Linear Units
 See "Language Modeling with Gated Convolutional Networks"
 https://arxiv.org/abs/1612.08083
 """
-        
+
 class GLU(nn.Module):
     """
     Gated Linear Units
@@ -121,57 +121,58 @@ class GLU2d(nn.Module):
         
         return output
 
-if __name__ == '__main__':
+def _test_glu1d():
+    torch.manual_seed(111)
+
     batch_size = 4
     in_channels, out_channels = 3, 16
-    
-    print("="*10, "Gated Linear Units (GLU)", "="*10)
-    # 1-D
-    print("-"*10, "GLU1d", "-"*10)
     T = 128
-    
+
     input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
+
+    print("-"*10, "By using GLU", "-"*10)
 
     glu1d = GLU(in_channels, out_channels)
     print(glu1d)
-
     output = glu1d(input)
     print(input.size(), output.size())
     print()
 
     # 1-D
-    print("-"*10, "GLU1d", "-"*10)
-    T = 128
-    
-    input = torch.rand(batch_size, in_channels, T, dtype=torch.float)
+    print("-"*10, "By using GLU1d", "-"*10)
 
     glu1d = GLU1d(in_channels, out_channels)
     print(glu1d)
-
     output = glu1d(input)
     print(input.size(), output.size())
-    print()
-    
-    # 2-D
-    print("-"*10, "GLU2d", "-"*10)
+
+def _test_glu2d():
+    torch.manual_seed(111)
+
+    batch_size = 4
+    in_channels, out_channels = 3, 16
     H, W = 512, 256
 
+    print("-"*10, "By using GLU", "-"*10)
+    
     input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
-
     glu2d = GLU(in_channels, out_channels)
     print(glu2d)
-
     output = glu2d(input)
     print(input.size(), output.size())
     print()
 
-    print("-"*10, "GLU2d", "-"*10)
-    H, W = 512, 256
-
-    input = torch.rand(batch_size, in_channels, H, W, dtype=torch.float)
+    print("-"*10, "By using GLU2d", "-"*10)
 
     glu2d = GLU2d(in_channels, out_channels)
     print(glu2d)
-
     output = glu2d(input)
     print(input.size(), output.size())
+
+if __name__ == '__main__':
+    print("="*10, "Gated Linear Units (GLU) 1D", "="*10)
+    _test_glu1d()
+    print()
+
+    print("="*10, "Gated Linear Units (GLU) 2D", "="*10)
+    _test_glu2d()
