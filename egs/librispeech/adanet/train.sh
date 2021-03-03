@@ -1,9 +1,7 @@
 #!/bin/bash
 
-. ./path.sh
-
-exp_dir="$1"
-continue_from="$2"
+exp_dir="./exp"
+continue_from=""
 
 n_sources=2
 
@@ -40,6 +38,9 @@ epochs=100
 use_cuda=1
 overwrite=0
 seed=111
+
+. ./path.sh
+. parse_options.sh || exit 1
 
 save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 

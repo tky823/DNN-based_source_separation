@@ -14,8 +14,9 @@ DNNによる音源分離（PyTorch実装）
 | Conv-TasNet | [Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation](https://arxiv.org/abs/1809.07454) | ✔ |
 | DPRNN-TasNet | [Dual-path RNN: Efficient Long Sequence Modeling for Time-domain Single-channel Speech Separation](https://arxiv.org/abs/1910.06379) | ✔ |
 | Gated DPRNN-TasNet | [Voice Separation with an Unknown Number of Multiple Speakers](https://arxiv.org/abs/2003.01531) |  |
-| DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | FurcaNet | [FurcaNet: An End-to-End Deep Gated Convolutional, Long Short-term Memory, Deep Neural Networks for Single Channel Speech Separation](https://arxiv.org/abs/1902.00651) |  |
+| FurcaNeXt | [FurcaNeXt: End-to-End Monaural Speech Separation with Dynamic Gated Dilated Temporal Convolutional Networks](https://arxiv.org/abs/1902.04891) |
+| DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
 | DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
@@ -43,18 +44,18 @@ cd <REPOSITORY_ROOT>/egs/librispeech/common/
 ### 1. 学習
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./train.sh <OUTPUT_DIR>
+. ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 学習を途中から再開したい場合，
 ```
-. ./train.sh <OUTPUT_DIR> <MODEL_PATH>
+. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. 評価
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./test.sh <OUTPUT_DIR>
+. ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. デモンストレーション
@@ -81,3 +82,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.4.1: DPTNetおよびGALRNetを追加．DPRNN-TasNetを再修正．
 - v0.4.2: GALRNet用の学習スクリプトを追加．
 - v0.4.3: DPRNN-TasNetを再修正．
+- v0.5.0: `parse_options.sh`を追加．
