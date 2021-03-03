@@ -13,13 +13,16 @@ class WSJ0Dataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, list_path):
         super().__init__()
         
-        self.wav_root = wav_root
-        self.list_path = list_path
+        self.wav_root = os.path.abspath(wav_root)
+        self.list_path = os.path.abspath(list_path)
 
 
 class WaveDataset(WSJ0Dataset):
     def __init__(self, wav_root, list_path, samples=32000, overlap=None, n_sources=2):
         super().__init__(wav_root, list_path)
+
+        wav_root = os.path.abspath(wav_root)
+        list_path = os.path.abspath(list_path)
         
         if overlap is None:
             overlap = samples//2
@@ -113,7 +116,10 @@ class WaveTrainDataset(WaveDataset):
 class WaveEvalDataset(WaveDataset):
     def __init__(self, wav_root, list_path, max_samples=None, n_sources=2):
         super().__init__(wav_root, list_path, n_sources=n_sources)
-        
+
+        wav_root = os.path.abspath(wav_root)
+        list_path = os.path.abspath(list_path)
+
         self.json_data = []
         
         with open(list_path) as f:
@@ -271,6 +277,9 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
     def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
         super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
 
+        wav_root = os.path.abspath(wav_root)
+        list_path = os.path.abspath(list_path)
+
         self.json_data = []
         
         with open(list_path) as f:
@@ -392,6 +401,9 @@ Dataset for unknown number of sources.
 class MixedNumberSourcesWaveDataset(WSJ0Dataset):
     def __init__(self, wav_root, list_path, samples=32000, overlap=None, max_n_sources=3):
         super().__init__(wav_root, list_path)
+
+        wav_root = os.path.abspath(wav_root)
+        list_path = os.path.abspath(list_path)
         
         if overlap is None:
             overlap = samples//2
@@ -491,7 +503,10 @@ class MixedNumberSourcesWaveTrainDataset(MixedNumberSourcesWaveDataset):
 class MixedNumberSourcesWaveEvalDataset(MixedNumberSourcesWaveDataset):
     def __init__(self, wav_root, list_path, max_samples=None, max_n_sources=3):
         super().__init__(wav_root, list_path, max_n_sources=max_n_sources)
-        
+
+        wav_root = os.path.abspath(wav_root)
+        list_path = os.path.abspath(list_path)
+
         self.json_data = []
         
         with open(list_path) as f:
