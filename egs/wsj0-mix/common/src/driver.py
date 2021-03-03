@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import time
 import uuid
@@ -237,6 +238,7 @@ class TesterBase:
         self.out_dir = args.out_dir
         
         if self.out_dir is not None:
+            self.out_dir = os.path.abspath(args.out_dir)
             os.makedirs(self.out_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
@@ -261,6 +263,11 @@ class TesterBase:
         n_test = len(self.loader.dataset)
 
         print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+
+        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        shutil.copy('./PESQ', os.path.join(tmp_dir, 'PESQ'))
+        os.chdir(tmp_dir)
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
@@ -359,6 +366,8 @@ class TesterBase:
                 test_sar += sar
                 test_pesq += pesq
         
+        os.chdir("../") # back to the original directory
+
         test_loss /= n_test
         test_loss_improvement /= n_test
         test_sdr_improvement /= n_test
@@ -535,7 +544,12 @@ class AttractorTester(TesterBase):
         test_pesq = 0
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
-        
+
+        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        shutil.copy('./PESQ', os.path.join(tmp_dir, 'PESQ'))
+        os.chdir(tmp_dir)
+
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
@@ -638,7 +652,9 @@ class AttractorTester(TesterBase):
         
         test_loss /= n_test
         test_pesq /= n_test
-                
+        
+        os.chdir("../") # back to the original directory
+
         print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
         print("Evaluation of PESQ returns error {} times.".format(n_pesq_error))
 
