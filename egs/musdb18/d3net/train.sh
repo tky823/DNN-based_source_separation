@@ -59,7 +59,7 @@ train.py \
 --window_fn "${window_fn}" \
 -N ${N} \
 -M ${M} \
---sources ${n_sources} \
+--sources ${sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
