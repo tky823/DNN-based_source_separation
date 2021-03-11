@@ -9,7 +9,7 @@ from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
 # from adhoc_driver import AdhocTrainer
 # from models.d3net import D3Net
-from criterion.distance import MeanSquaredError as MSE
+# from criterion.distance import MeanSquaredError as MSE
 
 parser = argparse.ArgumentParser(description="Training of D3Net")
 
