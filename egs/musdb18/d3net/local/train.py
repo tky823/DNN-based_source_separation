@@ -41,12 +41,13 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = int(args.sr * args.duration)
-    overlap = samples//2
-    max_samples = int(args.sr * args.valid_duration)
+    samples = args.duration
+    overlap = samples / 2
+    args.sources = args.sources.replace('[','').replace(']','').split(',')
+    args.n_sources = len(args.sources)
     
-    train_dataset = WaveTrainDataset(args.musdb18_root, samples=samples, overlap=overlap, sources=args.sources)
-    valid_dataset = WaveEvalDataset(args.musdb18_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
+    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
+    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
@@ -54,8 +55,7 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    if not args.enc_nonlinear:
-        args.enc_nonlinear = None
+    """
     model = D3Net(n_sources=args.sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
@@ -88,6 +88,7 @@ def main(args):
     
     # trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     # trainer.run()
+    """
     
     
 if __name__ == '__main__':
