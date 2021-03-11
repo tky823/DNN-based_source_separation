@@ -44,12 +44,11 @@ class AdhocTrainer(TrainerBase):
             # Learning rate scheduling
             # torch.optim.lr_scheduler.ExponentialLR may be useful.
             lr_decay = self.lr_decay
-            optim_dict = self.optimizer.state_dict()
-            lr = optim_dict['param_groups'][0]['lr']
-            print("Learning rate: {} -> {}".format(lr, lr_decay * lr))
-            
-            optim_dict['param_groups'][0]['lr'] = lr_decay * lr
-            self.optimizer.load_state_dict(optim_dict)
+            for param_group in self.optimizer.param_groups:
+                prev_lr = param_group['lr']
+                lr = lr_decay * prev_lr
+                print("Learning rate: {} -> {}".format(prev_lr, lr))
+                param_group['lr'] = lr
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
