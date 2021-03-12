@@ -1,4 +1,5 @@
 import torch
+from torch._C import Value
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -23,14 +24,31 @@ class D3Net(nn.Module):
         raise NotImplementedError("Implement D3Net")
 
 class D3Block(nn.Module):
-    def __init__(self, in_channels, num_features, kernel_size, dilations=[(1,1),(2,2),(4,4)], num_blocks=3, eps=EPS):
+    def __init__(self, in_channels, out_channels, kernel_size, num_blocks=3, depth=None, eps=EPS):
         super().__init__()
 
         self.num_blocks = num_blocks
+        if type(out_channels) is int:
+            out_channels = [
+                out_channels for _ in range(num_blocks)
+            ]
+            if depth is None or type(depth) is int:
+                depth = [
+                    None for _ in range(num_blocks)
+                ]
+        elif type(out_channels) is list:
+            if depth is None or type(depth) is int:
+                depth = [
+                    None for _ in range(num_blocks)
+                ]
+        else:
+            raise ValueError("Not support `out_channels`={}".format(out_channels))
 
         net = []
         for idx in range(num_blocks):
-            net.append(D2Block(in_channels, num_features, kernel_size, dilations=dilations, eps=eps))
+            net.append(D2Block(in_channels, out_channels, kernel_size, depth=depth[idx], eps=eps))
+            in_channels += out_channels[-1]
+        
         self.net = nn.Sequential(*net)
 
         self.eps = eps
@@ -42,34 +60,43 @@ class D3Block(nn.Module):
             output (batch_size, out_channels, n_bins, n_frames)
         """
         x = input
-        stacked = []
+        stacked = None
 
         for idx in range(self.num_blocks):
-            stacked.append(x)
-            x = torch.cat(stacked, dim=1)
-            x = self.net[idx](x)
+            if stacked is None:
+                stacked = x
+            else:
+                stacked = torch.cat([stacked, x], dim=1)
+            x = self.net[idx](stacked)
             
         output = x
 
         return output
 
 class D2Block(nn.Module):
-    def __init__(self, in_channels, num_features, kernel_size, dilations=[(1,1),(2,2),(4,4)], eps=EPS):
+    def __init__(self, in_channels, out_channels, kernel_size, depth=None, eps=EPS):
         super().__init__()
 
-        self.num_dilations = len(dilations)
+        if type(out_channels) is int:
+            assert depth is not None, "Specify `depth`"
+            out_channels = [
+                out_channels for _ in range(depth)
+            ]
+        elif type(out_channels) is list:
+            depth = len(out_channels)
+        else:
+            raise ValueError("Not support out_channels={}".format(out_channels))
+        self.depth = depth
 
         net = []
-        stacked_in_channels = []
+        num_features = []
 
-        for idx in range(self.num_dilations):
-            if len(stacked_in_channels) == 0:
-                stacked_in_channels.append(in_channels)
-                net.append(MultiDilatedConv2d(stacked_in_channels, num_features, kernel_size=kernel_size, dilations=dilations[:idx+1]))
+        for idx in range(self.depth):
+            if idx == 0:
+                num_features.append(in_channels)
             else:
-                stacked_in_channels.append(num_features)
-                net.append(MultiDilatedConv2d(stacked_in_channels, num_features, kernel_size=kernel_size, dilations=dilations[:idx+1]))
-                num_features += num_features
+                num_features.append(out_channels[idx-1])
+            net.append(MultiDilatedConv2d(num_features, out_channels[idx], kernel_size=kernel_size))
         self.net = nn.Sequential(*net)
 
         self.eps = eps
@@ -81,28 +108,28 @@ class D2Block(nn.Module):
             output (batch_size, out_channels, n_bins, n_frames)
         """
         x = input
-        stacked = []
+        stacked = None
 
-        for idx in range(self.num_dilations):
-            stacked.append(x)
-            x = self.net[idx](*stacked)
+        for idx in range(self.depth):
+            if stacked is None:
+                stacked = x
+            else:
+                stacked = torch.cat([stacked, x], dim=1)
+            x = self.net[idx](stacked)
             
         output = x
 
         return output
 
-def _test_dense_block():
+def _test_d2block():
     torch.manual_seed(111)
     
     batch_size = 4
     H, W = 16, 32
-    in_channels = 3
-    num_features = 4
-    dilations = [(1,1),(2,2),(4,4)]
+    in_channels, out_channels = 3, [2, 4, 6]
 
     input = torch.randn(batch_size, in_channels, H, W)
-
-    model = D2Block(in_channels, num_features, kernel_size=(3,3), dilations=dilations)
+    model = D2Block(in_channels, out_channels, kernel_size=(3,3))
     print(model)
     output = model(input)
     print(input.size(), output.size())
@@ -112,13 +139,12 @@ def _test_d3block():
     
     batch_size = 4
     H, W = 16, 32
-    in_channels = 3
-    num_features = 4
-    dilations = [(1,1),(2,2),(4,4)]
+    in_channels, out_channels = 3, [2, 4, 6]
+    num_blocks = 3
 
     input = torch.randn(batch_size, in_channels, H, W)
 
-    model = D3Block(in_channels, num_features, kernel_size=(3,3), dilations=dilations)
+    model = D3Block(in_channels, out_channels, kernel_size=(3,3), num_blocks=num_blocks)
     print(model)
     output = model(input)
     print(input.size(), output.size())
@@ -126,6 +152,5 @@ def _test_d3block():
 
 
 if __name__ == '__main__':
-    # _test_multi_dilated_conv()
-    # _test_dense_block()
+    # _test_d2block()
     _test_d3block()
