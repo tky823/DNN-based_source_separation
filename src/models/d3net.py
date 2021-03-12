@@ -96,7 +96,7 @@ class D2Block(nn.Module):
                 num_features.append(in_channels)
             else:
                 num_features.append(out_channels[idx-1])
-            net.append(MultiDilatedConv2d(num_features, out_channels[idx], kernel_size=kernel_size))
+            net.append(MultiDilatedConvBlock(num_features, out_channels[idx], kernel_size=kernel_size))
         self.net = nn.Sequential(*net)
 
         self.eps = eps
@@ -107,25 +107,21 @@ class D2Block(nn.Module):
             input (batch_size, in_channels, n_bins, n_frames)
             output (batch_size, out_channels, n_bins, n_frames)
         """
-        x = input
-        stacked = None
-
-        for idx in range(self.depth):
-            if stacked is None:
-                stacked = x
-            else:
-                stacked = torch.cat([stacked, x], dim=1)
-            x = self.net[idx](stacked)
-            
-        output = x
+        output = self.net(input)
 
         return output
 
-class MultiDilatedConv2dBlock(nn.Module):
-    def __init__(self):
+class MultiDilatedConvBlock(nn.Module):
+    def __init__(self, in_channels, growth_rate, kernel_size):
         super().__init__()
 
-        raise NotImplementedError
+        self.conv2d = MultiDilatedConv2d(in_channels, growth_rate, kernel_size=kernel_size)
+
+    def forward(self, input):
+        x = self.conv2d(input)
+        output = torch.cat([input, x], dim=1)
+
+        return output
 
 def _test_d2block():
     torch.manual_seed(111)
