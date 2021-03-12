@@ -146,7 +146,9 @@ class MultiDilatedConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, groups=None):
         super().__init__()
 
+        self.out_channels = out_channels
         self.kernel_size = kernel_size
+        self.dilations = []
 
         sections = []
         conv1d = []
@@ -159,13 +161,17 @@ class MultiDilatedConv1d(nn.Module):
             _in_channels = in_channels // groups
 
             for idx in range(groups):
+                dilation = 2**idx
+                self.dilations.append(dilation)
                 sections.append(_in_channels)
-                conv1d.append(nn.Conv1d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=2**idx))
+                conv1d.append(nn.Conv1d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=dilation))
         elif type(in_channels) is list:
             self.groups = len(in_channels)
             for idx, _in_channels in enumerate(in_channels):
+                dilation = 2**idx
+                self.dilations.append(dilation)
                 sections.append(_in_channels)
-                conv1d.append(nn.Conv1d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=2**idx))
+                conv1d.append(nn.Conv1d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=dilation))
         else:
             raise ValueError("Not support `in_channels`={}".format(in_channels))
         
@@ -188,6 +194,12 @@ class MultiDilatedConv1d(nn.Module):
             output = output + self.conv1d[idx](x)
 
         return output
+    """
+    def extra_repr(self):
+        s = "{}, {}".format(sum(self.sections), self.out_channels)
+        s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
+        return s
+    """
 
 
 class MultiDilatedConv2d(nn.Module):
