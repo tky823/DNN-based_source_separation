@@ -87,7 +87,7 @@ class BandSplit(nn.Module):
 
         for n_bins in self.sections[1:]:
             s += ", {}-{}".format(start, start + n_bins - 1)
-            start += n_bins + 1
+            start += n_bins
         s += "]"
 
         return s
