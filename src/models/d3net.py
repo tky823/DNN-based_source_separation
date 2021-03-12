@@ -152,5 +152,5 @@ def _test_d3block():
 
 
 if __name__ == '__main__':
-    # _test_d2block()
+    _test_d2block()
     _test_d3block()
