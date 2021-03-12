@@ -143,12 +143,13 @@ class ComplexConv1d(nn.Module):
         return output
 
 class MultiDilatedConv1d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, groups=None):
+    def __init__(self, in_channels, out_channels, kernel_size, bias=True, groups=None):
         super().__init__()
 
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.dilations = []
+        self.bias = bias
 
         self.sections = []
         weights = []
@@ -166,7 +167,8 @@ class MultiDilatedConv1d(nn.Module):
                 self.dilations.append(dilation)
                 self.sections.append(_in_channels)
                 weights.append(torch.Tensor(out_channels, _in_channels, kernel_size))
-                biases.append(torch.Tensor(out_channels,))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
         elif type(in_channels) is list:
             self.groups = len(in_channels)
             for idx, _in_channels in enumerate(in_channels):
@@ -174,20 +176,26 @@ class MultiDilatedConv1d(nn.Module):
                 self.dilations.append(dilation)
                 self.sections.append(_in_channels)
                 weights.append(torch.Tensor(out_channels, _in_channels, kernel_size))
-                biases.append(torch.Tensor(out_channels,))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
         else:
             raise ValueError("Not support `in_channels`={}".format(in_channels))
         
         weights = torch.cat(weights, dim=1)
-        biases = torch.cat(biases, dim=0)
         self.weights = nn.Parameter(weights)
-        self.biases = nn.Parameter(biases)
+
+        if self.bias:
+            biases = torch.cat(biases, dim=0)
+            self.biases = nn.Parameter(biases)
     
     def forward(self, input):
         kernel_size = self.kernel_size
 
         weights = torch.split(self.weights, self.sections, dim=1)
-        biases = torch.split(self.biases, self.out_channels, dim=0)
+        if self.bias:
+            biases = torch.split(self.biases, self.out_channels, dim=0)
+        else:
+            biases = [None] * len(weights)
 
         input = torch.split(input, self.sections, dim=1)
         output = 0
@@ -209,7 +217,7 @@ class MultiDilatedConv1d(nn.Module):
         return s
 
 class MultiDilatedConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, groups=None):
+    def __init__(self, in_channels, out_channels, kernel_size, bias=True, groups=None):
         super().__init__()
 
         kernel_size = _pair(kernel_size)
@@ -217,6 +225,7 @@ class MultiDilatedConv2d(nn.Module):
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.dilations = []
+        self.bias = bias
 
         self.sections = []
         weights = []
@@ -234,7 +243,8 @@ class MultiDilatedConv2d(nn.Module):
                 self.dilations.append(dilation)
                 self.sections.append(_in_channels)
                 weights.append(torch.Tensor(out_channels, _in_channels, *kernel_size))
-                biases.append(torch.Tensor(out_channels,))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
         elif type(in_channels) is list:
             self.groups = len(in_channels)
             for idx, _in_channels in enumerate(in_channels):
@@ -242,20 +252,26 @@ class MultiDilatedConv2d(nn.Module):
                 self.dilations.append(dilation)
                 self.sections.append(_in_channels)
                 weights.append(torch.Tensor(out_channels, _in_channels, *kernel_size))
-                biases.append(torch.Tensor(out_channels,))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
         else:
             raise ValueError("Not support `in_channels`={}".format(in_channels))
 
         weights = torch.cat(weights, dim=1)
-        biases = torch.cat(biases, dim=0)
         self.weights = nn.Parameter(weights)
-        self.biases = nn.Parameter(biases)
+
+        if self.bias:
+            biases = torch.cat(biases, dim=0)
+            self.biases = nn.Parameter(biases)
     
     def forward(self, input):
         kernel_size = self.kernel_size
 
         weights = torch.split(self.weights, self.sections, dim=1)
-        biases = torch.split(self.biases, self.out_channels, dim=0)
+        if self.bias:
+            biases = torch.split(self.biases, self.out_channels, dim=0)
+        else:
+            biases = [None] * len(weights)
 
         input = torch.split(input, self.sections, dim=1)
         output = 0
@@ -294,6 +310,12 @@ def _test_multidilated_conv1d():
     print(conv1d)
     output = conv1d(input)
     print(input.size(), output.size())
+    print()
+
+    conv1d = MultiDilatedConv1d(in_channels, out_channels, kernel_size=kernel_size, bias=False)
+    print(conv1d)
+    output = conv1d(input)
+    print(input.size(), output.size())
 
 def _test_multidilated_conv2d():
     torch.manual_seed(111)
@@ -305,10 +327,18 @@ def _test_multidilated_conv2d():
     kernel_size = 3
 
     input = torch.randn(batch_size, sum(in_channels), H, W)
+
     conv2d = MultiDilatedConv2d(sum(in_channels), out_channels, kernel_size=kernel_size, groups=len(in_channels))
     print(conv2d)
     output = conv2d(input)
     print(input.size(), output.size())
+    print()
+
+    conv2d = MultiDilatedConv2d(in_channels, out_channels, kernel_size=kernel_size, bias=False)
+    print(conv2d)
+    output = conv2d(input)
+    print(input.size(), output.size())
+    print()
 
 if __name__ == '__main__':
     _test_multidilated_conv1d()
