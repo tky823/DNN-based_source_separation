@@ -95,22 +95,18 @@ class D3NetBackbone(nn.Module):
             ?? output (batch_size, num_d2blocks[num_d3blocks - 2] * depth[num_d3blocks - 2] * growth_rate[num_d3blocks - 2], H, W)
         """
         x = self.conv2d(input)
-        # print(x.size())
+
         skips = []
         skips.append(x)
 
         for idx in range(self.num_stacks):
             x = self.encoder[idx](x)
             skips.append(x)
-            # print(x.size())
-        # print()
 
         for idx in range(self.num_stacks - 1):
             skip_idx = self.num_stacks - idx - 1
             skip = skips[skip_idx]
-            # print(x.size(), skip.size())
             x = self.decoder[idx](x, skip=skip)
-        # print()
 
         output = x
 
@@ -442,7 +438,7 @@ def _test_d3net_paper():
     
     batch_size = 4
     sections = [256, 1344]
-    H, W = sum(sections), 44100
+    H, W = sum(sections), 256
     in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 32}, {'low': [16, 18, 20, 22, 20, 18, 16], 'high': [2, 2, 2, 2, 2, 2, 2], 'full': [13, 14, 15, 16, 17, 16, 14, 12, 11]}
     kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
     scale = {'low': (2,2), 'high': (2,2), 'full': (2,2)}
