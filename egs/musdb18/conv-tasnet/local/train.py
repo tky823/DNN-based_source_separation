@@ -10,7 +10,6 @@ from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalData
 from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
-from criterion.pit import PIT1d
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
@@ -107,9 +106,8 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
     
-    trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
     
     
