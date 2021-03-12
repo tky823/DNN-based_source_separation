@@ -15,7 +15,7 @@ EPS=1e-12
 class D3Net(nn.Module):
     def __init__(
         self, in_channels, num_features, growth_rate, kernel_size, sections=[256,1344], scale=(2,2),
-        num_d3blocks=4, num_d2blocks=3, depth=None,
+        num_d3blocks=5, num_d2blocks=3, depth=None,
         growth_rate_d2block=None, kernel_size_d2block=None, depth_d2block=None,
         kernel_size_gated=None,
         norm=True, nonlinear='relu',
@@ -31,7 +31,8 @@ class D3Net(nn.Module):
 
         for key in self.bands:
             net[key] = D3NetBackbone(in_channels, num_features[key], growth_rate[key], kernel_size[key], scale=scale[key], num_d3blocks=num_d3blocks[key], num_d2blocks=num_d2blocks[key], depth=depth[key], norm=norm, nonlinear=nonlinear, eps=eps, **kwargs)
-            in_channels_d2block += num_d2blocks[key][-1] * depth[key][-1] * growth_rate[key][-1]
+        
+        in_channels_d2block = 2 * num_d2blocks[key][-1] * depth[key][-1] * growth_rate[key][-1]
 
         self.net = nn.ModuleDict(net)
 
@@ -61,10 +62,11 @@ class D3Net(nn.Module):
         return output
 
 class D3NetBackbone(nn.Module):
-    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d3blocks=4, num_d2blocks=3, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d3blocks=5, num_d2blocks=3, depth=None, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
-        self.num_stacks = num_d3blocks // 2
+        assert num_d3blocks % 2 == 1, "`num_d3blocks` must be odd number"
+        self.num_stacks = num_d3blocks // 2 + 1
 
         encoder = []
         decoder = []
@@ -78,8 +80,8 @@ class D3NetBackbone(nn.Module):
             encoder.append(DownD3Block(num_features, growth_rate[idx], kernel_size, down_scale=scale, num_blocks=num_d2blocks[idx], depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))    
             num_features = num_d2blocks[idx] * depth[idx] * growth_rate[idx]
         
-        for idx in range(self.num_stacks, num_d3blocks - 1):
-            skip_idx = num_d3blocks - idx - 2
+        for idx in range(self.num_stacks, num_d3blocks):
+            skip_idx = num_d3blocks - idx - 1
             skip_channels = num_d2blocks[skip_idx] * depth[skip_idx] * growth_rate[skip_idx]
             decoder.append(UpD3Block(num_features, growth_rate[idx], kernel_size, up_scale=scale, skip_channels=skip_channels, num_blocks=num_d2blocks[idx], depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))    
             num_features = num_d2blocks[idx] * depth[idx] * growth_rate[idx]
@@ -395,9 +397,9 @@ def _test_backbone():
     
     batch_size = 4
     H, W = 64, 128
-    in_channels, num_features, growth_rate = 3, 32, [3, 4, 5, 6, 5, 4, 3, 2]
-    depth = [5, 5, 5, 5, 4, 4, 4, 3]
-    num_d3blocks, num_d2blocks = 8, [2, 2, 2, 2, 2, 2, 2, 3]
+    in_channels, num_features, growth_rate = 3, 32, [2, 3, 4, 5, 4, 3, 2]
+    depth = [4, 4, 4, 4, 3, 3, 2]
+    num_d3blocks, num_d2blocks = 7, [2, 2, 2, 2, 2, 1, 3]
 
     input = torch.randn(batch_size, in_channels, H, W)
 
@@ -412,11 +414,11 @@ def _test_d3net():
     batch_size = 4
     sections = [64, 128]
     H, W = sum(sections), 128
-    in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 8}, {'low': [3, 4, 5, 4, 3, 2], 'high': [3, 4, 3, 2], 'full': [3, 4, 3, 2]}
+    in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 8}, {'low': [3, 4, 5, 4, 3], 'high': [3, 4, 3], 'full': [3, 4, 3]}
     kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
     scale = {'low': (2,2), 'high': (2,2), 'full': (2,2)}
-    depth = {'low': [4, 4, 4, 3, 3, 2], 'high': [4, 4, 3, 2], 'full': [4, 4, 3, 2]}
-    num_d3blocks, num_d2blocks = {'low': 6, 'high': 4, 'full': 4}, {'low': [2, 2, 2, 2, 2, 3], 'high': [2, 2, 2, 3], 'full': [2, 2, 2, 3]}
+    depth = {'low': [4, 4, 4, 3, 3], 'high': [4, 4, 3], 'full': [4, 4, 3]}
+    num_d3blocks, num_d2blocks = {'low': 5, 'high': 3, 'full': 3}, {'low': [2, 2, 2, 2, 2], 'high': [2, 2, 2], 'full': [2, 2, 2]}
 
     kernel_size_d2block = (3, 3)
     growth_rate_d2block = 1
@@ -439,17 +441,17 @@ def _test_d3net_paper():
     torch.manual_seed(111)
     
     batch_size = 4
-    sections = [64, 128]
-    H, W = sum(sections), 128
-    in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 32}, {'low': [2, 2, 2, 2, 2, 2, 2], 'high': [1, 1, 1, 1, 1, 1, 1, 1], 'full': [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}
+    sections = [256, 1344]
+    H, W = sum(sections), 44100
+    in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 32}, {'low': [16, 18, 20, 22, 20, 18, 16], 'high': [2, 2, 2, 2, 2, 2, 2], 'full': [13, 14, 15, 16, 17, 16, 14, 12, 11]}
     kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
     scale = {'low': (2,2), 'high': (2,2), 'full': (2,2)}
-    depth = {'low': [4, 4, 4, 3, 3, 2], 'high': [4, 4, 3, 2], 'full': [4, 4, 3, 2]}
-    num_d3blocks, num_d2blocks = {'low': 6, 'high': 4, 'full': 4}, {'low': [2, 2, 2, 2, 2, 3], 'high': [2, 2, 2, 3], 'full': [2, 2, 2, 3]}
+    depth = {'low': [5, 5, 5, 5, 4, 4, 4], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [4, 5, 6, 7, 8, 6, 5, 4, 4]}
+    num_d3blocks, num_d2blocks = {'low': 7, 'high': 7, 'full': 9}, {'low': [2, 2, 2, 2, 2, 2, 2], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [2, 2, 2, 2, 2, 2, 2, 2, 2]}
 
     kernel_size_d2block = (3, 3)
-    growth_rate_d2block = 1
-    depth_d2block = 2
+    growth_rate_d2block = 12
+    depth_d2block = 3
 
     kernel_size_gated = (3, 3)
 
@@ -465,20 +467,25 @@ def _test_d3net_paper():
     print(input.size(), output.size())
 
 if __name__ == '__main__':
-    # _test_multidilated_conv_block()
+    _test_multidilated_conv_block()
     print()
-    # _test_d2block()
+
+    _test_d2block()
     print()
-    # _test_d3block()
+
+    _test_d3block()
     print()
-    # _test_down_d3block()
+
+    _test_down_d3block()
     print()
-    # _test_up_d3block()
+
+    _test_up_d3block()
     print()
+
     _test_backbone()
     print()
 
-    # _test_d3net()
+    _test_d3net()
     print()
 
-    # _test_d3net_paper()
+    _test_d3net_paper()
