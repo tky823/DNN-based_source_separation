@@ -121,6 +121,12 @@ class D2Block(nn.Module):
 
         return output
 
+class MultiDilatedConv2dBlock(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        raise NotImplementedError
+
 def _test_d2block():
     torch.manual_seed(111)
     
