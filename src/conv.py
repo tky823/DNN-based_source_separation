@@ -150,8 +150,9 @@ class MultiDilatedConv1d(nn.Module):
         self.kernel_size = kernel_size
         self.dilations = []
 
-        sections = []
-        conv1d = []
+        self.sections = []
+        weights = []
+        biases = []
 
         if type(in_channels) is int:
             assert groups is not None, "Specify groups"
@@ -163,23 +164,30 @@ class MultiDilatedConv1d(nn.Module):
             for idx in range(groups):
                 dilation = 2**idx
                 self.dilations.append(dilation)
-                sections.append(_in_channels)
-                conv1d.append(nn.Conv1d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=dilation))
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, kernel_size))
+                biases.append(torch.Tensor(out_channels,))
         elif type(in_channels) is list:
             self.groups = len(in_channels)
             for idx, _in_channels in enumerate(in_channels):
                 dilation = 2**idx
                 self.dilations.append(dilation)
-                sections.append(_in_channels)
-                conv1d.append(nn.Conv1d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=dilation))
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, kernel_size))
+                biases.append(torch.Tensor(out_channels,))
         else:
             raise ValueError("Not support `in_channels`={}".format(in_channels))
         
-        self.sections = sections
-        self.conv1d = nn.ModuleList(conv1d)
+        weights = torch.cat(weights, dim=1)
+        biases = torch.cat(biases, dim=0)
+        self.weights = nn.Parameter(weights)
+        self.biases = nn.Parameter(biases)
     
     def forward(self, input):
         kernel_size = self.kernel_size
+
+        weights = torch.split(self.weights, self.sections, dim=1)
+        biases = torch.split(self.biases, self.out_channels, dim=0)
 
         input = torch.split(input, self.sections, dim=1)
         output = 0
@@ -191,25 +199,28 @@ class MultiDilatedConv1d(nn.Module):
             padding_right = padding - padding_left
 
             x = F.pad(input[idx], (padding_left, padding_right))
-            output = output + self.conv1d[idx](x)
+            output = output + F.conv1d(x, weight=weights[idx], bias=biases[idx], stride=1, dilation=dilation)
 
         return output
-    """
+    
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
         s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
         return s
-    """
-
 
 class MultiDilatedConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, groups=None):
         super().__init__()
 
-        self.kernel_size = _pair(kernel_size)
+        kernel_size = _pair(kernel_size)
 
-        sections = []
-        conv2d = []
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.dilations = []
+
+        self.sections = []
+        weights = []
+        biases = []
 
         if type(in_channels) is int:
             assert groups is not None, "Specify groups"
@@ -219,38 +230,55 @@ class MultiDilatedConv2d(nn.Module):
             _in_channels = in_channels // groups
 
             for idx in range(groups):
-                sections.append(_in_channels)
-                conv2d.append(nn.Conv2d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=2**idx))
+                dilation = _pair(2**idx)
+                self.dilations.append(dilation)
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, *kernel_size))
+                biases.append(torch.Tensor(out_channels,))
         elif type(in_channels) is list:
             self.groups = len(in_channels)
             for idx, _in_channels in enumerate(in_channels):
-                sections.append(_in_channels)
-                conv2d.append(nn.Conv2d(_in_channels, out_channels, kernel_size=kernel_size, stride=1, dilation=2**idx))
+                dilation = _pair(2**idx)
+                self.dilations.append(dilation)
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, *kernel_size))
+                biases.append(torch.Tensor(out_channels,))
         else:
             raise ValueError("Not support `in_channels`={}".format(in_channels))
-        
-        self.sections = sections
-        self.conv2d = nn.ModuleList(conv2d)
+
+        weights = torch.cat(weights, dim=1)
+        biases = torch.cat(biases, dim=0)
+        self.weights = nn.Parameter(weights)
+        self.biases = nn.Parameter(biases)
     
     def forward(self, input):
         kernel_size = self.kernel_size
+
+        weights = torch.split(self.weights, self.sections, dim=1)
+        biases = torch.split(self.biases, self.out_channels, dim=0)
 
         input = torch.split(input, self.sections, dim=1)
         output = 0
 
         for idx in range(len(self.sections)):
-            dilation = 2**idx
-            padding_height = (kernel_size[0] - 1) * dilation
-            padding_width = (kernel_size[1] - 1) * dilation
+            dilation = self.dilations[idx]
+            padding_height = (kernel_size[0] - 1) * dilation[0]
+            padding_width = (kernel_size[1] - 1) * dilation[1]
             padding_up = padding_height // 2
             padding_bottom = padding_height - padding_up
             padding_left = padding_width // 2
             padding_right = padding_width - padding_left
 
             x = F.pad(input[idx], (padding_left, padding_right, padding_up, padding_bottom))
-            output = output + self.conv2d[idx](x)
+            output = output + F.conv2d(x, weight=weights[idx], bias=biases[idx], stride=(1,1), dilation=dilation)
 
         return output
+    
+    def extra_repr(self):
+        s = "{}, {}".format(sum(self.sections), self.out_channels)
+        s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
+        return s
+
 
 def _test_multidilated_conv1d():
     torch.manual_seed(111)
@@ -282,24 +310,7 @@ def _test_multidilated_conv2d():
     output = conv2d(input)
     print(input.size(), output.size())
 
-
 if __name__ == '__main__':
-    """
-    batch_size = 4
-    
-    in_channels, hidden_channels = 32, 8
-    
-    T = 128
-    kernel_size1d, stride1d = 3, 2
-    input1d = torch.randint(0, 5, (batch_size, in_channels, T)).float()
-    print(input1d.size())
-    
-    H, W = 32, 64
-    kernel_size2d, stride2d = (3,3), (2,2)
-    input2d = torch.randint(0, 10, (batch_size, in_channels, H, W), dtype=torch.float)
-    print(input2d.size())
-    """
-
     _test_multidilated_conv1d()
     print()
 

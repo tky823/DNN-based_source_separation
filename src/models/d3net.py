@@ -475,10 +475,10 @@ if __name__ == '__main__':
     print()
     # _test_up_d3block()
     print()
-    # _test_backbone()
+    _test_backbone()
     print()
 
-    _test_d3net()
+    # _test_d3net()
     print()
 
     # _test_d3net_paper()
