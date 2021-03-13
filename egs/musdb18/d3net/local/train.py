@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import yaml
 import torch
 import torch.nn as nn
 
@@ -9,7 +10,7 @@ from utils.utils import set_seed
 from dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 # from adhoc_driver import AdhocTrainer
 from models.d3net import D3Net
-# from criterion.distance import MeanSquaredError as MSE
+from criterion.distance import MeanSquaredError
 
 parser = argparse.ArgumentParser(description="Training of D3Net")
 
@@ -18,12 +19,11 @@ parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--kernel_size', '-K', type=int, default=16, help='Kernel size')
-parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
-parser.add_argument('--num_layers', '-N', type=int, default=8, help='# layers')
-parser.add_argument('--num_blocks', '-M', type=int, default=3, help='# blocks of separator.')
+parser.add_argument('--fft_size', type=int, default=512, help='Window length')
+parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--config_path', type=str, default='config_d3net.yaml', help='Model configuration')
 parser.add_argument('--sources', type=str, default='[drums,bass,others,vocals]', help='Source names')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='sisdr', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -46,20 +46,26 @@ def main(args):
     args.sources = args.sources.replace('[','').replace(']','').split(',')
     args.n_sources = len(args.sources)
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, sources=args.sources)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+
+    with open(args.config_path) as file:
+        config = yaml.safe_load(file.read())
+    print(config)
+
+    config_model = config['d3net']
     
     model = D3Net(
-        args.in_channels, args.num_features, args.growth_rate, args.bottleneck_channels, kernel_size=args.kernel_size, sections=args.sections, scale=args.scale,
-        num_d3blocks=args.num_d3blocks, num_d2blocks=args.num_d2blocks, depth=args.depth, compressed_depth=args.compressed_depth,
-        growth_rate_d2block=args.growth_rate_d2block, kernel_size_d2block=args.kernel_size_d2block, depth_d2block=args.depth_d2block,
-        kernel_size_gated=args.kernel_size_gated
+        config_model['in_channels'], config_model['num_features'], config_model['growth_rate'], config_model['bottleneck_channels'], kernel_size=config_model['kernel_size'], sections=config_model['sections'], scale=config_model['scale'],
+        num_d3blocks=config_model['num_d3blocks'], num_d2blocks=config_model['num_d2blocks'], depth=config_model['depth'], compressed_depth=config_model['compressed_depth'],
+        growth_rate_d2block=config_model['growth_rate_d2block'], kernel_size_d2block=config_model['kernel_size_d2block'], depth_d2block=config_model['depth_d2block'],
+        kernel_size_gated=config_model['kernel_size_gated']
     )
     print(model, flush=True)
     print("# Parameters: {}".format(model.num_parameters))
@@ -84,13 +90,13 @@ def main(args):
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
-    """
     # Criterion
     if args.criterion == 'mse':
-        criterion = MSE()
+        criterion = MeanSquaredError(dim=(1, 2, 3, 4))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
+    """
     # trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     # trainer.run()
     """
