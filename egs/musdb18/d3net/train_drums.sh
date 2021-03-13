@@ -16,7 +16,7 @@ fft_size=2048
 hop_size=512
 
 # model
-config_path='./config_d3net.yaml'
+config_path="./config_${target}.yaml"
 
 # Criterion
 criterion='mse'
