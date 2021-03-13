@@ -205,6 +205,44 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         
         return mixture, sources
 
+class SpectrogramEvalDataset(SpectrogramDataset):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, overlap=None, sources=__sources__):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, overlap=overlap, sources=sources)
+        
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
+
+        self.max_duration = max_duration
+
+        self.json_data = []
+
+        for songID, track in enumerate(self.mus.tracks):
+            if max_duration is None:
+                duration = track.duration
+            else:
+                if track.duration < max_duration:
+                    duration = track.duration
+                else:
+                    duration = max_duration
+            
+            data = {
+                'songID': songID,
+                'start': 0,
+                'duration': duration
+            }
+            self.json_data.append(data)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture (1, 2, n_bins, n_frames, 2) <torch.Tensor>, first n_bins is real, the latter n_bins is iamginary part.
+            sources (n_sources, 2, n_bins, n_frames, 2) <torch.Tensor>
+            T (), <int>: Number of samples in time-domain
+            title <str>: title of song
+        """
+        mixture, sources, T, title = super().__getitem__(idx)
+        
+        return mixture, sources, T, title
+
 """
     Data loader
 """
