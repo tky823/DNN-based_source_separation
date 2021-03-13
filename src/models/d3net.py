@@ -350,7 +350,7 @@ def _test_d3net_paper():
     torch.manual_seed(111)
     
     batch_size = 4
-    sections = [256, 1344, 449]
+    sections = [256, 1344]
     H, W = sum(sections), 256
     in_channels, num_features, growth_rate, bottleneck_channels = 2, {'low': 32, 'high': 8, 'full': 32}, {'low': [16, 18, 20, 22, 20, 18, 16], 'high': [2, 2, 2, 2, 2, 2, 2], 'full': [13, 14, 15, 16, 17, 16, 14, 12, 11]}, 8
     kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
