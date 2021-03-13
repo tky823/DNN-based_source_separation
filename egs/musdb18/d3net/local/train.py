@@ -44,7 +44,6 @@ def main(args):
     
     samples = args.duration
     overlap = samples / 2
-    args.sources = args.sources.replace('[','').replace(']','').split(',')
     
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, target=args.target)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, target=args.target)
