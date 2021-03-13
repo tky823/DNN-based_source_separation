@@ -16,7 +16,7 @@ dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', o
 enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=512
-L=16
+L=64
 
 # Separator
 H=512
