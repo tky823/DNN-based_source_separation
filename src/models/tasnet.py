@@ -65,12 +65,20 @@ class TasNet(nn.Module):
     """
     LSTM-TasNet
     """
-    def __init__(self, in_channels, n_bases, kernel_size=16, stride=8, sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=1000, causal=False, n_sources=2, eps=EPS):
+    def __init__(self, n_bases, kernel_size=16, stride=8, sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=1000,
+        causal=False,
+        n_sources=2,
+        eps=EPS,
+        **kwargs
+    ):
         super().__init__()
         
         assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
         
-        self.in_channels = in_channels
+        if 'in_channels' in kwargs:
+            self.in_channels = kwargs['in_channels']
+        else:
+            self.in_channels = 1
         self.n_bases = n_bases
         self.kernel_size, self.stride = kernel_size, stride
         self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
@@ -78,9 +86,9 @@ class TasNet(nn.Module):
         self.n_sources = n_sources
         self.eps = eps
         
-        self.encoder = GatedEncoder(in_channels, n_bases, kernel_size=kernel_size, stride=stride, eps=eps)
+        self.encoder = GatedEncoder(self.in_channels, n_bases, kernel_size=kernel_size, stride=stride, eps=eps)
         self.separator = Separator(n_bases, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
-        self.decoder = Decoder(n_bases, in_channels, kernel_size=kernel_size, stride=stride)
+        self.decoder = Decoder(n_bases, self.in_channels, kernel_size=kernel_size, stride=stride)
         
         self.num_parameters = self._get_num_parameters()
         
@@ -104,11 +112,20 @@ class TasNet(nn.Module):
             latent (batch_size, n_sources, n_bases, T'), where T' = (T-K)//S+1
         """
         n_sources = self.n_sources
+        n_bases = self.n_bases
         kernel_size, stride = self.kernel_size, self.stride
         
-        batch_size, C_in, T = input.size()
-        
-        assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+        n_dim = input.dim()
+
+        if n_dim == 3:
+            batch_size, C_in, T = input.size()
+            assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+        elif n_dim == 4:
+            batch_size, C_in, n_mics, T = input.size()
+            assert C_in == 1, "input.size() is expected (?,1,?,?), but given {}".format(input.size())
+            input = input.view(batch_size, n_mics, T)
+        else:
+            raise ValueError("Not support {} dimension input".format(n_dim))
         
         padding = (stride - (T-kernel_size)%stride)%stride
         padding_left = padding//2
@@ -122,7 +139,11 @@ class TasNet(nn.Module):
         latent = w_hat
         w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
         x_hat = self.decoder(w_hat)
-        x_hat = x_hat.view(batch_size, n_sources, -1)
+        if n_dim == 3:
+            x_hat = x_hat.view(batch_size, n_sources, -1)
+        else: # n_dim == 4
+            x_hat = x_hat.view(batch_size, n_sources, n_mics, -1)
+        
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
@@ -485,10 +506,7 @@ class LSTMLayer(nn.Module):
           
         return output
 
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import Normalize
-    
+def _test_tasnet_base():
     torch.manual_seed(111)
     
     batch_size = 2
@@ -532,8 +550,17 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.savefig('data/power.png', bbox_inches='tight')
     plt.close()
+
+def _test_tasnet():
+    batch_size = 2
+    C = 1
+    T = 64
+    kernel_size, stride = 8, 2
+    repeat = 2
+    n_bases = kernel_size * repeat * 2
     
-    print("="*10, "LSTM-TasNet", "="*10)
+    input = torch.randn((batch_size, C, T), dtype=torch.float)
+
     # LSTM-TasNet configuration
     sep_num_blocks, sep_num_layers, sep_hidden_channels = 2, 2, 32
     n_sources = 3
@@ -542,7 +569,7 @@ if __name__ == '__main__':
     print("-"*10, "Non causal", "-"*10)
     causal = False
 
-    model = TasNet(C, n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
+    model = TasNet(n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -554,7 +581,7 @@ if __name__ == '__main__':
     print("-"*10, "Causal", "-"*10)
     causal = True
     
-    model = TasNet(C, n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
+    model = TasNet(n_bases, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
@@ -574,3 +601,43 @@ if __name__ == '__main__':
     plt.plot(range(T), output[0,0].detach().numpy())
     plt.savefig('data/pinverse.png', bbox_inches='tight')
     plt.close()
+
+
+def _test_multichannel_tasnet():
+    batch_size = 2
+    C = 2
+    T = 64
+    kernel_size, stride = 8, 2
+    repeat = 2
+    n_bases = kernel_size * repeat * 2
+    
+    input = torch.randn((batch_size, 1, C, T), dtype=torch.float)
+
+    # LSTM-TasNet configuration
+    sep_num_blocks, sep_num_layers, sep_hidden_channels = 2, 2, 32
+    n_sources = 3
+    
+    # Non causal
+    print("-"*10, "Non causal", "-"*10)
+    causal = False
+
+    model = TasNet(n_bases, in_channels=C, kernel_size=kernel_size, stride=stride, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    output = model(input)
+    print(input.size(), output.size())
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import Normalize
+    
+    _test_tasnet_base()
+    print()
+    
+    print("="*10, "LSTM-TasNet", "="*10)
+    _test_tasnet()
+    print()
+    
+    print("="*10, "LSTM-TasNet (multichannel)", "="*10)
+    _test_multichannel_tasnet()

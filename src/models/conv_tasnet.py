@@ -9,7 +9,16 @@ from models.tcn import TemporalConvNet
 EPS=1e-12
 
 class ConvTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_bottleneck_channels=128, sep_skip_channels=128, sep_kernel_size=3, sep_num_blocks=3, sep_num_layers=8, dilated=True, separable=True, causal=True, sep_nonlinear='prelu', sep_norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
+    def __init__(self,
+        n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None,
+        sep_hidden_channels=256, sep_bottleneck_channels=128, sep_skip_channels=128, sep_kernel_size=3, sep_num_blocks=3, sep_num_layers=8,
+        dilated=True, separable=True,
+        sep_nonlinear='prelu', sep_norm=True, mask_nonlinear='sigmoid',
+        causal=True,
+        n_sources=2,
+        eps=EPS,
+        **kwargs
+    ):
         super().__init__()
         
         if stride is None:
