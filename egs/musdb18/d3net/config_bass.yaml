@@ -1,0 +1,41 @@
+d3net:
+  in_channels: 2
+  num_features:
+    low: 32
+    high: 8
+    full: 8
+  growth_rate: 
+    low: [3, 4, 5, 4, 3]
+    high: [3, 4, 3]
+    full: [3, 4, 3]
+  bottleneck_channels: 8
+  kernel_size:
+    low: 3
+    high: 3
+    full: 3
+  sections: [256, 769]
+  scale:
+    low: 2
+    high: 2
+    full: 2
+  depth:
+    low: [4, 4, 4, 3, 3]
+    high: [4, 4, 3]
+    full: [4, 4, 3]
+  compressed_depth:
+    low: [2, 2, 2, 1, 1]
+    high: [2, 2, 1]
+    full: [2, 2, 1]
+  num_d3blocks:
+    low: 5
+    high: 3
+    full: 3
+  num_d2blocks:
+    low: [2, 2, 2, 2, 2]
+    high: [2, 2, 2]
+    full: [2, 2, 2]
+  
+  kernel_size_d2block: 3
+  growth_rate_d2block: 1
+  depth_d2block: 2
+  kernel_size_gated: 3

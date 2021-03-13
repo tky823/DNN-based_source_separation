@@ -97,13 +97,11 @@ class Trainer:
                     print("Stop training")
                     break
                 if self.no_improvement == 3:
-                    optim_dict = self.optimizer.state_dict()
-                    lr = optim_dict['param_groups'][0]['lr']
-                    
-                    print("Learning rate: {} -> {}".format(lr, 0.5 * lr))
-                    
-                    optim_dict['param_groups'][0]['lr'] = 0.5 * lr
-                    self.optimizer.load_state_dict(optim_dict)
+                    for param_group in self.optimizer.param_groups:
+                        prev_lr = param_group['lr']
+                        lr = 0.5 * prev_lr
+                        print("Learning rate: {} -> {}".format(prev_lr, lr))
+                        param_group['lr'] = lr
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
