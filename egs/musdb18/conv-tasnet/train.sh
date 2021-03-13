@@ -41,7 +41,7 @@ lr=1e-3
 weight_decay=0
 max_norm=5
 
-batch_size=2
+batch_size=4
 epochs=100
 
 use_cuda=1
