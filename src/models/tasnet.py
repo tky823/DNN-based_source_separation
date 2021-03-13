@@ -247,7 +247,8 @@ class Encoder(nn.Module):
     def __init__(self, in_channels, n_bases, kernel_size=16, stride=8, nonlinear=None):
         super().__init__()
         
-        assert in_channels == 1, "in_channels is expected 1, given {}".format(in_channels)
+        # For multichannel support
+        # assert in_channels == 1, "in_channels is expected 1, given {}".format(in_channels)
         
         self.kernel_size, self.stride = kernel_size, stride
         self.nonlinear = nonlinear
@@ -282,7 +283,8 @@ class Decoder(nn.Module):
     def __init__(self, n_bases, out_channels, kernel_size=16, stride=8):
         super().__init__()
         
-        assert out_channels == 1, "out_channels is expected 1, given {}".format(out_channels)
+        # For multichannel support
+        # assert out_channels == 1, "out_channels is expected 1, given {}".format(out_channels)
         
         self.kernel_size, self.stride = kernel_size, stride
         

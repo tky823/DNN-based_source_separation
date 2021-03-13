@@ -4,26 +4,36 @@ from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 EPS=1e-12
 
 def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable', dec_bases='trainable', **kwargs):
+    if 'in_channels' in kwargs:
+        in_channels = kwargs['in_channels']
+    else:
+        in_channels = 1
+    
     if enc_bases == 'trainable':
         if dec_bases == 'pinv':
-            encoder = Encoder(1, hidden_channels, kernel_size, stride=stride)
+            encoder = Encoder(in_channels, hidden_channels, kernel_size, stride=stride)
         else:
-            encoder = Encoder(1, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
+            encoder = Encoder(in_channels, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
     elif enc_bases == 'Fourier':
-        encoder = FourierEncoder(1, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
+        assert in_channels == 1 # TODO
+        encoder = FourierEncoder(in_channels, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
     elif enc_bases == 'trainableFourier':
-        encoder = FourierEncoder(1, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
+        assert in_channels == 1 # TODO
+        encoder = FourierEncoder(in_channels, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
     else:
         raise NotImplementedError("Not support {} for encoder".format(enc_bases))
         
     if dec_bases == 'trainable':
-        decoder = Decoder(hidden_channels, 1, kernel_size, stride=stride)
+        decoder = Decoder(hidden_channels, in_channels, kernel_size, stride=stride)
     elif dec_bases == 'Fourier':
-        decoder = FourierDecoder(hidden_channels, 1, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
+        assert in_channels == 1 # TODO
+        decoder = FourierDecoder(hidden_channels, in_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
     elif dec_bases == 'trainableFourier':
-        decoder = FourierDecoder(hidden_channels, 1, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
+        assert in_channels == 1 # TODO
+        decoder = FourierDecoder(hidden_channels, in_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
     elif dec_bases == 'pinv':
         if enc_bases == 'trainable':
+            assert in_channels == 1 # TODO
             decoder = PinvEncoder(encoder)
         else:
             raise NotImplementedError("Not support {} for decoder".format(dec_bases))
