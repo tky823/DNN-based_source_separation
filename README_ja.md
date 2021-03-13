@@ -84,3 +84,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.4.2: GALRNet用の学習スクリプトを追加．
 - v0.4.3: DPRNN-TasNetを再修正．
 - v0.5.0: `parse_options.sh`を追加．
+- v0.5.1: 一部のモデルで多チャネルの入力に対応．
