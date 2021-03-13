@@ -65,8 +65,8 @@ def main(args):
         growth_rate_d2block=config_model['growth_rate_d2block'], kernel_size_d2block=config_model['kernel_size_d2block'], depth_d2block=config_model['depth_d2block'],
         kernel_size_gated=config_model['kernel_size_gated']
     )
-    print(model, flush=True)
-    print("# Parameters: {}".format(model.num_parameters))
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters), flush=True)
     
     if args.use_cuda:
         if torch.cuda.is_available():
