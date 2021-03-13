@@ -62,6 +62,15 @@ class D3Net(nn.Module):
         output = self.gated_conv2d(x)
 
         return output
+    
+    def _get_num_parameters(self):
+        num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                num_parameters += p.numel()
+                
+        return num_parameters
 
 class D3NetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, bottleneck_channels, kernel_size, scale=(2,2), num_d3blocks=5, num_d2blocks=3, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
