@@ -78,7 +78,7 @@ def main(args):
         n_sources=args.n_sources
     )
     print(model)
-    print("# Parameters: {}".format(model.num_parameters))
+    print("# Parameters: {}".format(model.num_parameters), flush=True)
     
     if args.use_cuda:
         if torch.cuda.is_available():

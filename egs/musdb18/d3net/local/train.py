@@ -6,9 +6,9 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 # from adhoc_driver import AdhocTrainer
-# from models.d3net import D3Net
+from models.d3net import D3Net
 # from criterion.distance import MeanSquaredError as MSE
 
 parser = argparse.ArgumentParser(description="Training of D3Net")
@@ -46,8 +46,8 @@ def main(args):
     args.sources = args.sources.replace('[','').replace(']','').split(',')
     args.n_sources = len(args.sources)
     
-    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
-    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
@@ -55,9 +55,13 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    """
-    model = D3Net(n_sources=args.sources)
-    print(model)
+    model = D3Net(
+        args.in_channels, args.num_features, args.growth_rate, args.bottleneck_channels, kernel_size=args.kernel_size, sections=args.sections, scale=args.scale,
+        num_d3blocks=args.num_d3blocks, num_d2blocks=args.num_d2blocks, depth=args.depth, compressed_depth=args.compressed_depth,
+        growth_rate_d2block=args.growth_rate_d2block, kernel_size_d2block=args.kernel_size_d2block, depth_d2block=args.depth_d2block,
+        kernel_size_gated=args.kernel_size_gated
+    )
+    print(model, flush=True)
     print("# Parameters: {}".format(model.num_parameters))
     
     if args.use_cuda:
@@ -69,7 +73,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-        
+
     # Optimizer
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -80,6 +84,7 @@ def main(args):
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
+    """
     # Criterion
     if args.criterion == 'mse':
         criterion = MSE()
