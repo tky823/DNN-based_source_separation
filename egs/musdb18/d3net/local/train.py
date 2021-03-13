@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
-from adhoc_driver import AdhocTrainer
+from driver import AdhocTrainer
 from models.d3net import D3Net
 from criterion.distance import MeanSquaredError
 
