@@ -52,7 +52,6 @@ class D3Net(nn.Module):
         for idx, key in enumerate(self.bands[:-1]):
             _x = self.net[key](x[idx])
             stacked.append(_x)
-            print(_x.size())
         
         stacked = torch.cat(stacked, dim=2)
         
