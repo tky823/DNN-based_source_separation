@@ -167,7 +167,7 @@ class TrainerBase:
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, titles) in enumerate(self.valid_loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
@@ -180,7 +180,7 @@ class TrainerBase:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()
                     
-                    save_dir = os.path.join(self.sample_dir, segment_IDs[0])
+                    save_dir = os.path.join(self.sample_dir, titles[0])
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = np.abs(mixture).max()
@@ -266,7 +266,7 @@ class TesterBase:
         os.chdir(tmp_dir)
         
         with torch.no_grad():
-            for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
+            for idx, (mixture, sources, titles) in enumerate(self.loader):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
@@ -283,7 +283,7 @@ class TesterBase:
                 sources = sources[0].cpu().numpy() # -> (n_sources, T)
                 estimated_sources = output[0].cpu().numpy() # -> (n_sources, T)
                 perm_idx = perm_idx[0] # -> (n_sources,)
-                segment_IDs = segment_IDs[0] # -> <str>
+                titles = titles[0] # -> <str>
 
                 repeated_mixture = np.tile(mixture, reps=(self.n_sources, 1))
                 result_estimated = bss_eval_sources(
@@ -301,7 +301,7 @@ class TesterBase:
                 
                 norm = np.abs(mixture).max()
                 mixture /= norm
-                mixture_ID = segment_IDs
+                mixture_ID = titles
                 
                 # Generate random number temporary wav file.
                 random_ID = str(uuid.uuid4())

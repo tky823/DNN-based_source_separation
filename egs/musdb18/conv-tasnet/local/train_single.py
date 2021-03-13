@@ -8,7 +8,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import TrainDataLoader, EvalDataLoader
 from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
-from adhoc_driver import AdhocTrainer
+from adhoc_driver import SingleTargetTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 
@@ -73,8 +73,9 @@ def main(args):
     model = ConvTasNet(
         args.n_bases, args.kernel_size, stride=args.stride, in_channels=2, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
-        dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear,
-        n_sources=1
+        dilated=args.dilated, separable=args.separable, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear,
+        causal=args.causal,
+        n_sources=1,
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
@@ -105,7 +106,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
+    trainer = SingleTargetTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
     
     
