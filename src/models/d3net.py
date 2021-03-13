@@ -197,13 +197,22 @@ class UpD3Block(nn.Module):
     def forward(self, input, skip=None):
         """
         Args:
-            input (batch_size, in_channels, n_bins, n_frames)
+            input (batch_size, in_channels, H, W)
             output 
-                (batch_size, num_blocks * sum(growth_rate), n_bins, n_frames) if type(growth_rate) is list<int>
-                or (batch_size, num_blocks * depth * growth_rate, n_bins, n_frames) if type(growth_rate) is int
+                (batch_size, num_blocks * sum(growth_rate), H*Sh, W*Sw) if type(growth_rate) is list<int>
+                or (batch_size, num_blocks * depth * growth_rate, H*Sh, W*Sw) if type(growth_rate) is int
+                where Sh and Sw are scale factors
         """
         x = self.upsample2d(input)
         if skip is not None:
+            _, _, H, W = x.size()
+            _, _, H_skip, W_skip = skip.size()
+            padding_height, padding_width = H - H_skip, W - W_skip
+            padding_up = padding_height // 2
+            padding_bottom = padding_height - padding_up
+            padding_left = padding_width // 2
+            padding_right = padding_width - padding_left
+            x = F.pad(x, (-padding_left, -padding_right, -padding_up, -padding_bottom))
             x = torch.cat([x, skip], dim=1)
         output = self.d3block(x)
 
