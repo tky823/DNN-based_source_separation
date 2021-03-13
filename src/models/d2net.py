@@ -21,6 +21,8 @@ class D2Block(nn.Module):
             depth = len(growth_rate)
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
+        
+        self.growth_rate = growth_rate
         self.depth = depth
 
         net = []
@@ -34,6 +36,7 @@ class D2Block(nn.Module):
             net.append(MultiDilatedConvBlock(num_features, growth_rate[idx], kernel_size=kernel_size, norm=norm, nonlinear=nonlinear, eps=eps))
         self.net = nn.Sequential(*net)
 
+        self.out_channels = sum(growth_rate)
         self.eps = eps
     
     def forward(self, input):
@@ -41,8 +44,8 @@ class D2Block(nn.Module):
         Args:
             input (batch_size, in_channels, n_bins, n_frames)
             output 
-                (batch_size, num_blocks * sum(growth_rate), n_bins, n_frames) if type(growth_rate) is list<int>
-                or (batch_size, num_blocks * depth * growth_rate, n_bins, n_frames) if type(growth_rate) is int
+                (batch_size, sum(growth_rate), n_bins, n_frames) if type(growth_rate) is list<int>
+                or (batch_size, depth * growth_rate, n_bins, n_frames) if type(growth_rate) is int
         """
         x = input
         stacked = []
@@ -60,6 +63,46 @@ class D2Block(nn.Module):
 
         return output
 
+
+class CompressedD2Block(D2Block):
+    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
+        super().__init__(in_channels, growth_rate, kernel_size, depth=depth, norm=norm, nonlinear=nonlinear, eps=eps)
+
+        assert compressed_depth is not None, "Specify `compressed_depth`"     
+        assert compressed_depth <= self.depth, "`compressed_depth` should be equal to or less than `depth`"
+
+        self.compressed_depth = compressed_depth
+        
+        self.out_channels = sum(self.growth_rate[-self.compressed_depth:])
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, n_bins, n_frames)
+            output
+                (batch_size, sum(growth_rate[-compressed_depth:]), n_bins, n_frames) if type(growth_rate) is list<int>
+                or (batch_size, compressed_depth * growth_rate, n_bins, n_frames) if type(growth_rate) is int
+        """
+        x = input
+        stacked = []
+        output = []
+
+        stacked.append(input)
+
+        for idx in range(self.depth):
+            if idx != 0:
+                x = torch.cat(stacked, dim=1)
+            x = self.net[idx](x)
+            stacked.append(x)
+        
+        output = torch.cat(stacked[-self.compressed_depth:], dim=1)
+
+        return output
+    
+    def extra_repr(self):
+        s = '(compressed_depth): {}'.format(self.compressed_depth)
+
+        return s
 
 
 class MultiDilatedConvBlock(nn.Module):
@@ -123,9 +166,25 @@ def _test_d2block():
     output = model(input)
     print(input.size(), output.size())
 
+def _test_compressed_d2block():
+    torch.manual_seed(111)
+    
+    batch_size = 4
+    H, W = 16, 32
+    in_channels, growth_rate = 4, 2
+    depth, compressed_depth = 4, 2
+
+    input = torch.randn(batch_size, in_channels, H, W)
+    model = CompressedD2Block(in_channels, growth_rate, kernel_size=(3,3), depth=depth, compressed_depth=compressed_depth)
+    print(model)
+    output = model(input)
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     _test_multidilated_conv_block()
     print()
 
     _test_d2block()
     print()
+
+    _test_compressed_d2block()

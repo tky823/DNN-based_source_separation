@@ -1,8 +1,9 @@
+from itertools import compress
 import torch
 import torch.nn as nn
 
 from models.transform import BandSplit
-from models.d2net import D2Block
+from models.d2net import D2Block, CompressedD2Block
 
 """
 Reference: D3Net: Densely connected multidilated DenseNet for music source separation
@@ -14,7 +15,7 @@ EPS=1e-12
 class D3Net(nn.Module):
     def __init__(
         self, in_channels, num_features, growth_rate, kernel_size, sections=[256,1344], scale=(2,2),
-        num_d3blocks=5, num_d2blocks=3, depth=None,
+        num_d3blocks=5, num_d2blocks=3, depth=None, compressed_depth=None,
         growth_rate_d2block=None, kernel_size_d2block=None, depth_d2block=None,
         kernel_size_gated=None,
         norm=True, nonlinear='relu',
@@ -29,9 +30,15 @@ class D3Net(nn.Module):
         self.bands = ['low', 'high', 'full']
 
         for key in self.bands:
-            net[key] = D3NetBackbone(in_channels, num_features[key], growth_rate[key], kernel_size[key], scale=scale[key], num_d3blocks=num_d3blocks[key], num_d2blocks=num_d2blocks[key], depth=depth[key], norm=norm, nonlinear=nonlinear, eps=eps, **kwargs)
-        
-        in_channels_d2block = 2 * num_d2blocks[key][-1] * depth[key][-1] * growth_rate[key][-1]
+            if compressed_depth is None:
+                net[key] = D3NetBackbone(in_channels, num_features[key], growth_rate[key], kernel_size[key], scale=scale[key], num_d3blocks=num_d3blocks[key], num_d2blocks=num_d2blocks[key], depth=depth[key], norm=norm, nonlinear=nonlinear, eps=eps, **kwargs)
+            else:
+                net[key] = D3NetBackbone(in_channels, num_features[key], growth_rate[key], kernel_size[key], scale=scale[key], num_d3blocks=num_d3blocks[key], num_d2blocks=num_d2blocks[key], depth=depth[key], compressed_depth=compressed_depth[key], norm=norm, nonlinear=nonlinear, eps=eps, **kwargs)
+
+        if compressed_depth is None or compressed_depth[key] is None:
+            in_channels_d2block = 2 * num_d2blocks[key][-1] * depth[key][-1] * growth_rate[key][-1]
+        else:
+            in_channels_d2block = 2 * num_d2blocks[key][-1] * compressed_depth[key][-1] * growth_rate[key][-1]
 
         self.net = nn.ModuleDict(net)
 
@@ -61,7 +68,7 @@ class D3Net(nn.Module):
         return output
 
 class D3NetBackbone(nn.Module):
-    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d3blocks=5, num_d2blocks=3, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d3blocks=5, num_d2blocks=3, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
         assert num_d3blocks % 2 == 1, "`num_d3blocks` must be odd number"
@@ -72,18 +79,34 @@ class D3NetBackbone(nn.Module):
 
         self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size=(3,3), stride=(1,1), padding=(1,1))
 
-        encoder.append(D3Block(num_features, growth_rate[0], kernel_size, num_blocks=num_d2blocks[0], depth=depth[0], norm=norm, nonlinear=nonlinear, eps=eps))
-        num_features = num_d2blocks[0] * depth[0] * growth_rate[0]
+        if compressed_depth is None:
+            encoder.append(D3Block(num_features, growth_rate[0], kernel_size, num_blocks=num_d2blocks[0], depth=depth[0], norm=norm, nonlinear=nonlinear, eps=eps))
+            num_features = num_d2blocks[0] * depth[0] * growth_rate[0]
+        else:
+            # TODO
+            encoder.append(D3Block(num_features, growth_rate[0], kernel_size, num_blocks=num_d2blocks[0], depth=depth[0], compressed_depth=compressed_depth[0], norm=norm, nonlinear=nonlinear, eps=eps))
+            num_features = num_d2blocks[0] * compressed_depth[0] * growth_rate[0]
+        
 
         for idx in range(1, self.num_stacks):
-            encoder.append(DownD3Block(num_features, growth_rate[idx], kernel_size, down_scale=scale, num_blocks=num_d2blocks[idx], depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))    
-            num_features = num_d2blocks[idx] * depth[idx] * growth_rate[idx]
+            if compressed_depth is None:
+                encoder.append(DownD3Block(num_features, growth_rate[idx], kernel_size, down_scale=scale, num_blocks=num_d2blocks[idx], depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))
+                num_features = num_d2blocks[idx] * depth[idx] * growth_rate[idx]
+            else:
+                encoder.append(DownD3Block(num_features, growth_rate[idx], kernel_size, down_scale=scale, num_blocks=num_d2blocks[idx], depth=depth[idx], compressed_depth=compressed_depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))
+                num_features = num_d2blocks[idx] * compressed_depth[idx] * growth_rate[idx]
         
         for idx in range(self.num_stacks, num_d3blocks):
             skip_idx = num_d3blocks - idx - 1
-            skip_channels = num_d2blocks[skip_idx] * depth[skip_idx] * growth_rate[skip_idx]
-            decoder.append(UpD3Block(num_features, growth_rate[idx], kernel_size, up_scale=scale, skip_channels=skip_channels, num_blocks=num_d2blocks[idx], depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))    
-            num_features = num_d2blocks[idx] * depth[idx] * growth_rate[idx]
+
+            if compressed_depth is None:
+                skip_channels = num_d2blocks[skip_idx] * depth[skip_idx] * growth_rate[skip_idx]
+                decoder.append(UpD3Block(num_features, growth_rate[idx], kernel_size, up_scale=scale, skip_channels=skip_channels, num_blocks=num_d2blocks[idx], depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))    
+                num_features = num_d2blocks[idx] * depth[idx] * growth_rate[idx]
+            else:
+                skip_channels = num_d2blocks[skip_idx] * compressed_depth[skip_idx] * growth_rate[skip_idx]
+                decoder.append(UpD3Block(num_features, growth_rate[idx], kernel_size, up_scale=scale, skip_channels=skip_channels, num_blocks=num_d2blocks[idx], depth=depth[idx], compressed_depth=compressed_depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))    
+                num_features = num_d2blocks[idx] * compressed_depth[idx] * growth_rate[idx]
         
         self.encoder = nn.Sequential(*encoder)
         self.decoder = nn.Sequential(*decoder)
@@ -115,11 +138,11 @@ class DownD3Block(nn.Module):
     """
     D3Block + down sample
     """
-    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_blocks=3, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_blocks=3, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
         self.downsample2d = nn.AvgPool2d(kernel_size=down_scale, stride=down_scale)
-        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, norm=norm, nonlinear=nonlinear, eps=eps)
+        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, compressed_depth=compressed_depth, norm=norm, nonlinear=nonlinear, eps=eps)
     
     def forward(self, input):
         """
@@ -139,16 +162,16 @@ class UpD3Block(nn.Module):
     """
     D3Block + up sample
     """
-    def __init__(self, in_channels, growth_rate, kernel_size, up_scale=(2,2), skip_channels=None, num_blocks=3, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, up_scale=(2,2), skip_channels=None, num_blocks=3, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
         self.skip_channels = skip_channels
 
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale, groups=in_channels, bias=False)
         if skip_channels is not None:
-            self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, norm=norm, nonlinear=nonlinear, eps=eps)
+            self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, compressed_depth=compressed_depth, norm=norm, nonlinear=nonlinear, eps=eps)
         else:
-            self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, norm=norm, nonlinear=nonlinear, eps=eps)
+            self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, compressed_depth=compressed_depth, norm=norm, nonlinear=nonlinear, eps=eps)
     
     def forward(self, input, skip=None):
         """
@@ -166,7 +189,7 @@ class UpD3Block(nn.Module):
         return output
 
 class D3Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, num_blocks=3, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, num_blocks=3, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
         self.num_blocks = num_blocks
@@ -188,12 +211,26 @@ class D3Block(nn.Module):
             depth = [
                 depth for _ in range(num_blocks)
             ]
+        
+        if compressed_depth is not None:
+            if type(compressed_depth) is int:
+                compressed_depth = [
+                    compressed_depth for _ in range(num_blocks)
+                ]
+            elif type(compressed_depth) is list:
+                pass
+            else:
+                raise ValueError("Not support `compressed_depth`={}".format(compressed_depth))
 
         net = []
 
         for idx in range(num_blocks):
-            net.append(D2Block(in_channels, growth_rate[idx], kernel_size, depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))
-            in_channels += growth_rate[idx] * depth[idx]
+            if compressed_depth is None:
+                net.append(D2Block(in_channels, growth_rate[idx], kernel_size, depth=depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))
+                in_channels += growth_rate[idx] * depth[idx]
+            else:
+                net.append(CompressedD2Block(in_channels, growth_rate[idx], kernel_size, depth=depth[idx], compressed_depth=compressed_depth[idx], norm=norm, nonlinear=nonlinear, eps=eps))
+                in_channels += growth_rate[idx] * compressed_depth[idx]
         
         self.net = nn.Sequential(*net)
 
@@ -221,36 +258,6 @@ class D3Block(nn.Module):
         output = torch.cat(stacked[1:], dim=1)
 
         return output
-
-class CompressedD3Block(D3Block):
-    def __init__(self, in_channels, growth_rate, kernel_size, num_blocks=3, compressed_block=2, depth=None, norm=True, nonlinear='relu', eps=EPS):
-        super().__init__(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, norm=norm, nonlinear=nonlinear, eps=eps)
-
-        self.compressed_block = compressed_block
-    
-    def forward(self, input):
-        """
-        Args:
-            input (batch_size, in_channels, n_bins, n_frames)
-            output
-                (batch_size, sum(growth_rate), n_bins, n_frames)
-                or (batch_size, num_blocks*growth_rate, n_bins, n_frames)
-        """
-        x = input
-        stacked = []
-
-        stacked.append(input)
-
-        for idx in range(self.num_blocks):
-            if idx != 0:
-                x = torch.cat(stacked, dim=1)
-            x = self.net[idx](x)
-            stacked.append(x)
-        
-        output = torch.cat(stacked[-self.compressed_block:], dim=1)
-
-        return output
-
 
 def _test_d3block():
     torch.manual_seed(111)
@@ -281,25 +288,6 @@ def _test_d3block():
     output = model(input)
     print(input.size(), output.size())
 
-def _test_compressed_d3block():
-    torch.manual_seed(111)
-    
-    batch_size = 4
-    H, W = 16, 32
-    in_channels, growth_rate = 3, 2
-    depth = 4
-    scale = (2, 2)
-    num_blocks = 3
-    compressed_block = 2
-
-    input = torch.randn(batch_size, in_channels, H, W)
-
-    model = CompressedD3Block(in_channels, growth_rate, kernel_size=(3,3), num_blocks=num_blocks, compressed_block=compressed_block, depth=depth)
-    print(model)
-    output = model(input)
-    print(input.size(), output.size())
-    print()  
-
 def _test_backbone():
     torch.manual_seed(111)
     
@@ -322,10 +310,11 @@ def _test_d3net():
     batch_size = 4
     sections = [64, 128]
     H, W = sum(sections), 128
+    
     in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 8}, {'low': [3, 4, 5, 4, 3], 'high': [3, 4, 3], 'full': [3, 4, 3]}
     kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
     scale = {'low': (2,2), 'high': (2,2), 'full': (2,2)}
-    depth = {'low': [4, 4, 4, 3, 3], 'high': [4, 4, 3], 'full': [4, 4, 3]}
+    depth, compressed_depth = {'low': [4, 4, 4, 3, 3], 'high': [4, 4, 3], 'full': [4, 4, 3]}, {'low': [2, 2, 2, 1, 1], 'high': [2, 2, 1], 'full': [2, 2, 1]}
     num_d3blocks, num_d2blocks = {'low': 5, 'high': 3, 'full': 3}, {'low': [2, 2, 2, 2, 2], 'high': [2, 2, 2], 'full': [2, 2, 2]}
 
     kernel_size_d2block = (3, 3)
@@ -336,8 +325,22 @@ def _test_d3net():
 
     input = torch.randn(batch_size, in_channels, H, W)
 
+    print("-"*10, "D3Net w/o compression", "-"*10)
     model = D3Net(
-        in_channels, num_features, growth_rate, kernel_size=kernel_size, sections=sections, scale=scale, num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth,
+        in_channels, num_features, growth_rate, kernel_size=kernel_size, sections=sections, scale=scale,
+        num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth,
+        growth_rate_d2block=growth_rate_d2block, kernel_size_d2block=kernel_size_d2block, depth_d2block=depth_d2block,
+        kernel_size_gated=kernel_size_gated
+    )
+    print(model)
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
+    print("-"*10, "D3Net w/ compression", "-"*10)
+    model = D3Net(
+        in_channels, num_features, growth_rate, kernel_size=kernel_size, sections=sections, scale=scale,
+        num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth, compressed_depth=compressed_depth,
         growth_rate_d2block=growth_rate_d2block, kernel_size_d2block=kernel_size_d2block, depth_d2block=depth_d2block,
         kernel_size_gated=kernel_size_gated
     )
@@ -354,7 +357,7 @@ def _test_d3net_paper():
     in_channels, num_features, growth_rate = 2, {'low': 32, 'high': 8, 'full': 32}, {'low': [16, 18, 20, 22, 20, 18, 16], 'high': [2, 2, 2, 2, 2, 2, 2], 'full': [13, 14, 15, 16, 17, 16, 14, 12, 11]}
     kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
     scale = {'low': (2,2), 'high': (2,2), 'full': (2,2)}
-    depth = {'low': [5, 5, 5, 5, 4, 4, 4], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [4, 5, 6, 7, 8, 6, 5, 4, 4]}
+    depth, compressed_depth = {'low': [5, 5, 5, 5, 4, 4, 4], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [4, 5, 6, 7, 8, 6, 5, 4, 4]}, {'low': [2, 2, 2, 2, 2, 2, 2], 'high': [2, 2, 2, 2, 2, 2, 2], 'full': [2, 2, 2, 2, 2, 2, 2, 2, 2]}
     num_d3blocks, num_d2blocks = {'low': 7, 'high': 7, 'full': 9}, {'low': [2, 2, 2, 2, 2, 2, 2], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [2, 2, 2, 2, 2, 2, 2, 2, 2]}
 
     kernel_size_d2block = (3, 3)
@@ -366,7 +369,8 @@ def _test_d3net_paper():
     input = torch.randn(batch_size, in_channels, H, W)
 
     model = D3Net(
-        in_channels, num_features, growth_rate, kernel_size=kernel_size, sections=sections, scale=scale, num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth,
+        in_channels, num_features, growth_rate, kernel_size=kernel_size, sections=sections, scale=scale,
+        num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth, compressed_depth=compressed_depth,
         growth_rate_d2block=growth_rate_d2block, kernel_size_d2block=kernel_size_d2block, depth_d2block=depth_d2block,
         kernel_size_gated=kernel_size_gated
     )
@@ -376,9 +380,6 @@ def _test_d3net_paper():
 
 if __name__ == '__main__':
     _test_d3block()
-    print()
-
-    _test_compressed_d3block()
     print()
 
     _test_backbone()
