@@ -3,7 +3,6 @@ import numpy as np
 import musdb
 import torch
 
-from utils.utils_audio import read_wav
 from algorithm.stft import BatchSTFT
 
 sources=['drums','bass','other','vocals']
@@ -198,26 +197,18 @@ def test_collate_fn(batch):
     
     return batched_mixture, batched_sources, batched_segment_ID
 
-if __name__ == '__main__':
+def _test_train_dataset():
     torch.manual_seed(111)
     
-    n_sources = 2
-    data_type = 'tt'
-    min_max = 'max'
-    wav_root = "../../../../../db/wsj0-mix/{}speakers/wav8k/{}/{}".format(n_sources, min_max, data_type)
-    list_path = "../../../../dataset/wsj0-mix/{}speakers/mix_{}_spk_{}_{}_mix".format(n_sources, n_sources, min_max, data_type)
+    musdb18_root = "../../../../../db/musdb18"
     
-    dataset = WaveTrainDataset(wav_root, list_path, n_sources=n_sources)
+    dataset = WaveTrainDataset(musdb18_root, duration=4, sources=sources)
     loader = TrainDataLoader(dataset, batch_size=4, shuffle=True)
     
     for mixture, sources in loader:
         print(mixture.size(), sources.size())
         break
-    
-    dataset = WaveTestDataset(wav_root, list_path, n_sources=n_sources)
-    loader = EvalDataLoader(dataset, batch_size=1, shuffle=False)
-    
-    for mixture, sources, segment_ID in loader:
-        print(mixture.size(), sources.size())
-        print(segment_ID)
-        break
+
+
+if __name__ == '__main__':
+    _test_train_dataset()
