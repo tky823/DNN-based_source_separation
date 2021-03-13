@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -63,8 +64,8 @@ class DepthwiseSeparableConvTranspose1d(nn.Module):
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
         
-        self.pointwise_conv2d = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)
-        self.depthwise_conv2d = nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=out_channels, bias=bias)
+        self.pointwise_conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)
+        self.depthwise_conv1d = nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=out_channels, bias=bias)
         
 
     def forward(self, input):
@@ -106,6 +107,8 @@ class DepthwiseSeparableConvTranspose2d(nn.Module):
 class ComplexConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1):
         super().__init__()
+
+        raise NotImplementedError
         
         self.in_channels, self.out_channels = in_channels, out_channels
         self.kernel_size, self.stride = kernel_size, stride
@@ -140,18 +143,229 @@ class ComplexConv1d(nn.Module):
 
         return output
 
+class MultiDilatedConv1d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, bias=True, groups=None):
+        super().__init__()
+
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.dilations = []
+        self.bias = bias
+
+        self.sections = []
+        weights = []
+        biases = []
+
+        if type(in_channels) is int:
+            assert groups is not None, "Specify groups"
+            assert in_channels % groups == 0, "`in_channels` must be divisible by `groups`"
+
+            self.groups = groups
+            _in_channels = in_channels // groups
+
+            for idx in range(groups):
+                dilation = 2**idx
+                self.dilations.append(dilation)
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, kernel_size))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
+        elif type(in_channels) is list:
+            self.groups = len(in_channels)
+            for idx, _in_channels in enumerate(in_channels):
+                dilation = 2**idx
+                self.dilations.append(dilation)
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, kernel_size))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
+        else:
+            raise ValueError("Not support `in_channels`={}".format(in_channels))
+        
+        weights = torch.cat(weights, dim=1)
+        self.weights = nn.Parameter(weights)
+
+        if self.bias:
+            biases = torch.cat(biases, dim=0)
+            self.biases = nn.Parameter(biases)
+        
+        self._reset_parameters()
+    
+    def forward(self, input):
+        kernel_size = self.kernel_size
+
+        weights = torch.split(self.weights, self.sections, dim=1)
+        if self.bias:
+            biases = torch.split(self.biases, self.out_channels, dim=0)
+        else:
+            biases = [None] * len(weights)
+
+        input = torch.split(input, self.sections, dim=1)
+        output = 0
+
+        for idx in range(len(self.sections)):
+            dilation = 2**idx
+            padding = (kernel_size - 1) * dilation
+            padding_left = padding // 2
+            padding_right = padding - padding_left
+
+            x = F.pad(input[idx], (padding_left, padding_right))
+            output = output + F.conv1d(x, weight=weights[idx], bias=biases[idx], stride=1, dilation=dilation)
+
+        return output
+    
+    def _reset_parameters(self):
+        nn.modules.conv.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.modules.conv.init._calculate_fan_in_and_fan_out(self.weights)
+            bound = 1 / math.sqrt(fan_in)
+            nn.modules.conv.init.uniform_(self.biases, -bound, bound)
+    
+    def extra_repr(self):
+        s = "{}, {}".format(sum(self.sections), self.out_channels)
+        s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
+        if not self.bias:
+            s += ", bias=False"
+        return s
+
+class MultiDilatedConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, bias=True, groups=None):
+        super().__init__()
+
+        kernel_size = _pair(kernel_size)
+
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.dilations = []
+        self.bias = bias
+
+        self.sections = []
+        weights = []
+        biases = []
+
+        if type(in_channels) is int:
+            assert groups is not None, "Specify groups"
+            assert in_channels % groups == 0, "`in_channels` must be divisible by `groups`"
+
+            self.groups = groups
+            _in_channels = in_channels // groups
+
+            for idx in range(groups):
+                dilation = _pair(2**idx)
+                self.dilations.append(dilation)
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, *kernel_size))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
+        elif type(in_channels) is list:
+            self.groups = len(in_channels)
+            for idx, _in_channels in enumerate(in_channels):
+                dilation = _pair(2**idx)
+                self.dilations.append(dilation)
+                self.sections.append(_in_channels)
+                weights.append(torch.Tensor(out_channels, _in_channels, *kernel_size))
+                if self.bias:
+                    biases.append(torch.Tensor(out_channels,))
+        else:
+            raise ValueError("Not support `in_channels`={}".format(in_channels))
+
+        weights = torch.cat(weights, dim=1)
+        self.weights = nn.Parameter(weights)
+
+        if self.bias:
+            biases = torch.cat(biases, dim=0)
+            self.biases = nn.Parameter(biases)
+    
+        self._reset_parameters()
+    
+    def forward(self, input):
+        kernel_size = self.kernel_size
+
+        weights = torch.split(self.weights, self.sections, dim=1)
+        if self.bias:
+            biases = torch.split(self.biases, self.out_channels, dim=0)
+        else:
+            biases = [None] * len(weights)
+
+        input = torch.split(input, self.sections, dim=1)
+        output = 0
+
+        for idx in range(len(self.sections)):
+            dilation = self.dilations[idx]
+            padding_height = (kernel_size[0] - 1) * dilation[0]
+            padding_width = (kernel_size[1] - 1) * dilation[1]
+            padding_up = padding_height // 2
+            padding_bottom = padding_height - padding_up
+            padding_left = padding_width // 2
+            padding_right = padding_width - padding_left
+
+            x = F.pad(input[idx], (padding_left, padding_right, padding_up, padding_bottom))
+            output = output + F.conv2d(x, weight=weights[idx], bias=biases[idx], stride=(1,1), dilation=dilation)
+
+        return output
+    
+    def _reset_parameters(self):
+        nn.modules.conv.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.modules.conv.init._calculate_fan_in_and_fan_out(self.weights)
+            bound = 1 / math.sqrt(fan_in)
+            nn.modules.conv.init.uniform_(self.biases, -bound, bound)
+    
+    def extra_repr(self):
+        s = "{}, {}".format(sum(self.sections), self.out_channels)
+        s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
+        if not self.bias:
+            s += ", bias=False"
+        return s
+
+
+def _test_multidilated_conv1d():
+    torch.manual_seed(111)
+
+    batch_size = 2
+    in_channels, out_channels = [1, 1, 1], 4
+    T = 16
+
+    kernel_size = 3
+
+    input = torch.randn(batch_size, sum(in_channels), T)
+    conv1d = MultiDilatedConv1d(sum(in_channels), out_channels, kernel_size=kernel_size, groups=len(in_channels))
+    print(conv1d)
+    output = conv1d(input)
+    print(input.size(), output.size())
+    print()
+
+    conv1d = MultiDilatedConv1d(in_channels, out_channels, kernel_size=kernel_size, bias=False)
+    print(conv1d)
+    output = conv1d(input)
+    print(input.size(), output.size())
+
+def _test_multidilated_conv2d():
+    torch.manual_seed(111)
+
+    batch_size = 2
+    in_channels, out_channels = [1, 1, 1], 4
+    H, W = 16, 32
+
+    kernel_size = 3
+
+    input = torch.randn(batch_size, sum(in_channels), H, W)
+
+    conv2d = MultiDilatedConv2d(sum(in_channels), out_channels, kernel_size=kernel_size, groups=len(in_channels))
+    print(conv2d)
+    output = conv2d(input)
+    print(input.size(), output.size())
+    print()
+
+    conv2d = MultiDilatedConv2d(in_channels, out_channels, kernel_size=kernel_size, bias=False)
+    print(conv2d)
+    output = conv2d(input)
+    print(input.size(), output.size())
+    print()
+
 if __name__ == '__main__':
-    batch_size = 4
-    
-    in_channels, hidden_channels = 32, 8
-    
-    T = 128
-    kernel_size1d, stride1d = 3, 2
-    input1d = torch.randint(0, 5, (batch_size, in_channels, T)).float()
-    print(input1d.size())
-    
-    H, W = 32, 64
-    kernel_size2d, stride2d = (3,3), (2,2)
-    input2d = torch.randint(0, 10, (batch_size, in_channels, H, W), dtype=torch.float)
-    print(input2d.size())
+    _test_multidilated_conv1d()
+    print()
+
+    _test_multidilated_conv2d()
     

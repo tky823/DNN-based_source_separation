@@ -20,12 +20,11 @@ class AdhocTrainer(TrainerBase):
             self.valid_loss[epoch] = valid_loss
 
             if (epoch + 1)%2 == 0:
-                optim_dict = self.optimizer.state_dict()
-                lr = optim_dict['param_groups'][0]['lr']
-                optim_dict['param_groups'][0]['lr'] = 0.98 * lr
-                self.optimizer.load_state_dict(optim_dict)
-                
-                print("Learning rate: {} -> {}".format(lr, 0.98 * lr))
+                for param_group in self.optimizer.param_groups:
+                    prev_lr = param_group['lr']
+                    lr = 0.98 * prev_lr
+                    print("Learning rate: {} -> {}".format(prev_lr, lr))
+                    param_group['lr'] = lr
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
