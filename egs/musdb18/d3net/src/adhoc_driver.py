@@ -114,8 +114,8 @@ class AdhocTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, sources, T, title) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, 2*F_bin, T_bin)
+                mixture (batch_size, n_mics, n_bins, n_frames)
+                sources (batch_size, n_mics, n_bins, n_frames)
                 title <list<str>>
                 """
                 if self.use_cuda:

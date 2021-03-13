@@ -23,7 +23,7 @@ parser.add_argument('--window_fn', type=str, default='hamming', help='Window fun
 parser.add_argument('--fft_size', type=int, default=512, help='Window length')
 parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
 parser.add_argument('--config_path', type=str, default='config_d3net.yaml', help='Model configuration')
-parser.add_argument('--sources', type=str, default='[drums,bass,others,vocals]', help='Source names')
+parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Source names')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -47,8 +47,8 @@ def main(args):
     args.sources = args.sources.replace('[','').replace(']','').split(',')
     args.n_sources = len(args.sources)
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, sources=args.sources)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, sources=args.sources)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, target=args.target)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, target=args.target)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
