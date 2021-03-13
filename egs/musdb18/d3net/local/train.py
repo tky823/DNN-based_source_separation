@@ -59,6 +59,7 @@ def main(args):
         config = yaml.safe_load(file.read())
     config_model = config['d3net']
     
+    args.n_bins = args.fft_size // 2 + 1
     model = D3Net(
         config_model['in_channels'], config_model['num_features'], config_model['growth_rate'], config_model['bottleneck_channels'], kernel_size=config_model['kernel_size'], sections=config_model['sections'], scale=config_model['scale'],
         num_d3blocks=config_model['num_d3blocks'], num_d2blocks=config_model['num_d2blocks'], depth=config_model['depth'], compressed_depth=config_model['compressed_depth'],
