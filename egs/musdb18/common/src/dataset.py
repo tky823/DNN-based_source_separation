@@ -1,12 +1,12 @@
 import os
 import numpy as np
-from torch.functional import norm
 import musdb
 import torch
 
 from algorithm.stft import BatchSTFT
 
 __sources__=['drums','bass','other','vocals']
+
 EPS=1e-12
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
@@ -136,7 +136,7 @@ class WaveTestDataset(WaveDataset):
 
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, sources=__sources__):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, sources=__sources__):
         super().__init__(musdb18_root, sr=sr, sources=sources)
         
         if hop_size is None:
@@ -171,7 +171,7 @@ class SpectrogramDataset(WaveDataset):
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, sources=__sources__):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, overlap=overlap, sources=sources)
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
 
@@ -206,8 +206,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, sources
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, overlap=None, sources=__sources__):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, overlap=overlap, sources=sources)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, sources=__sources__):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
 
