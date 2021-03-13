@@ -9,7 +9,16 @@ from models.tcn import TemporalConvNet
 EPS=1e-12
 
 class ConvTasNet(nn.Module):
-    def __init__(self, n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None, sep_hidden_channels=256, sep_bottleneck_channels=128, sep_skip_channels=128, sep_kernel_size=3, sep_num_blocks=3, sep_num_layers=8, dilated=True, separable=True, causal=True, sep_nonlinear='prelu', sep_norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS, **kwargs):
+    def __init__(self,
+        n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None,
+        sep_hidden_channels=256, sep_bottleneck_channels=128, sep_skip_channels=128, sep_kernel_size=3, sep_num_blocks=3, sep_num_layers=8,
+        dilated=True, separable=True,
+        sep_nonlinear='prelu', sep_norm=True, mask_nonlinear='sigmoid',
+        causal=True,
+        n_sources=2,
+        eps=EPS,
+        **kwargs
+    ):
         super().__init__()
         
         if stride is None:
@@ -18,6 +27,10 @@ class ConvTasNet(nn.Module):
         assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
+        if 'in_channels' in kwargs:
+            self.in_channels = kwargs['in_channels']
+        else:
+            self.in_channels = 1
         self.n_bases = n_bases
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_bases, self.dec_bases = enc_bases, dec_bases
@@ -61,18 +74,26 @@ class ConvTasNet(nn.Module):
     def extract_latent(self, input):
         """
         Args:
-            input (batch_size, 1, T)
+            input (batch_size, C_in, T)
         Returns:
-            output (batch_size, n_sources, T)
+            output (batch_size, n_sources, T) or (batch_size, n_sources, C_in, T)
             latent (batch_size, n_sources, n_bases, T'), where T' = (T-K)//S+1
         """
         n_sources = self.n_sources
         n_bases = self.n_bases
         kernel_size, stride = self.kernel_size, self.stride
         
-        batch_size, C_in, T = input.size()
-        
-        assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+        n_dim = input.dim()
+
+        if n_dim == 3:
+            batch_size, C_in, T = input.size()
+            assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+        elif n_dim == 4:
+            batch_size, C_in, n_mics, T = input.size()
+            assert C_in == 1, "input.size() is expected (?,1,?,?), but given {}".format(input.size())
+            input = input.view(batch_size, n_mics, T)
+        else:
+            raise ValueError("Not support {} dimension input".format(n_dim))
         
         padding = (stride - (T-kernel_size)%stride)%stride
         padding_left = padding//2
@@ -86,13 +107,17 @@ class ConvTasNet(nn.Module):
         latent = w_hat
         w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
         x_hat = self.decoder(w_hat)
-        x_hat = x_hat.view(batch_size, n_sources, -1)
+        if n_dim == 3:
+            x_hat = x_hat.view(batch_size, n_sources, -1)
+        else: # n_dim == 4
+            x_hat = x_hat.view(batch_size, n_sources, n_mics, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
         
     def get_package(self):
         package = {
+            'in_channels': self.in_channels,
             'n_bases': self.n_bases,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
@@ -122,6 +147,7 @@ class ConvTasNet(nn.Module):
     def build_model(cls, model_path):
         package = torch.load(model_path, map_location=lambda storage, loc: storage)
         
+        in_channels = package.get('in_channels') or 1
         n_bases = package.get('n_bases') or package['n_basis']
         kernel_size, stride = package['kernel_size'], package['stride']
         enc_bases, dec_bases = package.get('enc_bases') or package['enc_basis'], package.get('dec_bases') or package['dec_basis']
@@ -140,7 +166,7 @@ class ConvTasNet(nn.Module):
         
         eps = package['eps']
         
-        model = cls(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels, sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, dilated=dilated, separable=separable, causal=causal, sep_nonlinear=sep_nonlinear, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
+        model = cls(n_bases, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels, sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, dilated=dilated, separable=separable, causal=causal, sep_nonlinear=sep_nonlinear, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         
         return model
     
@@ -252,6 +278,34 @@ def _test_conv_tasnet():
     print(reconstruction)
 
 
+def _test_multichannel_conv_tasnet():
+    batch_size = 4
+    C = 2
+    T = 64
+    
+    input = torch.randn((batch_size, 1, C, T), dtype=torch.float)
+
+    L, stride = 16, 8
+    N = 64
+    H, B, Sc = 128, 64, 64
+    P = 3
+    R, X = 3, 8
+    sep_norm = True
+
+    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_nonlinear = 'relu'
+    causal = False
+    mask_nonlinear = 'softmax'
+    n_sources = 3
+
+    model = ConvTasNet(N, in_channels=C, kernel_size=L, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=R, sep_num_layers=X, causal=causal, sep_norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+    
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
 def _test_conv_tasnet_paper():
     batch_size = 4
     C = 1
@@ -299,6 +353,10 @@ if __name__ == '__main__':
 
     print("="*10, "Conv-TasNet", "="*10)
     _test_conv_tasnet()
+    print()
+
+    print("="*10, "Conv-TasNet (multichannel)", "="*10)
+    _test_multichannel_conv_tasnet()
     print()
 
     print("="*10, "Conv-TasNet (same configuration in the paper)", "="*10)
