@@ -224,6 +224,8 @@ class MultiDilatedConv1d(nn.Module):
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
         s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
+        if not self.bias:
+            s += ", bias=False"
         return s
 
 class MultiDilatedConv2d(nn.Module):
@@ -312,6 +314,8 @@ class MultiDilatedConv2d(nn.Module):
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
         s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
+        if not self.bias:
+            s += ", bias=False"
         return s
 
 
