@@ -1,6 +1,7 @@
-from itertools import compress
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn.modules.utils import _pair
 
 from models.transform import BandSplit
 from models.d2net import D2Block, CompressedD2Block
@@ -42,7 +43,7 @@ class D3Net(nn.Module):
         self.gated_conv2d = nn.Conv2d(depth_d2block * growth_rate_d2block, in_channels, kernel_size=kernel_size_gated, stride=(1,1), padding=(1,1))
 
         self.eps = eps
-        
+
         self.num_parameters = self._get_num_parameters()
     
     def forward(self, input):
@@ -148,7 +149,9 @@ class DownD3Block(nn.Module):
     def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_blocks=3, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
-        self.downsample2d = nn.AvgPool2d(kernel_size=down_scale, stride=down_scale)
+        self.down_scale = _pair(down_scale)
+
+        self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
         self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, compressed_depth=compressed_depth, norm=norm, nonlinear=nonlinear, eps=eps)
     
     def forward(self, input):
@@ -160,6 +163,17 @@ class DownD3Block(nn.Module):
                 or (batch_size, num_blocks * depth * growth_rate, H_down, W_down) if type(growth_rate) is int
                 where H_down = H // down_scale[0] and W_down = W // down_scale[1]
         """
+        _, _, n_bins, n_frames = input.size()
+
+        Kh, Kw = self.down_scale
+        Ph, Pw = (Kh - n_bins % Kh) % Kh, (Kw - n_frames % Kw) % Kw
+        padding_up = Ph // 2
+        padding_bottom = Ph - padding_up
+        padding_left = Pw // 2
+        padding_right = Pw - padding_left
+
+        input = F.pad(input, (padding_left, padding_right, padding_up, padding_bottom))
+
         x = self.downsample2d(input)
         output = self.d3block(x)
 
