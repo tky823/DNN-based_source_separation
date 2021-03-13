@@ -188,6 +188,8 @@ class MultiDilatedConv1d(nn.Module):
         if self.bias:
             biases = torch.cat(biases, dim=0)
             self.biases = nn.Parameter(biases)
+        
+        self._reset_parameters()
     
     def forward(self, input):
         kernel_size = self.kernel_size
@@ -271,6 +273,8 @@ class MultiDilatedConv2d(nn.Module):
         if self.bias:
             biases = torch.cat(biases, dim=0)
             self.biases = nn.Parameter(biases)
+    
+        self._reset_parameters()
     
     def forward(self, input):
         kernel_size = self.kernel_size
