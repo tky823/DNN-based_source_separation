@@ -6,8 +6,9 @@ channels:
 
 dependencies:
   - python=3.8
-  - pytorch=1.8.0
   - scipy=1.6.1
+  - matplotlib==3.3.2
+  - pytorch=1.8.0
   - ffmpeg==4.2
   - pip
   - pip:
