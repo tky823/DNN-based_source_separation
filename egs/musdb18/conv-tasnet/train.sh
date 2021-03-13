@@ -77,7 +77,7 @@ time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="0"
 
 train.py \
---musdb18_root ${train_wav_root} \
+--musdb18_root ${musdb18_root} \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
