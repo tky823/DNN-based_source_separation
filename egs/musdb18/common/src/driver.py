@@ -185,13 +185,13 @@ class TrainerBase:
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = np.abs(mixture).max()
                     mixture = mixture / norm
-                    write_wav(save_path, signal=mixture, sr=self.sr)
+                    write_wav(save_path, signal=mixture.T, sr=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        write_wav(save_path, signal=estimated_source, sr=self.sr)
+                        write_wav(save_path, signal=estimated_source.T, sr=self.sr)
         
         valid_loss /= n_valid
         
@@ -308,7 +308,7 @@ class TesterBase:
 
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
-                    write_wav(mixture_path, signal=mixture, sr=self.sr)
+                    write_wav(mixture_path, signal=mixture.T, sr=self.sr)
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
@@ -318,18 +318,18 @@ class TesterBase:
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
-                        write_wav(source_path, signal=source, sr=self.sr)
+                        write_wav(source_path, signal=source.T, sr=self.sr)
                     source_path = "tmp-{}-target_{}.wav".format(order_idx, random_ID)
-                    write_wav(source_path, signal=source, sr=self.sr)
+                    write_wav(source_path, signal=source.T, sr=self.sr)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
-                        write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                        write_wav(estimated_path, signal=estimated_source.T, sr=self.sr)
                     estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx, random_ID)
-                    write_wav(estimated_path, signal=estimated_source, sr=self.sr)
+                    write_wav(estimated_path, signal=estimated_source.T, sr=self.sr)
                 
                 pesq = 0
                 
