@@ -36,7 +36,7 @@ class WaveDataset(MUSDB18Dataset):
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
-        mixture = track.audio.transpose(1, 0)
+        mixture = track.audio.transpose(1, 0)[None]
         target = []
         for source in self.sources:
             target.append(track.targets[source].audio.transpose(1, 0))
