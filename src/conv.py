@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -211,6 +212,13 @@ class MultiDilatedConv1d(nn.Module):
 
         return output
     
+    def _reset_parameters(self):
+        nn.modules.conv.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.modules.conv.init._calculate_fan_in_and_fan_out(self.weights)
+            bound = 1 / math.sqrt(fan_in)
+            nn.modules.conv.init.uniform_(self.biases, -bound, bound)
+    
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
         s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
@@ -289,6 +297,13 @@ class MultiDilatedConv2d(nn.Module):
             output = output + F.conv2d(x, weight=weights[idx], bias=biases[idx], stride=(1,1), dilation=dilation)
 
         return output
+    
+    def _reset_parameters(self):
+        nn.modules.conv.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.modules.conv.init._calculate_fan_in_and_fan_out(self.weights)
+            bound = 1 / math.sqrt(fan_in)
+            nn.modules.conv.init.uniform_(self.biases, -bound, bound)
     
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
