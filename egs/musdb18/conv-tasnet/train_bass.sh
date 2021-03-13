@@ -4,7 +4,7 @@ exp_dir="./exp"
 continue_from=""
 
 sources="[drums,bass,other,vocals]"
-target='vocals'
+target='bass'
 duration=4
 valid_duration=10
 
