@@ -46,6 +46,9 @@ class WaveDataset(MUSDB18Dataset):
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
 
+        print(mixture.size(), target.size())
+        exit()
+
         return mixture, target, title
 
     def __len__(self):
