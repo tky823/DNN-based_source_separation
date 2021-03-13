@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
-# from adhoc_driver import AdhocTrainer
+from adhoc_driver import AdhocTrainer
 from models.d3net import D3Net
 from criterion.distance import MeanSquaredError
 
@@ -57,8 +57,6 @@ def main(args):
 
     with open(args.config_path) as file:
         config = yaml.safe_load(file.read())
-    print(config)
-
     config_model = config['d3net']
     
     model = D3Net(
@@ -96,10 +94,8 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    """
-    # trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
-    # trainer.run()
-    """
+    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
+    trainer.run()
     
     
 if __name__ == '__main__':
