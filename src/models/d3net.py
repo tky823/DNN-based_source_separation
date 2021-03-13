@@ -56,12 +56,12 @@ class D3Net(nn.Module):
         for idx, key in enumerate(self.bands[:-1]):
             _x = self.net[key](x[idx])
             stacked.append(_x)
+            print(_x..size())
         
         stacked = torch.cat(stacked, dim=2)
         
         key = self.bands[-1] # 'full'
         x = self.net[key](input)
-        print(stacked.size(), x.size())
         x = torch.cat([stacked, x], dim=1)
         x = self.d2block(x)
         output = self.gated_conv2d(x)
