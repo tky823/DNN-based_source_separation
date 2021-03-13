@@ -43,8 +43,8 @@ class WaveDataset(MUSDB18Dataset):
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
-        mixture = track.audio.transpose(1, 0)
-        target = track.targets[self.target].audio.transpose(1, 0)
+        mixture = track.audio.transpose(1, 0)[None]
+        target = track.targets[self.target].audio.transpose(1, 0)[None]
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
 
