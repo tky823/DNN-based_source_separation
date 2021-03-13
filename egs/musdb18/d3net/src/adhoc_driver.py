@@ -127,9 +127,9 @@ class AdhocTrainer(TrainerBase):
                 sources = sources.cuda()
                 
             real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2+imag**2)
+            mixture_amplitude = torch.sqrt(real**2 + imag**2)
             real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2+imag**2)
+            sources_amplitude = torch.sqrt(real**2 + imag**2)
             
             estimated_sources_amplitude = self.model(mixture_amplitude)
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -173,9 +173,9 @@ class AdhocTrainer(TrainerBase):
                     sources = sources.cuda()
                 
                 real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.sqrt(real**2 + imag**2)
                 real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                sources_amplitude = torch.sqrt(real**2 + imag**2)
                 
                 output = self.model(mixture_amplitude)
                 loss = self.criterion(output, sources_amplitude, batch_mean=False)
