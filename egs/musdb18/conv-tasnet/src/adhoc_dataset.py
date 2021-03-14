@@ -68,7 +68,7 @@ class WaveTrainDataset(WaveDataset):
         super().__init__(musdb18_root, sr=sr, target=target)
 
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
-        
+
         self.threshold = threshold
         self.duration = duration
 
@@ -87,6 +87,8 @@ class WaveTrainDataset(WaveDataset):
                 track.chunk_duration = duration
                 target = track.targets[self.target].audio.transpose(1, 0)
                 target = torch.Tensor(target).float()
+
+                print(target)
 
                 if self._is_active(target, threshold=self.threshold):
                     data = {
