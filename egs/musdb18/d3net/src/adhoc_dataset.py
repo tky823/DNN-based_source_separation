@@ -112,16 +112,21 @@ class SpectrogramDataset(WaveDataset):
     
     @classmethod
     def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
-        dataset = WaveDataset.from_json(musdb18_root, json_path, sr=sr, target=target)
+        dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path)
         return dataset
 
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, target=None, json_path=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
 
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
+            return
+        
         self.threshold = threshold
         self.duration = duration
 
@@ -160,12 +165,22 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         mixture, sources, _, _ = super().__getitem__(idx)
         
         return mixture, sources
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
+        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
+        return dataset
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, target=None, json_path=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
+
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
+            return
 
         self.max_duration = max_duration
 
@@ -198,6 +213,11 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         mixture, sources, T, title = super().__getitem__(idx)
         
         return mixture, sources, T, title
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
+        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
+        return dataset
 
 def _test_train_dataset():
     torch.manual_seed(111)
@@ -212,7 +232,7 @@ def _test_train_dataset():
 
     dataset.save_as_json('data/tmp.json')
 
-    SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', sr=44100, target='vocals')
+    dataset = SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', fft_size=2048, hop_size=512, sr=44100, target='vocals')
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break
