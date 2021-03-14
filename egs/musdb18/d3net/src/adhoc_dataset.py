@@ -71,8 +71,8 @@ class SpectrogramDataset(WaveDataset):
 
     def _is_active(self, input, threshold=1e-5):
         input = self.stft(input) # (2, n_bins, n_frames, 2)
-        power = np.sum(input**2, dim=3) # (2, n_bins, n_frames)
-        power = np.mean(power)
+        power = torch.sum(input**2, dim=3) # (2, n_bins, n_frames)
+        power = torch.mean(power)
 
         if power.item() >= threshold:
             return True
