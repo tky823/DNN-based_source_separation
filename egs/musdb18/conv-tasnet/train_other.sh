@@ -10,7 +10,7 @@ valid_duration=10
 
 musdb18_root="../../../dataset/musdb18"
 sr=44100
-train_json_path="./train_${target}_sr${sr}.json"
+train_json_path="./train_${target}_sr${sr}_${duration}sec.json"
 
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'

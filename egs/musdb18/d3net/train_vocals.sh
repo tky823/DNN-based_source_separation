@@ -15,7 +15,7 @@ window_fn='hann' # window_fn is activated if enc_bases='Fourier' or dec_bases='F
 fft_size=2048
 hop_size=512
 
-train_json_path="./train_${target}_sr${sr}_stft${fft_size}-${hop_size}_${window_fn}-window.json"
+train_json_path="./train_${target}_sr${sr}_${duration}sec_stft${fft_size}-${hop_size}_${window_fn}-window.json"
 
 # model
 config_path="./config_${target}.yaml"
