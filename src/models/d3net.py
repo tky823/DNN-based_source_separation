@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from models.transform import BandSplit
+from models.gtu import GTU2d
 from models.d2net import D2Block, CompressedD2Block
 
 """
@@ -40,8 +41,9 @@ class D3Net(nn.Module):
         in_channels_d2block = len(self.bands[:-1]) * bottleneck_channels
 
         self.d2block = D2Block(in_channels_d2block, growth_rate_d2block, kernel_size_d2block, depth=depth_d2block, norm=norm, nonlinear=nonlinear, eps=eps)
-        self.gated_conv2d = nn.Conv2d(depth_d2block * growth_rate_d2block, in_channels, kernel_size=kernel_size_gated, stride=(1,1), padding=(1,1))
+        self.gated_conv2d = GTU2d(depth_d2block * growth_rate_d2block, in_channels, kernel_size=kernel_size_gated, stride=(1,1), padding=(1,1))
 
+        self.kernel_size_gated = _pair(kernel_size_gated)
         self.eps = eps
 
         self.num_parameters = self._get_num_parameters()
@@ -61,6 +63,15 @@ class D3Net(nn.Module):
         x = self.net[key](input)
         x = torch.cat([stacked, x], dim=1)
         x = self.d2block(x)
+
+        Kh, Kw = self.kernel_size_gated
+        Ph, Pw = Kh - 1, Kw - 1
+        padding_up = Ph // 2
+        padding_bottom = Ph - padding_up
+        padding_left = Pw // 2
+        padding_right = Pw - padding_left
+        
+        x = F.pad(x, (padding_left, padding_right, padding_up, padding_bottom))
         output = self.gated_conv2d(x)
 
         return output
