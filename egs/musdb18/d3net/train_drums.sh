@@ -9,12 +9,13 @@ duration=4
 valid_duration=10
 
 musdb18_root="../../../dataset/musdb18"
-train_json_path="./train_${target}.json"
 sr=44100
 
 window_fn='hann' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 fft_size=2048
 hop_size=512
+
+train_json_path="./train_${target}_sr${sr}_stft${fft_size}-${hop_size}_${window_fn}-window.json"
 
 # model
 config_path="./config_${target}.yaml"
