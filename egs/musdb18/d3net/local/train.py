@@ -49,7 +49,7 @@ def main(args):
     samples = args.duration
     overlap = samples / 2
     
-    if (not args.train_json_path) and os.path.exists(args.train_json_path):
+    if args.train_json_path and os.path.exists(args.train_json_path):
         train_dataset = SpectrogramTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, target=args.target)
     else:
         train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, hop_size=args.hop_size, overlap=overlap, target=args.target)

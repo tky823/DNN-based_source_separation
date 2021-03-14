@@ -62,7 +62,7 @@ def main(args):
     samples = args.duration
     overlap = samples / 2
     
-    if (not args.train_json_path) and os.path.exists(args.train_json_path):
+    if args.train_json_path and os.path.exists(args.train_json_path):
         train_dataset = WaveTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, duration=args.duration, target=args.target)
     else:
         train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, target=args.target)
