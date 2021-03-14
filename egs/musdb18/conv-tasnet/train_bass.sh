@@ -52,7 +52,7 @@ seed=111
 . ./path.sh
 . parse_options.sh || exit 1
 
-train_json_path="./train_${target}_sr${sr}_${duration}sec.json"
+train_json_path="../../../dataset/musdb18/train/${target}/sr${sr}_${duration}sec.json"
 
 prefix=""
 
