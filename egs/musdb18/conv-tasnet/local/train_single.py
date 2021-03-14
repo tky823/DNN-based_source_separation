@@ -66,6 +66,7 @@ def main(args):
         train_dataset = WaveTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, duration=args.duration, target=args.target)
     else:
         train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, target=args.target)
+        train_dataset.save_as_json(args.train_json_path)
     valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, target=args.target)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

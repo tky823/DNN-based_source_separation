@@ -52,6 +52,7 @@ def main(args):
         train_dataset = SpectrogramTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, target=args.target)
     else:
         train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, target=args.target)
+        train_dataset.save_as_json(args.train_json_path)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, target=args.target)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
