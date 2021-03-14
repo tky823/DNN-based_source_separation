@@ -6,6 +6,7 @@ import torch
 __sources__=['drums','bass','other','vocals']
 
 EPS=1e-12
+THRESHOLD_POWER=1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
     def __init__(self, musdb18_root, sr=44100, target=None):
@@ -52,14 +53,23 @@ class WaveDataset(MUSDB18Dataset):
 
     def __len__(self):
         return len(self.json_data)
+    
+    def _is_active(self, input, threshold=1e-5):
+        power = np.mean(input**2) # (2, T)
+
+        if power.item() >= threshold:
+            return True
+        else:
+            return False
 
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, target=None):
+    def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, sr=sr, target=target)
 
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
-
+        
+        self.threshold = threshold
         self.duration = duration
 
         if overlap is None:
@@ -71,12 +81,20 @@ class WaveTrainDataset(WaveDataset):
             for start in np.arange(0, track.duration, duration - overlap):
                 if start + duration >= track.duration:
                     break
-                data = {
-                    'songID': songID,
-                    'start': start,
-                    'duration': duration
-                }
-                self.json_data.append(data)
+
+                track.sample_rate = self.sr
+                track.chunk_start = start
+                track.chunk_duration = duration
+                target = track.targets[self.target].audio.transpose(1, 0)
+                target = torch.Tensor(target).float()
+
+                if self._is_active(target, threshold=self.threshold):
+                    data = {
+                        'songID': songID,
+                        'start': start,
+                        'duration': duration
+                    }
+                    self.json_data.append(data)
     
     def __getitem__(self, idx):
         mixture, sources, _ = super().__getitem__(idx)
