@@ -15,8 +15,6 @@ window_fn='hann' # window_fn is activated if enc_bases='Fourier' or dec_bases='F
 fft_size=2048
 hop_size=512
 
-train_json_path="./train_${target}_sr${sr}_${duration}sec_stft${fft_size}-${hop_size}_${window_fn}-window.json"
-
 # model
 config_path="./config_${target}.yaml"
 
@@ -39,6 +37,7 @@ seed=111
 . ./path.sh
 . parse_options.sh || exit 1
 
+train_json_path="./train_${target}_sr${sr}_${duration}sec_stft${fft_size}-${hop_size}_${window_fn}-window.json"
 save_dir="${exp_dir}/${target}/sr${sr}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
