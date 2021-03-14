@@ -55,7 +55,7 @@ class WaveDataset(MUSDB18Dataset):
         return len(self.json_data)
     
     def _is_active(self, input, threshold=1e-5):
-        power = np.mean(input**2) # (2, T)
+        power = torch.mean(input**2) # (2, T)
 
         if power.item() >= threshold:
             return True
@@ -87,8 +87,6 @@ class WaveTrainDataset(WaveDataset):
                 track.chunk_duration = duration
                 target = track.targets[self.target].audio.transpose(1, 0)
                 target = torch.Tensor(target).float()
-
-                print(target)
 
                 if self._is_active(target, threshold=self.threshold):
                     data = {
