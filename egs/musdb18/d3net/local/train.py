@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import argparse
+
 import yaml
 import torch
 import torch.nn as nn
@@ -16,6 +18,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Training of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
+parser.add_argument('--train_json_path', type=str, default=None, help='Path to training json file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
@@ -45,7 +48,10 @@ def main(args):
     samples = args.duration
     overlap = samples / 2
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, target=args.target)
+    if (not args.train_json_path) and os.path.exists(args.train_json_path):
+        train_dataset = SpectrogramTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, target=args.target)
+    else:
+        train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, overlap=overlap, target=args.target)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, target=args.target)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

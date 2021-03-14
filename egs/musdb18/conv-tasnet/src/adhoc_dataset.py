@@ -1,4 +1,6 @@
 import os
+import json
+
 import numpy as np
 import musdb
 import torch
@@ -54,6 +56,18 @@ class WaveDataset(MUSDB18Dataset):
     def __len__(self):
         return len(self.json_data)
     
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
+        dataset = cls(musdb18_root, sr=sr, target=target)
+        with open(json_path, 'r') as f:
+            dataset.json_data = json.load(f)
+        
+        return dataset
+    
+    def save_as_json(self, json_path):
+        with open(json_path, 'w') as f:
+            json.dump(self.json_data, f, indent=4)
+
     def _is_active(self, input, threshold=1e-5):
         power = torch.mean(input**2) # (2, T)
 
@@ -126,3 +140,25 @@ class WaveEvalDataset(WaveDataset):
                 'duration': duration
             }
             self.json_data.append(data)
+
+def _test_train_dataset():
+    torch.manual_seed(111)
+    
+    musdb18_root = "../../../../../db/musdb18"
+
+    dataset = WaveTrainDataset(musdb18_root, sr=8000, duration=4, target='vocals')
+    
+    for mixture, sources in dataset:
+        print(mixture.size(), sources.size())
+        break
+
+    dataset.save_as_json('data/tmp.json')
+
+    WaveTrainDataset.from_json(musdb18_root, 'data/tmp.json', sr=44100, target='vocals')
+    for mixture, sources in dataset:
+        print(mixture.size(), sources.size())
+        break
+
+
+if __name__ == '__main__':
+    _test_train_dataset()

@@ -1,4 +1,6 @@
 import os
+import json
+
 import numpy as np
 import musdb
 import torch
@@ -56,6 +58,18 @@ class WaveDataset(MUSDB18Dataset):
 
     def __len__(self):
         return len(self.json_data)
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
+        dataset = cls(musdb18_root, sr=sr, target=target)
+        with open(json_path, 'r') as f:
+            dataset.json_data = json.load(f)
+        
+        return dataset
+    
+    def save_as_json(self, json_path):
+        with open(json_path, 'w') as f:
+            json.dump(self.json_data, f, indent=4)
 
 class SpectrogramDataset(WaveDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, target=None):
@@ -95,6 +109,11 @@ class SpectrogramDataset(WaveDataset):
         sources = self.stft(sources) # (2, n_bins, n_frames, 2)
         
         return mixture, sources, T, title
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
+        dataset = WaveDataset.from_json(musdb18_root, json_path, sr=sr, target=target)
+        return dataset
 
 
 class SpectrogramTrainDataset(SpectrogramDataset):
@@ -187,6 +206,13 @@ def _test_train_dataset():
 
     dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sr=8000, duration=4, target='vocals')
     
+    for mixture, sources in dataset:
+        print(mixture.size(), sources.size())
+        break
+
+    dataset.save_as_json('data/tmp.json')
+
+    SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', sr=44100, target='vocals')
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break

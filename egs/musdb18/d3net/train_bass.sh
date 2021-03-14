@@ -9,6 +9,7 @@ duration=4
 valid_duration=10
 
 musdb18_root="../../../dataset/musdb18"
+train_json_path="./train_${target}.json"
 sr=44100
 
 window_fn='hann' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
@@ -54,6 +55,7 @@ export CUDA_VISIBLE_DEVICES="0"
 
 train.py \
 --musdb18_root ${musdb18_root} \
+--train_json_path "${train_json_path}" \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
