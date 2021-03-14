@@ -25,9 +25,26 @@ class D3Net(nn.Module):
     ):
         super().__init__()
 
+        self.in_channels, self.num_features = in_channels, num_features
+        self.growth_rate = growth_rate
+        self.bottleneck_channels = bottleneck_channels
+        self.kernel_size = kernel_size
+        self.sections = sections
+        self.scale = scale
+        self.num_d3blocks, self.num_d2blocks = num_d3blocks, num_d2blocks
+        self.depth, self.compressed_depth = depth, compressed_depth
+
+        self.growth_rate_d2block = growth_rate_d2block
+        self.kernel_size_d2block = kernel_size_d2block
+        self.depth_d2block = depth_d2block
+
+        self.kernel_size_gated = _pair(kernel_size_gated)
+        self.norm, self.nonlinear = norm, nonlinear,
+        
+        self.eps = eps
+
         self.band_split = BandSplit(sections=sections)
 
-        in_channels_d2block = 0
         net = {}
         self.bands = ['low', 'high', 'full']
 
@@ -42,9 +59,6 @@ class D3Net(nn.Module):
 
         self.d2block = D2Block(in_channels_d2block, growth_rate_d2block, kernel_size_d2block, depth=depth_d2block, norm=norm, nonlinear=nonlinear, eps=eps)
         self.gated_conv2d = GTU2d(depth_d2block * growth_rate_d2block, in_channels, kernel_size=kernel_size_gated, stride=(1,1), padding=(1,1))
-
-        self.kernel_size_gated = _pair(kernel_size_gated)
-        self.eps = eps
 
         self.num_parameters = self._get_num_parameters()
     
@@ -63,18 +77,68 @@ class D3Net(nn.Module):
         x = self.net[key](input)
         x = torch.cat([stacked, x], dim=1)
         x = self.d2block(x)
-
-        Kh, Kw = self.kernel_size_gated
-        Ph, Pw = Kh - 1, Kw - 1
-        padding_up = Ph // 2
-        padding_bottom = Ph - padding_up
-        padding_left = Pw // 2
-        padding_right = Pw - padding_left
         
-        x = F.pad(x, (padding_left, padding_right, padding_up, padding_bottom))
         output = self.gated_conv2d(x)
 
         return output
+    
+    def get_package(self):
+        package = {
+            'in_channels': self.in_channels,
+            'num_features': self.num_features,
+            'growth_rate': self.growth_rate,
+            'bottleneck_channels': self.bottleneck_channels,
+            'kernel_size': self.kernel_size,
+            'sections': self.sections,
+            'scale': self.scale,
+            'num_d3blocks': self.num_d3blocks,
+            'num_d2blocks': self.num_d2blocks,
+            'depth': self.depth,
+            'compressed_depth': self.compressed_depth,
+            'growth_rate_d2block': self.growth_rate_d2block,
+            'kernel_size_d2block': self.kernel_size_d2block,
+            'depth_d2block': self.depth_d2block,
+            'kernel_size_gated': self.kernel_size_gated,
+            'norm': self.norm,
+            'nonlinear': self.nonlinear,
+            'eps': self.eps
+        }
+        
+        return package
+    
+    @classmethod
+    def build_model(cls, model_path):
+        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        in_channels, num_features = package['in_channels'], package['num_features']
+        growth_rate = package['growth_rate']
+        bottleneck_channels = package['bottleneck_channels']
+        kernel_size = package['kernel_size']
+        sections = package['sections']
+
+        scale = package['scale']
+        num_d3blocks, num_d2blocks = package['num_d3blocks'], package['num_d2blocks']
+        depth, compressed_depth = package['depth'], package['compressed_depth']
+
+        growth_rate_d2block = package['growth_rate_d2block']
+        kernel_size_d2block = package['kernel_size_d2block']
+        depth_d2block = package['depth_d2block']
+
+        kernel_size_gated = package['kernel_size_gated']
+        norm, nonlinear = package['norm'], package['nonlinear']
+        eps = package['eps']
+
+        model = cls(
+            in_channels, num_features, growth_rate, bottleneck_channels, kernel_size,
+            sections=sections, scale=scale,
+            num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth, compressed_depth=compressed_depth,
+            growth_rate_d2block=growth_rate_d2block, kernel_size_d2block=kernel_size_d2block, depth_d2block=depth_d2block,
+            kernel_size_gated=kernel_size_gated,
+            norm=norm, nonlinear=nonlinear,
+            eps=eps
+        )
+
+        return model
     
     def _get_num_parameters(self):
         num_parameters = 0
