@@ -8,6 +8,7 @@ from algorithm.stft import BatchSTFT
 __sources__=['drums','bass','other','vocals']
 
 EPS=1e-12
+THRESHOLD_POWER=1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
     def __init__(self, musdb18_root, sr=44100, target=None):
@@ -67,6 +68,16 @@ class SpectrogramDataset(WaveDataset):
         self.n_bins = fft_size//2 + 1
         
         self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+
+    def _is_active(self, input, threshold=1e-5):
+        input = self.stft(input) # (2, n_bins, n_frames, 2)
+        power = np.sum(input**2, dim=3) # (2, n_bins, n_frames)
+        power = np.mean(power)
+
+        if power.item() >= threshold:
+            return True
+        else:
+            return False
         
     def __getitem__(self, idx):
         """
@@ -87,11 +98,12 @@ class SpectrogramDataset(WaveDataset):
 
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
 
+        self.threshold = threshold
         self.duration = duration
 
         if overlap is None:
@@ -103,12 +115,20 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             for start in np.arange(0, track.duration, duration - overlap):
                 if start + duration >= track.duration:
                     break
-                data = {
-                    'songID': songID,
-                    'start': start,
-                    'duration': duration
-                }
-                self.json_data.append(data)
+                
+                track.sample_rate = self.sr
+                track.chunk_start = start
+                track.chunk_duration = duration
+                target = track.targets[self.target].audio.transpose(1, 0)
+                target = torch.Tensor(target).float()
+
+                if self._is_active(target, threshold=self.threshold):
+                    data = {
+                        'songID': songID,
+                        'start': start,
+                        'duration': duration
+                    }
+                    self.json_data.append(data)
         
     def __getitem__(self, idx):
         """
