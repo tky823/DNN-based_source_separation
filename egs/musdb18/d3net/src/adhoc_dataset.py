@@ -59,20 +59,12 @@ class WaveDataset(MUSDB18Dataset):
     def __len__(self):
         return len(self.json_data)
     
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
-        dataset = cls(musdb18_root, sr=sr, target=target)
-        with open(json_path, 'r') as f:
-            dataset.json_data = json.load(f)
-        
-        return dataset
-    
     def save_as_json(self, json_path):
         with open(json_path, 'w') as f:
             json.dump(self.json_data, f, indent=4)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, target=None, json_path=None):
         super().__init__(musdb18_root, sr=sr, target=target)
         
         if hop_size is None:
@@ -82,6 +74,10 @@ class SpectrogramDataset(WaveDataset):
         self.n_bins = fft_size//2 + 1
         
         self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+    
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
 
     def _is_active(self, input, threshold=1e-5):
         input = self.stft(input) # (2, n_bins, n_frames, 2)
