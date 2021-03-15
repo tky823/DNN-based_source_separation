@@ -339,6 +339,27 @@ class FinetuneTrainer(TrainerBase):
         valid_loss /= n_valid
 
         return valid_loss
+    
+    def save_model(self, epoch, model_path='./tmp.pth'):
+        if isinstance(self.model, nn.DataParallel):
+            package = self.model.module.get_package()
+            package['state_dict'] = self.model.module.state_dict()
+        else:
+            package = self.model.get_package()
+            package['state_dict'] = self.model.state_dict()
+            
+        package['optim_dict'] = self.optimizer.state_dict()
+        
+        package['best_loss'] = self.best_loss
+        package['no_improvement'] = self.no_improvement
+        
+        package['train_loss'] = self.train_loss
+        package['valid_loss'] = self.valid_loss
+        
+        package['epoch'] = epoch + 1
+        package['is_finetune'] = True # For finetuner
+        
+        torch.save(package, model_path)
 
 class AdhocFinetuneTrainer(FinetuneTrainer):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
