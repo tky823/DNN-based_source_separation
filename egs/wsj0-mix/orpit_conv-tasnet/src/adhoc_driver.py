@@ -403,6 +403,7 @@ class FinetuneTrainer(TrainerBase):
                     possible_indices = list(range(n_sources - stage_idx))
                     idx_one = indices[batch_idx].item()
                     del possible_indices[idx_one]
+                    possible_indices = torch.Tensor(possible_indices).long()
                     
                     _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=possible_indices)
                     sources_rest.append(_sources_rest)

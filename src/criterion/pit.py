@@ -106,7 +106,11 @@ class ORPIT:
 
         criterion = self.criterion
 
-        target, lens_unpacked = nn.utils.rnn.pad_packed_sequence(target, batch_first=True)
+        if type(target) is torch.Tensor:
+            batch_size = target.size(0)
+            lens_unpacked = [target.size(1)] * batch_size
+        else:
+            target, lens_unpacked = nn.utils.rnn.pad_packed_sequence(target, batch_first=True)
 
         # TODO: batch process
 
@@ -122,7 +126,7 @@ class ORPIT:
     
             for idx in range(n_sources):
                 mask_one = torch.zeros_like(_target)
-                mask_one[:,idx] = 1.0
+                mask_one[:, idx] = 1.0
                 mask_rest = torch.ones_like(_target) - mask_one
                 target_one = torch.sum(mask_one * _target, dim=1) # (1, *)
                 target_rest = torch.sum(mask_rest * _target, dim=1) # (1, *)
