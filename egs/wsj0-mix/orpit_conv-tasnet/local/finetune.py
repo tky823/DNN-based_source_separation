@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import MixedNumberSourcesWaveTrainDataset, MixedNumberSourcesWaveEvalDataset, MixedNumberSourcesTrainDataLoader, MixedNumberSourcesEvalDataLoader
-from adhoc_driver import AdhocTrainer
+from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from adhoc_driver import AdhocFinetuneTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import ORPIT
@@ -40,7 +40,7 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--n_sources', type=str, default='2+3', help='# speakers. `2+3` means 2 speakers & 3 speakers.')
+parser.add_argument('--n_sources', type=int, default=3, help='# speakers.')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -62,16 +62,15 @@ def main(args):
     samples = int(args.sr * args.duration)
     overlap = samples//2
     max_samples = int(args.sr * args.valid_duration)
-    max_n_sources = max([int(number) for number in args.n_sources.split('+')])
     
-    train_dataset = MixedNumberSourcesWaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, max_n_sources=max_n_sources)
-    valid_dataset = MixedNumberSourcesWaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, max_n_sources=max_n_sources)
+    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
+    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
-    loader['train'] = MixedNumberSourcesTrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = MixedNumberSourcesEvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
@@ -108,7 +107,7 @@ def main(args):
     pit_criterion = ORPIT(criterion)
     print(flush=True)
     
-    trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
+    trainer = AdhocFinetuneTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     
