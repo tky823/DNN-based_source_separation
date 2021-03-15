@@ -44,6 +44,7 @@ weight_decay=1e-5
 max_norm=5
 
 finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
+model_choice="best"
 
 batch_size=4
 epochs_train=100
@@ -71,8 +72,6 @@ save_dir="${exp_dir}/${n_sources_train}mix/sr${sr_k}k_${max_or_min}/${duration}s
 if [ ${finetune} = 1 ]; then
     save_dir="${save_dir}/finetune/e${epochs_finetune}/seed${seed_finetune}"
 fi
-
-model_choice="best"
 
 model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
