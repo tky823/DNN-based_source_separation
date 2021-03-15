@@ -32,7 +32,7 @@ separable=1
 causal=0
 sep_nonlinear='prelu'
 sep_norm=1
-mask_nonlinear='sigmoid'
+mask_nonlinear='softmax'
 
 # Criterion
 criterion='sisdr'
