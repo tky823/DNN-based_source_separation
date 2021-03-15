@@ -3,18 +3,18 @@
 exp_dir="./exp"
 continue_from=""
 
-n_sources=3
+n_sources='2+3'
+n_sources_finetune=3
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
 duration=4
 valid_duration=4
 max_or_min='min'
 
-train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
-valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
-
-train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
-valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
+train_wav_root="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/wav${sr_k}k/${max_or_min}/tr"
+valid_wav_root="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/wav${sr_k}k/${max_or_min}/cv"
+train_list_path="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/mix_${n_sources_finetune}_spk_${max_or_min}_tr_mix"
+valid_list_path="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/mix_${n_sources_finetune}_spk_${max_or_min}_cv_mix"
 
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
@@ -107,7 +107,7 @@ finetune.py \
 --sep_nonlinear ${sep_nonlinear} \
 --sep_norm ${sep_norm} \
 --mask_nonlinear ${mask_nonlinear} \
---n_sources ${n_sources} \
+--n_sources ${n_sources_finetune} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
