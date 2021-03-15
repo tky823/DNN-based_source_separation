@@ -409,7 +409,7 @@ class FinetuneTrainer(TrainerBase):
                     _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=possible_indices)
                     sources_rest.append(_sources_rest)
                 
-                _, mixture = torch.split(estimated_sources, [1, n_sources - stage_idx - 1], dim=1)
+                _, mixture = torch.split(estimated_sources, [1, 1], dim=1)
                 sources = torch.cat(sources_rest, dim=0)
             
             self.optimizer.zero_grad()
