@@ -409,21 +409,21 @@ class FinetuneTrainer(TrainerBase):
                     _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=possible_indices)
                     sources_rest.append(_sources_rest)
                 
-                _, mixture = torch.split([1, n_sources - stage_idx - 1])
+                _, mixture = torch.split(estimated_sources, [1, n_sources - stage_idx - 1], dim=1)
                 sources = torch.cat(sources_rest, dim=0)
             
             self.optimizer.zero_grad()
-            loss.backward()
+            accumlated_loss.backward()
             
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
             self.optimizer.step()
             
-            train_loss += loss.item()
+            train_loss += accumlated_loss.item()
             
             if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, accumlated_loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
