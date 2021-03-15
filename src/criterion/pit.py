@@ -26,7 +26,7 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
     
     for idx in range(P):
         pattern = patterns[idx]
-        loss = criterion(input, target[:,pattern], batch_mean=False)
+        loss = criterion(input, target[:, pattern], batch_mean=False)
         if possible_loss is None:
             possible_loss = loss.unsqueeze(dim=1)
         else:
@@ -187,8 +187,8 @@ def _test_orpit():
         _input = torch.randint(5, (n_sources, T), dtype=torch.float)
         _target = _input[torch.Tensor(indice).long()]
 
-        _input_one = _input[0:1]
-        _input_rest = _input[1:].sum(dim=0, keepdim=True)
+        _input_one, _input_rest = torch.split(_input, [1, n_sources - 1], dim=0)
+        _input_rest = _input_rest.sum(dim=0, keepdim=True)
         _input = torch.cat([_input_one, _input_rest], dim=0)
 
         input.append(_input)
@@ -214,8 +214,8 @@ def _test_orpit():
         _input = torch.randint(5, (n_sources, T), dtype=torch.float)
         _target = _input[torch.Tensor(indice).long()]
 
-        _input_one = _input[0:1]
-        _input_rest = _input[1:].sum(dim=0, keepdim=True)
+        _input_one, _input_rest = torch.split(_input, [1, n_sources - 1])
+        _input_rest = _input_rest.sum(dim=0, keepdim=True)
         _input = torch.cat([_input_one, _input_rest], dim=0)
 
         input.append(_input)
