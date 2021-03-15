@@ -70,7 +70,7 @@ def main(args):
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = SourcesEvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
