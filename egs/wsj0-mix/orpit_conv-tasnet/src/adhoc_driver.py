@@ -404,6 +404,7 @@ class FinetuneTrainer(TrainerBase):
                     idx_one = indices[batch_idx].item()
                     del possible_indices[idx_one]
                     possible_indices = torch.Tensor(possible_indices).long()
+                    possible_indices = possible_indices.to(sources[batch_idx].device)
                     
                     _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=possible_indices)
                     sources_rest.append(_sources_rest)
