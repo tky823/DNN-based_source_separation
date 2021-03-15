@@ -47,7 +47,8 @@ lr=1e-3
 weight_decay=1e-5
 
 batch_size=4
-epochs=100
+epochs_train=100
+epochs_finetune=10
 
 use_cuda=1
 overwrite=0
@@ -56,17 +57,7 @@ seed=111
 . ./path.sh
 . parse_options.sh || exit 1
 
-prefix=""
-
-if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
-    prefix="${preffix}enc-${enc_nonlinear}_"
-fi
-
-if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
-    prefix="${preffix}${window_fn}-window_"
-fi
-
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}/finetune_e${epochs_finetune}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
