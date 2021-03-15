@@ -12,6 +12,7 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
 from driver import TrainerBase, TesterBase
+from criterion.pit import pit
 
 class ORPITTrainer(TrainerBase):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -455,7 +456,7 @@ class FinetuneTrainer(TrainerBase):
                     output = torch.cat([output, output_one], dim=1)
                 
                 output = torch.cat([output, output_rest], dim=1)
-                loss, _ = self.pit_criterion(output, sources, batch_mean=False)
+                loss, _ = pit(self.pit_criterion.criterion, output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
