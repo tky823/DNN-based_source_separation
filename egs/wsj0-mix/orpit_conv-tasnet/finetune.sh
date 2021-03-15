@@ -11,8 +11,8 @@ duration=4
 valid_duration=4
 max_or_min='min'
 
-train_wav_root="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/wav${sr_k}k/${max_or_min}/tr"
-valid_wav_root="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/wav${sr_k}k/${max_or_min}/cv"
+train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
+valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
 train_list_path="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/mix_${n_sources_finetune}_spk_${max_or_min}_tr_mix"
 valid_list_path="../../../dataset/wsj0-mix/${n_sources_finetune}speakers/mix_${n_sources_finetune}_spk_${max_or_min}_cv_mix"
 
