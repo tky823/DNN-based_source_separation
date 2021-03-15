@@ -492,7 +492,6 @@ class FinetuneTrainer(TrainerBase):
         package['optim_dict'] = self.optimizer.state_dict()
         
         package['best_loss'] = self.best_loss
-        package['no_improvement'] = self.no_improvement
         
         package['train_loss'] = self.train_loss
         package['valid_loss'] = self.valid_loss
