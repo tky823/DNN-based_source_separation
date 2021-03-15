@@ -14,6 +14,8 @@ from utils.utils_audio import write_wav
 from driver import TrainerBase, TesterBase
 from criterion.pit import pit
 
+MIN_PESQ=-0.5
+
 class ORPITTrainer(TrainerBase):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
@@ -265,7 +267,7 @@ class Tester(TesterBase):
                     if pesq_output == '':
                         # If processing error occurs in PESQ software, it is regarded as PESQ score is -0.5. (minimum of PESQ)
                         n_pesq_error += 1
-                        pesq += -0.5
+                        pesq += MIN_PESQ
                     else:
                         pesq += float(pesq_output)
                     

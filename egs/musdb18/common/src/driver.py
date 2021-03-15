@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import uuid
+
 import numpy as np
 from mir_eval.separation import bss_eval_sources
 import torch
@@ -10,6 +11,8 @@ import torch.nn as nn
 
 from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
+
+MIN_PESQ=-0.5
 
 class TrainerBase:
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -345,7 +348,7 @@ class TesterBase:
                     if pesq_output == '':
                         # If processing error occurs in PESQ software, it is regarded as PESQ score is -0.5. (minimum of PESQ)
                         n_pesq_error += 1
-                        pesq += -0.5
+                        pesq += MIN_PESQ
                     else:
                         pesq += float(pesq_output)
                     
