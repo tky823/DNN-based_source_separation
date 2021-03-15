@@ -90,9 +90,9 @@ class AdhocTrainer(TrainerBase):
                 threshold_weight = threshold_weight.cuda()
                 
             real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2+imag**2)
+            mixture_amplitude = torch.sqrt(real**2 + imag**2)
             real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2+imag**2)
+            sources_amplitude = torch.sqrt(real**2 + imag**2)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -141,9 +141,9 @@ class AdhocTrainer(TrainerBase):
                     assignment = assignment.cuda()
                 
                 real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.sqrt(real**2 + imag**2)
                 real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                sources_amplitude = torch.sqrt(real**2 + imag**2)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
@@ -173,7 +173,7 @@ class AdhocTrainer(TrainerBase):
                     write_wav(save_path, signal=mixture, sr=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         write_wav(save_path, signal=estimated_source, sr=self.sr)

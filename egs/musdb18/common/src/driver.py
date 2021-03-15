@@ -81,7 +81,7 @@ class TrainerBase:
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
+            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
@@ -151,7 +151,7 @@ class TrainerBase:
             train_loss += loss.item()
             
             if (idx + 1)%10 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -317,25 +317,25 @@ class TesterBase:
                     norm = np.abs(source).max()
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
-                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
+                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
                         write_wav(source_path, signal=source.T, sr=self.sr)
-                    source_path = "tmp-{}-target_{}.wav".format(order_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
                     write_wav(source_path, signal=source.T, sr=self.sr)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
-                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
+                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
                         write_wav(estimated_path, signal=estimated_source.T, sr=self.sr)
-                    estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx, random_ID)
+                    estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx + 1, random_ID)
                     write_wav(estimated_path, signal=estimated_source.T, sr=self.sr)
                 
                 pesq = 0
                 
                 for source_idx in range(self.n_sources):
-                    source_path = "tmp-{}-target_{}.wav".format(source_idx, random_ID)
-                    estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(source_idx + 1, random_ID)
+                    estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx + 1, random_ID)
                     
                     command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
                     command += " | grep Prediction | awk '{print $5}'"
