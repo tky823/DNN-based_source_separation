@@ -45,7 +45,7 @@ max_norm=5
 
 finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
 
-batch_size=2
+batch_size=4
 epochs_train=100
 epochs_finetune=10
 
