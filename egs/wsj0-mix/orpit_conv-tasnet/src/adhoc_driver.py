@@ -407,7 +407,7 @@ class FinetuneTrainer(TrainerBase):
                     possible_indices = possible_indices.to(sources[batch_idx].device)
                     
                     _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=possible_indices)
-                    sources_rest.append(_sources_rest)
+                    sources_rest.append(_sources_rest.unsqueeze(dim=0))
                 
                 _, mixture = torch.split(estimated_sources, [1, 1], dim=1)
                 sources = torch.cat(sources_rest, dim=0)
