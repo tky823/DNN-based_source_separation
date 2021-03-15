@@ -68,7 +68,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
 fi
 
 save_dir="${exp_dir}/${n_sources_train}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed_train}"
-if [ ${finetune} = 1 ];
+if [ ${finetune} = 1 ]; then
     save_dir="${save_dir}/finetune/e${epochs_finetune}/seed${seed_finetune}"
 fi
 
