@@ -162,8 +162,6 @@ class FinetuneTrainer(TrainerBase):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
 
-        raise NotImplementedError("Implement FinetuneTrainer.")
-
     def _reset(self, args):
         self.sr = args.sr
         self.n_sources = args.n_sources
@@ -253,7 +251,6 @@ class FinetuneTrainer(TrainerBase):
             
             batch_size = sources.size(0)
             accumlated_loss = 0
-            indices_rest = [list(range(n_sources)) * batch_size]
 
             for stage_idx in range(n_sources - 1):
                 estimated_sources = self.model(mixture)
@@ -267,7 +264,7 @@ class FinetuneTrainer(TrainerBase):
                     idx_one = indices[batch_idx].item()
                     del possible_indices[idx_one]
                     
-                    _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=indices_rest[batch_idx])
+                    _sources_rest = torch.index_select(sources[batch_idx], dim=0, index=possible_indices)
                     sources_rest.append(_sources_rest)
                 
                 _, mixture = torch.split([1, n_sources - stage_idx - 1])
@@ -346,5 +343,3 @@ class FinetuneTrainer(TrainerBase):
 class AdhocFinetuneTrainer(FinetuneTrainer):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
-
-        raise NotImplementedError("Implement AdhocFinetuneTrainer.")
