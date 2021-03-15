@@ -40,7 +40,7 @@ criterion='sisdr'
 # Optimizer
 optimizer='adam'
 lr=1e-3
-weight_decay=0
+weight_decay=1e-5
 max_norm=5
 
 finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
