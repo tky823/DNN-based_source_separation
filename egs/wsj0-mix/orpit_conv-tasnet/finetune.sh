@@ -104,7 +104,7 @@ finetune.py \
 --lr ${lr} \
 --weight_decay ${weight_decay} \
 --batch_size ${batch_size} \
---epochs ${epochs} \
+--epochs ${epochs_finetune} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \
