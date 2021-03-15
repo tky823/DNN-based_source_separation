@@ -334,7 +334,7 @@ class FinetuneTrainer(TrainerBase):
 
             self.best_loss = package['best_loss']
         else:
-            model_path = os.path.join(self.model_dir, "finetuned_best.pth")
+            model_path = os.path.join(self.model_dir, "best.pth")
             
             if os.path.exists(model_path):
                 if args.overwrite:
@@ -366,10 +366,10 @@ class FinetuneTrainer(TrainerBase):
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
-                model_path = os.path.join(self.model_dir, "finetuned_best.pth")
+                model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
             
-            model_path = os.path.join(self.model_dir, "finetuned_last.pth")
+            model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
