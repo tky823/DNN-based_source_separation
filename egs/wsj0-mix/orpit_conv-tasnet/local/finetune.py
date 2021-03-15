@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from dataset import WaveTrainDataset, WaveEvalDataset, MixedNumberSourcesTrainDataLoader, MixedNumberSourcesEvalDataLoader
 from adhoc_driver import AdhocFinetuneTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
@@ -69,8 +69,8 @@ def main(args):
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
-    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['train'] = MixedNumberSourcesTrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    loader['valid'] = MixedNumberSourcesEvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
