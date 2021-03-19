@@ -1,0 +1,15 @@
+name: DNN-based_source_separation_musdb18
+
+channels:
+  - conda-forge
+  - pytorch
+
+dependencies:
+  - python=3.8
+  - scipy=1.6.1
+  - matplotlib==3.3.2
+  - pytorch=1.8.0
+  - ffmpeg==4.2
+  - pip
+  - pip:
+    - musdb==0.3.1

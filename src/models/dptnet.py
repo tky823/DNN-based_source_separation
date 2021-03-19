@@ -229,7 +229,7 @@ class Separator(nn.Module):
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         self.prelu = nn.PReLU()
         self.map = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
-        self.gtu = GTU1d(num_features, num_features)
+        self.gtu = GTU1d(num_features, num_features, kernel_size=1, stride=1)
         
         if mask_nonlinear == 'relu':
             self.mask_nonlinear = nn.ReLU()
