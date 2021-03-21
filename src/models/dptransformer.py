@@ -214,6 +214,8 @@ class FeedForwardBlock(nn.Module):
         """
         x = input # (T, batch_size, num_features)
 
+        self.rnn.flatten_parameters()
+
         residual = x
         x, (_, _) = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
         x = self.nonlinear1d(x) # -> (T, batch_size, num_directions*hidden_channels)
