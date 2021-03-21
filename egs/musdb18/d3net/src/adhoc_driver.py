@@ -209,7 +209,7 @@ class AdhocTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     norm = np.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    write_wav(save_path, signal=estimated_source>T, sr=self.sr)
+                    write_wav(save_path, signal=estimated_source.T, sr=self.sr)
         
         valid_loss /= n_valid
         
