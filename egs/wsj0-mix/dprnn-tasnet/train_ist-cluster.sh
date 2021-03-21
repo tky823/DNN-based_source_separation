@@ -3,18 +3,18 @@
 exp_dir="./exp"
 continue_from=""
 
-n_sources=2
+n_sources=3
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
 duration=4
 valid_duration=10
 max_or_min='min'
 
-train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
-valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
+train_wav_root="/work2/g12004/u00284/dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
+valid_wav_root="/work2/g12004/u00284/dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
 
-train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
-valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
+train_list_path="/work2/g12004/u00284/dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
+valid_list_path="/work2/g12004/u00284/dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
@@ -49,7 +49,6 @@ epochs=100
 use_cuda=1
 overwrite=0
 seed=111
-gpu_id="0"
 
 . ./path.sh
 . parse_options.sh || exit 1
@@ -77,7 +76,7 @@ fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
-export CUDA_VISIBLE_DEVICES="${gpu_id}"
+export CUDA_VISIBLE_DEVICES="0"
 
 train.py \
 --train_wav_root ${train_wav_root} \
