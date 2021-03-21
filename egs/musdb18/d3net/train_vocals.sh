@@ -16,7 +16,7 @@ fft_size=2048
 hop_size=512
 
 # model
-config_path="./config_${target}.yaml"
+config_path="./config/config_${target}.yaml"
 
 # Criterion
 criterion='mse'
@@ -33,10 +33,12 @@ epochs=100
 use_cuda=1
 overwrite=0
 seed=111
+gpu_id="0"
 
 . ./path.sh
 . parse_options.sh || exit 1
 
+train_json_path="../../../dataset/musdb18/train/${target}/sr${sr}_${duration}sec_stft${fft_size}-${hop_size}_${window_fn}-window.json"
 save_dir="${exp_dir}/${target}/sr${sr}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
@@ -50,10 +52,11 @@ fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
-export CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
 --musdb18_root ${musdb18_root} \
+--train_json_path "${train_json_path}" \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \

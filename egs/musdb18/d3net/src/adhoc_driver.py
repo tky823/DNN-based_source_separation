@@ -1,5 +1,6 @@
 import os
 import time
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -145,7 +146,7 @@ class AdhocTrainer(TrainerBase):
             train_loss += loss.item()
             
             if (idx + 1) % 100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -208,7 +209,7 @@ class AdhocTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     norm = np.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    write_wav(save_path, signal=estimated_source>T, sr=self.sr)
+                    write_wav(save_path, signal=estimated_source.T, sr=self.sr)
         
         valid_loss /= n_valid
         

@@ -2,6 +2,7 @@
 
 exp_dir="./exp"
 
+n_sources_train='2+3'
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sr=${sr_k}000
@@ -14,42 +15,45 @@ test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
-enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
+enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
-N=64
-L=2 # L corresponds to the window length (samples) in this script.
+N=512
+L=16
 
 # Separator
-F=64
-H=128
-K=250
-P=125
-B=6
-d_ff=128
-h=4
+H=512
+B=128
+Sc=128
+P=3
+X=8
+R=3
+dilated=1
+separable=1
 causal=0
+sep_nonlinear='prelu'
 sep_norm=1
-sep_nonlinear='relu'
-sep_dropout=0
-mask_nonlinear='relu'
+mask_nonlinear='softmax'
 
 # Criterion
 criterion='sisdr'
 
 # Optimizer
 optimizer='adam'
-k1=2e-1
-k2=4e-4
-warmup_steps=4000
-weight_decay=0
-max_norm=5 # 0 is handled as no clipping
+lr=1e-3
+weight_decay=1e-5
+max_norm=5
 
-batch_size=1
-epochs=100
+finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
+model_choice="best"
+
+batch_size=4
+epochs_train=100
+epochs_finetune=10
 
 use_cuda=1
 overwrite=0
-seed=111
+seed_train=111
+seed_finetune=111
 gpu_id="0"
 
 . ./path.sh
@@ -65,14 +69,15 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}_d-ff${d_ff}_h${h}/${prefix}causal${causal}_norm${sep_norm}_${sep_nonlinear}_drop${sep_dropout}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-k1${k1}-k2${k2}-decay${weight_decay}-warmup${warmup_steps}_clip${max_norm}/seed${seed}"
-
-model_choice="best"
+save_dir="${exp_dir}/${n_sources_train}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed_train}"
+if [ ${finetune} = 1 ]; then
+    save_dir="${save_dir}/finetune/e${epochs_finetune}/seed${seed_finetune}"
+fi
 
 model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
-out_dir="${save_dir}/test"
+out_dir="${save_dir}/test/${n_sources}mix"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -92,4 +97,4 @@ test.py \
 --model_path "${model_path}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
---seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
+--seed ${seed_train} | tee "${log_dir}/test_${time_stamp}.log"

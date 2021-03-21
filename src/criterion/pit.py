@@ -26,7 +26,7 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
     
     for idx in range(P):
         pattern = patterns[idx]
-        loss = criterion(input, target[:,pattern], batch_mean=False)
+        loss = criterion(input, target[:, pattern], batch_mean=False)
         if possible_loss is None:
             possible_loss = loss.unsqueeze(dim=1)
         else:
@@ -106,7 +106,11 @@ class ORPIT:
 
         criterion = self.criterion
 
-        target, lens_unpacked = nn.utils.rnn.pad_packed_sequence(target, batch_first=True)
+        if type(target) is torch.Tensor:
+            batch_size = target.size(0)
+            lens_unpacked = [target.size(1)] * batch_size
+        else:
+            target, lens_unpacked = nn.utils.rnn.pad_packed_sequence(target, batch_first=True)
 
         # TODO: batch process
 
@@ -122,7 +126,7 @@ class ORPIT:
     
             for idx in range(n_sources):
                 mask_one = torch.zeros_like(_target)
-                mask_one[:,idx] = 1.0
+                mask_one[:, idx] = 1.0
                 mask_rest = torch.ones_like(_target) - mask_one
                 target_one = torch.sum(mask_one * _target, dim=1) # (1, *)
                 target_rest = torch.sum(mask_rest * _target, dim=1) # (1, *)
@@ -187,8 +191,8 @@ def _test_orpit():
         _input = torch.randint(5, (n_sources, T), dtype=torch.float)
         _target = _input[torch.Tensor(indice).long()]
 
-        _input_one = _input[0:1]
-        _input_rest = _input[1:].sum(dim=0, keepdim=True)
+        _input_one, _input_rest = torch.split(_input, [1, n_sources - 1], dim=0)
+        _input_rest = _input_rest.sum(dim=0, keepdim=True)
         _input = torch.cat([_input_one, _input_rest], dim=0)
 
         input.append(_input)
@@ -214,8 +218,8 @@ def _test_orpit():
         _input = torch.randint(5, (n_sources, T), dtype=torch.float)
         _target = _input[torch.Tensor(indice).long()]
 
-        _input_one = _input[0:1]
-        _input_rest = _input[1:].sum(dim=0, keepdim=True)
+        _input_one, _input_rest = torch.split(_input, [1, n_sources - 1])
+        _input_rest = _input_rest.sum(dim=0, keepdim=True)
         _input = torch.cat([_input_one, _input_rest], dim=0)
 
         input.append(_input)
