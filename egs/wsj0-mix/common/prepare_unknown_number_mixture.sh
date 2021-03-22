@@ -14,10 +14,10 @@ mkdir -p "${to_dir}"
 n_sources_set=`echo ${mixed_n_sources} | tr '+' '\n'`
 
 for n_sources in ${n_sources_set} ; do
-    from="${mix_dir}/${n_sources}speakers/wav${sr_k}k/${minmax}/*"
-    cp -r "${from}" "${to_dir}"
-
     for data_type in 'tr' 'cv' 'tt' ; do
+        from="${mix_dir}/${n_sources}speakers/wav${sr_k}k/${minmax}/${data_type}"
+        cp -r "${from}" "${to_dir}"
+        
         cat "${mix_dir}/${n_sources}speakers/mix_${n_sources}_spk_${minmax}_${data_type}_mix" >> "${mix_dir}/${mixed_n_sources}speakers/mix_${mixed_n_sources}_spk_${minmax}_${data_type}_mix"
     done
 done
