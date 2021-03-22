@@ -1,4 +1,6 @@
 import os
+import json
+
 import numpy as np
 import musdb
 import torch
@@ -8,6 +10,7 @@ from algorithm.stft import BatchSTFT
 __sources__=['drums','bass','other','vocals']
 
 EPS=1e-12
+THRESHOLD_POWER=1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
     def __init__(self, musdb18_root, sr=44100, target=None):
@@ -55,9 +58,13 @@ class WaveDataset(MUSDB18Dataset):
 
     def __len__(self):
         return len(self.json_data)
+    
+    def save_as_json(self, json_path):
+        with open(json_path, 'w') as f:
+            json.dump(self.json_data, f, indent=4)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, target=None, json_path=None):
         super().__init__(musdb18_root, sr=sr, target=target)
         
         if hop_size is None:
@@ -67,6 +74,20 @@ class SpectrogramDataset(WaveDataset):
         self.n_bins = fft_size//2 + 1
         
         self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+    
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
+
+    def _is_active(self, input, threshold=1e-5):
+        input = self.stft(input) # (2, n_bins, n_frames, 2)
+        power = torch.sum(input**2, dim=3) # (2, n_bins, n_frames)
+        power = torch.mean(power)
+
+        if power.item() >= threshold:
+            return True
+        else:
+            return False
         
     def __getitem__(self, idx):
         """
@@ -84,14 +105,25 @@ class SpectrogramDataset(WaveDataset):
         sources = self.stft(sources) # (2, n_bins, n_frames, 2)
         
         return mixture, sources, T, title
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
+        dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path)
+        return dataset
 
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, target=None, json_path=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
 
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
+            return
+        
+        self.threshold = threshold
         self.duration = duration
 
         if overlap is None:
@@ -103,12 +135,20 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             for start in np.arange(0, track.duration, duration - overlap):
                 if start + duration >= track.duration:
                     break
-                data = {
-                    'songID': songID,
-                    'start': start,
-                    'duration': duration
-                }
-                self.json_data.append(data)
+                
+                track.sample_rate = self.sr
+                track.chunk_start = start
+                track.chunk_duration = duration
+                target = track.targets[self.target].audio.transpose(1, 0)
+                target = torch.Tensor(target).float()
+
+                if self._is_active(target, threshold=self.threshold):
+                    data = {
+                        'songID': songID,
+                        'start': start,
+                        'duration': duration
+                    }
+                    self.json_data.append(data)
         
     def __getitem__(self, idx):
         """
@@ -121,12 +161,22 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         mixture, sources, _, _ = super().__getitem__(idx)
         
         return mixture, sources
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
+        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
+        return dataset
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, target=None, json_path=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
+
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
+            return
 
         self.max_duration = max_duration
 
@@ -159,6 +209,11 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         mixture, sources, T, title = super().__getitem__(idx)
         
         return mixture, sources, T, title
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
+        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
+        return dataset
 
 def _test_train_dataset():
     torch.manual_seed(111)
@@ -167,6 +222,13 @@ def _test_train_dataset():
 
     dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sr=8000, duration=4, target='vocals')
     
+    for mixture, sources in dataset:
+        print(mixture.size(), sources.size())
+        break
+
+    dataset.save_as_json('data/tmp.json')
+
+    dataset = SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', fft_size=2048, hop_size=512, sr=44100, target='vocals')
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break

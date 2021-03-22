@@ -50,6 +50,7 @@ epochs=100
 use_cuda=1
 overwrite=0
 seed=111
+gpu_id="0"
 
 . ./path.sh
 . parse_options.sh || exit 1
@@ -79,7 +80,7 @@ fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
-export CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 test.py \
 --test_wav_root ${wav_root} \

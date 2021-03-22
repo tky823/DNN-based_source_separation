@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import uuid
+
 import numpy as np
 from mir_eval.separation import bss_eval_sources
 import torch
@@ -12,6 +13,8 @@ from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
+
+MIN_PESQ=-0.5
 
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -313,25 +316,25 @@ class Tester:
                     norm = np.abs(source).max()
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
-                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
+                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
                         write_wav(source_path, signal=source, sr=self.sr)
-                    source_path = "tmp-{}-target_{}.wav".format(order_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
                     write_wav(source_path, signal=source, sr=self.sr)
                     
                     # Estimated source
                     norm = np.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
-                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
+                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
                         write_wav(estimated_path, signal=estimated_source, sr=self.sr)
-                    estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx, random_ID)
+                    estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx + 1, random_ID)
                     write_wav(estimated_path, signal=estimated_source, sr=self.sr)
                 
                 pesq = 0
                 
                 for source_idx in range(self.n_sources):
-                    source_path = "tmp-{}-target_{}.wav".format(source_idx, random_ID)
-                    estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(source_idx + 1, random_ID)
+                    estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx + 1, random_ID)
                     
                     command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
                     command += " | grep Prediction | awk '{print $5}'"
@@ -341,7 +344,7 @@ class Tester:
                     if pesq_output == '':
                         # If processing error occurs in PESQ software, it is regarded as PESQ score is -0.5. (minimum of PESQ)
                         n_pesq_error += 1
-                        pesq += -0.5
+                        pesq += MIN_PESQ
                     else:
                         pesq += float(pesq_output)
                     

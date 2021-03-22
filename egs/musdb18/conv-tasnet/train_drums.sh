@@ -48,9 +48,12 @@ epochs=100
 use_cuda=1
 overwrite=0
 seed=111
+gpu_id="0"
 
 . ./path.sh
 . parse_options.sh || exit 1
+
+train_json_path="../../../dataset/musdb18/train/${target}/sr${sr}_${duration}sec.json"
 
 prefix=""
 
@@ -75,10 +78,11 @@ fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
-export CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train_single.py \
 --musdb18_root ${musdb18_root} \
+--train_json_path "${train_json_path}" \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
