@@ -18,6 +18,6 @@ for n_sources in ${n_sources_set} ; do
         from="${wsj0mix_root}/${n_sources}speakers/wav${sr_k}k/${minmax}/${data_type}"
         cp -r "${from}" "${to_dir}"
         
-        cat "${wsj0mix_root}/${n_sources}speakers/mix_${n_sources}_spk_${minmax}_${data_type}_mix" >> "${mix_dir}/${mixed_n_sources}speakers/mix_${mixed_n_sources}_spk_${minmax}_${data_type}_mix"
+        cat "${wsj0mix_root}/${n_sources}speakers/mix_${n_sources}_spk_${minmax}_${data_type}_mix" >> "${wsj0mix_root}/${mixed_n_sources}speakers/mix_${mixed_n_sources}_spk_${minmax}_${data_type}_mix"
     done
 done
