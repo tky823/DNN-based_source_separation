@@ -48,7 +48,7 @@ class DANet(nn.Module):
         Returns:
             output (batch_size, n_sources, n_bins, n_frames)
         """
-        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=None)
+        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
         
         return output
     

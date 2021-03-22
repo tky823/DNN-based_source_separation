@@ -12,13 +12,13 @@ from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import ORPIT
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Training of Conv-TasNet using ORPIT")
 
 parser.add_argument('--train_wav_root', type=str, default=None, help='Path for training dataset ROOT directory')
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
 parser.add_argument('--train_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tr_mix')
 parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
@@ -106,6 +106,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
     
     pit_criterion = ORPIT(criterion)
+    print(flush=True)
     
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
