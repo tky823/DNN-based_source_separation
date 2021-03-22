@@ -1,6 +1,15 @@
 # Conv-TasNet using ORPIT
 Reference: [Recursive speech separation for unknown number of speakers](https://arxiv.org/abs/1904.03065)
 
+## データセットの準備
+```shell
+cd ../common
+
+. ./prepare_unknown_number_sources.sh \
+--mixed_n_sources '2+3' \
+--wsj0mix_root <WSJ0MIX_ROOT>
+```
+
 ## 学習
 ```shell
 . ./train.sh --exp_dir <OUTPUT_DIR>
