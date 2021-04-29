@@ -21,16 +21,17 @@ class L1Loss(nn.Module):
             target (batch_size, *):
         """
         n_dim = input.dim()
-        dim = tuple(range(1,n_dim))
+        dim = tuple(range(1, n_dim))
         
         loss = torch.abs(input - target) # (batch_size, *)
         
-        if self.reduction == 'mean':
-            loss = loss.mean(dim=dim)
-        elif self.reduction == 'sum':
-            loss = loss.sum(dim=dim)
-        else:
-            raise ValueError("Invalid reduction type")
+        if n_dim > 1:
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise ValueError("Invalid reduction type")
         
         if batch_mean:
             loss = loss.mean(dim=0)
@@ -64,14 +65,15 @@ class L2Loss(nn.Module):
         loss = torch.sqrt(loss)
         
         n_dim = loss.dim()
-        dim = tuple(range(1,n_dim))
-        
-        if self.reduction == 'mean':
-            loss = loss.mean(dim=dim)
-        elif self.reduction == 'sum':
-            loss = loss.sum(dim=dim)
-        else:
-            raise ValueError("Invalid reduction type")
+        if n_dim > 1:
+            dim = tuple(range(1, n_dim))
+            
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise ValueError("Invalid reduction type")
         
         if batch_mean:
             loss = loss.mean(dim=0)
