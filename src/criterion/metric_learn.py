@@ -40,7 +40,27 @@ class TripletLoss(nn.Module):
         
         return loss
 
-class ConstrativeLoss(nn.Module):
+class TripletWithDistanceLoss(nn.Module):
+    def __init__(self, distance_fn=None, margin=1, eps=EPS):
+        super().__init__()
+
+        self.distance_fn = distance_fn
+        self.margin = margin
+        self.eps = eps
+    
+    def forward(self, anchor, positive, negative, batch_mean=True):
+        assert positive.size() == negative.size(), "Invalid tensor size pair"
+
+        loss_positive = self.distance_fn(positive, anchor, batch_mean=False)
+        loss_negative = self.distance_fn(negative, anchor, batch_mean=False)
+        loss = torch.relu(loss_positive + self.margin - loss_negative)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+
+class ContrastiveLoss(nn.Module):
     def __init__(self, margin=1, eps=EPS):
         super().__init__()
 
@@ -64,13 +84,42 @@ class ConstrativeLoss(nn.Module):
         
         return loss
 
+class ContrastiveWithDistanceLoss(nn.Module):
+    def __init__(self, distance_fn=None, margin=1, eps=EPS):
+        super().__init__()
+
+        self.distance_fn = distance_fn
+        self.margin = margin
+        self.eps = eps
+
+        if self.distance_fn is None:
+            raise ValueError("Specify `distance_fn`.")
+    
+    def forward(self, input_left, input_right, is_same, batch_mean=True):
+        """
+        Args:
+            input_left (batch_size, *)
+            input_right (batch_size, *)
+            is_same (batch_size, *)
+        Returns:
+            loss () or (batch_size, )
+        """
+        margin = self.margin
+
+        distance = self.distance_fn(input_left, input_right, batch_mean=False)
+        loss = is_same * distance**2 + (1 - is_same) * torch.relu(margin - distance) ** 2
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+
 def _test_triplet_loss():
     import random
 
     import matplotlib.pyplot as plt
 
     from torch.distributions.multivariate_normal import MultivariateNormal
-    from criterion.distance import L2Loss
 
     random.seed(111)
     torch.manual_seed(111)
@@ -89,7 +138,7 @@ def _test_triplet_loss():
     plt.scatter(x2[:, 0], x2[:, 1], color='blue')
     plt.scatter(mean1[0], mean1[1], color='black', marker='x')
     plt.scatter(mean2[0], mean2[1], color='black', marker='x')
-    plt.savefig("data/tmp.png", bbox_inches='tight')
+    plt.savefig("data/distributions/triplet_loss.png", bbox_inches='tight')
     
     batch_anchor = []
     batch_positive, batch_negative = [], []
@@ -121,7 +170,69 @@ def _test_triplet_loss():
     print(loss)
 
 
-def _test_constrative_loss():
+def _test_triplet_with_distance_loss():
+    import random
+
+    import matplotlib.pyplot as plt
+
+    from torch.distributions.multivariate_normal import MultivariateNormal
+
+    def distance_fn(input, target, batch_mean=True):
+        loss = torch.sum((input - target)**2, dim=1)
+        if batch_mean:
+            loss = loss.mean()
+        return loss
+
+    random.seed(111)
+    torch.manual_seed(111)
+
+    n_dim = 2
+    batch_size = 4
+    num_samples = batch_size
+    
+    mean1, mean2 = torch.ones(n_dim), - torch.ones(n_dim)
+    covariance1, covariance2 = 2 * torch.tensor([[1.0, 0.5], [0.5, 1.0]]), 2 * torch.tensor([[1, 0.5], [0.5, 1]])
+    m1, m2 = MultivariateNormal(mean1, covariance1), MultivariateNormal(mean2, covariance2)
+    x1, x2 = m1.sample((num_samples,)), m2.sample((num_samples,))
+
+    plt.figure()
+    plt.scatter(x1[:, 0], x1[:, 1], color='red')
+    plt.scatter(x2[:, 0], x2[:, 1], color='blue')
+    plt.scatter(mean1[0], mean1[1], color='black', marker='x')
+    plt.scatter(mean2[0], mean2[1], color='black', marker='x')
+    plt.savefig("data/distributions/triplet_with_distance_loss.png", bbox_inches='tight')
+    
+    batch_anchor = []
+    batch_positive, batch_negative = [], []
+    for idx in range(batch_size):
+        positive_class = random.randint(1, 2)
+
+        idx_anchor = random.randint(0, num_samples - 1)
+        idx_positive, idx_negative = random.randint(0, num_samples - 1), random.randint(0, num_samples - 1)
+
+        if positive_class == 1:
+            anchor = x1[idx_anchor]
+            positive, nagative = x1[idx_positive], x2[idx_negative]
+        else:
+            anchor = x2[idx_anchor]
+            positive, nagative = x2[idx_positive], x1[idx_negative]
+        
+        batch_anchor.append(anchor)
+        batch_positive.append(positive)
+        batch_negative.append(nagative)
+    
+    batch_anchor = torch.vstack(batch_anchor)
+    batch_positive = torch.vstack(batch_positive)
+    batch_negative = torch.vstack(batch_negative)
+
+    triplet_criterion = TripletWithDistanceLoss(distance_fn=distance_fn)
+    loss = triplet_criterion(batch_anchor, batch_positive, batch_negative, batch_mean=False)
+    
+    print(batch_anchor.size(), batch_positive.size(), batch_negative.size())
+    print(loss)
+
+
+def _test_contrastive_loss():
     import random
 
     import matplotlib.pyplot as plt
@@ -147,7 +258,7 @@ def _test_constrative_loss():
     plt.scatter(x2[:, 0], x2[:, 1], color='blue')
     plt.scatter(mean1[0], mean1[1], color='black', marker='x')
     plt.scatter(mean2[0], mean2[1], color='black', marker='x')
-    plt.savefig("data/tmp.png", bbox_inches='tight')
+    plt.savefig("data/distributions/contrastive_loss.png", bbox_inches='tight')
 
     x = torch.cat([x1, x2], dim=0)
     t = torch.cat([t1, t2], dim=0)
@@ -155,19 +266,76 @@ def _test_constrative_loss():
     random.shuffle(indices)
     x, t = x[indices].view(num_samples, 2, n_dim), t[indices].view(num_samples, 2)
     criterion = L2Loss()
-    constrative_criterion = ConstrativeLoss()
+    constrative_criterion = ContrastiveLoss()
 
     input, target = x[:batch_size], t[:batch_size]
     distance = criterion(input[:, 0], input[:, 1], batch_mean=False)
     is_same = (target[:, 0] == target[:, 1]).float()
 
-    print(is_same)
-    print(distance)
-
     loss = constrative_criterion(distance, is_same)
     
+    print(is_same)
+    print(distance)
     print(loss)
 
+
+def _test_contrastive_with_distance_loss():
+    import random
+
+    import matplotlib.pyplot as plt
+
+    from torch.distributions.multivariate_normal import MultivariateNormal
+    from criterion.distance import L2Loss
+
+    random.seed(111)
+    torch.manual_seed(111)
+
+    n_dim = 2
+    batch_size = 4
+    num_samples = batch_size
+    
+    mean1, mean2 = torch.ones(n_dim), - torch.ones(n_dim)
+    covariance1, covariance2 = 2 * torch.tensor([[1.0, 0.5], [0.5, 1.0]]), 2 * torch.tensor([[1, 0.5], [0.5, 1]])
+    m1, m2 = MultivariateNormal(mean1, covariance1), MultivariateNormal(mean2, covariance2)
+    x1, x2 = m1.sample((num_samples,)), m2.sample((num_samples,))
+    t1, t2 = torch.zeros(num_samples), torch.ones(num_samples)
+
+    plt.figure()
+    plt.scatter(x1[:, 0], x1[:, 1], color='red')
+    plt.scatter(x2[:, 0], x2[:, 1], color='blue')
+    plt.scatter(mean1[0], mean1[1], color='black', marker='x')
+    plt.scatter(mean2[0], mean2[1], color='black', marker='x')
+    plt.savefig("data/distributions/contrastive_with_distance_loss.png", bbox_inches='tight')
+
+    x = torch.cat([x1, x2], dim=0)
+    t = torch.cat([t1, t2], dim=0)
+    indices = list(range(2 * num_samples))
+    random.shuffle(indices)
+    x, t = x[indices].view(num_samples, 2, n_dim), t[indices].view(num_samples, 2)
+    criterion = L2Loss()
+    constrative_criterion = ContrastiveWithDistanceLoss(distance_fn=criterion)
+
+    input, target = x[:batch_size], t[:batch_size]
+    is_same = (target[:, 0] == target[:, 1]).float()
+
+    loss = constrative_criterion(input[:, 0], input[:, 1], is_same)
+    
+    print(is_same)
+    print(loss)
+
+
 if __name__ == '__main__':
+    print("="*10, "Triplet Loss", "="*10)
     _test_triplet_loss()
-    _test_constrative_loss()
+    print()
+
+    print("="*10, "Triplet Loss", "="*10)
+    _test_triplet_with_distance_loss()
+    print()
+
+    print("="*10, "Contrastive Loss", "="*10)
+    _test_contrastive_loss()
+    print()
+
+    print("="*10, "Contrastive Loss", "="*10)
+    _test_contrastive_with_distance_loss()
