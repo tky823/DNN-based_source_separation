@@ -47,6 +47,9 @@ class TripletWithDistanceLoss(nn.Module):
         self.distance_fn = distance_fn
         self.margin = margin
         self.eps = eps
+
+        if self.distance_fn is None:
+            raise ValueError("Specify `distance_fn`.")
     
     def forward(self, anchor, positive, negative, batch_mean=True):
         assert positive.size() == negative.size(), "Invalid tensor size pair"
