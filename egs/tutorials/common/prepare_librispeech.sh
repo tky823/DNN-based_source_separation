@@ -10,6 +10,9 @@ test_duration=4
 
 seed=111
 
+. ./path.sh
+. ./parse_options.sh || exit 1
+
 train_file="train-clean-100.tar.gz"
 train_url="http://www.openslr.org/resources/12/${train_file}"
 train_dataset="train-clean-100"
@@ -22,9 +25,6 @@ test_file="test-clean.tar.gz"
 test_url="http://www.openslr.org/resources/12/${test_file}"
 test_dataset="test-clean"
 test_json="test-${n_sources}mix.json"
-
-. ./path.sh
-. ./parse_options.sh || exit 1
 
 if [ -e "${dataset_root}/LibriSpeech/${train_dataset}/103" ]; then
     echo "Already downloaded dataset ${train_dataset}"
