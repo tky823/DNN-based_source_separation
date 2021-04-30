@@ -29,22 +29,22 @@ DNNによる音源分離（PyTorch実装）
 | One-and-rest PIT | [Recursive Speech Separation for Unknown Number of Speakers](https://arxiv.org/abs/1904.03065) | ✔ |
 
 ## 実行例
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/librispeech/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
 
 [Conv-TasNet](https://arxiv.org/abs/1809.07454)によるLibriSpeechデータセットを用いた音源分離の例
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/
+cd <REPOSITORY_ROOT>/egs/tutorials/
 ```
 
 ### 0. データセットの準備
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/common/
+cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare.sh <DATASET_DIR> <#SPEAKERS>
 ```
 
 ### 1. 学習
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
@@ -55,13 +55,13 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 
 ### 2. 評価
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. デモンストレーション
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
 
