@@ -29,22 +29,22 @@ A PyTorch implementation of DNN-based source separation.
 | One-and-rest PIT | [Recursive Speech Separation for Unknown Number of Speakers](https://arxiv.org/abs/1904.03065) | ✔ |
 
 ## Example
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/librispeech/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
 
 LibriSpeech example using [Conv-TasNet](https://arxiv.org/abs/1809.07454)
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/
+cd <REPOSITORY_ROOT>/egs/tutorials/
 ```
 
 ### 0. Preparation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/common/
+cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare.sh <DATASET_DIR> <#SPEAKERS>
 ```
 
 ### 1. Training
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
@@ -55,13 +55,13 @@ If you want to resume training,
 
 ### 2. Evaluation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
 
@@ -85,3 +85,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.4.3: Re-fix DPRNN-TasNet.
 - v0.5.0: Add `parse_options.sh`.
 - v0.5.1: Multichannel support.
+- v0.5.2: Add metric learning tutorials.
