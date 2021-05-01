@@ -32,9 +32,7 @@ A PyTorch implementation of DNN-based source separation.
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
 
 LibriSpeech example using [Conv-TasNet](https://arxiv.org/abs/1809.07454)
-```
-cd <REPOSITORY_ROOT>/egs/tutorials/
-```
+You can check other tutorials in `<REPOSITORY_ROOT>/egs/tutorials/`.
 
 ### 0. Preparation
 ```
