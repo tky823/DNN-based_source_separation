@@ -39,7 +39,7 @@ cd <REPOSITORY_ROOT>/egs/tutorials/
 ### 0. データセットの準備
 ```
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
-. ./prepare.sh <DATASET_DIR> <#SPEAKERS>
+. ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
 ```
 
 ### 1. 学習
