@@ -37,3 +37,10 @@ Coming soon...
 
 ## siamese-net
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/siamese-net/speech-commands.ipynb)
+
+# Tutorials for torchaudio.datasets
+## cmu-arctic
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/cmu-arctic/cmu-arctic.ipynb)
+
+## yes-no
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/yes-no/yes-no.ipynb)
