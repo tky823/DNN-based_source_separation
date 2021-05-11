@@ -1,4 +1,5 @@
 import itertools
+
 import torch
 import torch.nn as nn
 
@@ -31,9 +32,9 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
             possible_loss = loss.unsqueeze(dim=1)
         else:
             possible_loss = torch.cat([possible_loss, loss.unsqueeze(dim=1)], dim=1)
-            
+    
     # possible_loss (batch_size, P)
-    if criterion.maximize:
+    if hasattr(criterion, "maximize") and criterion.maximize:
         loss, indices = torch.max(possible_loss, dim=1) # loss (batch_size,), indices (batch_size,)
     else:
         loss, indices = torch.min(possible_loss, dim=1) # loss (batch_size,), indices (batch_size,)
@@ -42,7 +43,6 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
         loss = loss.mean(dim=0)
          
     return loss, patterns[indices]
-        
 
 class PIT:
     def __init__(self, criterion, n_sources):
@@ -139,8 +139,8 @@ class ORPIT:
                     possible_loss = loss
                 else:
                     possible_loss = torch.cat([possible_loss, loss], dim=0)
-                
-            if criterion.maximize:
+            
+            if hasattr(criterion, "maximize") and criterion.maximize:
                 loss, indices = torch.max(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
             else:
                 loss, indices = torch.min(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
@@ -163,12 +163,38 @@ def _test_pit():
     torch.manual_seed(111)
 
     batch_size, C, T = 4, 2, 1024
-    
-    criterion = SISDR()
-    pit_criterion = PIT1d(criterion, n_sources=C)
-    
     input = torch.randint(2, (batch_size, C, T), dtype=torch.float)
     target = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    
+    print('-'*10, "SI-SDR", '-'*10)
+    criterion = SISDR()
+    pit_criterion = PIT1d(criterion, n_sources=C)
+    loss, pattern = pit_criterion(input, target)
+    
+    print(loss)
+    print(pattern)
+    print()
+
+    print('-'*10, "Squared error (customized loss)", '-'*10)
+    def squared_error(input, target, batch_mean=True):
+        """
+        Args:
+            input (batch_size, *, T)
+            target (batch_size, *, T)
+        Returns:
+            loss () or (batch_size)
+        """
+        loss = torch.sum((input - target)**2, dim=-1)
+        n_dim = loss.dim()
+        dim = tuple(range(1, n_dim))
+        loss = loss.mean(dim=dim)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+
+    pit_criterion = PIT1d(squared_error, n_sources=C)
     loss, pattern = pit_criterion(input, target)
     
     print(loss)
