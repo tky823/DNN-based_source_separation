@@ -5,7 +5,7 @@ import torch.nn.functional as F
 EPS=1e-12
 
 class DeepEmbedding(nn.Module):
-    def __init__(self, n_bins, hidden_channels=600, embed_dim=40, num_layers=2, causal=False, eps=EPS, **kwargs):
+    def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=2, causal=False, eps=EPS, **kwargs):
         super().__init__()
 
         self.n_bins = n_bins
@@ -14,16 +14,14 @@ class DeepEmbedding(nn.Module):
         self.eps = eps
 
         if causal:
-            if hidden_channels%2 == 1:
-                raise ValueError("hidden_channels must be even number when causal configuration.")
             bidirectional = False
             num_directions = 1
         else:
             bidirectional = True
             num_directions = 2
 
-        self.rnn = nn.LSTM(n_bins, hidden_channels//num_directions, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
-        self.fc = nn.Linear(hidden_channels, n_bins*embed_dim)
+        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
+        self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
 
         self.num_parameters = self._get_num_parameters()
     
@@ -59,7 +57,7 @@ class DeepEmbedding(nn.Module):
         return num_parameters
 
 class DeepEmbedding_pp(nn.Module):
-    def __init__(self, n_bins, hidden_channels=600, embed_dim=40, num_layers=4, enh_hidden_channels=600, enh_num_layers=2, causal=False, eps=EPS, **kwargs):
+    def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=4, enh_hidden_channels=600, enh_num_layers=2, causal=False, eps=EPS, **kwargs):
         super().__init__()
 
         self.n_bins = n_bins
@@ -68,18 +66,16 @@ class DeepEmbedding_pp(nn.Module):
         self.eps = eps
 
         if causal:
-            if hidden_channels%2 == 1 or enh_hidden_channels%2 == 1:
-                raise ValueError("hidden_channels and enh_hidden_channels must be even number when causal configuration.")
             bidirectional = False
             num_directions = 1
         else:
             bidirectional = True
             num_directions = 2
 
-        self.rnn = nn.LSTM(n_bins, hidden_channels//num_directions, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
-        self.fc = nn.Linear(hidden_channels, n_bins*embed_dim)
+        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
+        self.fc = nn.Linear(hidden_channels*num_directions, n_bins*embed_dim)
         self.embed_nonlinear = nn.Sigmoid()
-        self.net_enhancement = NaiveEnhancementNet(2*n_bins, hidden_channels=enh_hidden_channels, num_layers=enh_num_layers, causal=causal, eps=eps)
+        self.net_enhancement = NaiveEnhancementNet(2*n_bins, n_bins, hidden_channels=enh_hidden_channels, num_layers=enh_num_layers, causal=causal, eps=eps)
 
         self.num_parameters = self._get_num_parameters()
     
@@ -116,22 +112,20 @@ class DeepEmbedding_pp(nn.Module):
         return num_parameters
 
 class NaiveEnhancementNet(nn.Module):
-    def __init__(self, num_features, hidden_channels=600, num_layers=2, causal=False, eps=EPS, **kwargs):
+    def __init__(self, num_features, n_bins, hidden_channels=300, num_layers=2, causal=False, eps=EPS, **kwargs):
         super().__init__()
 
         self.eps = eps
 
         if causal:
-            if hidden_channels%2 == 1:
-                raise ValueError("hidden_channels must be even number when causal configuration.")
             bidirectional = False
             num_directions = 1
         else:
             bidirectional = True
             num_directions = 2
         
-        self.rnn = nn.LSTM(num_features, hidden_channels//num_directions, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
-        self.fc = nn.Linear(hidden_channels, n_bins)
+        self.rnn = nn.LSTM(num_features, hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
+        self.fc = nn.Linear(hidden_channels*num_directions, n_bins)
         self.nonlinear = nn.Softmax(dim=1)
     
     def forward(self, input):
@@ -140,7 +134,7 @@ class NaiveEnhancementNet(nn.Module):
 
 
 class ChimeraNet(nn.Module):
-    def __init__(self, n_bins, hidden_channels=600, embed_dim=20, num_layers=2, causal=False, eps=EPS, **kwargs):
+    def __init__(self, n_bins, hidden_channels=300, embed_dim=20, num_layers=2, causal=False, n_sources=2, eps=EPS, **kwargs):
         super().__init__()
 
         self.n_bins = n_bins
@@ -149,17 +143,15 @@ class ChimeraNet(nn.Module):
         self.eps = eps
 
         if causal:
-            if hidden_channels%2 == 1:
-                raise ValueError("hidden_channels must be even number when causal configuration.")
             bidirectional = True
             num_directions = 2
         else:
             bidirectional = False
             num_directions = 1
 
-        self.rnn = nn.LSTM(n_bins, hidden_channels//num_directions, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
+        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
 
-        self.embed_fc = nn.Linear(hidden_channels, n_bins*embed_dim)
+        self.embed_fc = nn.Linear(hidden_channels*num_directions, n_bins*embed_dim)
         self.embed_nonlinear = nn.Tanh()
 
         self.mask_fc = nn.Linear(hidden_channels, n_bins*n_sources)
@@ -199,20 +191,13 @@ class ChimeraNet(nn.Module):
                 
         return num_parameters
 
-
-if __name__ == '__main__':
-    from algorithm.stft import BatchSTFT, BatchInvSTFT
-    from algorithm.frequency_mask import ideal_binary_mask
-    from criterion.deep_clustering import AffinityLoss
-
-    torch.manual_seed(111)
-    
+def _test_deep_embedding():
     batch_size, T = 2, 512
     n_sources = 2
     fft_size, hop_size = 256, 128
     window_fn = 'hann'
     n_bins = fft_size//2 + 1
-    hidden_channels, embed_dim = 600, 40
+    hidden_channels, embed_dim = 300, 40
 
     stft = BatchSTFT(fft_size=fft_size, hop_size=hop_size, window_fn=window_fn)
     istft = BatchInvSTFT(fft_size=fft_size, hop_size=hop_size, window_fn=window_fn)
@@ -227,9 +212,7 @@ if __name__ == '__main__':
     target = target.view(batch_size, n_sources, n_bins, n_frames)
     target = ideal_binary_mask(target)
     input = target.sum(dim=1)
-    
-    print("="*10, "Deep embedding", "="*10)
-    
+
     # Non causal
     print("-"*10, "Non causal", "-"*10)
 
@@ -243,3 +226,19 @@ if __name__ == '__main__':
     loss = criterion(output, target)
     print(loss.item())
 
+def _test_chimeranet():
+    pass
+
+if __name__ == '__main__':
+    from algorithm.stft import BatchSTFT, BatchInvSTFT
+    from algorithm.frequency_mask import ideal_binary_mask
+    from criterion.deep_clustering import AffinityLoss
+
+    torch.manual_seed(111)
+    
+    print("="*10, "Deep embedding", "="*10)
+    _test_deep_embedding()
+    print()
+
+    print("="*10, "Chimera Net", "="*10)
+    _test_chimeranet()

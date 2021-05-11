@@ -19,7 +19,8 @@ A PyTorch implementation of DNN-based source separation.
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
 | DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
-| D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) |
+| D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) |  |
+| SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) |  |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
 
 ## Method related to training
@@ -29,22 +30,21 @@ A PyTorch implementation of DNN-based source separation.
 | One-and-rest PIT | [Recursive Speech Separation for Unknown Number of Speakers](https://arxiv.org/abs/1904.03065) | ✔ |
 
 ## Example
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/librispeech/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
 
 LibriSpeech example using [Conv-TasNet](https://arxiv.org/abs/1809.07454)
-```
-cd <REPOSITORY_ROOT>/egs/librispeech/
-```
+
+You can check other tutorials in `<REPOSITORY_ROOT>/egs/tutorials/`.
 
 ### 0. Preparation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/common/
-. ./prepare.sh <DATASET_DIR> <#SPEAKERS>
+cd <REPOSITORY_ROOT>/egs/tutorials/common/
+. ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
 ```
 
 ### 1. Training
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
@@ -55,13 +55,13 @@ If you want to resume training,
 
 ### 2. Evaluation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
 
@@ -85,3 +85,4 @@ cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
 - v0.4.3: Re-fix DPRNN-TasNet.
 - v0.5.0: Add `parse_options.sh`.
 - v0.5.1: Multichannel support.
+- v0.5.2: Add metric learning tutorials.
