@@ -6,12 +6,12 @@ import os
 import numpy as np
 import pyaudio
 import torch
+import torchaudio
 
-from utils.utils_audio import write_wav
 from algorithm.stft import BatchSTFT, BatchInvSTFT
 from models.danet import DANet
 
-parser = argparse.ArgumentParser(description="Demonstration of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Demonstration of DaNet")
 
 parser.add_argument('--sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
@@ -63,7 +63,8 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     signal = signal / 32768
     
     save_path = os.path.join(save_dir, "mixture.wav")
-    write_wav(save_path, signal=signal, sr=sr)
+    mixture = torch.Tensor(signal).float()
+    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=sr)
 
     # Separate by DNN
     model = load_model(model_path)
@@ -85,7 +86,6 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     print("Start separation...")
     
     with torch.no_grad():
-        mixture = torch.Tensor(signal).float()
         T = mixture.size(0)
         mixture = mixture.unsqueeze(dim=0)
         mixture = stft(mixture).unsqueeze(dim=0)
@@ -96,13 +96,13 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
         real, imag = ratio * real, ratio * imag
         estimated_sources = torch.cat([real, imag], dim=2)
         estimated_sources = estimated_sources.squeeze(dim=0)
-        estimated_sources = istft(estimated_sources, T=T).numpy()
+        estimated_sources = istft(estimated_sources, T=T)
     
     print("Finished separation...")
     
     for idx, estimated_source in enumerate(estimated_sources):
         save_path = os.path.join(save_dir, "estimated-{}.wav".format(idx))
-        write_wav(save_path, signal=estimated_source, sr=sr)
+        torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=sr)
     
 def show_progress_bar(time, duration):
     rest = duration-time
