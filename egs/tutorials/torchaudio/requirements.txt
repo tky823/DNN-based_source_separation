@@ -1,6 +1,6 @@
 numpy>=1.19.0
 matplotlib>=3.3.2
-ipython>=5.5.0
+ipython~=5.5.0
 torch>=1.8.1
 torchaudio>=0.8.1
 mir_eval==0.6
