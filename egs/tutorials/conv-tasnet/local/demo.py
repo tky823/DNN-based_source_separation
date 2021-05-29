@@ -37,7 +37,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     for i in range(num_loop):
         input = stream.read(num_chunk)
         sequence.append(input)
-        time = int(i*num_chunk/sr)
+        time = int(i * num_chunk / sr)
         show_progress_bar(time, duration)
     
     show_progress_bar(duration, duration)
