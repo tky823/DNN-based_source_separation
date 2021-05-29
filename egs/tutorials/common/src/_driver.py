@@ -285,12 +285,12 @@ class Tester:
 
                 repeated_mixture = torch.tile(mixture, dims=(self.n_sources, 1))
                 result_estimated = bss_eval_sources(
-                    reference_sources=sources.cpu(),
-                    estimated_sources=estimated_sources.cpu()
+                    reference_sources=sources.numpy(),
+                    estimated_sources=estimated_sources.numpy()
                 )
                 result_mixed = bss_eval_sources(
-                    reference_sources=sources.cpu(),
-                    estimated_sources=repeated_mixture.cpu()
+                    reference_sources=sources.numpy(),
+                    estimated_sources=repeated_mixture.numpy()
                 )
         
                 sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
