@@ -175,19 +175,19 @@ class Trainer:
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
-                    estimated_sources = output[0].detach().cpu().numpy()
+                    mixture = mixture[0].squeeze(dim=0).detach().cpu()
+                    estimated_sources = output[0].detach().cpu()
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
-                        norm = np.abs(estimated_source).max()
+                        norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
         
@@ -277,27 +277,27 @@ class Tester:
                 loss = loss.sum(dim=0)
                 loss_improvement = loss_mixture.item() - loss.item()
                 
-                mixture = mixture[0].squeeze(dim=0).cpu().numpy() # -> (T,)
-                sources = sources[0].cpu().numpy() # -> (n_sources, T)
-                estimated_sources = output[0].cpu().numpy() # -> (n_sources, T)
+                mixture = mixture[0].squeeze(dim=0).cpu() # -> (T,)
+                sources = sources[0].cpu() # -> (n_sources, T)
+                estimated_sources = output[0].cpu() # -> (n_sources, T)
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 segment_IDs = segment_IDs[0] # -> (n_sources,)
 
-                repeated_mixture = np.tile(mixture, reps=(self.n_sources, 1))
+                repeated_mixture = torch.tile(mixture, reps=(self.n_sources, 1))
                 result_estimated = bss_eval_sources(
-                    reference_sources=sources,
-                    estimated_sources=estimated_sources
+                    reference_sources=sources.cpu(),
+                    estimated_sources=estimated_sources.cpu()
                 )
                 result_mixed = bss_eval_sources(
-                    reference_sources=sources,
-                    estimated_sources=repeated_mixture
+                    reference_sources=sources.cpu(),
+                    estimated_sources=repeated_mixture.cpu()
                 )
         
                 sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
                 sir_improvement = np.mean(result_estimated[1] - result_mixed[1])
                 sar = np.mean(result_estimated[2])
                 
-                norm = np.abs(mixture).max()
+                norm = torch.abs(mixture).max()
                 mixture /= norm
                 mixture_ID = "+".join(segment_IDs)
 
@@ -313,7 +313,7 @@ class Tester:
                     segment_ID = segment_IDs[order_idx]
                     
                     # Target
-                    norm = np.abs(source).max()
+                    norm = torch.abs(source).max()
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
@@ -322,7 +322,7 @@ class Tester:
                     torchaudio.save(source_path, source, sample_rate=self.sr)
                     
                     # Estimated source
-                    norm = np.abs(estimated_source).max()
+                    norm = torch.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
@@ -482,21 +482,21 @@ class AttractorTrainer(Trainer):
                     real, imag = ratio * real, ratio * imag
                     estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
-                    estimated_sources = estimated_sources.cpu().numpy()
+                    estimated_sources = estimated_sources.cpu()
                     
                     mixture = self.istft(mixture) # -> (1, T)
-                    mixture = mixture.squeeze(dim=0).numpy() # -> (T,)
+                    mixture = mixture.squeeze(dim=0) # -> (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
-                        norm = np.abs(estimated_source).max()
+                        norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
         
@@ -569,11 +569,11 @@ class AttractorTester(Tester):
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 T = T[0]  # -> ()
                 segment_IDs = segment_IDs[0] # -> (n_sources,)
-                mixture = self.istft(mixture, T=T).squeeze(dim=0).numpy() # -> (T,)
-                sources = self.istft(sources, T=T).numpy() # -> (n_sources, T)
-                estimated_sources = self.istft(estimated_sources, T=T).numpy() # -> (n_sources, T)
+                mixture = self.istft(mixture, T=T).squeeze(dim=0) # -> (T,)
+                sources = self.istft(sources, T=T) # -> (n_sources, T)
+                estimated_sources = self.istft(estimated_sources, T=T) # -> (n_sources, T)
                 
-                norm = np.abs(mixture).max()
+                norm = torch.abs(mixture).max()
                 mixture /= norm
                 mixture_ID = "+".join(segment_IDs)
 
@@ -589,7 +589,7 @@ class AttractorTester(Tester):
                     segment_ID = segment_IDs[order_idx]
                     
                     # Target
-                    norm = np.abs(source).max()
+                    norm = torch.abs(source).max()
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
@@ -598,7 +598,7 @@ class AttractorTester(Tester):
                     torchaudio.save(source_path, source, sample_rate=self.sr)
                     
                     # Estimated source
-                    norm = np.abs(estimated_source).max()
+                    norm = torch.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
@@ -731,21 +731,21 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                     real, imag = ratio * real, ratio * imag
                     estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
-                    estimated_sources = estimated_sources.cpu().numpy()
+                    estimated_sources = estimated_sources.cpu()
                     
                     mixture = self.istft(mixture) # -> (1, T)
-                    mixture = mixture.squeeze(dim=0).numpy() # -> (T,)
+                    mixture = mixture.squeeze(dim=0) # -> (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
-                        norm = np.abs(estimated_source).max()
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
+                        norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
         
@@ -857,19 +857,19 @@ class ORPITTrainer(Trainer):
                 output = torch.cat([output, output_rest], dim=1)
                 
                 if idx < 5:
-                    mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
-                    estimated_sources = output[0].detach().cpu().numpy()
+                    mixture = mixture[0].squeeze(dim=0).detach().cpu()
+                    estimated_sources = output[0].detach().cpu()
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
-                        norm = np.abs(estimated_source).max()
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
+                        norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
         
