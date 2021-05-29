@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from _dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
-from _driver import AttractorTrainer
+from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
+from driver import AttractorTrainer
 from models.danet import DANet
 from criterion.distance import L2Loss
 

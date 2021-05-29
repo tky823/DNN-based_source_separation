@@ -1,8 +1,8 @@
 import os
 import json
-import numpy as np
-import soundfile as sf
+
 import torch
+import torchaudio
 
 from algorithm.stft import BatchSTFT
 from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
@@ -39,20 +39,16 @@ class WaveDataset(LibriSpeechDataset):
             source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, sr = sf.read(wav_path)
-            wave = np.array(wave)[start: end]
-            wave = wave[None]
+            wave, sr = torchaudio.load(wav_path)
+            wave = wave[:, start: end]
             mixture = mixture + wave
         
             if sources is None:
                 sources = wave
             else:
-                sources = np.concatenate([sources, wave], axis=0)
+                sources = torch.cat([sources, wave], dim=0)
             
             segment_IDs.append("{}_{}-{}".format(source_data['utterance-ID'], start, end))
-        
-        mixture = torch.Tensor(mixture).float()
-        sources = torch.Tensor(sources).float()
         
         return mixture, sources, segment_IDs
         

@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from _dataset import SpectrogramTrainDataset, TrainDataLoader
-from _driver import Trainer
+from dataset import SpectrogramTrainDataset, TrainDataLoader
+from driver import Trainer
 from models.dpcl_net import DeepEmbedding
 from criterion.sdr import AffinityLoss
 
