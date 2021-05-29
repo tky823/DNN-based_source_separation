@@ -5,10 +5,10 @@ channels:
   - pytorch
 
 dependencies:
-  - python=>3.7,<3.9
-  - numpy=>1.19
-  - matplotlib=>3.3.2
-  - pytorch=>1.8.1
+  - python>=3.7,<3.9
+  - numpy>=1.19
+  - matplotlib>=3.3.2
+  - pytorch>=1.8.1
   - cudatoolkit>=10
-  - torchaudio=>0.8.1
+  - torchaudio>=0.8.1
   - mir_eval==0.6
