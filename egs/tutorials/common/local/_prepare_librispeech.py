@@ -7,7 +7,6 @@ import json
 import glob
 import random
 
-import numpy as np
 import torchaudio
 
 from utils.utils import set_seed
