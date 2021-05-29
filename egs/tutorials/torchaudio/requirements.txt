@@ -1,0 +1,5 @@
+numpy==1.19.0
+matplotlib==3.3.2
+torch==1.8.1
+torchaudio==0.8.1
+mir_eval==0.6
