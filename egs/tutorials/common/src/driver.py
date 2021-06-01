@@ -388,7 +388,7 @@ class AttractorTrainer(Trainer):
         # Override
         super()._reset(args)
         
-        self.F_bin = args.F_bin
+        self.n_bins = args.n_bins
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run_one_epoch_train(self, epoch):
@@ -396,8 +396,6 @@ class AttractorTrainer(Trainer):
         """
         Training
         """
-        F_bin = self.F_bin
-        
         self.model.train()
         
         train_loss = 0
@@ -441,7 +439,6 @@ class AttractorTrainer(Trainer):
         Validation
         """
         n_sources = self.n_sources
-        F_bin = self.F_bin
         
         self.model.eval()
         
@@ -451,10 +448,10 @@ class AttractorTrainer(Trainer):
         with torch.no_grad():
             for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, 2*F_bin, T_bin)
-                assignment (batch_size, n_sources, F_bin, T_bin)
-                threshold_weight (batch_size, F_bin, T_bin)
+                mixture (batch_size, 1, 2*n_bins, n_frames)
+                sources (batch_size, n_sources, 2*n_bins, n_frames)
+                assignment (batch_size, n_sources, n_bins, n_frames)
+                threshold_weight (batch_size, n_bins, n_bins)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -474,13 +471,13 @@ class AttractorTrainer(Trainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (1, 2*F_bin, T_bin)
-                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
-                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0].cpu() # -> (1, 2*n_bins, n_frames)
+                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
+                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     real, imag = mixture[...,0], mixture[...,1]
                     real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
+                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
@@ -518,12 +515,11 @@ class AttractorTester(Tester):
         # Override
         super()._reset(args)
         
-        self.F_bin = args.F_bin
+        self.n_bins = args.n_bins
         self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run(self):
         n_sources = self.n_sources
-        F_bin = self.F_bin
         
         self.model.eval()
         
@@ -535,10 +531,10 @@ class AttractorTester(Tester):
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
-                mixture (1, 1, F_bin, T_bin, 2)
-                sources (1, n_sources, F_bin, T_bin, 2)
-                assignment (1, n_sources, F_bin, T_bin)
-                threshold_weight (1, F_bin, T_bin)
+                mixture (1, 1, n_bins, n_frames, 2)
+                sources (1, n_sources, n_bins, n_frames, 2)
+                assignment (1, n_sources, n_bins, n_frames)
+                threshold_weight (1, n_bins, n_frames)
                 T (1,)
                 """
                 if self.use_cuda:
@@ -548,7 +544,7 @@ class AttractorTester(Tester):
                     threshold_weight = threshold_weight.cuda()
                 
                 real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
+                mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, n_bins, n_frames)
                 real, imag = sources[...,0], sources[...,1]
                 sources_amplitude = torch.sqrt(real**2+imag**2)
                 
@@ -559,12 +555,12 @@ class AttractorTester(Tester):
                 mixture = mixture[0].cpu()
                 sources = sources[0].cpu()
     
-                mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
-                estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
+                estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                 ratio = estimated_sources_amplitude / mixture_amplitude
-                real, imag = mixture[...,0], mixture[...,1] # -> (1, F_bin, T_bin), (1, F_bin, T_bin)
-                real, imag = ratio * real, ratio * imag # -> (n_sources, F_bin, T_bin), (n_sources, F_bin, T_bin)
-                estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
+                real, imag = mixture[...,0], mixture[...,1] # -> (1, n_bins, n_frames), (1, n_bins, n_frames)
+                real, imag = ratio * real, ratio * imag # -> (n_sources, n_bins, n_frames), (n_sources, n_bins, n_frames)
+                estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
                 
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 T = T[0]  # -> ()
@@ -648,8 +644,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         """
         Training
         """
-        F_bin = self.F_bin
-        
         self.model.train()
         
         train_loss = 0
@@ -692,7 +686,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         Validation
         """
         n_sources = self.n_sources
-        F_bin = self.F_bin
         
         self.model.eval()
         
@@ -702,9 +695,9 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         with torch.no_grad():
             for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, F_bin, T_bin, 2)
-                sources (batch_size, n_sources, F_bin, T_bin, 2)
-                threshold_weight (batch_size, F_bin, T_bin)
+                mixture (batch_size, 1, n_bins, n_frames, 2)
+                sources (batch_size, n_sources, n_bins, n_frames, 2)
+                threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -723,13 +716,13 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (1, 2*F_bin, T_bin)
-                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
-                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0].cpu() # -> (1, 2*n_bins, n_frames)
+                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
+                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     real, imag = mixture[...,0], mixture[...,1]
                     real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
+                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     

@@ -37,7 +37,7 @@ def main(args):
     test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
-    args.F_bin = args.fft_size//2 + 1
+    args.n_bins = args.fft_size//2 + 1
     loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
     model = DANet.build_model(args.model_path)

@@ -79,7 +79,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     n_sources = args.n_sources
     iter_clustering = args.iter_clustering
     
-    F_bin = fft_size//2 + 1
+    n_bins = fft_size//2 + 1
     stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
     istft = BatchInvSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
 
@@ -89,7 +89,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
         T = mixture.size(0)
         mixture = mixture.unsqueeze(dim=0)
         mixture = stft(mixture).unsqueeze(dim=0)
-        real, imag = mixture[:,:,:F_bin], mixture[:,:,F_bin:]
+        real, imag = mixture[:,:,:n_bins], mixture[:,:,n_bins:]
         mixture_amplitude = torch.sqrt(real**2+imag**2)
         estimated_sources_amplitude = model(mixture_amplitude, n_sources=n_sources, iter_clustering=iter_clustering) # TODO: Args, threshold
         ratio = estimated_sources_amplitude / mixture_amplitude
