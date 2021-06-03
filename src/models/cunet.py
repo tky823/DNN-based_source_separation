@@ -14,32 +14,6 @@ class ConditionedUNetBase(nn.Module):
     def __init__(self):
         super().__init__()
         
-    @classmethod
-    def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
-        channels = package['channels']
-        kernel_size, stride, dilated = package['kernel_size'], package['stride'], package['dilated']
-        nonlinear_enc, nonlinear_dec = package['nonlinear_enc'], package['nonlinear_dec']
-        out_channels = package['out_channels']
-        
-        model = cls(channels, kernel_size, stride=stride, dilated=dilated, nonlinear_enc=nonlinear_enc, nonlinear_dec=nonlinear_dec, out_channels=out_channels)
-        
-        return model
-        
-    def get_package(self):
-        package = {
-            'channels': self.channels,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            'dilated': self.dilated,
-            'nonlinear_enc': self.nonlinear_enc,
-            'nonlinear_dec': self.nonlinear_dec,
-            'out_channels': self.out_channels
-        }
-        
-        return package
-        
     def _get_num_parameters(self):
         num_parameters = 0
         
@@ -52,21 +26,47 @@ class ConditionedUNetBase(nn.Module):
 class ConditionedUNet2d(ConditionedUNetBase):
     def __init__(
             self,
-            channels,
-            kernel_size, stride=None,
-            channels_control=None,
-            kernel_size_control=None, stride_control=None,
-            dilated=False,
-            nonlinear_enc='leaky-relu', nonlinear_dec='leaky-relu',
-            dropout_control=False,
+            control_net,
+            unet,
             masking=True,
-            out_channels=None
         ):
-        # TODO: dilated_control, separable_control, nonlinear_control, norm_control
         """
         Args:
             channels <list<int>>:
             out_channels <int>:
+        """
+        super().__init__()
+
+        self.masking = masking
+
+        self.control_net = control_net
+        self.backbone = unet
+        
+        self.num_parameters = self._get_num_parameters()
+        
+    def forward(self, input, latent):
+        gamma, beta = self.control_net(latent)
+        x = self.backbone(input, gamma, beta)
+
+        if self.masking:
+            output = x * input
+        else:
+            output = x
+        
+        return output
+
+class UNet2d(ConditionedUNetBase):
+    def __init__(
+            self,
+            channels,
+            kernel_size, stride=None,
+            dilated=False,
+            nonlinear_enc='leaky-relu', nonlinear_dec='leaky-relu',
+            out_channels=None
+        ):
+        """
+        Args:
+            channels <list<int>>:
         """
         super().__init__()
         
@@ -86,30 +86,15 @@ class ConditionedUNet2d(ConditionedUNetBase):
                 _channels_dec.append(2 * out_channel)
                 
         channels_dec = _channels_dec
-        
-        self.channels = channels
-        self.kernel_size, self.stride, self.dilated = kernel_size, stride, dilated
-        self.nonlinear_enc, self.nonlinear_dec = nonlinear_enc, nonlinear_dec
-        self.out_channels = out_channels
-        self.masking = masking
 
-        self.control_net = ControlNet(channels_control, channels[1:], kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
         self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
         self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
-
-        self.num_parameters = self._get_num_parameters()
         
-    def forward(self, input, latent):
-        gamma, beta = self.control_net(latent)
+    def forward(self, input, gamma, beta):
         x, skip = self.encoder(input, gamma, beta)
         x = self.bottleneck(x)
-        x = self.decoder(x, skip[::-1])
-
-        if self.masking:
-            output = x * input
-        else:
-            output = x
+        output = self.decoder(x, skip[::-1])
         
         return output
 
@@ -340,7 +325,28 @@ class DecoderBlock2d(nn.Module):
         
         return output
 
-class ControlNet(nn.Module):
+class ControlDenseNet(nn.Module):
+    def __init__(self, channels, out_channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', dropout=False, norm=False):
+        """
+        Args:
+            out_channels <list<int>>: output_channels
+        """
+        super().__init__()
+
+        raise NotImplementedError()
+
+
+    def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>: 
+        Returns:
+            output_weights <list<torch.Tensor>>: 
+            output_biases <list<torch.Tensor>>: 
+        """
+        raise NotImplementedError()
+
+class ControlConvNet(nn.Module):
     def __init__(self, channels, out_channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', dropout=False, norm=False):
         """
         Args:
@@ -512,7 +518,7 @@ def _test_control_net():
     batch_size = 2
 
     input = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
-    model = ControlNet(channels, out_channels, kernel_size, stride=stride, dropout=dropout, norm=norm)
+    model = ControlConvNet(channels, out_channels, kernel_size, stride=stride, dropout=dropout, norm=norm)
     output_gamma, output_beta = model(input)
 
     print(model)
@@ -539,7 +545,9 @@ def _test_cunet():
 
     input = torch.randn((batch_size, 1, n_bins, n_frames), dtype=torch.float)
     input_latent = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
-    model = ConditionedUNet2d(channels, kernel_size=kernel_size, stride=stride, channels_control=channels_control, kernel_size_control=kernel_size_control, stride_control=stride_control, nonlinear_dec=nonlinear_dec, dropout_control=dropout_control)
+    control_net = ControlConvNet(channels_control, channels[1:], kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
+    unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
+    model = ConditionedUNet2d(control_net=control_net, unet=unet, masking=True)
     output = model(input, input_latent)
     print(model)
     print(input.size(), input_latent.size(), output.size())
