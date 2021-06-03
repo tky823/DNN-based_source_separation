@@ -6,6 +6,10 @@ from torch.nn.modules.utils import _pair
 from conv import DepthwiseSeparableConv1d, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
 from models.film import FiLM2d
 
+"""
+Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations
+"""
+
 class ConditionedUNetBase(nn.Module):
     def __init__(self):
         super().__init__()
