@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -61,6 +63,8 @@ class D3Net(nn.Module):
         self.gated_conv2d = GTU2d(depth_d2block * growth_rate_d2block, in_channels, kernel_size=kernel_size_gated, stride=(1,1), padding=(1,1))
 
         self.num_parameters = self._get_num_parameters()
+
+        warnings.warn("We will change the network architecture.", DeprecationWarning)
     
     def forward(self, input):
         stacked = []
