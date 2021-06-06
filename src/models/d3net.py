@@ -59,9 +59,22 @@ class D3Net(nn.Module):
         self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, depth=depth_final, eps=eps)
         self.norm2d = nn.BatchNorm2d(growth_rate_final, eps=eps)
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
-        # TODO: scale
         self.nonlinear2d = nn.ReLU()
+
+        self.in_scale, self.in_bias = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
+        self.out_scale, self.out_bias = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
+
+        self.in_channels, self.num_features = in_channels, num_features
+        self.growth_rate = growth_rate
+        self.kernel_size = kernel_size
+        self.scale = scale
+        self.num_d2blocks, self.depth = num_d2blocks, depth
+        self.growth_rate_final = growth_rate_final
+        self.kernel_size_final = kernel_size_final
+        self.depth_final = depth_final
+        self.eps = eps
         
+        self._reset_parameters()
     
     def forward(self, input):
         """
@@ -71,13 +84,13 @@ class D3Net(nn.Module):
             output (batch_size, in_channels, n_bins, n_frames)
         """
         bands, sections = self.bands, self.sections
-
-        _, _, n_bins, _ = input.size()
+        n_bins = input.size(2)
 
         sections = [sum(sections), n_bins - sum(sections)]
         x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x = self.band_split(x_valid)
+        x = self.in_scale.unsqueeze(dim=1) * x_valid + self.in_bias.unsqueeze(dim=1)
+        x = self.band_split(x)
 
         x_bands = []
         for band, x_band in zip(bands, x):
@@ -91,13 +104,34 @@ class D3Net(nn.Module):
         x = self.d2block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        # TODO: scale
         x = self.nonlinear2d(x)
+        x = self.out_scale.unsqueeze(dim=1) * x + self.out_bias.unsqueeze(dim=1)
 
         output = torch.cat([x, x_invalid], dim=2)
 
         return output
-
+    
+    def _reset_parameters(self):
+        self.in_scale.data.fill_(1)
+        self.in_bias.data.zero_()
+        self.out_scale.data.fill_(1)
+        self.out_bias.data.zero_()
+    
+    def get_package(self):
+        config = {
+            'in_channels': self.in_channels, 'num_features': self.num_features,
+            'growth_rate': self.growth_rate,
+            'kernel_size': self.kernel_size,
+            'bands': self.bands, 'sections': self.sections,
+            'scale': self.scale,
+            'num_d2blocks': self.num_d2blocks, 'depth': self.depth,
+            'growth_rate_final': self.growth_rate_final,
+            'kernel_size_final': self.kernel_size_final,
+            'depth_final': self.depth_final,
+            'eps': self.eps
+        }
+        
+        return config
     
     @classmethod
     def build_from_config(cls, config_path):
@@ -149,6 +183,15 @@ class D3Net(nn.Module):
         )
         
         return model
+    
+    def _get_num_parameters(self):
+        num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                num_parameters += p.numel()
+                
+        return num_parameters
 
 class D3NetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, depth=None, out_channels=None, eps=EPS):
@@ -593,7 +636,7 @@ def _test_d3net_backbone():
     print(input.size(), output.size())
 
 def _test_d3net():
-    config_path = "./data/d3net/vocals.yaml"
+    config_path = "./data/d3net/vocals_toy.yaml"
     batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 128 # 4, 2, 2049, 256
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
@@ -602,36 +645,6 @@ def _test_d3net():
     output = model(input)
 
     print(model)
-    print(input.size(), output.size())
-
-def _test_d3net_paper():
-    torch.manual_seed(111)
-    
-    batch_size = 4
-    sections = [256, 1344]
-    H, W = sum(sections), 256
-    in_channels, num_features, growth_rate, bottleneck_channels = 2, {'low': 32, 'high': 8, 'full': 32}, {'low': [16, 18, 20, 22, 20, 18, 16], 'high': [2, 2, 2, 2, 2, 2, 2], 'full': [13, 14, 15, 16, 17, 16, 14, 12, 11]}, 8
-    kernel_size = {'low': (3, 3), 'high': (3, 3), 'full': (3, 3)}
-    scale = {'low': (2,2), 'high': (2,2), 'full': (2,2)}
-    depth, compressed_depth = {'low': [5, 5, 5, 5, 4, 4, 4], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [4, 5, 6, 7, 8, 6, 5, 4, 4]}, {'low': [2, 2, 2, 2, 2, 2, 2], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [2, 2, 2, 2, 2, 2, 2, 2, 2]}
-    num_d3blocks, num_d2blocks = {'low': 7, 'high': 7, 'full': 9}, {'low': [2, 2, 2, 2, 2, 2, 2], 'high': [1, 1, 1, 1, 1, 1, 1], 'full': [2, 2, 2, 2, 2, 2, 2, 2, 2]}
-
-    kernel_size_d2block = (3, 3)
-    growth_rate_d2block = 12
-    depth_d2block = 3
-
-    kernel_size_gated = (3, 3)
-
-    input = torch.randn(batch_size, in_channels, H, W)
-
-    model = D3Net(
-        in_channels, num_features, growth_rate, bottleneck_channels, kernel_size=kernel_size, sections=sections, scale=scale,
-        num_d3blocks=num_d3blocks, num_d2blocks=num_d2blocks, depth=depth, compressed_depth=compressed_depth,
-        growth_rate_d2block=growth_rate_d2block, kernel_size_d2block=kernel_size_d2block, depth_d2block=depth_d2block,
-        kernel_size_gated=kernel_size_gated
-    )
-    print(model)
-    output = model(input)
     print(input.size(), output.size())
 
 if __name__ == '__main__':
@@ -655,5 +668,3 @@ if __name__ == '__main__':
 
     print('='*10, "D3Net", '='*10)
     _test_d3net()
-
-    # _test_d3net_paper()
