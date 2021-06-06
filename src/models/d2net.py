@@ -1,20 +1,24 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from conv import MultiDilatedConv2d
+from torch.nn.modules.utils import _pair
 
 EPS=1e-12
-
+     
 class D2Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, eps=EPS):
+        """
+        Args:
+            in_channels <int>: # of input channels
+            growth_rate <int> or <list<int>>: # of output channels
+            kernel_size <int> or <tuple<int>>: Kernel size
+            depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
+        """
         super().__init__()
 
         if type(growth_rate) is int:
             assert depth is not None, "Specify `depth`"
-            growth_rate = [
-                growth_rate for _ in range(depth)
-            ]
+            growth_rate = [growth_rate] * depth
         elif type(growth_rate) is list:
             if depth is not None:
                 assert depth == len(growth_rate), "`depth` is different from `len(growth_rate)`"
@@ -26,165 +30,104 @@ class D2Block(nn.Module):
         self.depth = depth
 
         net = []
-        num_features = []
+        _in_channels = in_channels
 
-        for idx in range(self.depth):
-            if idx == 0:
-                num_features.append(in_channels)
-            else:
-                num_features.append(growth_rate[idx-1])
-            net.append(MultiDilatedConvBlock(num_features, growth_rate[idx], kernel_size=kernel_size, norm=norm, nonlinear=nonlinear, eps=eps))
-        self.net = nn.Sequential(*net)
+        for idx in range(depth):
+            _out_channels = sum(growth_rate[idx:])
+            dilation = 2**idx
+            conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, eps=eps)
+            net.append(conv_block)
+            _in_channels = growth_rate[idx]
 
-        self.out_channels = sum(growth_rate)
-        self.eps = eps
+        self.net = nn.ModuleList(net)
     
     def forward(self, input):
         """
         Args:
-            input (batch_size, in_channels, n_bins, n_frames)
-            output 
-                (batch_size, sum(growth_rate), n_bins, n_frames) if type(growth_rate) is list<int>
-                or (batch_size, depth * growth_rate, n_bins, n_frames) if type(growth_rate) is int
+            input: (batch_size, in_channels, H, W)
+        Returns:
+            output: (batch_size, out_channels, H, W), where `out_channels` is determined by ... 
         """
+        growth_rate, depth = self.growth_rate, self.depth
+
         x = input
-        stacked = []
-        output = []
+        x_residual = 0
 
-        stacked.append(input)
-
-        for idx in range(self.depth):
-            if idx != 0:
-                x = torch.cat(stacked, dim=1)
+        for idx in range(depth):
             x = self.net[idx](x)
-            stacked.append(x)
+            x_residual = x_residual + x
+            
+            in_channels = growth_rate[idx]
+            stacked_channels = sum(growth_rate[idx+1:])
+            sections = [in_channels, stacked_channels]
+
+            if idx != depth - 1:
+                x, x_residual = torch.split(x_residual, sections, dim=1)
         
-        output = torch.cat(stacked[1:], dim=1)
+        output = x_residual
 
         return output
 
-
-class CompressedD2Block(D2Block):
-    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, compressed_depth=None, norm=True, nonlinear='relu', eps=EPS):
-        super().__init__(in_channels, growth_rate, kernel_size, depth=depth, norm=norm, nonlinear=nonlinear, eps=eps)
-
-        assert compressed_depth is not None, "Specify `compressed_depth`"     
-        assert compressed_depth <= self.depth, "`compressed_depth` should be equal to or less than `depth`"
-
-        self.compressed_depth = compressed_depth
-        
-        self.out_channels = sum(self.growth_rate[-self.compressed_depth:])
-    
-    def forward(self, input):
-        """
-        Args:
-            input (batch_size, in_channels, n_bins, n_frames)
-            output
-                (batch_size, sum(growth_rate[-compressed_depth:]), n_bins, n_frames) if type(growth_rate) is list<int>
-                or (batch_size, compressed_depth * growth_rate, n_bins, n_frames) if type(growth_rate) is int
-        """
-        x = input
-        stacked = []
-        output = []
-
-        stacked.append(input)
-
-        for idx in range(self.depth):
-            if idx != 0:
-                x = torch.cat(stacked, dim=1)
-            x = self.net[idx](x)
-            stacked.append(x)
-        
-        output = torch.cat(stacked[-self.compressed_depth:], dim=1)
-
-        return output
-    
-    def extra_repr(self):
-        s = '(compressed_depth): {}'.format(self.compressed_depth)
-
-        return s
-
-
-class MultiDilatedConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, norm=True, nonlinear='relu', eps=EPS):
+class ConvBlock2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, eps=EPS):
         super().__init__()
 
-        assert type(in_channels) is list, "`in_channels` must be type of list."
+        assert stride == 1, "`stride` is expected 1"
 
-        self.norm = norm
-        self.nonlinear = nonlinear
+        self.kernel_size = _pair(kernel_size)
+        self.dilation = _pair(dilation)
 
-        if self.norm:
-            self.norm2d = nn.BatchNorm2d(sum(in_channels), eps=eps)
-        if self.nonlinear:
-            if self.nonlinear == 'relu':
-                self.nonlinear2d = nn.ReLU()
-            else:
-                raise NotImplementedError("Not support nonlinearity {}".format(self.nonlinear))
-        self.conv2d = MultiDilatedConv2d(in_channels, out_channels, kernel_size=kernel_size)
+        self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
+        self.nonlinear2d = nn.ReLU()
+        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
 
     def forward(self, input):
         """
         Args:
-            input (batch_size, sum(in_channels), n_bins, n_frames)
-            output (batch_size, out_channels, n_bins, n_frames)
+            input (batch_size, in_channels, H, W)
+        Returns:
+            output (batch_size, out_channels, H, W)
         """
-        x = input
-        if self.norm:
-            x = self.norm2d(x)
-        if self.nonlinear:
-            x = self.nonlinear2d(x)
+        kernel_size = self.kernel_size
+        dilation = self.dilation
+        padding_height = (kernel_size[0] - 1) * dilation[0]
+        padding_width = (kernel_size[1] - 1) * dilation[1]
+        padding_up = padding_height // 2
+        padding_bottom = padding_height - padding_up
+        padding_left = padding_width // 2
+        padding_right = padding_width - padding_left
+
+        x = self.norm2d(input)
+        x = self.nonlinear2d(x)
+        x = F.pad(x, (padding_left, padding_right, padding_up, padding_bottom))
         output = self.conv2d(x)
 
         return output
 
-def _test_multidilated_conv_block():
-    torch.manual_seed(111)
-    
-    batch_size = 4
-    H, W = 16, 32
-    in_channels, growth_rate = [3, 4, 8], 2
-    kernel_size = (3, 3)
-
-    input = torch.randn(batch_size, sum(in_channels), H, W)
-    model = MultiDilatedConvBlock(in_channels, growth_rate, kernel_size=kernel_size)
-    print(model)
-    output = model(input)
-    print(input.size(), output.size())
-
 def _test_d2block():
-    torch.manual_seed(111)
-    
     batch_size = 4
-    H, W = 16, 32
-    in_channels, growth_rate = 4, 2
+    n_bins, n_frames = 16, 64
+    in_channels = 3
+    growth_rate = 2
+    kernel_size = (3, 3)
     depth = 4
 
-    input = torch.randn(batch_size, in_channels, H, W)
-    model = D2Block(in_channels, growth_rate, kernel_size=(3,3), depth=depth)
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size, depth=depth)
+
     print(model)
     output = model(input)
     print(input.size(), output.size())
+    print()
 
-def _test_compressed_d2block():
-    torch.manual_seed(111)
-    
-    batch_size = 4
-    H, W = 16, 32
-    in_channels, growth_rate = 4, 2
-    depth, compressed_depth = 4, 2
+    growth_rate = [3, 4, 5, 6]
+    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size)
 
-    input = torch.randn(batch_size, in_channels, H, W)
-    model = CompressedD2Block(in_channels, growth_rate, kernel_size=(3,3), depth=depth, compressed_depth=compressed_depth)
     print(model)
     output = model(input)
     print(input.size(), output.size())
 
 if __name__ == '__main__':
-    _test_multidilated_conv_block()
-    print()
+    torch.manual_seed(111)
 
     _test_d2block()
-    print()
-
-    _test_compressed_d2block()
