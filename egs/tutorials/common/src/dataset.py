@@ -1,8 +1,8 @@
 import os
 import json
-import numpy as np
-import soundfile as sf
+
 import torch
+import torchaudio
 
 from algorithm.stft import BatchSTFT
 from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
@@ -39,20 +39,16 @@ class WaveDataset(LibriSpeechDataset):
             source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, sr = sf.read(wav_path)
-            wave = np.array(wave)[start: end]
-            wave = wave[None]
+            wave, sr = torchaudio.load(wav_path)
+            wave = wave[:, start: end]
             mixture = mixture + wave
         
             if sources is None:
                 sources = wave
             else:
-                sources = np.concatenate([sources, wave], axis=0)
+                sources = torch.cat([sources, wave], dim=0)
             
             segment_IDs.append("{}_{}-{}".format(source_data['utterance-ID'], start, end))
-        
-        mixture = torch.Tensor(mixture).float()
-        sources = torch.Tensor(sources).float()
         
         return mixture, sources, segment_IDs
         
@@ -103,15 +99,15 @@ class SpectrogramDataset(WaveDataset):
             hop_size = fft_size//2
         
         self.fft_size, self.hop_size = fft_size, hop_size
-        self.F_bin = fft_size//2 + 1
+        self.n_bins = fft_size//2 + 1
         
         self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
         
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>, first F_bin is real, the latter F_bin is iamginary part.
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>, first n_bins is real, the latter n_bins is iamginary part.
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
             segment_IDs (n_sources,) <list<str>>
         """
@@ -119,8 +115,8 @@ class SpectrogramDataset(WaveDataset):
         
         T = mixture.size(-1)
         
-        mixture = self.stft(mixture) # (1, F_bin, T_bin, 2)
-        sources = self.stft(sources) # (n_sources, F_bin, T_bin, 2)
+        mixture = self.stft(mixture) # (1, n_bins, n_frames, 2)
+        sources = self.stft(sources) # (n_sources, n_bins, n_frames, 2)
         
         return mixture, sources, T, segment_IDs
 
@@ -153,18 +149,17 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
-            ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
-            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
             segment_IDs (n_sources,) <list<str>>
         """
-        F_bin = self.F_bin
         threshold = self.threshold
         eps = self.eps
         
-        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, F_bin, T_bin, 2), (n_sources, F_bin, T_bin, 2)
+        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames, 2), (n_sources, n_bins, n_frames, 2)
         real, imag = sources[...,0], sources[...,1]
         sources_amplitude = torch.sqrt(real**2+imag**2)
         ideal_mask = self.generate_mask(sources_amplitude)
@@ -186,10 +181,10 @@ class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
-            ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
-            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
         """
         mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
         
@@ -203,10 +198,10 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
-            ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
-            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
         """
         mixture, sources, ideal_mask, threshold_weight, _, _ = super().__getitem__(idx)
     
@@ -220,10 +215,10 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
-            ideal_mask (n_sources, F_bin, T_bin) <torch.Tensor>
-            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T () <int>
             segment_IDs (n_sources,) <list<str>>
         """
@@ -241,17 +236,16 @@ class ThresholdWeightSpectrogramDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
-            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
             segment_IDs (n_sources,) <list<str>>
         """
-        F_bin = self.F_bin
         threshold = self.threshold
         eps = self.eps
         
-        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, F_bin, T_bin, 2), (n_sources, F_bin, T_bin, 2)
+        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames, 2), (n_sources, n_bins, n_frames, 2)
         
         real, imag = mixture[...,0], mixture[...,1]
         mixture_amplitude = torch.sqrt(real**2+imag**2)
@@ -270,9 +264,9 @@ class ThresholdWeightSpectrogramTrainDataset(ThresholdWeightSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, F_bin, T_bin, 2) <torch.Tensor>
-            sources (n_sources, F_bin, T_bin, 2) <torch.Tensor>
-            threshold_weight (1, F_bin, T_bin) <torch.Tensor>
+            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            threshold_weight (1, n_bins, n_frames) <torch.Tensor>
         """
         mixture, sources, threshold_weight, _, _ = super().__getitem__(idx)
         

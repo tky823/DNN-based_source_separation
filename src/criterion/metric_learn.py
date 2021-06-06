@@ -9,6 +9,7 @@ class TripletLoss(nn.Module):
 
         self.dim = dim
         self.reduction = reduction
+        self.maximize = False
         self.margin = margin
 
         self.eps = eps
@@ -46,6 +47,7 @@ class TripletWithDistanceLoss(nn.Module):
 
         self.distance_fn = distance_fn
         self.margin = margin
+        self.maximize = False
         self.eps = eps
 
         if self.distance_fn is None:
@@ -68,6 +70,7 @@ class ContrastiveLoss(nn.Module):
         super().__init__()
 
         self.margin = margin
+        self.maximize = False
         self.eps = eps
     
     def forward(self, distance, is_same, batch_mean=True):
@@ -93,6 +96,7 @@ class ContrastiveWithDistanceLoss(nn.Module):
 
         self.distance_fn = distance_fn
         self.margin = margin
+        self.maximize = False
         self.eps = eps
 
         if self.distance_fn is None:
@@ -116,6 +120,33 @@ class ContrastiveWithDistanceLoss(nn.Module):
             loss = loss.mean(dim=0)
         
         return loss
+
+class ImprovedTripletLoss(nn.Module):
+    # TODO: implement here
+    def __init__(self, eps=EPS):
+        super().__init__()
+
+        self.eps = eps
+
+        raise NotImplementedError("Implement `ImprovedTripletLoss`")
+
+class AdaptedTripletLoss(nn.Module):
+    # TODO: implement here
+    def __init__(self, eps=EPS):
+        super().__init__()
+
+        self.eps = eps
+
+        raise NotImplementedError("Implement `AdaptedTripletLoss`")
+
+class QuadrupletLoss(nn.Module):
+    # TODO: implement here
+    def __init__(self, eps=EPS):
+        super().__init__()
+
+        self.eps = eps
+
+        raise NotImplementedError("Implement `QuadrupletLoss`")
 
 def _test_triplet_loss():
     import random

@@ -6,19 +6,25 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTestDataset, TestDataLoader
-from driver import Tester
-from models.conv_tasnet import ConvTasNet
-from criterion.sdr import NegSISDR
-from criterion.pit import PIT1d
+from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
+from driver import AttractorTester
+from models.danet import DANet
+from criterion.distance import L2Loss
+from criterion.pit import PIT2d
 
-parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
 parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
 parser.add_argument('--test_json_path', type=str, default=None, help='Path for test.json')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
+parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
+# Model configuration
+parser.add_argument('--fft_size', type=int, default=256, help='Window length')
+parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
 parser.add_argument('--model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
@@ -28,12 +34,13 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    test_dataset = WaveTestDataset(args.wav_root, args.test_json_path)
+    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
-    loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
+    args.n_bins = args.fft_size//2 + 1
+    loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
-    model = ConvTasNet.build_model(args.model_path)
+    model = DANet.build_model(args.model_path)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -48,14 +55,14 @@ def main(args):
         print("Does NOT use CUDA", flush=True)
     
     # Criterion
-    if args.criterion == 'sisdr':
-        criterion = NegSISDR()
+    if args.criterion == 'l2loss':
+        criterion = L2Loss()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+        
+    pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
     
-    pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
-    
-    tester = Tester(model, loader, pit_criterion, args)
+    tester = AttractorTester(model, loader, pit_criterion, args)
     tester.run()
     
     

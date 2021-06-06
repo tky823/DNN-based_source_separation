@@ -3,13 +3,12 @@
 
 import argparse
 import os
-
 import numpy as np
 import pyaudio
 import torch
 import torchaudio
 
-from models.conv_tasnet import ConvTasNet
+from models.dprnn_tasnet import DPRNNTasNet
 
 parser = argparse.ArgumentParser(description="Demonstration of Conv-TasNet")
 
@@ -38,7 +37,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     for i in range(num_loop):
         input = stream.read(num_chunk)
         sequence.append(input)
-        time = int(i * num_chunk / sr)
+        time = int(i*num_chunk/sr)
         show_progress_bar(time, duration)
     
     show_progress_bar(duration, duration)
@@ -50,24 +49,25 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     
     print("Stop recording")
     
-    os.makedirs(save_dir, exist_ok=True)
-    
     # Save
     signal = b"".join(sequence)
     signal = np.frombuffer(signal, dtype=np.int16)
     signal = signal / 32768
-    
+
     save_path = os.path.join(save_dir, "mixture.wav")
     mixture = torch.Tensor(signal).float()
     torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=sr)
 
     # Separate by DNN
+    os.makedirs(save_dir, exist_ok=True)
+    
     model = load_model(model_path)
     model.eval()
 
     print("Start separation...")
     
     with torch.no_grad():
+        mixture = torch.Tensor(signal).float()
         mixture = mixture.unsqueeze(dim=0).unsqueeze(dim=0)
         estimated_sources = model(mixture)
         estimated_sources = estimated_sources.squeeze(dim=0).detach().cpu()
@@ -87,7 +87,7 @@ def show_progress_bar(time, duration):
 def load_model(model_path):
     package = torch.load(model_path, map_location=lambda storage, loc: storage)
     
-    model = ConvTasNet.build_model(model_path)
+    model = DPRNNTasNet.build_model(model_path)
     model.load_state_dict(package['state_dict'])
     
     print("# Parameters: {}".format(model.num_parameters))

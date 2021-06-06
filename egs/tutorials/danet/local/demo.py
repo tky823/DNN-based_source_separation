@@ -3,17 +3,22 @@
 
 import argparse
 import os
-
 import numpy as np
 import pyaudio
 import torch
 import torchaudio
 
-from models.conv_tasnet import ConvTasNet
+from algorithm.stft import BatchSTFT, BatchInvSTFT
+from models.danet import DANet
 
-parser = argparse.ArgumentParser(description="Demonstration of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Demonstration of DaNet")
 
 parser.add_argument('--sr', type=int, default=16000, help='Sampling rate')
+parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--fft_size', type=int, default=256, help='Window length')
+parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--n_sources', type=int, default=2, help='Number of speakers')
+parser.add_argument('--iter_clustering', type=int, default=10, help='Number of iterations when running clustering using Kmeans algorithm.')
 parser.add_argument('--num_chunk', type=int, default=256, help='Number of chunks')
 parser.add_argument('--duration', type=int, default=10, help='Duration [sec]')
 parser.add_argument('--model_path', type=str, default='./best.pth', help='Path for model')
@@ -24,9 +29,9 @@ NUM_CHANNEL = 1
 DEVICE_INDEX = 0
 
 def main(args):
-    process_offline(args.sr, args.num_chunk, duration=args.duration, model_path=args.model_path, save_dir=args.save_dir)
+    process_offline(args.sr, args.num_chunk, duration=args.duration, model_path=args.model_path, save_dir=args.save_dir, args=args)
 
-def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="results"):
+def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="results", args=None):
     num_loop = int(duration * sr / num_chunk)
     sequence = []
     
@@ -38,7 +43,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     for i in range(num_loop):
         input = stream.read(num_chunk)
         sequence.append(input)
-        time = int(i * num_chunk / sr)
+        time = int(i*num_chunk/sr)
         show_progress_bar(time, duration)
     
     show_progress_bar(duration, duration)
@@ -64,13 +69,34 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     # Separate by DNN
     model = load_model(model_path)
     model.eval()
+    
+    fft_size, hop_size = args.fft_size, args.hop_size
+    window_fn = args.window_fn
+    
+    if hop_size is None:
+        hop_size = fft_size//2
+    
+    n_sources = args.n_sources
+    iter_clustering = args.iter_clustering
+    
+    n_bins = fft_size//2 + 1
+    stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
+    istft = BatchInvSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
 
     print("Start separation...")
     
     with torch.no_grad():
-        mixture = mixture.unsqueeze(dim=0).unsqueeze(dim=0)
-        estimated_sources = model(mixture)
-        estimated_sources = estimated_sources.squeeze(dim=0).detach().cpu()
+        T = mixture.size(0)
+        mixture = mixture.unsqueeze(dim=0)
+        mixture = stft(mixture).unsqueeze(dim=0)
+        real, imag = mixture[:,:,:n_bins], mixture[:,:,n_bins:]
+        mixture_amplitude = torch.sqrt(real**2+imag**2)
+        estimated_sources_amplitude = model(mixture_amplitude, n_sources=n_sources, iter_clustering=iter_clustering) # TODO: Args, threshold
+        ratio = estimated_sources_amplitude / mixture_amplitude
+        real, imag = ratio * real, ratio * imag
+        estimated_sources = torch.cat([real, imag], dim=2)
+        estimated_sources = estimated_sources.squeeze(dim=0)
+        estimated_sources = istft(estimated_sources, T=T)
     
     print("Finished separation...")
     
@@ -87,7 +113,7 @@ def show_progress_bar(time, duration):
 def load_model(model_path):
     package = torch.load(model_path, map_location=lambda storage, loc: storage)
     
-    model = ConvTasNet.build_model(model_path)
+    model = DANet.build_model(model_path)
     model.load_state_dict(package['state_dict'])
     
     print("# Parameters: {}".format(model.num_parameters))

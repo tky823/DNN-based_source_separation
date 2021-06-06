@@ -7,10 +7,10 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, TrainDataLoader
-from driver import Trainer
+from driver import ORPITTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
-from criterion.pit import PIT1d
+from criterion.pit import ORPIT
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
@@ -40,7 +40,7 @@ parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-l
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
-parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
+parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
@@ -67,7 +67,7 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=args.n_sources)
+    model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=2)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -97,9 +97,9 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
+    pit_criterion = ORPIT(criterion, n_sources=args.n_sources)
     
-    trainer = Trainer(model, loader, pit_criterion, optimizer, args)
+    trainer = ORPITTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
     
     
