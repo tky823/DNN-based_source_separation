@@ -86,3 +86,4 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 - v0.5.0: Add `parse_options.sh`.
 - v0.5.1: Multichannel support.
 - v0.5.2: Add metric learning tutorials.
+- v0.5.3: Update network architecture of D3Net.
