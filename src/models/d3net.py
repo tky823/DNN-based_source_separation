@@ -186,6 +186,40 @@ class D3Net(nn.Module):
         
         return model
     
+    @classmethod
+    def build_model(cls, model_path):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+    
+        in_channels, num_features = config['in_channels'], config['num_features']
+        growth_rate = config['growth_rate']
+
+        kernel_size = config['kernel_size']
+        bands, sections = config['bands'], config['sections']
+        scale = config['scale']
+
+        num_d2blocks, depth = config['num_d2blocks'], config['depth']
+
+        growth_rate_final = config['growth_rate_final']
+        kernel_size_final = config['kernel_size_final']
+        depth_final = config['depth_final']
+
+        eps = config['eps']
+        
+        model = cls(
+            in_channels, num_features,
+            growth_rate,
+            kernel_size,
+            bands=bands, sections=sections,
+            scale=scale,
+            num_d2blocks=num_d2blocks, depth=depth,
+            growth_rate_final=growth_rate_final,
+            kernel_size_final=kernel_size_final,
+            depth_final=depth_final,
+            eps=eps
+        )
+        
+        return model
+    
     def _get_num_parameters(self):
         num_parameters = 0
         
