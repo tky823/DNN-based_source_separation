@@ -19,7 +19,8 @@ DNNによる音源分離（PyTorch実装）
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
 | DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
-| D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) |
+| D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) | ✔ |
+| SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) |  |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
 
 ## 学習に関する方法
@@ -29,17 +30,16 @@ DNNによる音源分離（PyTorch実装）
 | One-and-rest PIT | [Recursive Speech Separation for Unknown Number of Speakers](https://arxiv.org/abs/1904.03065) | ✔ |
 
 ## 実行例
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
 
 [Conv-TasNet](https://arxiv.org/abs/1809.07454)によるLibriSpeechデータセットを用いた音源分離の例
-```
-cd <REPOSITORY_ROOT>/egs/tutorials/
-```
+
+`<REPOSITORY_ROOT>/egs/tutorials/`で他のチュートリアルも確認可能．
 
 ### 0. データセットの準備
 ```
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
-. ./prepare.sh <DATASET_DIR> <#SPEAKERS>
+. ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
 ```
 
 ### 1. 学習
@@ -86,3 +86,4 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 - v0.5.0: `parse_options.sh`を追加．
 - v0.5.1: 一部のモデルで多チャネルの入力に対応．
 - v0.5.2: 距離学習に関するチュートリアルを追加．
+- v0.5.3: D3Netの構造を修正．

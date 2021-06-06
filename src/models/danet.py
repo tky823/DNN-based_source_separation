@@ -78,11 +78,11 @@ class DANet(nn.Module):
         self.rnn.flatten_parameters()
         
         log_amplitude = torch.log(input + eps)
-        x = log_amplitude.squeeze(dim=1).permute(0,2,1).contiguous() # -> (batch_size, n_frames, n_bins)
+        x = log_amplitude.squeeze(dim=1).permute(0, 2, 1).contiguous() # -> (batch_size, n_frames, n_bins)
         x, (_, _) = self.rnn(x) # -> (batch_size, n_frames, n_bins)
         x = self.fc(x) # -> (batch_size, n_frames, embed_dim*n_bins)
         x = x.view(batch_size, n_frames, embed_dim, n_bins)
-        x = x.permute(0,2,3,1).contiguous()  # -> (batch_size, embed_dim, n_bins, n_frames)
+        x = x.permute(0, 2, 3, 1).contiguous()  # -> (batch_size, embed_dim, n_bins, n_frames)
         latent = x.view(batch_size, embed_dim, n_bins*n_frames)
         
         if assignment is None:
@@ -90,7 +90,7 @@ class DANet(nn.Module):
             if self.training:
                 raise ValueError("assignment is required.")
             latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, n_bins*n_frames)
-            latent_kmeans = latent_kmeans.permute(1,0) # -> (n_bins*n_frames, embed_dim)
+            latent_kmeans = latent_kmeans.permute(1, 0) # -> (n_bins*n_frames, embed_dim)
             kmeans = Kmeans(latent_kmeans, K=n_sources)
             _, centroids = kmeans(iteration=iter_clustering) # (n_bins*n_frames, n_sources), (n_sources, embed_dim)
             attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
@@ -98,7 +98,7 @@ class DANet(nn.Module):
             threshold_weight = threshold_weight.view(batch_size, 1, n_bins*n_frames)
             assignment = assignment.view(batch_size, n_sources, n_bins*n_frames) # -> (batch_size, n_sources, n_bins*n_frames)
             assignment = threshold_weight * assignment
-            attractor = torch.bmm(assignment, latent.permute(0,2,1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, embed_dim)
+            attractor = torch.bmm(assignment, latent.permute(0, 2, 1)) / (assignment.sum(dim=2, keepdim=True) + eps) # -> (batch_size, n_sources, embed_dim)
         
         similarity = torch.bmm(attractor, latent) # -> (batch_size, n_sources, n_bins*n_frames)
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)

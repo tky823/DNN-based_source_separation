@@ -8,11 +8,11 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import WaveTestDataset, TestDataLoader
 from driver import Tester
-from models.conv_tasnet import ConvTasNet
+from models.dprnn_tasnet import DPRNNTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Evaluation of DPRNN-TasNet")
 
 parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
 parser.add_argument('--test_json_path', type=str, default=None, help='Path for test.json')
@@ -33,7 +33,7 @@ def main(args):
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
-    model = ConvTasNet.build_model(args.model_path)
+    model = DPRNNTasNet.build_model(args.model_path)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

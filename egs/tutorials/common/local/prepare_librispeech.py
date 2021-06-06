@@ -6,8 +6,8 @@ import os
 import json
 import glob
 import random
-import numpy as np
-import soundfile as sf
+
+import torchaudio
 
 from utils.utils import set_seed
 
@@ -65,9 +65,8 @@ def make_json_data(wav_root, json_path, speakers_path, n_sources=2, samples=3200
                 utterance_ID, _ = os.path.splitext(wav_name)
                 relative_path = os.path.join(folder_name, speaker_ID, speech_ID, "{}.flac".format(utterance_ID))
                 wav_path = os.path.join(wav_root, relative_path)
-                wave, sr = sf.read(wav_path)
-                wave = np.array(wave)
-                T = len(wave)
+                wave, sr = torchaudio.load(wav_path) # wave, sr = sf.read(wav_path)
+                T = wave.size(1)
                 
                 for idx in range(0, T, samples):
                     if idx + samples > T:
