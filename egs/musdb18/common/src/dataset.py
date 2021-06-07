@@ -183,7 +183,6 @@ class WaveEvalDataset(WaveDataset):
         dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path, **kwargs)
         return dataset
 
-
 class WaveTestDataset(WaveDataset):
     def __init__(self, musdb18_root, sr=44100, sources=__sources__):
         super().__init__(musdb18_root, sr=sr, sources=sources)
@@ -228,7 +227,6 @@ class SpectrogramDataset(WaveDataset):
         n_dims = input.dim()
 
         if n_dims > 2:
-            channels = input.size()[:-1]
             input = input.reshape(-1, input.size(-1))
 
         input = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources)*2, n_bins, n_frames)
