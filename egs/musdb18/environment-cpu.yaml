@@ -7,12 +7,10 @@ channels:
 dependencies:
   - python>=3.6,<=3.9
   - numpy>=1.19
-  - scipy>=1.6.1
   - matplotlib>=3.3.2
   - ipython~=5.5.0
   - pytorch>=1.8.0
   - torchaudio>=0.8.0
-  - ffmpeg>=4.2
   - mir_eval==0.6
   - pip
   - pip:
