@@ -1,9 +1,9 @@
 import os
+
 import numpy as np
 import musdb
 import torch
-
-from algorithm.stft import BatchSTFT
+from torchaudio.transforms import Spectrogram
 
 __sources__=['drums','bass','other','vocals']
 
@@ -134,7 +134,6 @@ class WaveTestDataset(WaveDataset):
             }
             self.json_data.append(data)
 
-
 class SpectrogramDataset(WaveDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, sources=__sources__):
         super().__init__(musdb18_root, sr=sr, sources=sources)
@@ -144,8 +143,14 @@ class SpectrogramDataset(WaveDataset):
         
         self.fft_size, self.hop_size = fft_size, hop_size
         self.n_bins = fft_size//2 + 1
+
+        if window_fn:
+            if window_fn == 'hann':
+                window_fn = torch.hann_window
+            else:
+                raise ValueError("Invalid argument.")
         
-        self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+        self.stft = Spectrogram(n_fft=fft_size, hop_length=hop_size, window_fn=window_fn, power=None, normalized=normalize)
         
     def __getitem__(self, idx):
         """
@@ -198,8 +203,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         Returns:
             mixture (1, 2, n_bins, n_frames, 2) <torch.Tensor>, first n_bins is real, the latter n_bins is iamginary part.
             sources (n_sources, 2, n_bins, n_frames, 2) <torch.Tensor>
-            T (), <int>: Number of samples in time-domain
-            title <str>: title of song
         """
         mixture, sources, _, _ = super().__getitem__(idx)
         
