@@ -7,7 +7,6 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from utils.utils_audio import write_wav
 from driver import TrainerBase
 
 class AdhocTrainer(TrainerBase):
@@ -198,13 +197,11 @@ class AdhocTrainer(TrainerBase):
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
-                    # write_wav(save_path, signal=mixture.T, sr=self.sr)
-
+                    
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     norm = torch.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
                     torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
-                    # write_wav(save_path, signal=estimated_source.T, sr=self.sr)
         
         valid_loss /= n_valid
         
