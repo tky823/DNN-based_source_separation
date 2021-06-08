@@ -25,7 +25,7 @@ class AdhocTrainer(TrainerBase):
         self.sr = args.sr
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
-        self.window = None
+        self.window = self.valid_loader.dataset.window
 
         self.max_norm = args.max_norm
         
