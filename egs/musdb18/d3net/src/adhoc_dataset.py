@@ -120,21 +120,29 @@ class WaveTrainDataset(WaveDataset):
         sources = []
         songIDs = []
         starts = []
+        flips = []
         scales = []
 
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
 
             start = random.uniform(0, track.duration - self.duration)
+            flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
             track.sample_rate = self.sr
             track.chunk_start = start
             track.chunk_duration = self.duration
 
-            sources.append(scale * track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+            source = track.targets[_source].audio.transpose(1, 0)
+
+            if flip:
+                source = source[::-1]
+
+            sources.append(scale * source[np.newaxis])
             songIDs.append(songID)
             starts.append(start)
+            flips.append(flip)
             scales.append(scale)
         
         sources = np.concatenate(sources, axis=0)
@@ -146,6 +154,7 @@ class WaveTrainDataset(WaveDataset):
                 idx = self.sources.index(_target)
                 songID = songIDs[idx]
                 start = starts[idx]
+                flip = flips[idx]
                 scale = scales[idx]
                 
                 track = self.mus.tracks[songID]
@@ -153,7 +162,12 @@ class WaveTrainDataset(WaveDataset):
                 track.chunk_start = start
                 track.chunk_duration = self.duration
 
-                target.append(scale * track.targets[_target].audio.transpose(1, 0)[np.newaxis])
+                _target = track.targets[_target].audio.transpose(1, 0)
+                
+                if flip:
+                    _target = _target[::-1]
+
+                target.append(scale * _target[np.newaxis])
             
             target = np.concatenate(target, axis=0)
             mixture = mixture[np.newaxis]
@@ -162,6 +176,7 @@ class WaveTrainDataset(WaveDataset):
             idx = self.sources.index(_target)
             songID = songIDs[idx]
             start = starts[idx]
+            flip = flips[idx]
             scale = scales[idx]
             
             track = self.mus.tracks[songID]
@@ -169,7 +184,12 @@ class WaveTrainDataset(WaveDataset):
             track.chunk_start = start
             track.chunk_duration = self.duration
 
-            target = scale * track.targets[_target].audio.transpose(1, 0)
+            _target = track.targets[_target].audio.transpose(1, 0)
+                
+            if flip:
+                _target = _target[::-1]
+            
+            target = scale * _target
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
@@ -456,21 +476,29 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         sources = []
         songIDs = []
         starts = []
+        flips = []
         scales = []
 
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
 
             start = random.uniform(0, track.duration - self.duration)
+            flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
             track.sample_rate = self.sr
             track.chunk_start = start
             track.chunk_duration = self.duration
 
-            sources.append(scale * track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+            source = track.targets[_source].audio.transpose(1, 0)
+
+            if flip:
+                source = source[::-1]
+
+            sources.append(scale * source[np.newaxis])
             songIDs.append(songID)
             starts.append(start)
+            flips.append(flip)
             scales.append(scale)
         
         sources = np.concatenate(sources, axis=0)
@@ -482,6 +510,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 idx = self.sources.index(_target)
                 songID = songIDs[idx]
                 start = starts[idx]
+                flip = flips[idx]
                 scale = scales[idx]
                 
                 track = self.mus.tracks[songID]
@@ -489,7 +518,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 track.chunk_start = start
                 track.chunk_duration = self.duration
 
-                target.append(scale * track.targets[_target].audio.transpose(1, 0)[np.newaxis])
+                _target = track.targets[_target].audio.transpose(1, 0)
+                
+                if flip:
+                    _target = _target[::-1]
+
+                target.append(scale * _target[np.newaxis])
             
             target = np.concatenate(target, axis=0)
             mixture = mixture[np.newaxis]
@@ -498,6 +532,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             idx = self.sources.index(_target)
             songID = songIDs[idx]
             start = starts[idx]
+            flip = flips[idx]
             scale = scales[idx]
             
             track = self.mus.tracks[songID]
@@ -505,7 +540,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             track.chunk_start = start
             track.chunk_duration = self.duration
 
-            target = scale * track.targets[_target].audio.transpose(1, 0)
+            _target = track.targets[_target].audio.transpose(1, 0)
+                
+            if flip:
+                _target = _target[::-1]
+            
+            target = scale * _target
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
