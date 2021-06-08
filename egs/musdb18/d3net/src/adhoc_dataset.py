@@ -712,8 +712,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
         
         if n_dims > 2:
-            batch_mixture = batch_mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            batch_target = batch_target.reshape(*target_channels, *target.size()[-2:])
+            batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
+            batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
         
         return batch_mixture, batch_target, T, title
     
@@ -854,8 +854,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
         batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
         
         if n_dims > 2:
-            batch_mixture = batch_mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            batch_target = batch_target.reshape(*target_channels, *target.size()[-2:])
+            batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
+            batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
         
         return batch_mixture, batch_target, T, title
     
