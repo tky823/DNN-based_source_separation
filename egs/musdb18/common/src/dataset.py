@@ -8,6 +8,7 @@ import torch
 __sources__=['drums','bass','other','vocals']
 
 EPS=1e-12
+THRESHOLD_POWER=1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
     def __init__(self, musdb18_root, sr=44100, sources=__sources__, target=None):
