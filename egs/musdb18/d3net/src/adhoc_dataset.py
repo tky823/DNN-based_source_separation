@@ -876,7 +876,7 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         self.collate_fn = eval_collate_fn
 
 def eval_collate_fn(batch):
-    mixture, sources, T, title = batch
+    mixture, sources, T, title = batch[0]
     
     return mixture, sources, T, title
 
