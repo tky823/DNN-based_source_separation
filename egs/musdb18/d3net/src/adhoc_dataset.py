@@ -878,7 +878,7 @@ class EvalDataLoader(torch.utils.data.DataLoader):
 def eval_collate_fn(batch):
     batched_mixture, batched_target = None, None
     
-    for mixture, sources, T, title in batch:
+    for mixture, sources, T, title in batch[0]:
         mixture = mixture.unsqueeze(dim=0)
         sources = sources.unsqueeze(dim=0)
         
