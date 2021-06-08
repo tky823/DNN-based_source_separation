@@ -573,7 +573,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         target = torch.Tensor(target).float()
 
         return mixture, target
-    
 
     @classmethod
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
@@ -628,6 +627,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                         'padding_end': 0
                     }
                 song_data['patches'].append(data)
+            
             self.json_data.append(song_data)
         
     def __getitem__(self, idx):
@@ -864,6 +864,32 @@ class SpectrogramTestDataset(SpectrogramDataset):
         dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
         return dataset
 
+"""
+Data loader
+"""
+class EvalDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
+        self.collate_fn = eval_collate_fn
+
+def eval_collate_fn(batch):
+    batched_mixture, batched_target = None, None
+    
+    for mixture, sources, T, title in batch:
+        mixture = mixture.unsqueeze(dim=0)
+        sources = sources.unsqueeze(dim=0)
+        
+        if batched_mixture is None:
+            batched_mixture = mixture
+            batched_target = sources
+        else:
+            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
+            batched_target = torch.cat([batched_target, sources], dim=0)
+    
+    return batched_mixture, batched_target, T, title
 
 def _test_train_dataset():
     torch.manual_seed(111)
