@@ -63,6 +63,7 @@ train.py \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
 --config_path ${config_path} \
+--sources ${sources} \
 --target ${target} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \

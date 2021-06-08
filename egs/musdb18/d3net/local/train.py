@@ -23,6 +23,7 @@ parser.add_argument('--max_duration', type=float, default=10, help='Max duration
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
 parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -42,12 +43,13 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
+    args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
     overlap = patch_duration / 2
 
     # TODO: compatible with normalized in istft, window_fn
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, target=args.target)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, max_duration=args.max_duration, target=args.target)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, max_duration=args.max_duration, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
