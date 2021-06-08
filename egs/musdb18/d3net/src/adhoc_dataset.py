@@ -227,7 +227,7 @@ class WaveEvalDataset(WaveDataset):
             }
             for start in np.arange(-(duration - overlap), - duration, -(duration - overlap)):
                 data = {
-                    'start': start,
+                    'start': 0,
                     'duration': duration + start,
                     'padding_start': -start,
                     'padding_end': 0
@@ -339,7 +339,7 @@ class WaveTestDataset(WaveEvalDataset):
             }
             for start in np.arange(-(duration - overlap), - duration, -(duration - overlap)):
                 data = {
-                    'start': start,
+                    'start': 0,
                     'duration': duration + start,
                     'padding_start': -start,
                     'padding_end': 0
@@ -589,7 +589,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             }
             for start in np.arange(-(duration - overlap), - duration, -(duration - overlap)):
                 data = {
-                    'start': start,
+                    'start': 0,
                     'duration': duration + start,
                     'padding_start': -start,
                     'padding_end': 0
@@ -715,7 +715,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             }
             for start in np.arange(-(duration - overlap), - duration, -(duration - overlap)):
                 data = {
-                    'start': start,
+                    'start': 0,
                     'duration': duration + start,
                     'padding_start': -start,
                     'padding_end': 0
