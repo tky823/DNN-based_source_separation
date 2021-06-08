@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import argparse
 
 import torch
@@ -17,7 +16,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--train_json_path', type=str, default=None, help='Path to training json file')
+parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--patch', type=int, default=256, help='Patch size')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
