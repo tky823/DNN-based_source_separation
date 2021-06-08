@@ -876,21 +876,9 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         self.collate_fn = eval_collate_fn
 
 def eval_collate_fn(batch):
-    batched_mixture, batched_target = None, None
+    mixture, sources, T, title = batch
     
-    for mixture, sources, T, title in batch:
-        print(mixture.size(), len(batch))
-        mixture = mixture.unsqueeze(dim=0)
-        sources = sources.unsqueeze(dim=0)
-        
-        if batched_mixture is None:
-            batched_mixture = mixture
-            batched_target = sources
-        else:
-            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
-            batched_target = torch.cat([batched_target, sources], dim=0)
-    
-    return batched_mixture, batched_target, T, title
+    return mixture, sources, T, title
 
 def _test_train_dataset():
     torch.manual_seed(111)
