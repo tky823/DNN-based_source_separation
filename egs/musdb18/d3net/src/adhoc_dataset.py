@@ -270,11 +270,11 @@ class WaveEvalDataset(WaveDataset):
         T = track.duration
 
         batch_mixture, batch_target = [], []
+        max_samples = 0
 
         for data in song_data['patches']:
             track.chunk_start = data['start']
             track.chunk_duration = data['duration']
-            padding_start, padding_end = data['padding_start'], data['padding_end']
 
             if set(self.sources) == set(__sources__):
                 mixture = track.audio.transpose(1, 0)
@@ -297,14 +297,31 @@ class WaveEvalDataset(WaveDataset):
             mixture = torch.Tensor(mixture).float()
             target = torch.Tensor(target).float()
 
-            mixture = F.pad(mixture, (padding_start, padding_end))
-            target = F.pad(target, (padding_start, padding_end))
+            max_samples = max(max_samples, mixture.size(-1))
 
-            batch_mixture.append(mixture.unsqueeze(dim=0))
-            batch_target.append(target.unsqueeze(dim=0))
+            batch_mixture.append(mixture)
+            batch_target.append(target)
         
-        batch_mixture = torch.cat(batch_mixture, dim=0)
-        batch_target = torch.cat(batch_target, dim=0)
+        batch_mixture_padded, batch_target_padded = [], []
+        start_segement = True
+
+        for mixture, target in zip(batch_mixture, batch_target):
+            if mixture.size(-1) < max_samples:
+                padding = max_samples - mixture.size(-1)
+                if start_segement:
+                    mixture = F.pad(mixture, (padding, 0))
+                    target = F.pad(target, (padding, 0))
+                else:
+                    mixture = F.pad(mixture, (0, padding))
+                    target = F.pad(target, (0, padding))
+            else:
+                start_segement = False
+            
+            batch_mixture_padded.append(mixture.unsqueeze(dim=0))
+            batch_target_padded.append(target.unsqueeze(dim=0))
+
+        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
+        batch_target = torch.cat(batch_target_padded, dim=0)
         
         return batch_mixture, batch_target, T, title
     
@@ -630,12 +647,11 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         T = track.duration
 
         batch_mixture, batch_target = [], []
+        max_samples = 0
 
         for data in song_data['patches']:
             track.chunk_start = data['start']
             track.chunk_duration = data['duration']
-            
-            padding_start, padding_end = int(self.sr * data['padding_start']), int(self.sr * data['padding_end'])
 
             if set(self.sources) == set(__sources__):
                 mixture = track.audio.transpose(1, 0)
@@ -658,14 +674,31 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture = torch.Tensor(mixture).float()
             target = torch.Tensor(target).float()
 
-            mixture = F.pad(mixture, (padding_start, padding_end))
-            target = F.pad(target, (padding_start, padding_end))
+            max_samples = max(max_samples, mixture.size(-1))
 
-            batch_mixture.append(mixture.unsqueeze(dim=0))
-            batch_target.append(target.unsqueeze(dim=0))
+            batch_mixture.append(mixture)
+            batch_target.append(target)
         
-        batch_mixture = torch.cat(batch_mixture, dim=0)
-        batch_target = torch.cat(batch_target, dim=0)
+        batch_mixture_padded, batch_target_padded = [], []
+        start_segement = True
+
+        for mixture, target in zip(batch_mixture, batch_target):
+            if mixture.size(-1) < max_samples:
+                padding = max_samples - mixture.size(-1)
+                if start_segement:
+                    mixture = F.pad(mixture, (padding, 0))
+                    target = F.pad(target, (padding, 0))
+                else:
+                    mixture = F.pad(mixture, (0, padding))
+                    target = F.pad(target, (0, padding))
+            else:
+                start_segement = False
+            
+            batch_mixture_padded.append(mixture.unsqueeze(dim=0))
+            batch_target_padded.append(target.unsqueeze(dim=0))
+
+        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
+        batch_target = torch.cat(batch_target_padded, dim=0)
 
         n_dims = batch_mixture.dim()
 
@@ -756,11 +789,11 @@ class SpectrogramTestDataset(SpectrogramDataset):
         T = track.duration
 
         batch_mixture, batch_target = [], []
+        max_samples = 0
 
         for data in song_data['patches']:
             track.chunk_start = data['start']
             track.chunk_duration = data['duration']
-            padding_start, padding_end = int(self.sr * data['padding_start']), int(self.sr * data['padding_end'])
 
             if set(self.sources) == set(__sources__):
                 mixture = track.audio.transpose(1, 0)
@@ -783,14 +816,31 @@ class SpectrogramTestDataset(SpectrogramDataset):
             mixture = torch.Tensor(mixture).float()
             target = torch.Tensor(target).float()
 
-            mixture = F.pad(mixture, (padding_start, padding_end))
-            target = F.pad(target, (padding_start, padding_end))
+            max_samples = max(max_samples, mixture.size(-1))
 
-            batch_mixture.append(mixture.unsqueeze(dim=0))
-            batch_target.append(target.unsqueeze(dim=0))
+            batch_mixture.append(mixture)
+            batch_target.append(target)
         
-        batch_mixture = torch.cat(batch_mixture, dim=0)
-        batch_target = torch.cat(batch_target, dim=0)
+        batch_mixture_padded, batch_target_padded = [], []
+        start_segement = True
+
+        for mixture, target in zip(batch_mixture, batch_target):
+            if mixture.size(-1) < max_samples:
+                padding = max_samples - mixture.size(-1)
+                if start_segement:
+                    mixture = F.pad(mixture, (padding, 0))
+                    target = F.pad(target, (padding, 0))
+                else:
+                    mixture = F.pad(mixture, (0, padding))
+                    target = F.pad(target, (0, padding))
+            else:
+                start_segement = False
+            
+            batch_mixture_padded.append(mixture.unsqueeze(dim=0))
+            batch_target_padded.append(target.unsqueeze(dim=0))
+
+        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
+        batch_target = torch.cat(batch_target_padded, dim=0)
 
         n_dims = batch_mixture.dim()
 
