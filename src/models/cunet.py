@@ -248,7 +248,7 @@ class EncoderBlock2d(nn.Module):
         
         Kh = (Kh - 1) * Dh + 1
         Kw = (Kw - 1) * Dw + 1
-        
+
         _, _, H, W = input.size()
         padding_height = Kh - 1 - (Sh - (H - Kh) % Sh) % Sh
         padding_width = Kw - 1 - (Sw - (W - Kw) % Sw) % Sw
@@ -326,15 +326,25 @@ class DecoderBlock2d(nn.Module):
         return output
 
 class ControlDenseNet(nn.Module):
-    def __init__(self, channels, out_channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', dropout=False, norm=False):
+    def __init__(self, channels, out_channels, nonlinear='relu', dropout=False, norm=False):
         """
         Args:
             out_channels <list<int>>: output_channels
         """
         super().__init__()
 
-        raise NotImplementedError()
+        self.out_channels = out_channels
 
+        self.dense_block = ControlStackedDenseBlock(channels, nonlinear=nonlinear, dropout=dropout, norm=norm)
+
+        weights, biases = [], []
+        
+        for _channels in out_channels:
+            weights.append(nn.Linear(channels[-1], _channels))
+            biases.append(nn.Linear(channels[-1], _channels))
+        
+        self.fc_weights = nn.ModuleList(weights)
+        self.fc_biases = nn.ModuleList(biases)
 
     def forward(self, input):
         """
@@ -344,7 +354,90 @@ class ControlDenseNet(nn.Module):
             output_weights <list<torch.Tensor>>: 
             output_biases <list<torch.Tensor>>: 
         """
-        raise NotImplementedError()
+        out_channels = self.out_channels
+
+        x = self.dense_block(input)
+
+        output_weights, output_biases = [], []
+
+        for idx, _ in enumerate(out_channels):
+            x_weights = self.fc_weights[idx](x)
+            x_biases = self.fc_biases[idx](x)
+            output_weights.append(x_weights)
+            output_biases.append(x_biases)
+
+        return output_weights, output_biases
+
+class ControlStackedDenseBlock(nn.Module):
+    def __init__(self, channels, nonlinear=False, dropout=False, norm=False):
+        super().__init__()
+
+        n_blocks = len(channels) - 1
+        
+        if type(nonlinear) is not list:
+            nonlinear = [nonlinear] * n_blocks
+        
+        net = []
+        
+        for n in range(n_blocks):
+            if n == 0: # First layer
+                _dropout, _norm = False, False
+            else:
+                _dropout, _norm = dropout, norm
+
+            net.append(ControlDenseBlock(channels[n], channels[n + 1], nonlinear=nonlinear[n], dropout=_dropout, norm=_norm))
+
+        self.n_blocks = n_blocks
+        self.net = nn.Sequential(*net)
+        
+    def forward(self, input):
+        output = self.net(input)
+
+        return output
+
+class ControlDenseBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, nonlinear='relu', dropout=False, norm=False):
+        super().__init__()
+
+        self.nonlinear, self.dropout, self.norm = nonlinear, dropout, norm
+
+        self.linear = nn.Linear(in_channels, out_channels)
+
+        if self.nonlinear:
+            if self.nonlinear == 'relu':
+                self.nonlinear0d = nn.ReLU()
+            elif self.nonlinear == 'leaky-relu':
+                self.nonlinear0d = nn.LeakyReLU()
+            else:
+                raise ValueError("Not support nonlinear {}".format(self.nonlinear))
+
+        if self.dropout:
+            self.dropout0d = nn.Dropout(dropout)
+
+        if self.norm:
+            self.batch_norm0d = nn.BatchNorm1d(out_channels)
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels): input tensor
+        Returns:
+            output (batch_size, out_channels): output tensor
+        """
+        x = self.linear(input)
+
+        if self.nonlinear: 
+            x = self.nonlinear0d(x)
+        
+        if self.dropout:
+            x = self.dropout0d(x)
+
+        if self.norm:
+            x = self.batch_norm0d(x)
+        
+        output = x
+
+        return output
 
 class ControlConvNet(nn.Module):
     def __init__(self, channels, out_channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', dropout=False, norm=False):
@@ -475,7 +568,7 @@ class ControlConvBlock(nn.Module):
         Args:
             input (batch_size, in_channels, T_in): input tensor
         Returns:
-            input (batch_size, in_channels, T_out): output tensor
+            output (batch_size, out_channels, T_out): output tensor
         """
         K = self.kernel_size
         S = self.stride
@@ -508,14 +601,28 @@ class ControlConvBlock(nn.Module):
 
 def _test_control_net():
     latent_dim = 4
-    channels = [1, 16, 32, 64]
     num_blocks = 6
+    dropout, norm = 0.3, True
+    batch_size = 2
+
+    channels = [latent_dim, 16, 32, 64]    
+    out_channels = [num_blocks] * latent_dim
+
+    input = torch.randn((batch_size, latent_dim), dtype=torch.float)
+    model = ControlDenseNet(channels, out_channels, dropout=dropout, norm=norm)
+    output_gamma, output_beta = model(input)
+
+    print(model)
+    print(input.size())
+
+    for gamma, beta in zip(output_gamma, output_beta):
+        print(gamma.size(), beta.size())
+    print()
+
+    channels = [1, 16, 32, 64]
     out_channels = [num_blocks] * latent_dim
     kernel_size = [latent_dim, latent_dim, latent_dim]
     stride = [1, 1, latent_dim]
-    dropout, norm = 0.3, True
-
-    batch_size = 2
 
     input = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
     model = ControlConvNet(channels, out_channels, kernel_size, stride=stride, dropout=dropout, norm=norm)
@@ -534,16 +641,29 @@ def _test_cunet():
     channels = [1, 8, 16, 32, 64]
     kernel_size = 3
     stride = 2
-    channels_control = [1, 4, 8, 16]
-    kernel_size_control = [latent_dim, latent_dim, latent_dim]
-    stride_control = [1, 1, latent_dim]
-
+    
     nonlinear_dec = ['leaky-relu', 'leaky-relu', 'leaky-relu', 'sigmoid']
     dropout_control = 0.5
 
     batch_size = 2
 
+    channels_control = [latent_dim, 4, 8, 16]
+
     input = torch.randn((batch_size, 1, n_bins, n_frames), dtype=torch.float)
+
+    input_latent = torch.randn((batch_size, latent_dim), dtype=torch.float)
+    control_net = ControlDenseNet(channels_control, channels[1:], nonlinear=False, dropout=dropout_control, norm=True)
+    unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
+    model = ConditionedUNet2d(control_net=control_net, unet=unet, masking=True)
+    output = model(input, input_latent)
+    print(model)
+    print(input.size(), input_latent.size(), output.size())
+    print()
+
+    channels_control = [1, 4, 8, 16]
+    kernel_size_control = [latent_dim, latent_dim, latent_dim]
+    stride_control = [1, 1, latent_dim]
+
     input_latent = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
     control_net = ControlConvNet(channels_control, channels[1:], kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
     unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
