@@ -53,28 +53,19 @@ time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
-train.py \
+test.py \
 --musdb18_root ${musdb18_root} \
 --config_path "${config_path}" \
 --sr ${sr} \
 --patch_size ${patch} \
---max_duration ${max_duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
 --sources ${sources} \
 --target ${target} \
 --criterion ${criterion} \
---optimizer ${optimizer} \
---lr ${lr} \
---weight_decay ${weight_decay} \
---max_norm ${max_norm} \
---batch_size ${batch_size} \
---epochs ${epochs} \
---model_dir "${model_dir}" \
---loss_dir "${loss_dir}" \
---sample_dir "${sample_dir}" \
---continue_from "${continue_from}" \
+--out_dir "${out_dir}" \
+--model_path "${model_path}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
---seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"
+--seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
