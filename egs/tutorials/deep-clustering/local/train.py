@@ -56,7 +56,8 @@ def main(args):
         hop_length = win_length//4
     else:
         hop_length = args.hop_size
-
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     model = DeepEmbedding(args.n_bins, hidden_channels=args.hidden_channels, num_layers=args.num_layers, dimension=args.dimension, num_clusters=args.n_sources, causal=args.causal)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
