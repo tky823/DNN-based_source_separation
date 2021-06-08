@@ -56,7 +56,7 @@ train.py \
 --musdb18_root ${musdb18_root} \
 --config_path "${config_path}" \
 --sr ${sr} \
---patch ${patch} \
+--patch_size ${patch} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
