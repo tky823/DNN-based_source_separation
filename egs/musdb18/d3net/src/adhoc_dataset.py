@@ -634,7 +634,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         for data in song_data['patches']:
             track.chunk_start = data['start']
             track.chunk_duration = data['duration']
-            padding_start, padding_end = data['padding_start'], data['padding_end']
+            
+            padding_start, padding_end = int(self.sr * data['padding_start']), int(self.sr * data['padding_end'])
 
             if set(self.sources) == set(__sources__):
                 mixture = track.audio.transpose(1, 0)
@@ -759,7 +760,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         for data in song_data['patches']:
             track.chunk_start = data['start']
             track.chunk_duration = data['duration']
-            padding_start, padding_end = data['padding_start'], data['padding_end']
+            padding_start, padding_end = int(self.sr * data['padding_start']), int(self.sr * data['padding_end'])
 
             if set(self.sources) == set(__sources__):
                 mixture = track.audio.transpose(1, 0)

@@ -3,6 +3,7 @@ import time
 
 import numpy as np
 import torch
+import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
@@ -185,23 +186,25 @@ class AdhocTrainer(TrainerBase):
                     
                     estimated_source = ratio * mixture # -> (2, n_bins, n_frames)
                     estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, return_complex=False) # -> (2, T)
-                    estimated_source = estimated_source.cpu().numpy()
+                    estimated_source = estimated_source.cpu()
                     
                     mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, return_complex=False) # -> (2, T)
-                    mixture = mixture.cpu().numpy()
+                    mixture = mixture.cpu()
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
 
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    write_wav(save_path, signal=mixture.T, sr=self.sr)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sr)
+                    # write_wav(save_path, signal=mixture.T, sr=self.sr)
 
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
-                    norm = np.abs(estimated_source).max()
+                    norm = torch.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    write_wav(save_path, signal=estimated_source.T, sr=self.sr)
+                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
+                    # write_wav(save_path, signal=estimated_source.T, sr=self.sr)
         
         valid_loss /= n_valid
         
