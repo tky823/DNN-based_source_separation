@@ -74,8 +74,6 @@ class AdhocTrainer(TrainerBase):
             self.best_loss = float('infinity')
             self.prev_loss = float('infinity')
             self.no_improvement = 0
-
-        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -124,11 +122,9 @@ class AdhocTrainer(TrainerBase):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
-                
-            real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2 + imag**2)
-            real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2 + imag**2)
+            
+            mixture_amplitude = torch.abs(mixture)
+            sources_amplitude = torch.abs(sources)
             
             estimated_sources_amplitude = self.model(mixture_amplitude)
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -151,6 +147,7 @@ class AdhocTrainer(TrainerBase):
         return train_loss
     
     def run_one_epoch_eval(self, epoch):
+        return 0
         # Override
         """
         Validation
