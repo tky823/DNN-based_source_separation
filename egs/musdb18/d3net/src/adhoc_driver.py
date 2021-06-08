@@ -26,6 +26,7 @@ class AdhocTrainer(TrainerBase):
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.valid_loader.dataset.window
+        self.normalize = self.valid_loader.dataset.normalize
 
         self.max_norm = args.max_norm
         
@@ -184,10 +185,10 @@ class AdhocTrainer(TrainerBase):
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     
                     estimated_source = ratio * mixture # -> (2, n_bins, n_frames)
-                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, return_complex=False) # -> (2, T)
+                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
                     estimated_source = estimated_source.cpu()
                     
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, return_complex=False) # -> (2, T)
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
                     mixture = mixture.cpu()
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
