@@ -46,8 +46,7 @@ def main(args):
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
     overlap = patch_duration / 2
-
-    # TODO: compatible with normalized in istft, window_fn
+    
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, max_duration=args.max_duration, sources=args.sources, target=args.target)
     
@@ -58,6 +57,8 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     model = D3Net.build_from_config(config_path=args.config_path)
 
     print(model)
