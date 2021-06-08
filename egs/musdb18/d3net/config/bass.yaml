@@ -1,0 +1,29 @@
+in_channels: 2
+bands: [low, middle]
+low:
+  sections: 192
+  num_features: 32
+  growth_rate: [16, 18, 18, 20, 18, 16, 16]
+  kernel_size: 3
+  scale: 2
+  num_d2blocks: [2, 2, 2, 2, 2, 2, 2]
+  depth: [5, 5, 5, 5, 4, 4, 4]
+middle:
+  sections: 1408
+  num_features: 8
+  growth_rate: [2, 2, 2, 2, 2, 2, 2]
+  kernel_size: 3
+  scale: 2
+  num_d2blocks: [1, 1, 1, 1, 1, 1, 1]
+  depth: [1, 1, 1, 1, 1, 1, 1]
+full:
+  num_features: 32
+  growth_rate: [10, 10, 12, 14, 16, 14, 12, 8, 8]
+  kernel_size: 3
+  scale: 2
+  num_d2blocks: [4, 5, 6, 7, 8, 6, 6, 4, 4]
+  depth: [2, 2, 2, 2, 2, 2, 2, 2, 2]
+final:
+  growth_rate: 12
+  kernel_size: 3
+  depth: 3

@@ -1,0 +1,18 @@
+name: DNN-based_source_separation_musdb18
+
+channels:
+  - conda-forge
+  - pytorch
+
+dependencies:
+  - python>=3.6,<=3.9
+  - numpy>=1.19
+  - matplotlib>=3.3.2
+  - ipython~=5.5.0
+  - pytorch>=1.8.0
+  - torchaudio>=0.8.0
+  - cudatoolkit>=10
+  - mir_eval==0.6
+  - pip
+  - pip:
+    - musdb==0.3.1
