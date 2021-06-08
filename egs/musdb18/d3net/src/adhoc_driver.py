@@ -23,7 +23,6 @@ class AdhocTrainer(TrainerBase):
     def _reset(self, args):
         # Override
         self.sr = args.sr
-        self.n_bins = args.n_bins
 
         self.max_norm = args.max_norm
         
