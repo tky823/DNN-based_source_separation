@@ -580,7 +580,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return dataset
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=10, overlap=None, sources=__sources__, target=None, json_path=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_duration=10, overlap=None, max_duration=None, sources=__sources__, target=None, json_path=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
@@ -590,10 +590,14 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                 self.json_data = json.load(f)
             return
 
-        self.duration = duration
+        self.patch_duration = patch_duration
+
+        if max_duration is None:
+            max_duration = patch_duration
+        self.max_duration = patch_duration
         
         if overlap is None:
-            overlap = self.duration / 2
+            overlap = self.patch_duration / 2
 
         self.overlap = overlap
         self.json_data = []
@@ -603,26 +607,29 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                 'songID': songID,
                 'patches': []
             }
-            for start in np.arange(-(duration - overlap), - duration, -(duration - overlap)):
+            for start in np.arange(-(patch_duration - overlap), - patch_duration, -(patch_duration - overlap)):
                 data = {
                     'start': 0,
-                    'duration': duration + start,
+                    'duration': patch_duration + start,
                     'padding_start': -start,
                     'padding_end': 0
                 }
                 song_data['patches'].append(data)
-            for start in np.arange(0, track.duration, duration - overlap):
-                if start + duration > track.duration:
+            
+            max_duration = min(track.duration, self.max_duration)
+            
+            for start in np.arange(0, max_duration, patch_duration - overlap):
+                if start + patch_duration > max_duration:
                     data = {
                         'start': start,
-                        'duration': track.duration - start,
+                        'duration': max_duration - start,
                         'padding_start': 0,
-                        'padding_end': start + duration - track.duration
+                        'padding_end': start + patch_duration - max_duration
                     }
                 else:
                     data = {
                         'start': start,
-                        'duration': duration,
+                        'duration': patch_duration,
                         'padding_start': 0,
                         'padding_end': 0
                     }
@@ -723,7 +730,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return dataset
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=10, overlap=None, sources=__sources__, target=None, json_path=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_duration=5, max_duration=10, overlap=None, sources=__sources__, target=None, json_path=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="test")
@@ -733,10 +740,10 @@ class SpectrogramTestDataset(SpectrogramDataset):
                 self.json_data = json.load(f)
             return
 
-        self.duration = duration
+        self.patch_duration = patch_duration
         
         if overlap is None:
-            overlap = self.duration / 2
+            overlap = self.patch_duration / 2
 
         self.overlap = overlap
         self.json_data = []
@@ -746,26 +753,26 @@ class SpectrogramTestDataset(SpectrogramDataset):
                 'songID': songID,
                 'patches': []
             }
-            for start in np.arange(-(duration - overlap), - duration, -(duration - overlap)):
+            for start in np.arange(-(patch_duration - overlap), - patch_duration, -(patch_duration - overlap)):
                 data = {
                     'start': 0,
-                    'duration': duration + start,
+                    'duration': patch_duration + start,
                     'padding_start': -start,
                     'padding_end': 0
                 }
                 song_data['patches'].append(data)
-            for start in np.arange(0, track.duration, duration - overlap):
-                if start + duration > track.duration:
+            for start in np.arange(0, track.duration, patch_duration - overlap):
+                if start + patch_duration > track.duration:
                     data = {
                         'start': start,
                         'duration': track.duration - start,
                         'padding_start': 0,
-                        'padding_end': start + duration - track.duration
+                        'padding_end': start + patch_duration - track.duration
                     }
                 else:
                     data = {
                         'start': start,
-                        'duration': duration,
+                        'duration': patch_duration,
                         'padding_start': 0,
                         'padding_end': 0
                     }
