@@ -6,7 +6,7 @@ continue_from=""
 sources="[drums,bass,other,vocals]"
 target='vocals'
 patch=256
-max_duration=10
+max_duration=30
 
 musdb18_root="../../../dataset/musdb18"
 sr=44100
