@@ -44,6 +44,7 @@ def main(args):
     max_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
     overlap = max_duration / 2
 
+    # TODO: compatible with normalized in istft, window_fn
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=max_duration, overlap=overlap, target=args.target)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=max_duration, overlap=overlap, target=args.target)
     

@@ -24,6 +24,9 @@ class AdhocTrainer(TrainerBase):
         # Override
         self.sr = args.sr
 
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.window = None
+
         self.max_norm = args.max_norm
         
         self.model_dir = args.model_dir
@@ -146,7 +149,6 @@ class AdhocTrainer(TrainerBase):
         return train_loss
     
     def run_one_epoch_eval(self, epoch):
-        return 0
         # Override
         """
         Validation
@@ -167,10 +169,8 @@ class AdhocTrainer(TrainerBase):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2 + imag**2)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2 + imag**2)
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude)
                 loss = self.criterion(output, sources_amplitude, batch_mean=False)
@@ -178,18 +178,16 @@ class AdhocTrainer(TrainerBase):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (2, n_bins, n_frames, 2)
+                    mixture = mixture[0].cpu() # -> (2, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (2, n_bins, n_frames)
                     estimated_sources_amplitude = output[0].cpu() # -> (2, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[...,0], mixture[...,1]
-                    real, imag = ratio * real, ratio * imag
                     
-                    estimated_source = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (2, n_bins, n_frames, 2)
-                    estimated_source = self.istft(estimated_source) # -> (2, T)
+                    estimated_source = ratio * mixture # -> (2, n_bins, n_frames)
+                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, return_complex=False) # -> (2, T)
                     estimated_source = estimated_source.cpu().numpy()
                     
-                    mixture = self.istft(mixture) # -> (2, T)
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, return_complex=False) # -> (2, T)
                     mixture = mixture.cpu().numpy()
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
