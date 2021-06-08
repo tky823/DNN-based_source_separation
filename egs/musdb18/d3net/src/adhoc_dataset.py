@@ -426,6 +426,11 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         return mixture, target
     
+    def __len__(self):
+        source = self.sources[0]
+        
+        return len(self.json_data[source])
+    
     def _getitem(self, idx):
         """
         Args:
