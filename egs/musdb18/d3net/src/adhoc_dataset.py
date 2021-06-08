@@ -381,7 +381,7 @@ class WaveTestDataset(WaveEvalDataset):
             self.json_data.append(song_data)
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, sources=__sources__, target=None, json_path=None, augmentation=True, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_duration=4, overlap=None, sources=__sources__, target=None, json_path=None, augmentation=True, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
@@ -392,10 +392,10 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             return
         
         self.threshold = threshold
-        self.duration = duration
+        self.patch_duration = patch_duration
 
         if overlap is None:
-            overlap = self.duration / 2
+            overlap = self.patch_duration / 2
 
         self.augmentation = augmentation
 
@@ -404,13 +404,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         }
 
         for songID, track in enumerate(self.mus.tracks):
-            for start in np.arange(0, track.duration, duration - overlap):
-                if start + duration >= track.duration:
+            for start in np.arange(0, track.duration, patch_duration - overlap):
+                if start + patch_duration >= track.duration:
                     break
                 data = {
                     'songID': songID,
                     'start': start,
-                    'duration': duration
+                    'duration': patch_duration
                 }
                 for source in sources:
                     self.json_data[source].append(data)
@@ -504,13 +504,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
 
-            start = random.uniform(0, track.duration - self.duration)
+            start = random.uniform(0, track.duration - self.patch_duration)
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
             track.sample_rate = self.sr
             track.chunk_start = start
-            track.chunk_duration = self.duration
+            track.chunk_duration = self.patch_duration
 
             source = track.targets[_source].audio.transpose(1, 0)
 
@@ -538,7 +538,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 track = self.mus.tracks[songID]
                 track.sample_rate = self.sr
                 track.chunk_start = start
-                track.chunk_duration = self.duration
+                track.chunk_duration = self.patch_duration
 
                 _target = track.targets[_target].audio.transpose(1, 0)
                 
@@ -560,7 +560,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             track = self.mus.tracks[songID]
             track.sample_rate = self.sr
             track.chunk_start = start
-            track.chunk_duration = self.duration
+            track.chunk_duration = self.patch_duration
 
             _target = track.targets[_target].audio.transpose(1, 0)
                 
@@ -617,7 +617,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                 song_data['patches'].append(data)
             
             max_duration = min(track.duration, self.max_duration)
-            
+
             for start in np.arange(0, max_duration, patch_duration - overlap):
                 if start + patch_duration > max_duration:
                     data = {
