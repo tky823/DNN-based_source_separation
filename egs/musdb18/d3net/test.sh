@@ -11,7 +11,7 @@ max_duration=30
 musdb18_root="../../../dataset/musdb18"
 sr=44100
 
-window_fn='hann' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
+window_fn='hann'
 fft_size=4096
 hop_size=1024
 
