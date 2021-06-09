@@ -161,7 +161,7 @@ class AdhocTrainer(TrainerBase):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, target, latent, T, title) in enumerate(self.valid_loader):
+            for idx, (mixture, target, latent) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, n_mics, n_bins, n_frames)
                 sources (batch_size, n_mics, n_bins, n_frames)
