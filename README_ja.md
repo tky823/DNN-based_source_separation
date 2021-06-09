@@ -27,6 +27,7 @@ DNNによる音源分離（PyTorch実装）
 
 ## モジュール
 | モジュール | 参考文献 | 実装 |
+| :---: | :---: | :---: |
 | Depthwise-separable convolution |  | ✔ |
 | Gated Linear Units |  | ✔ |
 | FiLM | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |

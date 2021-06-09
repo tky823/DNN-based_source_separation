@@ -27,6 +27,7 @@ A PyTorch implementation of DNN-based source separation.
 
 ## Modules
 | Module | Reference | Done |
+| :---: | :---: | :---: |
 | Depthwise-separable convolution |  | ✔ |
 | Gated Linear Units |  | ✔ |
 | FiLM | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
