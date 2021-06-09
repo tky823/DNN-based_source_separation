@@ -5,4 +5,4 @@ ipython~=5.5.0
 torch>=1.8.0
 torchaudio>=0.8.0
 mir_eval==0.6
-musdb==0.3.1
+musdb==0.4.0

@@ -5,22 +5,12 @@ import numpy as np
 import musdb
 import torch
 
+from dataset import MUSDB18Dataset
+
 __sources__=['drums','bass','other','vocals']
 
 EPS=1e-12
 THRESHOLD_POWER=1e-5
-
-class MUSDB18Dataset(torch.utils.data.Dataset):
-    def __init__(self, musdb18_root, sr=44100, target=None):
-        super().__init__()
-
-        assert target in __sources__, "target is unknown"
-        
-        self.musdb18_root = os.path.abspath(musdb18_root)
-        self.mus = musdb.DB(root=self.musdb18_root)
-
-        self.sr = sr
-        self.target = target
 
 class WaveDataset(MUSDB18Dataset):
     def __init__(self, musdb18_root, sr=44100, target=None):
@@ -42,7 +32,6 @@ class WaveDataset(MUSDB18Dataset):
         songID = data['songID']
         track = self.mus.tracks[songID]
         title = track.title
-        track.sample_rate = self.sr
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
@@ -92,8 +81,7 @@ class WaveTrainDataset(WaveDataset):
             for start in np.arange(0, track.duration, duration - overlap):
                 if start + duration >= track.duration:
                     break
-
-                track.sample_rate = self.sr
+                
                 track.chunk_start = start
                 track.chunk_duration = duration
                 target = track.targets[self.target].audio.transpose(1, 0)

@@ -86,7 +86,6 @@ class WaveTrainDataset(WaveDataset):
         songID = data['songID']
         track = self.mus.tracks[songID]
         
-        track.sample_rate = self.sr
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
@@ -130,7 +129,6 @@ class WaveTrainDataset(WaveDataset):
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
-            track.sample_rate = self.sr
             track.chunk_start = start
             track.chunk_duration = self.duration
 
@@ -158,7 +156,7 @@ class WaveTrainDataset(WaveDataset):
                 scale = scales[idx]
                 
                 track = self.mus.tracks[songID]
-                track.sample_rate = self.sr
+
                 track.chunk_start = start
                 track.chunk_duration = self.duration
 
@@ -180,7 +178,7 @@ class WaveTrainDataset(WaveDataset):
             scale = scales[idx]
             
             track = self.mus.tracks[songID]
-            track.sample_rate = self.sr
+            
             track.chunk_start = start
             track.chunk_duration = self.duration
 
@@ -266,7 +264,7 @@ class WaveEvalDataset(WaveDataset):
         songID = song_data['songID']
         track = self.mus.tracks[songID]
         title = track.title
-        track.sample_rate = self.sr
+
         T = track.duration
 
         batch_mixture, batch_target = [], []
@@ -464,7 +462,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         songID = data['songID']
         track = self.mus.tracks[songID]
         
-        track.sample_rate = self.sr
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
@@ -508,7 +505,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
-            track.sample_rate = self.sr
             track.chunk_start = start
             track.chunk_duration = self.patch_duration
 
@@ -536,7 +532,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 scale = scales[idx]
                 
                 track = self.mus.tracks[songID]
-                track.sample_rate = self.sr
                 track.chunk_start = start
                 track.chunk_duration = self.patch_duration
 
@@ -558,7 +553,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             scale = scales[idx]
             
             track = self.mus.tracks[songID]
-            track.sample_rate = self.sr
             track.chunk_start = start
             track.chunk_duration = self.patch_duration
 
@@ -650,7 +644,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         songID = song_data['songID']
         track = self.mus.tracks[songID]
         title = track.title
-        track.sample_rate = self.sr
         T = track.duration
 
         batch_mixture, batch_target = [], []
@@ -792,7 +785,6 @@ class SpectrogramTestDataset(SpectrogramDataset):
         songID = song_data['songID']
         track = self.mus.tracks[songID]
         title = track.title
-        track.sample_rate = self.sr
         T = track.duration
 
         batch_mixture, batch_target = [], []
