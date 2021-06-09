@@ -130,9 +130,8 @@ class AdhocTrainer(TrainerBase):
             target_amplitude = torch.abs(target)
             
             estimated_mask = self.model(mixture_amplitude, latent)
-            estimated_sources_amplitude = estimated_mask * mixture_amplitude
-            estimated_sources_amplitude = self.model(mixture_amplitude)
-            loss = self.criterion(estimated_sources_amplitude, target_amplitude)
+            estimated_target_amplitude = estimated_mask * mixture_amplitude
+            loss = self.criterion(estimated_target_amplitude, target_amplitude)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -176,17 +175,16 @@ class AdhocTrainer(TrainerBase):
                 target_amplitude = torch.abs(target)
                 
                 estimated_mask = self.model(mixture_amplitude, latent)
-                estimated_sources_amplitude = estimated_mask * mixture_amplitude
-                estimated_sources_amplitude = self.model(mixture_amplitude)
-                loss = self.criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
+                estimated_target_amplitude = estimated_mask * mixture_amplitude
+                loss = self.criterion(estimated_target_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
                     mixture = mixture[0].cpu() # -> (2, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (2, n_bins, n_frames)
-                    estimated_sources_amplitude = estimated_sources_amplitude[0].cpu() # -> (2, n_bins, n_frames)
-                    ratio = estimated_sources_amplitude / mixture_amplitude
+                    estimated_target_amplitude = estimated_target_amplitude[0].cpu() # -> (2, n_bins, n_frames)
+                    ratio = estimated_target_amplitude / mixture_amplitude
                     
                     estimated_source = ratio * mixture # -> (2, n_bins, n_frames)
                     estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
