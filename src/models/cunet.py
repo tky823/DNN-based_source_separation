@@ -6,6 +6,8 @@ from torch.nn.modules.utils import _pair
 from conv import DepthwiseSeparableConv1d, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
 from models.film import FiLM2d
 
+EPS=1e-12
+
 """
 Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations
 """
@@ -80,7 +82,8 @@ class UNet2d(ConditionedUNetBase):
             kernel_size, stride=None,
             dilated=False, separable=False,
             nonlinear_enc='leaky-relu', nonlinear_dec='leaky-relu',
-            out_channels=None
+            out_channels=None,
+            eps=EPS
         ):
         """
         Args:
@@ -114,6 +117,7 @@ class UNet2d(ConditionedUNetBase):
         self.dilated, self.separable = dilated, separable
         self.nonlinear_enc, self.nonlinear_dec = nonlinear_enc, nonlinear_dec
         self.out_channels = out_channels
+        self.eps = eps
 
     def forward(self, input, gamma, beta):
         x, skip = self.encoder(input, gamma, beta)
@@ -130,13 +134,14 @@ class UNet2d(ConditionedUNetBase):
             'dilated': self.dilated,
             'separable': self.separable,
             'nonlinear_enc': self.nonlinear_enc, 'nonlinear_dec': self.nonlinear_dec,
-            'out_channels': self.out_channels
+            'out_channels': self.out_channels,
+            'eps': self.eps
         }
 
         return config
 
 class Encoder2d(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', eps=EPS):
         """
         Args:
             channels <list<int>>
@@ -170,7 +175,7 @@ class Encoder2d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(EncoderBlock2d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
+            net.append(EncoderBlock2d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n], eps=eps))
         
         self.net = nn.Sequential(*net)
         
@@ -189,7 +194,7 @@ class Encoder2d(nn.Module):
         return x, skip
 
 class Decoder2d(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', eps=EPS):
         """
         Args:
             channels <list<int>>
@@ -221,7 +226,7 @@ class Decoder2d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(DecoderBlock2d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
+            net.append(DecoderBlock2d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n], eps=EPS))
             # channels[n+1]//2: because of skip connection
         
         self.net = nn.Sequential(*net)
@@ -247,7 +252,7 @@ class Decoder2d(nn.Module):
         return output
 
 class EncoderBlock2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu', eps=EPS):
         super().__init__()
         
         kernel_size = _pair(kernel_size)
@@ -264,7 +269,7 @@ class EncoderBlock2d(nn.Module):
         else:
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         
-        self.batch_norm2d = nn.BatchNorm2d(out_channels)
+        self.batch_norm2d = nn.BatchNorm2d(out_channels, eps=eps)
         self.film = FiLM2d()
         
         if nonlinear == 'relu':
@@ -304,7 +309,7 @@ class EncoderBlock2d(nn.Module):
         return output
 
 class DecoderBlock2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu', eps=EPS):
         super().__init__()
         
         kernel_size = _pair(kernel_size)
@@ -320,7 +325,7 @@ class DecoderBlock2d(nn.Module):
             self.deconv2d = DepthwiseSeparableConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
         else:
             self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
-        self.batch_norm2d = nn.BatchNorm2d(out_channels)
+        self.batch_norm2d = nn.BatchNorm2d(out_channels, eps=eps)
         
         if nonlinear == 'relu':
             self.nonlinear = nn.ReLU()
@@ -374,14 +379,14 @@ class DecoderBlock2d(nn.Module):
         return output
 
 class ControlDenseNet(nn.Module):
-    def __init__(self, channels, out_channels, nonlinear='relu', dropout=False, norm=False):
+    def __init__(self, channels, out_channels, nonlinear='relu', dropout=False, norm=False, eps=EPS):
         """
         Args:
             out_channels <list<int>>: output channels
         """
         super().__init__()
 
-        self.dense_block = ControlStackedDenseBlock(channels, nonlinear=nonlinear, dropout=dropout, norm=norm)
+        self.dense_block = ControlStackedDenseBlock(channels, nonlinear=nonlinear, dropout=dropout, norm=norm, eps=eps)
 
         weights, biases = [], []
         
@@ -397,6 +402,7 @@ class ControlDenseNet(nn.Module):
         self.nonlinear = nonlinear
         self.dropout = dropout
         self.norm = norm
+        self.eps = eps
 
     def forward(self, input):
         """
@@ -426,13 +432,14 @@ class ControlDenseNet(nn.Module):
             'out_channels': self.out_channels,
             'nonlinear': self.nonlinear,
             'dropout': self.dropout,
-            'norm': self.norm
+            'norm': self.norm,
+            'eps': self.eps
         }
 
         return config
 
 class ControlStackedDenseBlock(nn.Module):
-    def __init__(self, channels, nonlinear=False, dropout=False, norm=False):
+    def __init__(self, channels, nonlinear=False, dropout=False, norm=False, eps=EPS):
         super().__init__()
 
         n_blocks = len(channels) - 1
@@ -448,7 +455,7 @@ class ControlStackedDenseBlock(nn.Module):
             else:
                 _dropout, _norm = dropout, norm
 
-            net.append(ControlDenseBlock(channels[n], channels[n + 1], nonlinear=nonlinear[n], dropout=_dropout, norm=_norm))
+            net.append(ControlDenseBlock(channels[n], channels[n + 1], nonlinear=nonlinear[n], dropout=_dropout, norm=_norm, eps=eps))
 
         self.n_blocks = n_blocks
         self.net = nn.Sequential(*net)
@@ -459,7 +466,7 @@ class ControlStackedDenseBlock(nn.Module):
         return output
 
 class ControlDenseBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, nonlinear='relu', dropout=False, norm=False):
+    def __init__(self, in_channels, out_channels, nonlinear='relu', dropout=False, norm=False, eps=EPS):
         super().__init__()
 
         self.nonlinear, self.dropout, self.norm = nonlinear, dropout, norm
@@ -478,7 +485,7 @@ class ControlDenseBlock(nn.Module):
             self.dropout0d = nn.Dropout(dropout)
 
         if self.norm:
-            self.batch_norm0d = nn.BatchNorm1d(out_channels)
+            self.batch_norm0d = nn.BatchNorm1d(out_channels, eps=eps)
     
     def forward(self, input):
         """
@@ -503,7 +510,7 @@ class ControlDenseBlock(nn.Module):
         return output
 
 class ControlConvNet(nn.Module):
-    def __init__(self, channels, out_channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', dropout=False, norm=False):
+    def __init__(self, channels, out_channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', dropout=False, norm=False, eps=EPS):
         """
         Args:
             out_channels <list<int>>: output_channels
@@ -512,7 +519,7 @@ class ControlConvNet(nn.Module):
 
         self.out_channels = out_channels
 
-        self.conv_block = ControlStackedConvBlock(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, nonlinear=nonlinear, dropout=dropout, norm=norm)
+        self.conv_block = ControlStackedConvBlock(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, nonlinear=nonlinear, dropout=dropout, norm=norm, eps=EPS)
 
         weights, biases = [], []
         
@@ -552,7 +559,7 @@ class ControlConvNet(nn.Module):
         return output_weights, output_biases
 
 class ControlStackedConvBlock(nn.Module):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear=False, dropout=False, norm=False):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear=False, dropout=False, norm=False, eps=EPS):
         super().__init__()
 
         n_blocks = len(channels) - 1
@@ -580,7 +587,7 @@ class ControlStackedConvBlock(nn.Module):
             else:
                 _dropout, _norm = dropout, norm
 
-            net.append(ControlConvBlock(channels[n], channels[n + 1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n], dropout=_dropout, norm=_norm))
+            net.append(ControlConvBlock(channels[n], channels[n + 1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n], dropout=_dropout, norm=_norm, eps=EPS))
 
         self.n_blocks = n_blocks
         self.net = nn.Sequential(*net)
@@ -598,7 +605,7 @@ class ControlStackedConvBlock(nn.Module):
         return output
 
 class ControlConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu', dropout=False, norm=False):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu', dropout=False, norm=False, eps=EPS):
         super().__init__()
         
         if stride is None:
@@ -624,7 +631,7 @@ class ControlConvBlock(nn.Module):
             self.dropout1d = nn.Dropout(dropout)
 
         if self.norm:
-            self.batch_norm1d = nn.BatchNorm1d(out_channels)
+            self.batch_norm1d = nn.BatchNorm1d(out_channels, eps=eps)
     
     def forward(self, input):
         """
