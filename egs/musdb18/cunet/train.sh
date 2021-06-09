@@ -28,7 +28,7 @@ lr=1e-3
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
-batch_size=6
+batch_size=4
 epochs=100
 
 use_cuda=1
