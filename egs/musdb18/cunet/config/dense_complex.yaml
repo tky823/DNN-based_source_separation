@@ -1,6 +1,6 @@
 control:
   backbone: dense
-  channels: [4, 16, 32, 64] # 4 because of [drums, bass, other, vocals]
+  channels: [4, 256, 1024] # 4 because of [drums, bass, other, vocals]
   nonlinear: 'relu'
   dropout: 0.5
   norm: True

@@ -16,7 +16,8 @@ hop_size=768
 
 # model
 control='dense' # or 'conv'
-config_path="./config/${control}.yaml"
+simple_or_complex='complex'
+config_path="./config/${control}_${simple_or_complex}.yaml"
 
 # Criterion
 criterion='mse'
