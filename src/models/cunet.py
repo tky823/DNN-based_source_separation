@@ -71,7 +71,7 @@ class UNet2d(ConditionedUNetBase):
             self,
             channels,
             kernel_size, stride=None,
-            dilated=False,
+            dilated=False, separable=False,
             nonlinear_enc='leaky-relu', nonlinear_dec='leaky-relu',
             out_channels=None
         ):
@@ -98,9 +98,9 @@ class UNet2d(ConditionedUNetBase):
                 
         channels_dec = _channels_dec
 
-        self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
+        self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
-        self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
+        self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, nonlinear=nonlinear_dec)
         
     def forward(self, input, gamma, beta):
         x, skip = self.encoder(input, gamma, beta)

@@ -1,0 +1,12 @@
+control:
+  backbone: dense
+  nonlinear: 'relu'
+  dropout: True
+  norm: True
+unet:
+  channels: [4, 8, 16, 32]
+  kernel_size: 3
+  stride: 2
+  nonlinear_enc: ['leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu']
+  nonlinear_dec: ['leaky-relu', 'leaky-relu', 'leaky-relu', 'sigmoid']
+    

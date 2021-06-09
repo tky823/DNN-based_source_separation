@@ -3,6 +3,7 @@
 
 import argparse
 
+import yaml
 import torch
 import torch.nn as nn
 
@@ -11,7 +12,7 @@ from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.cunet import ConditionedUNet2d, ControlDenseNet, UNet2d
-from criterion.distance import L1Loss, MeanSquaredError
+from criterion.distance import L1Loss
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
@@ -59,9 +60,16 @@ def main(args):
     
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
-    control_net = ControlDenseNet(len(args.sources), args.channels[1:], nonlinear=args.nonlinear_control, dropout=args.dropout_control, norm=args.norm_control)
-    unet = UNet2d(args.channels, kernel_size=args.kernel_size, stride=args.stride, nonlinear_enc=args.nonlinear_enc, nonlinear_dec=args.nonlinear_dec)
-    model = ConditionedUNet2d(control_net=control_net, unet=unet, masking=True)
+    
+    with open(args.config_path) as f:
+        config = yaml.safe_load(f)
+    config_control, config_unet = config['control'], config['unet']
+    if config_control['backbone'] == 'dense':
+        control_net = ControlDenseNet(len(args.sources), config_unet['channels'][1:], nonlinear=config_control['nonlinear'], dropout=config_control['dropout'], norm=config_control['norm'])
+    else:
+        raise ValueError("Invalid control net")
+    unet = UNet2d(config_unet['channels'], kernel_size=config_unet['kernel_size'], stride=config_unet['stride'], nonlinear_enc=config_unet['nonlinear_enc'], nonlinear_dec=config_unet['nonlinear_dec'])
+    model = ConditionedUNet2d(control_net=control_net, unet=unet)
 
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
