@@ -65,6 +65,13 @@ class ConditionedUNet2d(ConditionedUNetBase):
             output = x
         
         return output
+    
+    def get_package(self):
+        config = {}
+        config['control'] = self.control_net.get_package()
+        config['backbone'] = self.backbone.get_package()
+
+        return config
 
 class UNet2d(ConditionedUNetBase):
     def __init__(
@@ -102,12 +109,31 @@ class UNet2d(ConditionedUNetBase):
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
         self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, nonlinear=nonlinear_dec)
         
+        self.channels = channels
+        self.kernel_size, self.stride = kernel_size, stride
+        self.dilated, self.separable = dilated, separable
+        self.nonlinear_enc, self.nonlinear_dec = nonlinear_enc, nonlinear_dec
+        self.out_channels = out_channels
+
     def forward(self, input, gamma, beta):
         x, skip = self.encoder(input, gamma, beta)
         x = self.bottleneck(x)
         output = self.decoder(x, skip[::-1])
         
         return output
+    
+    def get_package(self):
+        config = {
+            'channels': self.channels,
+            'kernel_size': self.kernel_size,
+            'stride': self.stride,
+            'dilated': self.dilated,
+            'separable': self.separable,
+            'nonlinear_enc': self.nonlinear_enc, self.nonlinear_dec: 'nonlinear_dec',
+            'out_channels': self.out_channels
+        }
+
+        return config
 
 class Encoder2d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
@@ -351,11 +377,9 @@ class ControlDenseNet(nn.Module):
     def __init__(self, channels, out_channels, nonlinear='relu', dropout=False, norm=False):
         """
         Args:
-            out_channels <list<int>>: output_channels
+            out_channels <list<int>>: output channels
         """
         super().__init__()
-
-        self.out_channels = out_channels
 
         self.dense_block = ControlStackedDenseBlock(channels, nonlinear=nonlinear, dropout=dropout, norm=norm)
 
@@ -367,6 +391,11 @@ class ControlDenseNet(nn.Module):
         
         self.fc_weights = nn.ModuleList(weights)
         self.fc_biases = nn.ModuleList(biases)
+
+        self.channels = channels
+        self.nonlinear = nonlinear
+        self.dropout = dropout
+        self.norm = norm
 
     def forward(self, input):
         """
@@ -389,6 +418,17 @@ class ControlDenseNet(nn.Module):
             output_biases.append(x_biases)
 
         return output_weights, output_biases
+    
+    def get_package(self):
+        config = {
+            'channels': self.channels,
+            'out_channels': self.out_channels,
+            'nonlinear': self.nonlinear,
+            'dropout': self.dropout,
+            'norm': self.norm
+        }
+
+        return config
 
 class ControlStackedDenseBlock(nn.Module):
     def __init__(self, channels, nonlinear=False, dropout=False, norm=False):
