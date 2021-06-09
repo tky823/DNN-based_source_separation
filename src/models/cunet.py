@@ -28,7 +28,7 @@ class ConditionedUNet2d(ConditionedUNetBase):
             self,
             control_net,
             unet,
-            masking=True,
+            masking=False,
         ):
         """
         Args:
@@ -48,17 +48,18 @@ class ConditionedUNet2d(ConditionedUNetBase):
         gamma, beta = self.control_net(latent)
         x = self.backbone(input, gamma, beta)
 
-        if self.masking:
-            _, _, H_in, W_in = input.size()
-            _, _, H, W = x.size()
-            padding_height = H - H_in
-            padding_width = W - W_in
-            padding_top = padding_height//2
-            padding_bottom = padding_height - padding_top
-            padding_left = padding_width//2
-            padding_right = padding_width - padding_left
+        _, _, H_in, W_in = input.size()
+        _, _, H, W = x.size()
+        padding_height = H - H_in
+        padding_width = W - W_in
+        padding_top = padding_height//2
+        padding_bottom = padding_height - padding_top
+        padding_left = padding_width//2
+        padding_right = padding_width - padding_left
 
-            x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
+        x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
+
+        if self.masking:
             output = x * input
         else:
             output = x
