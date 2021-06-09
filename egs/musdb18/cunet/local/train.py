@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import TrainDataLoader
-from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
+from dataset import TrainDataLoader, EvalDataLoader
+from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset
 from adhoc_driver import AdhocTrainer
 from models.cunet import ConditionedUNet2d, ControlDenseNet, UNet2d
 from criterion.distance import L1Loss
@@ -19,13 +19,12 @@ parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
-parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
+parser.add_argument('--duration', type=float, default=4, help='Duration')
 parser.add_argument('--max_duration', type=float, default=10, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
-parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -44,12 +43,10 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
-    overlap = patch_duration / 2
+    overlap = args.duration / 2
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, max_duration=args.max_duration, sources=args.sources, target=args.target)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=args.duration, overlap=overlap, max_duration=args.max_duration, sources=args.sources)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

@@ -182,6 +182,46 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
         return dataset
 
+class SpectrogramEvalDataset(SpectrogramDataset):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, sources=__sources__, target=None, json_path=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+        
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
+
+        if json_path is not None:
+            with open(json_path, 'r') as f:
+                self.json_data = json.load(f)
+            return
+        
+        self.threshold = threshold
+        self.max_duration = max_duration
+
+        self.json_data = []
+
+        for songID, track in enumerate(self.mus.tracks):
+            duration = max(self.max_duration, track.duration)
+            data = {
+                'songID': songID,
+                'start': 0,
+                'duration': duration
+            }
+            self.json_data.append(data)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+        """
+        mixture, target, latent, _, _ = super().__getitem__(idx)
+
+        return mixture, target, latent
+    
+    @classmethod
+    def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
+        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
+        return dataset
+
 
 def _test_train_dataset():
     torch.manual_seed(111)

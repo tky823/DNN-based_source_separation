@@ -5,7 +5,7 @@ continue_from=""
 
 sources="[drums,bass,other,vocals]"
 target='vocals'
-patch=256
+duration=4
 max_duration=30
 
 musdb18_root="../../../dataset/musdb18"
@@ -38,7 +38,7 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${sources}/${target}/sr${sr}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -53,4 +53,27 @@ time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
-# train.py
+train.py \
+--musdb18_root ${musdb18_root} \
+--config_path "${config_path}" \
+--sr ${sr} \
+--duration ${duration} \
+--max_duration ${max_duration} \
+--window_fn "${window_fn}" \
+--fft_size ${fft_size} \
+--hop_size ${hop_size} \
+--sources ${sources} \
+--criterion ${criterion} \
+--optimizer ${optimizer} \
+--lr ${lr} \
+--weight_decay ${weight_decay} \
+--max_norm ${max_norm} \
+--batch_size ${batch_size} \
+--epochs ${epochs} \
+--model_dir "${model_dir}" \
+--loss_dir "${loss_dir}" \
+--sample_dir "${sample_dir}" \
+--continue_from "${continue_from}" \
+--use_cuda ${use_cuda} \
+--overwrite ${overwrite} \
+--seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"
