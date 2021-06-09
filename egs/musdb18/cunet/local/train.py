@@ -46,7 +46,7 @@ def main(args):
     overlap = args.duration / 2
     
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=args.duration, overlap=overlap, max_duration=args.max_duration, sources=args.sources)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, max_duration=args.max_duration, sources=args.sources)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
