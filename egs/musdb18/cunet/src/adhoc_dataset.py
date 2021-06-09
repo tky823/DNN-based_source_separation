@@ -33,7 +33,6 @@ class WaveDataset(MUSDB18Dataset):
         songID = data['songID']
         track = self.mus.tracks[songID]
         title = track.title
-        track.sample_rate = self.sr
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
@@ -140,7 +139,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, sources=__sources__, target=None, json_path=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', sample_rate=sr)
 
         if json_path is not None:
             with open(json_path, 'r') as f:
@@ -186,7 +185,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, sources=__sources__, target=None, json_path=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', sample_rate=sr)
 
         if json_path is not None:
             with open(json_path, 'r') as f:
