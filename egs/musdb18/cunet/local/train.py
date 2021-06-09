@@ -43,6 +43,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
+    args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     overlap = args.duration / 2
     
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
