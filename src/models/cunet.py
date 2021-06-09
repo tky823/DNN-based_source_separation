@@ -299,7 +299,8 @@ class DecoderBlock2d(nn.Module):
         Args:
             input (batch_size, C1, H, W)
             skip (batch_size, C2, H, W)
-                where C = C1 + C2
+        Returns:
+            output: (batch_size, C, H_out, W_out)
         """
         Kh, Kw = self.kernel_size
         Sh, Sw = self.stride
@@ -307,6 +308,19 @@ class DecoderBlock2d(nn.Module):
         
         Kh = (Kh - 1) * Dh + 1
         Kw = (Kw - 1) * Dw + 1
+
+        if skip is not None:
+            _, _, H_in, W_in = input.size()
+            _, _, H_skip, W_skip = skip.size()
+            padding_height = H_in - H_skip
+            padding_width = W_in - W_skip
+            padding_top = padding_height//2
+            padding_bottom = padding_height - padding_top
+            padding_left = padding_width//2
+            padding_right = padding_width - padding_left
+
+            input = F.pad(input, (-padding_left, -padding_right, -padding_top, -padding_bottom))
+            input = torch.cat([input, skip], dim=1)
         
         padding_height = Kh - Sh
         padding_width = Kw - Sw
@@ -314,9 +328,6 @@ class DecoderBlock2d(nn.Module):
         padding_bottom = padding_height - padding_top
         padding_left = padding_width//2
         padding_right = padding_width - padding_left
-
-        if skip is not None:
-            input = torch.cat([input, skip], dim=1)
 
         x = self.deconv2d(input)
         x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
