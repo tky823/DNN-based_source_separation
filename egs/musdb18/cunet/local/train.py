@@ -11,7 +11,7 @@ from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.cunet import ConditionedUNet2d, ControlDenseNet, UNet2d
-from criterion.distance import MeanSquaredError
+from criterion.distance import L1Loss, MeanSquaredError
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
@@ -88,7 +88,7 @@ def main(args):
     
     # Criterion
     if args.criterion == 'mse':
-        criterion = MeanSquaredError(dim=(1,2,3))
+        criterion = L1Loss(dim=(2,3))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
