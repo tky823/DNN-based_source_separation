@@ -4,15 +4,15 @@ exp_dir="./exp"
 continue_from=""
 
 sources="[drums,bass,other,vocals]"
-duration=4
+patch=128
 max_duration=30
 
 musdb18_root="../../../dataset/musdb18"
-sr=44100
+sr=8192
 
 window_fn='hann' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
-fft_size=4096
-hop_size=1024
+fft_size=1024
+hop_size=768
 
 # model
 control='dense' # or 'conv'
@@ -38,7 +38,7 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${sources}/sr${sr}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -57,7 +57,7 @@ train.py \
 --musdb18_root ${musdb18_root} \
 --config_path "${config_path}" \
 --sr ${sr} \
---duration ${duration} \
+--patch_size ${patch} \
 --max_duration ${max_duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
