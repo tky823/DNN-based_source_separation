@@ -199,7 +199,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         self.json_data = []
 
         for songID, track in enumerate(self.mus.tracks):
-            duration = max(self.max_duration, track.duration)
+            duration = min(self.max_duration, track.duration)
             data = {
                 'songID': songID,
                 'start': 0,
