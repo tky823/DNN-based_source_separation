@@ -4,7 +4,6 @@ exp_dir="./exp"
 continue_from=""
 
 sources="[drums,bass,other,vocals]"
-target='vocals'
 duration=4
 max_duration=30
 
@@ -16,7 +15,8 @@ fft_size=4096
 hop_size=1024
 
 # model
-config_path="./config/${target}.yaml"
+control='dense' # or 'conv'
+config_path="./config/${control}.yaml"
 
 # Criterion
 criterion='mse'
