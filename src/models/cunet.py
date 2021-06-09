@@ -129,7 +129,7 @@ class UNet2d(ConditionedUNetBase):
             'stride': self.stride,
             'dilated': self.dilated,
             'separable': self.separable,
-            'nonlinear_enc': self.nonlinear_enc, self.nonlinear_dec: 'nonlinear_dec',
+            'nonlinear_enc': self.nonlinear_enc, 'nonlinear_dec': self.nonlinear_dec,
             'out_channels': self.out_channels
         }
 
