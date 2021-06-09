@@ -393,6 +393,7 @@ class ControlDenseNet(nn.Module):
         self.fc_biases = nn.ModuleList(biases)
 
         self.channels = channels
+        self.out_channels = out_channels
         self.nonlinear = nonlinear
         self.dropout = dropout
         self.norm = norm
