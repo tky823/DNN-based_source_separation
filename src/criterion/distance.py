@@ -86,6 +86,84 @@ class L2Loss(nn.Module):
         
         return loss
 
+class L12Loss(nn.Module):
+    def __init__(self, dim1=1, dim2=2, reduction='mean'):
+        """
+        Args:
+            dim <int> or <tuple<int>>
+        """
+        super().__init__()
+        
+        self.dim1, self.dim2 = dim1, dim2
+        self.reduction = reduction
+        
+        if not reduction in ['mean', 'sum']:
+            raise ValueError("Invalid reduction type")
+        
+        self.maximize = False
+        self.maximize = False
+    
+    def forward(self, input, target, batch_mean=False):
+        loss = torch.abs(input - target) # (batch_size, *)
+        loss = torch.sum(loss, dim=self.dim1, keepdim=True)
+        loss = torch.sum(loss**2, dim=self.dim2, keepdim=True)
+        loss = torch.sqrt(loss)
+        
+        n_dim = loss.dim()
+        if n_dim > 1:
+            dim = tuple(range(1, n_dim))
+            
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise ValueError("Invalid reduction type")
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+
+class L21Loss(nn.Module):
+    def __init__(self, dim1=1, dim2=2, reduction='mean'):
+        """
+        Args:
+            dim <int> or <tuple<int>>
+        """
+        super().__init__()
+        
+        self.dim1, self.dim2 = dim1, dim2
+        self.reduction = reduction
+        
+        if not reduction in ['mean', 'sum']:
+            raise ValueError("Invalid reduction type")
+        
+        self.maximize = False
+        self.maximize = False
+    
+    def forward(self, input, target, batch_mean=False):
+        loss = torch.abs(input - target) # (batch_size, *)
+        loss = torch.sum(loss**2, dim=self.dim2, keepdim=True)
+        loss = torch.sqrt(loss)
+        loss = torch.sum(loss, dim=self.dim1, keepdim=True)
+        
+        n_dim = loss.dim()
+        if n_dim > 1:
+            dim = tuple(range(1, n_dim))
+            
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise ValueError("Invalid reduction type")
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+
 class MeanSquaredError(nn.Module):
     def __init__(self, dim=1):
         """
@@ -112,9 +190,7 @@ class MeanSquaredError(nn.Module):
         
         return loss
 
-if __name__ == '__main__':
-    torch.manual_seed(111)
-
+def _test_l1loss():
     batch_size, C, T = 2, 4, 6
 
     input = torch.randn(batch_size, C, T)
@@ -123,3 +199,35 @@ if __name__ == '__main__':
     criterion = L1Loss(dim=2)
     loss = criterion(input, target)
     print(loss)
+
+def _test_l12loss():
+    batch_size, C, H, W = 2, 4, 6, 10
+
+    input = torch.randn(batch_size, C, H, W)
+    target = torch.randn(batch_size, C, H, W)
+
+    criterion = L12Loss(dim1=2, dim2=3)
+    loss = criterion(input, target)
+    print(loss)
+
+def _test_l21loss():
+    batch_size, C, H, W = 2, 4, 6, 10
+
+    input = torch.randn(batch_size, C, H, W)
+    target = torch.randn(batch_size, C, H, W)
+
+    criterion = L21Loss(dim1=2, dim2=3)
+    loss = criterion(input, target)
+    print(loss)
+
+
+if __name__ == '__main__':
+    torch.manual_seed(111)
+
+    _test_l1loss()
+    print()
+
+    _test_l12loss()
+    print()
+
+    _test_l21loss()
