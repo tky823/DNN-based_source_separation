@@ -13,10 +13,9 @@ __sources__=['drums','bass','other','vocals']
 EPS=1e-12
 THRESHOLD_POWER=1e-5
 
-
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=44100, sources=__sources__):
-        super().__init__(musdb18_root, sr=sr, sources=sources)
+    def __init__(self, musdb18_root, sr=44100, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
 
         self.json_data = None
 
@@ -63,7 +62,6 @@ class WaveDataset(MUSDB18Dataset):
     def save_as_json(self, json_path):
         with open(json_path, 'w') as f:
             json.dump(self.json_data, f, indent=4)
-
 
 class SpectrogramDataset(WaveDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, sources=__sources__, target=None, json_path=None):
@@ -162,19 +160,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 if start + duration >= track.duration:
                     break
                 
-                track.sample_rate = self.sr
-                track.chunk_start = start
-                track.chunk_duration = duration
-                target = track.targets[self.target].audio.transpose(1, 0)
-                target = torch.Tensor(target).float()
-
-                if self._is_active(target, threshold=self.threshold):
-                    data = {
-                        'songID': songID,
-                        'start': start,
-                        'duration': duration
-                    }
-                    self.json_data.append(data)
+                data = {
+                    'songID': songID,
+                    'start': start,
+                    'duration': duration
+                }
+                self.json_data.append(data)
         
     def __getitem__(self, idx):
         """
@@ -190,7 +181,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
         dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
         return dataset
-
 
 
 def _test_train_dataset():
