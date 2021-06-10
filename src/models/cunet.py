@@ -717,12 +717,29 @@ def _test_cunet():
 
     batch_size = 2
 
-    channels_control = [latent_dim, 4, 8, 16]
-
     input = torch.randn((batch_size, 1, n_bins, n_frames), dtype=torch.float)
 
+    print('-'*10, "with Complex FiLM and Dense control", '-'*10)
+    channels_control = [latent_dim, 4, 8, 16]
+    out_channels_control = [1, 1, 1, 1]
+
     input_latent = torch.randn((batch_size, latent_dim), dtype=torch.float)
-    control_net = ControlDenseNet(channels_control, channels[1:], nonlinear=False, dropout=dropout_control, norm=True)
+
+    control_net = ControlDenseNet(channels_control, out_channels_control, nonlinear=False, dropout=dropout_control, norm=True)
+    unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
+    model = ConditionedUNet2d(control_net=control_net, unet=unet)
+    output = model(input, input_latent)
+    print(model)
+    print(input.size(), input_latent.size(), output.size())
+    print()
+
+    print('-'*10, "with Complex FiLM and Dense control", '-'*10)
+    channels_control = [latent_dim, 4, 8, 16]
+    out_channels_control = channels[1:]
+
+    input_latent = torch.randn((batch_size, latent_dim), dtype=torch.float)
+
+    control_net = ControlDenseNet(channels_control, out_channels_control, nonlinear=False, dropout=dropout_control, norm=True)
     unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
     model = ConditionedUNet2d(control_net=control_net, unet=unet, masking=True)
     output = model(input, input_latent)
@@ -730,14 +747,35 @@ def _test_cunet():
     print(input.size(), input_latent.size(), output.size())
     print()
 
+    print('-'*10, "with Simple FiLM and Conv control", '-'*10)
+
     channels_control = [1, 4, 8, 16]
+    out_channels_control = [1, 1, 1, 1]
     kernel_size_control = [latent_dim, latent_dim, latent_dim]
     stride_control = [1, 1, latent_dim]
 
     input_latent = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
-    control_net = ControlConvNet(channels_control, channels[1:], kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
+
+    control_net = ControlConvNet(channels_control, out_channels_control, kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
     unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
     model = ConditionedUNet2d(control_net=control_net, unet=unet, masking=True)
+    output = model(input, input_latent)
+    print(model)
+    print(input.size(), input_latent.size(), output.size())
+    print()
+
+    print('-'*10, "with Complex FiLM and Conv control", '-'*10)
+
+    channels_control = [1, 4, 8, 16]
+    out_channels_control = channels[1:]
+    kernel_size_control = [latent_dim, latent_dim, latent_dim]
+    stride_control = [1, 1, latent_dim]
+    
+    input_latent = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
+
+    control_net = ControlConvNet(channels_control, out_channels_control, kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
+    unet = UNet2d(channels, kernel_size=kernel_size, stride=stride, nonlinear_dec=nonlinear_dec)
+    model = ConditionedUNet2d(control_net=control_net, unet=unet)
     output = model(input, input_latent)
     print(model)
     print(input.size(), input_latent.size(), output.size())
