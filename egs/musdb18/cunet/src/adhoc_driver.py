@@ -161,7 +161,7 @@ class AdhocTrainer(TrainerBase):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, target, latent) in enumerate(self.valid_loader):
+            for idx, (mixture, target, latent, source, scale) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, n_mics, n_bins, n_frames)
                 sources (batch_size, n_mics, n_bins, n_frames)
@@ -181,6 +181,8 @@ class AdhocTrainer(TrainerBase):
                 valid_loss += loss.item()
                 
                 if idx < 5:
+                    source = source[0]
+                    scale = scale[0]
                     mixture = mixture[0].cpu() # -> (2, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (2, n_bins, n_frames)
                     estimated_target_amplitude = estimated_target_amplitude[0].cpu() # -> (2, n_bins, n_frames)
@@ -201,7 +203,7 @@ class AdhocTrainer(TrainerBase):
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
                     
-                    save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
+                    save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source, scale))
                     norm = torch.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
                     torchaudio.save(save_path, estimated_source, sample_rate=self.sr)

@@ -53,7 +53,7 @@ class WaveDataset(MUSDB18Dataset):
         target = torch.Tensor(target).float()
         latent = torch.Tensor(latent).float()
 
-        return mixture, target, latent, title
+        return mixture, target, latent, title, source, scale
 
     def __len__(self):
         return len(self.json_data)
@@ -110,7 +110,7 @@ class SpectrogramDataset(WaveDataset):
             T (), <int>: Number of samples in time-domain
             title <str>: Title of song
         """
-        mixture, target, latent, title = super().__getitem__(idx)
+        mixture, target, latent, title, source, scale = super().__getitem__(idx)
         
         n_dims = mixture.dim()
         T = mixture.size(-1)
@@ -128,7 +128,7 @@ class SpectrogramDataset(WaveDataset):
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
             target = target.reshape(*target_channels, *target.size()[-2:])
 
-        return mixture, target, latent, T, title
+        return mixture, target, latent, T, title, source, scale
     
     @classmethod
     def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
@@ -172,7 +172,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
         """
-        mixture, target, latent, _, _ = super().__getitem__(idx)
+        mixture, target, latent, _, _, _, _ = super().__getitem__(idx)
 
         return mixture, target, latent
     
@@ -212,9 +212,9 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
         """
-        mixture, target, latent, _, _ = super().__getitem__(idx)
+        mixture, target, latent, _, _, source, scale = super().__getitem__(idx)
 
-        return mixture, target, latent
+        return mixture, target, latent, source, scale
     
     @classmethod
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
