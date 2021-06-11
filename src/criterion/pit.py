@@ -157,6 +157,25 @@ class ORPIT:
             
         return batch_loss, batch_indices
 
+class SinkPIT:
+    """
+    "Towards Listening to 10 People Simultaneously: An Efficient Permutation Invariant Training of Audio Source Separation Using Sinkhorn's Algorithm"
+    See https://arxiv.org/abs/2010.11871
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self, input, target, batch_mean=True):
+        pass
+
+class ProbablisticPIT:
+    """
+    "Probabilistic permutation invariant training for speech separation"
+    See https://arxiv.org/abs/1908.01768
+    """
+    def __init__(self):
+        pass
+
 def _test_pit():
     from criterion.sdr import SISDR
 
@@ -269,3 +288,5 @@ if __name__ == '__main__':
     print('='*10, "One-and-Rest permutation invariant training", '='*10)
     _test_orpit()
     print()
+
+    _test_sink_pit()
