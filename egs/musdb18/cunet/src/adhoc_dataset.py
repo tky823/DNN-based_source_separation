@@ -224,7 +224,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
         sources_name = self.sources.copy()
         sources = np.concatenate(sources, axis=0)
-        mixture = sources.sum(axis=0)
+        mixture = sources.sum(axis=0, keepdims=True)
         latent = np.eye(len(self.sources))
 
         mixture = torch.Tensor(mixture).float()

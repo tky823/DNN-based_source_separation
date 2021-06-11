@@ -9,6 +9,8 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from driver import TrainerBase
 
+SAMPLE_RATE_MUSDB18=44100
+
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
@@ -44,6 +46,8 @@ class AdhocTrainer(TrainerBase):
         self.valid_loss = torch.empty(self.epochs)
         
         self.use_cuda = args.use_cuda
+
+        self.resampler = torchaudio.Transform.Resample(self.sr, SAMPLE_RATE_MUSDB18)
         
         if args.continue_from:
             package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
@@ -186,13 +190,8 @@ class AdhocTrainer(TrainerBase):
                     mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
                     mixture = mixture.cpu()
 
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
-
                     os.makedirs(save_dir, exist_ok=True)
-                    save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = torch.abs(mixture).max()
-                    mixture = mixture / norm
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr)
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
 
                     for idx, source_name in enumerate(source_names):
                         estimated_target_amplitude = estimated_target_amplitude[idx].cpu() # -> (2, n_bins, n_frames)
@@ -203,9 +202,16 @@ class AdhocTrainer(TrainerBase):
                         estimated_source = estimated_source.cpu()
                     
                         save_path = os.path.join(save_dir, "epoch{}_{}.wav".format(epoch + 1, source_name))
+                        estimated_source = self.resampler(estimated_source) # Resample
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
+                        torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18)
+
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    mixture = self.resampler(mixture) # Resample
+                    norm = torch.abs(mixture).max()
+                    mixture = mixture / norm
+                    torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18)
         
         valid_loss /= n_valid
         
