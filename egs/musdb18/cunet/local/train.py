@@ -25,7 +25,7 @@ parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='l1loss', choices=['l1loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -94,7 +94,7 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'mse':
+    if args.criterion == 'l1loss':
         criterion = L1Loss(dim=(2,3))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))

@@ -20,7 +20,7 @@ simple_or_complex='complex'
 config_path="./config/${control}_${simple_or_complex}.yaml"
 
 # Criterion
-criterion='mse'
+criterion='l1loss'
 
 # Optimizer
 optimizer='adam'
