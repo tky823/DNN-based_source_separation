@@ -187,11 +187,9 @@ class AdhocTrainer(TrainerBase):
                 if idx < 5:
                     mixture = mixture[0].cpu() # -> (2, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (2, n_bins, n_frames)
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
-                    mixture = mixture.cpu()
-
-                    os.makedirs(save_dir, exist_ok=True)
+                    
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
+                    os.makedirs(save_dir, exist_ok=True)
 
                     for idx, source_name in enumerate(source_names):
                         estimated_target_amplitude = estimated_target_amplitude[idx].cpu() # -> (2, n_bins, n_frames)
@@ -206,7 +204,8 @@ class AdhocTrainer(TrainerBase):
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18)
-
+                    
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     mixture = self.resampler(mixture) # Resample
                     norm = torch.abs(mixture).max()
