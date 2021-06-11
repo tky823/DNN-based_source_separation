@@ -47,7 +47,7 @@ class AdhocTrainer(TrainerBase):
         
         self.use_cuda = args.use_cuda
 
-        self.resampler = torchaudio.Transform.Resample(self.sr, SAMPLE_RATE_MUSDB18)
+        self.resampler = torchaudio.transforms.Resample(self.sr, SAMPLE_RATE_MUSDB18)
         
         if args.continue_from:
             package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
