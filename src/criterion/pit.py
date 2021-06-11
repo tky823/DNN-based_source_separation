@@ -44,17 +44,19 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
          
     return loss, patterns[indices]
 
-class PIT:
+class PIT(nn.Module):
     def __init__(self, criterion, n_sources):
         """
         Args:
             criterion <callable>: criterion is expected acceptable (input, target, batch_mean) when called.
         """
+        super().__init__()
+
         self.criterion = criterion
         patterns = list(itertools.permutations(range(n_sources)))
         self.patterns = torch.Tensor(patterns).long()
-        
-    def __call__(self, input, target, batch_mean=True):
+    
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
             input (batch_size, n_sources, *)
@@ -83,16 +85,18 @@ class PIT2d(PIT):
         """
         super().__init__(criterion, n_sources)
 
-class ORPIT:
+class ORPIT(nn.Module):
     """
     One-and-Rest permutation invariant training
     """
     def __init__(self, criterion):
+        super().__init__()
+
         self.criterion = criterion
         patterns = list(itertools.permutations(range(2))) # 2 means 'one' and 'rest'
         self.patterns = torch.Tensor(patterns).long()
 
-    def __call__(self, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
             input (batch_size, 2, *)
@@ -157,23 +161,29 @@ class ORPIT:
             
         return batch_loss, batch_indices
 
-class SinkPIT:
+class SinkPIT(nn.Module):
     """
     "Towards Listening to 10 People Simultaneously: An Efficient Permutation Invariant Training of Audio Source Separation Using Sinkhorn's Algorithm"
     See https://arxiv.org/abs/2010.11871
     """
-    def __init__(self):
+    def __init__(self, n_sources):
+        super().__init__()
+
+
         pass
 
-    def __call__(self, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         pass
-
-class ProbablisticPIT:
+    
+class ProbPIT(nn.Module):
     """
     "Probabilistic permutation invariant training for speech separation"
     See https://arxiv.org/abs/1908.01768
     """
     def __init__(self):
+        super().__init__()
+    
+    def forward(self, input, target, batch_mean=True):
         pass
 
 def _test_pit():
@@ -280,13 +290,31 @@ def _test_orpit():
     print(loss)
     print(indices)
 
+def _test_sink_pit():
+    from criterion.sdr import SISDR
+
+    torch.manual_seed(111)
+
+    batch_size, C, T = 4, 2, 1024
+    input = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    target = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    
+    print('-'*10, "SI-SDR", '-'*10)
+    criterion = SISDR()
+    pit_criterion = SinkPIT(criterion, n_sources=C)
+    loss, pattern = pit_criterion(input, target)
+    
+    print(loss)
+    print(pattern)
+    print()
+
 if __name__ == '__main__':
     print('='*10, "Permutation invariant training", '='*10)
-    _test_pit()
+    #_test_pit()
     print()
 
     print('='*10, "One-and-Rest permutation invariant training", '='*10)
-    _test_orpit()
+    #_test_orpit()
     print()
 
     _test_sink_pit()
