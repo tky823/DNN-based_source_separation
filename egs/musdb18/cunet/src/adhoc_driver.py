@@ -161,15 +161,15 @@ class AdhocTrainer(TrainerBase):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, target, latent, source, scale) in enumerate(self.valid_loader):
+            for idx, (mixture, target, latent, source_names) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, n_mics, n_bins, n_frames)
-                sources (batch_size, n_mics, n_bins, n_frames)
-                title <list<str>>
+                mixture (len(source_names), n_mics, n_bins, n_frames)
+                target (len(source_names), n_mics, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     target = target.cuda()
+                    latent = latent.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
                 target_amplitude = torch.abs(target)
@@ -181,20 +181,11 @@ class AdhocTrainer(TrainerBase):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    source = source[0]
-                    scale = scale[0]
                     mixture = mixture[0].cpu() # -> (2, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (2, n_bins, n_frames)
-                    estimated_target_amplitude = estimated_target_amplitude[0].cpu() # -> (2, n_bins, n_frames)
-                    ratio = estimated_target_amplitude / mixture_amplitude
-                    
-                    estimated_source = ratio * mixture # -> (2, n_bins, n_frames)
-                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
-                    estimated_source = estimated_source.cpu()
-                    
                     mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
                     mixture = mixture.cpu()
-                    
+
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
 
                     os.makedirs(save_dir, exist_ok=True)
@@ -202,11 +193,19 @@ class AdhocTrainer(TrainerBase):
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr)
+
+                    for idx, source_name in enumerate(source_names):
+                        estimated_target_amplitude = estimated_target_amplitude[idx].cpu() # -> (2, n_bins, n_frames)
+                        ratio = estimated_target_amplitude / mixture_amplitude
                     
-                    save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source, scale))
-                    norm = torch.abs(estimated_source).max()
-                    estimated_source = estimated_source / norm
-                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
+                        estimated_source = ratio * mixture # -> (2, n_bins, n_frames)
+                        estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
+                        estimated_source = estimated_source.cpu()
+                    
+                        save_path = os.path.join(save_dir, "epoch{}_{}.wav".format(epoch + 1, source_name))
+                        norm = torch.abs(estimated_source).max()
+                        estimated_source = estimated_source / norm
+                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
         
         valid_loss /= n_valid
         

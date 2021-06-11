@@ -212,14 +212,62 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
         """
-        mixture, target, latent, _, _, source, scale = super().__getitem__(idx)
+        data = self.json_data[idx]
 
-        return mixture, target, latent, source, scale
+        songID = data['songID']
+        track = self.mus.tracks[songID]
+        track.chunk_start = data['start']
+        track.chunk_duration = data['duration']
+
+        sources = []
+        for _source in self.sources:
+            sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+        sources_name = self.sources.copy()
+        sources = np.concatenate(sources, axis=0)
+        mixture = sources.sum(axis=0)
+        latent = np.eye(len(self.sources))
+
+        mixture = torch.Tensor(mixture).float()
+        target = torch.Tensor(sources).float()
+        latent = torch.Tensor(latent).float()
+        
+        n_dims = mixture.dim()
+
+        if n_dims > 2:
+            mixture_channels = mixture.size()[:-1]
+            target_channels = target.size()[:-1]
+            mixture = mixture.reshape(-1, mixture.size(-1))
+            target = target.reshape(-1, target.size(-1))
+
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        
+        if n_dims > 2:
+            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
+            target = target.reshape(*target_channels, *target.size()[-2:])
+
+        return mixture, target, latent, sources_name
     
     @classmethod
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
         dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
         return dataset
+
+"""
+Data loader
+"""
+class EvalDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
+        self.collate_fn = eval_collate_fn
+
+def eval_collate_fn(batch):
+    mixture, target, latent, sources_name = batch[0]
+    
+    return mixture, target, latent, sources_name
 
 
 def _test_train_dataset():

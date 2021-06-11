@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import TrainDataLoader, EvalDataLoader
-from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset
+from dataset import TrainDataLoader
+from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.cunet import ConditionedUNet2d, ControlDenseNet, UNet2d
 from criterion.distance import L1Loss
