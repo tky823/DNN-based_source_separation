@@ -270,7 +270,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         latent = np.zeros(len(self.sources))
         source = random.choice(self.sources)
         source_idx = self.sources.index(source)
-        scale = random.uniform(0, 1) # 1
+        scale = random.uniform(0.5, 1) # 1 doesn't work.
         latent[source_idx] = scale
         target = scale * sources[source_idx]
 
