@@ -275,7 +275,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         
         sources = np.concatenate(sources, axis=0)
         target = np.concatenate(target, axis=0)
-        mixture = sources.sum(axis=0)
+        mixture = sources.sum(axis=0, keepdims=True)
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
