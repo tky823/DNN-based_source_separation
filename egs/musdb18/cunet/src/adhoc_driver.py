@@ -168,7 +168,7 @@ class AdhocTrainer(TrainerBase):
             for idx, (mixture, target, latent, source, scale) in enumerate(self.valid_loader):
                 """
                 mixture (batch_size, n_mics, n_bins, n_frames)
-                sources (batch_size, n_mics, n_bins, n_frames)
+                target (batch_size, n_mics, n_bins, n_frames)
                 title <list<str>>
                 """
                 if self.use_cuda:
@@ -202,15 +202,18 @@ class AdhocTrainer(TrainerBase):
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
 
                     os.makedirs(save_dir, exist_ok=True)
+
                     save_path = os.path.join(save_dir, "mixture.wav")
+                    mixture = self.resampler(mixture)
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr)
+                    torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18) # self.sr
                     
                     save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source, scale))
+                    estimated_source = self.resampler(estimated_source)
                     norm = torch.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr)
+                    torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18) # self.sr
         
         valid_loss /= n_valid
         
