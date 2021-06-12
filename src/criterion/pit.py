@@ -324,20 +324,17 @@ def _test_sink_pit():
     torch.manual_seed(111)
 
     batch_size, C, T = 4, 3, 1024
-    P = permutations(range(C))
-
-    target = torch.randn(batch_size, C, T, dtype=torch.float)
-    pattern = random.choices([list(p) for p in P], k=batch_size)
-    pattern = torch.Tensor(pattern).long()
-    print("Ground truth pattern: ")
-    print(pattern)
-
-    input = []
-    for _target, _pattern in zip(target, pattern):
-        _input = _target[_pattern] + 1e-1 * torch.randn(C, T)
-        input.append(_input.unsqueeze(dim=0))
+    input = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    target = torch.randint(2, (batch_size, C, T), dtype=torch.float)
     
-    input = torch.cat(input, dim=0)
+    print('-'*10, "Negative SI-SDR (PIT)", '-'*10)
+    criterion = NegSISDR()
+    pit_criterion = PIT(criterion, n_sources=C)
+    loss, pattern = pit_criterion(input, target)
+    
+    print(loss)
+    print(pattern)
+    print()
     
     print('-'*10, "Negative SI-SDR", '-'*10)
     criterion = NegSISDR()
