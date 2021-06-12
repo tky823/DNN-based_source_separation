@@ -263,7 +263,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         sources = []
         target = []
-        latent = np.zeros(len(self.sources), len(self.sources))
+        latent = np.zeros((len(self.sources), len(self.sources)))
         source_names = self.sources.copy()
 
         for source_idx, source_name in enumerate(self.sources):
