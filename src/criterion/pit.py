@@ -161,52 +161,57 @@ class ORPIT(nn.Module):
             
         return batch_loss, batch_indices
 
+def sinkpit(criterion, input, target, n_sources=None, coldness=1e+0, iteration=10, batch_mean=True):    
+    if n_sources is None:
+        n_sources = input.size(1)
+
+    batch_size = input.size(0)
+
+    input_size, target_size = input.size()[2:], target.size()[2:]
+    input, target = input.unsqueeze(dim=2).expand(-1, -1, n_sources, -1).contiguous(), target.unsqueeze(dim=1).expand(-1, n_sources, -1, -1).contiguous()
+    input, target = input.view(batch_size * n_sources * n_sources, *input_size), target.view(batch_size * n_sources * n_sources, *target_size)
+    possible_loss = criterion(input, target, batch_mean=False)
+    possible_loss = possible_loss.view(batch_size, n_sources, n_sources)
+
+    if hasattr(criterion, "maximize") and criterion.maximize:
+        possible_loss = - possible_loss
+    
+    with torch.no_grad():
+        Z = - coldness * possible_loss.clone()
+
+        for idx in range(iteration):
+            Z = Z - torch.logsumexp(Z, dim=1, keepdim=True)
+            Z = Z - torch.logsumexp(Z, dim=2, keepdim=True)
+    
+    permutaion_matrix = torch.exp(Z)
+    loss = torch.sum((possible_loss + Z / coldness) * permutaion_matrix, dim=(1,2))
+
+    if hasattr(criterion, "maximize") and criterion.maximize:
+        loss = - loss
+
+    if batch_mean:
+        loss = loss.mean(dim=0)
+    
+    return loss, permutaion_matrix
+
 class SinkPIT(nn.Module):
     """
     "Towards Listening to 10 People Simultaneously: An Efficient Permutation Invariant Training of Audio Source Separation Using Sinkhorn's Algorithm"
     See https://arxiv.org/abs/2010.11871
     """
-    def __init__(self, criterion, n_sources=None, beta=1, iteration=10):
+    def __init__(self, criterion, n_sources=None, coldness=1, iteration=10):
         super().__init__()
 
         self.criterion = criterion
         self.n_sources = n_sources
 
-        self.beta = beta
+        self.coldness = coldness
         self.iteration = iteration
 
     def forward(self, input, target, batch_mean=True):
-        n_sources = self.n_sources
-        beta = self.beta
+        loss, permutation_matrix = sinkpit(self.criterion, input, target, n_sources=self.n_sources, coldness=self.coldness, iteration=self.iteration, batch_mean=batch_mean)
+        pattern = torch.argmax(permutation_matrix, dim=2)
 
-        batch_size = input.size(0)
-
-        input_size, target_size = input.size()[2:], target.size()[2:]
-        input, target = input.unsqueeze(dim=2).expand(-1, -1, n_sources, -1).contiguous(), target.unsqueeze(dim=1).expand(-1, n_sources, -1, -1).contiguous()
-        input, target = input.view(batch_size * n_sources * n_sources, *input_size), target.view(batch_size * n_sources * n_sources, *target_size)
-        possible_loss = self.criterion(input, target, batch_mean=False)
-        possible_loss = possible_loss.view(batch_size, n_sources, n_sources)
-
-        if hasattr(self.criterion, "maximize") and self.criterion.maximize:
-            possible_loss = - possible_loss
-        
-        with torch.no_grad():
-            Z = - beta * possible_loss.clone()
-
-            for idx in range(self.iteration):
-                Z = Z - torch.logsumexp(Z, dim=1, keepdim=True)
-                Z = Z - torch.logsumexp(Z, dim=2, keepdim=True)
-        
-        B = torch.exp(Z)
-        pattern = torch.argmax(B, dim=2)
-        loss = torch.sum((possible_loss + Z / beta) * B, dim=(1,2))
-
-        if hasattr(self.criterion, "maximize") and self.criterion.maximize:
-            loss = - loss
-
-        if batch_mean:
-            loss = loss.mean(dim=0)
-        
         return loss, pattern
     
 class ProbPIT(nn.Module):
@@ -319,7 +324,7 @@ def _test_orpit():
     print(loss)
     print(indices)
 
-def _test_sink_pit():
+def _test_sinkpit():
     random.seed(111)
     torch.manual_seed(111)
 
@@ -338,7 +343,7 @@ def _test_sink_pit():
     
     print('-'*10, "Negative SI-SDR", '-'*10)
     criterion = NegSISDR()
-    pit_criterion = SinkPIT(criterion, n_sources=C, beta=1)
+    pit_criterion = SinkPIT(criterion, n_sources=C, coldness=1)
     loss, pattern = pit_criterion(input, target, batch_mean=False)
     
     print(loss)
@@ -347,7 +352,7 @@ def _test_sink_pit():
 
     print('-'*10, "SI-SDR", '-'*10)
     criterion = SISDR()
-    pit_criterion = SinkPIT(criterion, n_sources=C, beta=1)
+    pit_criterion = SinkPIT(criterion, n_sources=C, coldness=1)
     loss, pattern = pit_criterion(input, target, batch_mean=False)
     
     print(loss)
@@ -370,4 +375,4 @@ if __name__ == '__main__':
     print()
 
     print('='*10, "SinkPIT", '='*10)
-    _test_sink_pit()
+    _test_sinkpit()
