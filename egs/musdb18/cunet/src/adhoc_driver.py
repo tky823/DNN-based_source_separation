@@ -10,6 +10,7 @@ from utils.utils import draw_loss_curve
 from driver import TrainerBase
 
 SAMPLE_RATE_MUSDB18=44100
+BITS_PER_SAMPLE=16 # 16 bit
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -207,13 +208,13 @@ class AdhocTrainer(TrainerBase):
                     mixture = self.resampler(mixture)
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18) # self.sr
+                    torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
                     
                     save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source, scale))
                     estimated_source = self.resampler(estimated_source)
                     norm = torch.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18) # self.sr
+                    torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
         
         valid_loss /= n_valid
         
