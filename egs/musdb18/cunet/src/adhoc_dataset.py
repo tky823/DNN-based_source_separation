@@ -262,17 +262,20 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         track.chunk_duration = data['duration']
 
         sources = []
-        for _source in self.sources:
-            sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
-        sources = np.concatenate(sources, axis=0)
-        mixture = sources.sum(axis=0)
+        target = []
+        latent = np.zeros(len(self.sources), len(self.sources))
+        source_names = self.sources.copy()
 
-        latent = np.zeros(len(self.sources))
-        source = random.choice(self.sources)
-        source_idx = self.sources.index(source)
-        scale = random.uniform(0.5, 1) # 1 doesn't work.
-        latent[source_idx] = scale
-        target = scale * sources[source_idx]
+        for source_idx, source_name in enumerate(self.sources):
+            source = track.targets[source_name].audio.transpose(1, 0)[np.newaxis]
+            sources.append(source)
+            scale = random.uniform(0.5, 1) # 1 doesn't work.
+            latent[source_idx, source_idx] = scale
+            target.append(scale * source)
+        
+        sources = np.concatenate(sources, axis=0)
+        target = np.concatenate(target, axis=0)
+        mixture = sources.sum(axis=0)
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
@@ -293,7 +296,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
             target = target.reshape(*target_channels, *target.size()[-2:])
 
-        return mixture, target, latent, source, scale
+        return mixture, target, latent, source_names, scale
 
     @classmethod
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
@@ -309,12 +312,12 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
 
-        # self.collate_fn = eval_collate_fn
+        self.collate_fn = eval_collate_fn
 
 def eval_collate_fn(batch):
-    mixture, target, latent, sources_name = batch[0]
+    mixture, target, latent, source_names = batch[0]
     
-    return mixture, target, latent, sources_name
+    return mixture, target, latent, source_names
 
 
 def _test_train_dataset():
