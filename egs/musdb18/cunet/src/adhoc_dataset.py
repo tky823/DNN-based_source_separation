@@ -258,7 +258,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         songID = data['songID']
         track = self.mus.tracks[songID]
-        title = track.title
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
@@ -271,7 +270,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         latent = np.zeros(len(self.sources))
         source = random.choice(self.sources)
         source_idx = self.sources.index(source)
-        scale = random.uniform(0, 1)
+        scale = 1
         latent[source_idx] = scale
         target = scale * sources[source_idx]
 
@@ -280,7 +279,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         latent = torch.Tensor(latent).float()
         
         n_dims = mixture.dim()
-        T = mixture.size(-1)
 
         if n_dims > 2:
             mixture_channels = mixture.size()[:-1]
