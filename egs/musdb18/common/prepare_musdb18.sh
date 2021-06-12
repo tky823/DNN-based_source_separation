@@ -13,7 +13,7 @@ if [ ${is_hq} -eq 0 ]; then
     else
         mkdir -p "${musdb18_root}"
         wget "https://zenodo.org/record/1117372/files/${file}" -P "/tmp"
-        unzip "${file}" -d "${musdb18_root}"
+        unzip "/tmp/${file}" -d "${musdb18_root}"
         rm "/tmp/${file}"
     fi
 else
@@ -22,7 +22,7 @@ else
     else
         mkdir -p "${musdb18hq_root}"
         wget "https://zenodo.org/record/3338373/files/${file}" -P "/tmp"
-        unzip "${file}" -d "${musdb18hq_root}"
+        unzip "/tmp/${file}" -d "${musdb18hq_root}"
         rm "/tmp/${file}"
     fi
 fi
