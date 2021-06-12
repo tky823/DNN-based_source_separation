@@ -254,7 +254,46 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
         """
-        mixture, target, latent, _, _, source, scale = super().__getitem__(idx)
+        data = self.json_data[idx]
+
+        songID = data['songID']
+        track = self.mus.tracks[songID]
+        title = track.title
+        track.chunk_start = data['start']
+        track.chunk_duration = data['duration']
+
+        sources = []
+        for _source in self.sources:
+            sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+        sources = np.concatenate(sources, axis=0)
+        mixture = sources.sum(axis=0)
+
+        latent = np.zeros(len(self.sources))
+        source = random.choice(self.sources)
+        source_idx = self.sources.index(source)
+        scale = random.uniform(0, 1)
+        latent[source_idx] = scale
+        target = scale * sources[source_idx]
+
+        mixture = torch.Tensor(mixture).float()
+        target = torch.Tensor(target).float()
+        latent = torch.Tensor(latent).float()
+        
+        n_dims = mixture.dim()
+        T = mixture.size(-1)
+
+        if n_dims > 2:
+            mixture_channels = mixture.size()[:-1]
+            target_channels = target.size()[:-1]
+            mixture = mixture.reshape(-1, mixture.size(-1))
+            target = target.reshape(-1, target.size(-1))
+
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        
+        if n_dims > 2:
+            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
+            target = target.reshape(*target_channels, *target.size()[-2:])
 
         return mixture, target, latent, source, scale
 
