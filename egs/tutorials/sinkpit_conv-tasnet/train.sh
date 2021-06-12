@@ -3,7 +3,7 @@
 exp_dir="./exp"
 continue_from=""
 
-n_sources=3
+n_sources=5
 
 wav_root="../../../dataset/LibriSpeech"
 train_json_path="../../../dataset/LibriSpeech/train-clean-100/train-100-${n_sources}mix.json"
