@@ -36,6 +36,7 @@ mask_nonlinear='softmax'
 # Criterion
 criterion='sisdr'
 beta=1e+0
+k=200
 
 # Optimizer
 optimizer='adam'
@@ -62,7 +63,7 @@ if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
     prefix="${preffix}${window_fn}-window_"
 fi
 
-save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}_beta${beta}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}_beta${beta}-k${k}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -103,6 +104,7 @@ train.py \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --coldness ${beta} \
+-k ${k} \
 --optimizer ${optimizer} \
 --lr ${lr} \
 --weight_decay ${weight_decay} \

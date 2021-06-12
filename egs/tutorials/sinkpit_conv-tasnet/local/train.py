@@ -40,6 +40,7 @@ parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-l
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--coldness', type=float, default=1e+0, help='Coldness parameter (reffered as `beta`)')
+parser.add_argument('--iteration', '-k', type=int, default=200, help='Iteration of SinkPIT')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -100,7 +101,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    pit_criterion = SinkPIT(criterion, n_sources=args.n_sources, coldness=args.coldness)
+    pit_criterion = SinkPIT(criterion, n_sources=args.n_sources, coldness=args.coldness, iteration=args.iteration)
     
     trainer = Trainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
