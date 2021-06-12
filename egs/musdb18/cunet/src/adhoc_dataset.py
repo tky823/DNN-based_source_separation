@@ -315,9 +315,9 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         self.collate_fn = eval_collate_fn
 
 def eval_collate_fn(batch):
-    mixture, target, latent, source_names = batch[0]
+    mixture, target, latent, source_names, scale = batch[0]
     
-    return mixture, target, latent, source_names
+    return mixture, target, latent, source_names, scale
 
 
 def _test_train_dataset():
