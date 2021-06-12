@@ -176,12 +176,11 @@ def sinkpit(criterion, input, target, n_sources=None, coldness=1e+0, iteration=1
     if hasattr(criterion, "maximize") and criterion.maximize:
         possible_loss = - possible_loss
     
-    with torch.no_grad():
-        Z = - coldness * possible_loss.clone()
+    Z = - coldness * possible_loss
 
-        for idx in range(iteration):
-            Z = Z - torch.logsumexp(Z, dim=1, keepdim=True)
-            Z = Z - torch.logsumexp(Z, dim=2, keepdim=True)
+    for idx in range(iteration):
+        Z = Z - torch.logsumexp(Z, dim=1, keepdim=True)
+        Z = Z - torch.logsumexp(Z, dim=2, keepdim=True)
     
     permutaion_matrix = torch.exp(Z)
     loss = torch.sum((possible_loss + Z / coldness) * permutaion_matrix, dim=(1,2))
