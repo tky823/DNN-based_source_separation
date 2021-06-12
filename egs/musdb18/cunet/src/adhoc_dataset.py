@@ -272,7 +272,7 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
 
-        self.collate_fn = eval_collate_fn
+        # self.collate_fn = eval_collate_fn
 
 def eval_collate_fn(batch):
     mixture, target, latent, sources_name = batch[0]
