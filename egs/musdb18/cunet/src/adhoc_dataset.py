@@ -205,13 +205,12 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                 'duration': duration
             }
             self.json_data.append(data)
-        
+    
+    """
     def __getitem__(self, idx):
-        """
         Returns:
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
-        """
         data = self.json_data[idx]
 
         songID = data['songID']
@@ -247,7 +246,18 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             target = target.reshape(*target_channels, *target.size()[-2:])
 
         return mixture, target, latent, sources_name
+    """
     
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+        """
+        mixture, target, latent, _, _, source, scale = super().__getitem__(idx)
+
+        return mixture, target, latent, source, scale
+
     @classmethod
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
         dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
