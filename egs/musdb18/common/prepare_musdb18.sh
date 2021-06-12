@@ -3,6 +3,8 @@
 musdb18_root="../../../dataset/musdb18"
 file=musdb18.zip
 
+. ./parse_options.sh || exit 1
+
 if [ -e "${musdb18_root}/train" ]; then
     echo "Already downloaded dataset ${musdb18_root}"
 else
