@@ -264,6 +264,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         sources = []
         target = []
         latent = np.zeros((len(self.sources), len(self.sources)))
+        scales = []
         source_names = self.sources.copy()
 
         for source_idx, source_name in enumerate(self.sources):
@@ -272,6 +273,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             scale = random.uniform(0.5, 1) # 1 doesn't work.
             latent[source_idx, source_idx] = scale
             target.append(scale * source)
+            scales.append(scale)
         
         sources = np.concatenate(sources, axis=0)
         target = np.concatenate(target, axis=0)
@@ -280,6 +282,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
         latent = torch.Tensor(latent).float()
+        scales = torch.Tensor(scales).float()
         
         n_dims = mixture.dim()
 
@@ -296,7 +299,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
             target = target.reshape(*target_channels, *target.size()[-2:])
 
-        return mixture, target, latent, source_names, scale
+        return mixture, target, latent, source_names, scales
 
     @classmethod
     def from_json(cls, musdb18_root, json_path, fft_size, sr=44100, target=None, **kwargs):
