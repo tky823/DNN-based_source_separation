@@ -7,7 +7,6 @@ import torch.nn as nn
 
 from utils.utils import draw_loss_curve
 from driver import TrainerBase
-from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
 BITS_PER_SAMPLE_WSJ0 = 16
@@ -28,7 +27,18 @@ class AdhocTrainer(TrainerBase):
         super()._reset(args)
         
         self.n_bins = args.n_bins
-        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+
+        if args.window_fn:
+            if args.window_fn == 'hann':
+                self.window = torch.hann_window(self.fft_size)
+            else:
+                raise ValueError("Invalid argument.")
+        else:
+            self.window = None
+        
+        self.normalize = args.normalize # TODO: check
 
         self.lr_decay = (args.lr_end / args.lr)**(1/self.epochs)
     
@@ -90,11 +100,9 @@ class AdhocTrainer(TrainerBase):
                 sources = sources.cuda()
                 assignment = assignment.cuda()
                 threshold_weight = threshold_weight.cuda()
-                
-            real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2 + imag**2)
-            real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2 + imag**2)
+            
+            mixture_amplitude = torch.abs(mixture)
+            sources_amplitude = torch.abs(sources)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -131,10 +139,10 @@ class AdhocTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, 2*F_bin, T_bin)
-                assignment (batch_size, n_sources, F_bin, T_bin)
-                threshold_weight (batch_size, F_bin, T_bin)
+                mixture (batch_size, 1, n_bins, n_frames)
+                sources (batch_size, n_sources, n_bins, n_frames)
+                assignment (batch_size, n_sources, n_bins, n_frames)
+                threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -142,10 +150,8 @@ class AdhocTrainer(TrainerBase):
                     threshold_weight = threshold_weight.cuda()
                     assignment = assignment.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2 + imag**2)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2 + imag**2)
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
@@ -158,13 +164,11 @@ class AdhocTrainer(TrainerBase):
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
                     estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[...,0], mixture[...,1]
-                    real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
-                    estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
+                    estimated_sources = ratio * mixture
+                    estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = self.istft(mixture) # -> (1, T)
+                    mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (1, T)
                     mixture = mixture.squeeze(dim=0) # -> (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))

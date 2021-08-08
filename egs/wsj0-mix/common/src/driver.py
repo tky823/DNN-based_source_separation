@@ -11,7 +11,6 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
 BITS_PER_SAMPLE_WSJ0 = 16
@@ -402,17 +401,24 @@ class AttractorTrainer(TrainerBase):
     def _reset(self, args):
         # Override
         super()._reset(args)
+
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+
+        if args.window_fn:
+            if args.window_fn == 'hann':
+                self.window = torch.hann_window(self.fft_size)
+            else:
+                raise ValueError("Invalid argument.")
+        else:
+            self.window = None
         
-        self.F_bin = args.F_bin
-        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+        self.normalize = args.normalize # TODO: check
     
     def run_one_epoch_train(self, epoch):
         # Override
         """
         Training
         """
-        F_bin = self.F_bin
-        
         self.model.train()
         
         train_loss = 0
@@ -425,10 +431,8 @@ class AttractorTrainer(TrainerBase):
                 assignment = assignment.cuda()
                 threshold_weight = threshold_weight.cuda()
                 
-            real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2+imag**2)
-            real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2+imag**2)
+            mixture_amplitude = torch.abs(mixture)
+            sources_amplitude = torch.abs(sources)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -456,7 +460,6 @@ class AttractorTrainer(TrainerBase):
         Validation
         """
         n_sources = self.n_sources
-        F_bin = self.F_bin
         
         self.model.eval()
         
@@ -466,10 +469,10 @@ class AttractorTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, 2*F_bin, T_bin)
-                assignment (batch_size, n_sources, F_bin, T_bin)
-                threshold_weight (batch_size, F_bin, T_bin)
+                mixture (batch_size, 1, n_bins, n_frames)
+                sources (batch_size, n_sources, n_bins, n_frames)
+                assignment (batch_size, n_sources, n_bins, n_frames)
+                threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -477,10 +480,8 @@ class AttractorTrainer(TrainerBase):
                     threshold_weight = threshold_weight.cuda()
                     assignment = assignment.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
@@ -489,17 +490,15 @@ class AttractorTrainer(TrainerBase):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (1, F_bin, T_bin, 2)
-                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
-                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0].cpu() # -> (1, n_bins, n_frames)
+                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
+                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[...,0], mixture[...,1]
-                    real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
-                    estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
+                    estimated_sources = ratio * mixture # -> (n_sources, n_bins, n_frames)
+                    estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = self.istft(mixture) # -> (1, T)
+                    mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (1, T)
                     mixture = mixture.squeeze(dim=0) # -> (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
@@ -532,13 +531,21 @@ class AttractorTester(TesterBase):
     def _reset(self, args):
         # Override
         super()._reset(args)
+
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+
+        if args.window_fn:
+            if args.window_fn == 'hann':
+                self.window = torch.hann_window(self.fft_size)
+            else:
+                raise ValueError("Invalid argument.")
+        else:
+            self.window = None
         
-        self.F_bin = args.F_bin
-        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+        self.normalize = args.normalize # TODO: check
     
     def run(self):
         n_sources = self.n_sources
-        F_bin = self.F_bin
         
         self.model.eval()
         
@@ -555,10 +562,10 @@ class AttractorTester(TesterBase):
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
-                mixture (1, 1, 2*F_bin, T_bin)
-                sources (1, n_sources, 2*F_bin, T_bin)
-                assignment (1, n_sources, F_bin, T_bin)
-                threshold_weight (1, F_bin, T_bin)
+                mixture (1, 1, ,n_bins, n_frames)
+                sources (1, n_sources, n_bins, n_frames)
+                assignment (1, n_sources, n_bins, n_frames)
+                threshold_weight (1, n_bins, n_frames)
                 T (1,)
                 """
                 if self.use_cuda:
@@ -567,10 +574,8 @@ class AttractorTester(TesterBase):
                     ideal_mask = ideal_mask.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, F_bin, T_bin)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.abs(mixture) # -> (1, 1, n_bins, n_frames)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
@@ -579,19 +584,17 @@ class AttractorTester(TesterBase):
                 mixture = mixture[0].cpu()
                 sources = sources[0].cpu()
     
-                mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
-                estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
+                estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                 ratio = estimated_sources_amplitude / mixture_amplitude
-                real, imag = mixture[...,0], [...,1] # -> (1, F_bin, T_bin), (1, F_bin, T_bin)
-                real, imag = ratio * real, ratio * imag # -> (n_sources, F_bin, T_bin), (n_sources, F_bin, T_bin)
-                estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
+                estimated_sources = ratio * mixture # -> (n_sources, n_bins, n_frames)
                 
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 T = T[0]  # -> <int>
                 segment_IDs = segment_IDs[0] # -> <str>
-                mixture = self.istft(mixture, T=T).squeeze(dim=0) # -> (T,)
-                sources = self.istft(sources, T=T) # -> (n_sources, T)
-                estimated_sources = self.istft(estimated_sources, T=T) # -> (n_sources, T)
+                mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # -> (T,)
+                sources = torch.istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
+                estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
                 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
@@ -669,8 +672,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         """
         Training
         """
-        F_bin = self.F_bin
-        
         self.model.train()
         
         train_loss = 0
@@ -682,10 +683,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 sources = sources.cuda()
                 threshold_weight = threshold_weight.cuda()
             
-            real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2+imag**2)
-            real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2+imag**2)
+            mixture_amplitude = torch.abs(mixture)
+            sources_amplitude = torch.abs(sources)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -713,7 +712,6 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         Validation
         """
         n_sources = self.n_sources
-        F_bin = self.F_bin
         
         self.model.eval()
         
@@ -723,19 +721,17 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         with torch.no_grad():
             for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, 2*F_bin, T_bin)
-                sources (batch_size, n_sources, 2*F_bin, T_bin)
-                threshold_weight (batch_size, F_bin, T_bin)
+                mixture (batch_size, 1, n_bins, n_frames)
+                sources (batch_size, n_sources, n_bins, n_frames)
+                threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
@@ -744,17 +740,15 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (1, 2*F_bin, T_bin)
-                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, F_bin, T_bin)
-                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, F_bin, T_bin)
+                    mixture = mixture[0].cpu() # -> (1, n_bins, n_frames)
+                    mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
+                    estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[...,0], mixture[...,1]
-                    real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, F_bin, T_bin, 2)
-                    estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
+                    estimated_sources = ratio * mixture # (n_sources, n_bins, n_frames)
+                    estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = self.istft(mixture) # -> (1, T)
+                    mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (1, T)
                     mixture = mixture.squeeze(dim=0) # -> (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))

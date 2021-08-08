@@ -4,7 +4,6 @@ import torch
 import torchaudio
 import torch.nn as nn
 
-from algorithm.stft import BatchSTFT
 from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
 EPS=1e-12
@@ -185,23 +184,42 @@ class SpectrogramDataset(WaveDataset):
         
         self.fft_size, self.hop_size = fft_size, hop_size
         self.n_bins = fft_size//2 + 1
+
+        if window_fn:
+            if window_fn == 'hann':
+                self.window = torch.hann_window(fft_size)
+            else:
+                raise ValueError("Invalid argument.")
+        else:
+            self.window = None
         
-        self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+        self.normalize = normalize
         
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, n_bins, n_frames, 2) <torch.Tensor>, first n_bins is real, the latter n_bins is iamginary part.
-            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            mixture (1, n_bins, n_frames) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
             segment_IDs (n_sources,) <list<str>>
         """
         mixture, sources, segment_IDs = super().__getitem__(idx)
-        
+
+        n_dims = mixture.dim()
         T = mixture.size(-1)
 
-        mixture = self.stft(mixture) # (1, n_bins, n_frames, 2)
-        sources = self.stft(sources) # (n_sources, n_bins, n_frames, 2)
+        if n_dims > 2:
+            mixture_channels = mixture.size()[:-1]
+            sources_channels = sources.size()[:-1]
+            mixture = mixture.reshape(-1, mixture.size(-1))
+            sources = sources.reshape(-1, sources.size(-1))
+
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
+        sources = torch.stft(sources, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
+
+        if n_dims > 2:
+            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
+            sources = sources.reshape(*sources_channels, *sources.size()[-2:])
         
         return mixture, sources, T, segment_IDs
 
@@ -224,8 +242,8 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
-            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            mixture (1, n_bins, n_frames) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames) <torch.Tensor>
             ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
@@ -234,13 +252,11 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         threshold = self.threshold
         eps = self.eps
         
-        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames, 2), (n_sources, n_bins, n_frames, 2)
-        real, imag = sources[...,0], sources[...,1]
-        sources_amplitude = torch.sqrt(real**2+imag**2)
+        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
+        sources_amplitude = torch.abs(sources)
         ideal_mask = self.generate_mask(sources_amplitude)
         
-        real, imag = mixture[...,0], mixture[...,1]
-        mixture_amplitude = torch.sqrt(real**2+imag**2)
+        mixture_amplitude = torch.abs(mixture)
         log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
         max_log_amplitude = torch.max(log_amplitude)
         threshold = 10**((max_log_amplitude - threshold) / 20)
@@ -255,8 +271,8 @@ class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
-            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            mixture (1, n_bins, n_frames) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames) <torch.Tensor>
             ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
         """
@@ -316,8 +332,8 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
-            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            mixture (1, n_bins, n_frames) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames) <torch.Tensor>
             ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
         """
@@ -332,8 +348,8 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture (1, n_bins, n_frames, 2) <torch.Tensor>
-            sources (n_sources, n_bins, n_frames, 2) <torch.Tensor>
+            mixture (1, n_bins, n_frames) <torch.Tensor>
+            sources (n_sources, n_bins, n_frames) <torch.Tensor>
             ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T () <int>
