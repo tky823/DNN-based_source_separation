@@ -88,7 +88,6 @@ class UNet1d(UNetBase):
         
         return output
 
-
 class UNet2d(UNetBase):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear_enc='relu', nonlinear_dec='relu', out_channels=None):
         """
@@ -186,7 +185,6 @@ class Encoder1d(nn.Module):
         
         return x, skip
 
-
 class Encoder2d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
@@ -282,8 +280,10 @@ class Decoder1d(nn.Module):
     def forward(self, input, skip):
         """
         Args:
-            input (batch_size, C1, H, W)
+            input (batch_size, C, T)
             skip <list<torch.Tensor>>
+        Returns:
+            output: (batch_size, C_out, T_out)
         """
         n_blocks = self.n_blocks
         
@@ -339,8 +339,10 @@ class Decoder2d(nn.Module):
     def forward(self, input, skip):
         """
         Args:
-            input (batch_size, C1, H, W)
+            input (batch_size, C, H, W)
             skip <list<torch.Tensor>>
+        Returns:
+            output: (batch_size, C_out, H_out, W_out)
         """
         n_blocks = self.n_blocks
         
@@ -354,7 +356,6 @@ class Decoder2d(nn.Module):
         output = x
         
         return output
-
 
 """
     Encoder Block
@@ -403,7 +404,6 @@ class EncoderBlock1d(nn.Module):
         output = self.nonlinear(x)
         
         return output
-
 
 class EncoderBlock2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
@@ -488,7 +488,8 @@ class DecoderBlock1d(nn.Module):
         Args:
             input (batch_size, C1, T)
             skip (batch_size, C2, T)
-                where C = C1 + C2
+        Returns:
+            output: (batch_size, C, T_out)
         """
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
         
@@ -539,7 +540,8 @@ class DecoderBlock2d(nn.Module):
         Args:
             input (batch_size, C1, H, W)
             skip (batch_size, C2, H, W)
-                where C = C1 + C2
+        Returns:
+            output: (batch_size, C, H_out, W_out)
         """
         Kh, Kw = self.kernel_size
         Sh, Sw = self.stride

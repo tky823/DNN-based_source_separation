@@ -77,6 +77,8 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     model = ConvTasNet(
         args.n_bases, args.kernel_size, stride=args.stride, in_channels=2, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,

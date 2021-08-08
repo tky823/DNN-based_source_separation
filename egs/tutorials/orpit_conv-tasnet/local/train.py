@@ -67,6 +67,8 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     model = ConvTasNet(args.n_bases, args.kernel_size, stride=args.stride, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn, sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear, n_sources=2)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
@@ -75,11 +77,11 @@ def main(args):
         if torch.cuda.is_available():
             model.cuda()
             model = nn.DataParallel(model)
-            print("Use CUDA")
+            print("Use CUDA", flush=True)
         else:
             raise ValueError("Cannot use CUDA.")
     else:
-        print("Does NOT use CUDA")
+        print("Does NOT use CUDA", flush=True)
         
     # Optimizer
     if args.optimizer == 'sgd':

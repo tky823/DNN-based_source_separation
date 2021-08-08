@@ -3,11 +3,12 @@
 
 import argparse
 import os
+
 import numpy as np
 import pyaudio
 import torch
+import torchaudio
 
-from utils.utils_audio import write_wav
 from models.conv_tasnet import ConvTasNet
 
 parser = argparse.ArgumentParser(description="Demonstration of Conv-TasNet")
@@ -37,7 +38,7 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     for i in range(num_loop):
         input = stream.read(num_chunk)
         sequence.append(input)
-        time = int(i*num_chunk/sr)
+        time = int(i * num_chunk / sr)
         show_progress_bar(time, duration)
     
     show_progress_bar(duration, duration)
@@ -57,7 +58,8 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     signal = signal / 32768
     
     save_path = os.path.join(save_dir, "mixture.wav")
-    write_wav(save_path, signal=signal, sr=sr)
+    mixture = torch.Tensor(signal).float()
+    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=sr)
 
     # Separate by DNN
     model = load_model(model_path)
@@ -66,16 +68,15 @@ def process_offline(sr, num_chunk, duration=5, model_path=None, save_dir="result
     print("Start separation...")
     
     with torch.no_grad():
-        mixture = torch.Tensor(signal).float()
         mixture = mixture.unsqueeze(dim=0).unsqueeze(dim=0)
         estimated_sources = model(mixture)
-        estimated_sources = estimated_sources.squeeze(dim=0).detach().cpu().numpy()
+        estimated_sources = estimated_sources.squeeze(dim=0).detach().cpu()
     
     print("Finished separation...")
     
     for idx, estimated_source in enumerate(estimated_sources):
         save_path = os.path.join(save_dir, "estimated-{}.wav".format(idx))
-        write_wav(save_path, signal=estimated_source, sr=sr)
+        torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=sr)
     
 def show_progress_bar(time, duration):
     rest = duration-time

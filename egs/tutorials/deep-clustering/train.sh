@@ -60,10 +60,10 @@ train.py \
 --valid_json_path ${valid_json_path} \
 --sr ${sr} \
 --window_fn ${window_fn} \
---F ${F} \
---S ${S} \
---D ${D} \
---R ${R} \
+-F ${F} \
+-S ${S} \
+-D ${D} \
+-R ${R} \
 --causal ${causal} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \

@@ -21,11 +21,11 @@ parser.add_argument('--sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--save_freq', type=int, default=10, help='Save frequency. Default) Save model per 10 epochs')
 parser.add_argument('--n_sources', type=int, default=2, help='Number of sources')
 parser.add_argument('--samples', type=int, default=16384, help='Number of input samples')
-parser.add_argument('--D', type=int, default=20, help='Number of dimensions on embedding')
-parser.add_argument('--F_bin', type=int, default=256, help='Number of frequency bins')
-parser.add_argument('--hop_length', type=int, default=256, help='Hop length of STFT')
-parser.add_argument('--H', type=int, default=256, help='Number of hidden channels')
-parser.add_argument('--R', type=int, default=3, help='Number of layers of LSTM')
+parser.add_argument('--dimension', '-D', type=int, default=20, help='Number of dimensions on embedding')
+parser.add_argument('--n_bins', '-F', type=int, default=256, help='Number of frequency bins')
+parser.add_argument('--hop_length', '-S', type=int, default=256, help='Hop length of STFT')
+parser.add_argument('--hidden_channels', '-H', type=int, default=256, help='Number of hidden channels')
+parser.add_argument('--num_layers', '-R', type=int, default=3, help='Number of layers of LSTM')
 parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
 parser.add_argument('--epochs', type=int, default=100, help='Epoch')
 parser.add_argument('--causal', type=int, default=1, help='Causality')
@@ -56,8 +56,9 @@ def main(args):
         hop_length = win_length//4
     else:
         hop_length = args.hop_size
-
-    model = DeepEmbedding(args.n_bins, hidden_channels=args.H, num_layers=args.R, dimension=args.D, num_clusters=args.n_sources, causal=args.causal)
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
+    model = DeepEmbedding(args.n_bins, hidden_channels=args.hidden_channels, num_layers=args.num_layers, dimension=args.dimension, num_clusters=args.n_sources, causal=args.causal)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

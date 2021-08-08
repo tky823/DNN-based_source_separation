@@ -43,7 +43,7 @@ fi
 
 save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
-model_choice="best"
+model_choice="last"
 model_path="${save_dir}/model/${model_choice}.pth"
 
 n_sources_test=2

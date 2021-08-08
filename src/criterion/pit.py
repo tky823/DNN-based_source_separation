@@ -44,17 +44,19 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
          
     return loss, patterns[indices]
 
-class PIT:
+class PIT(nn.Module):
     def __init__(self, criterion, n_sources):
         """
         Args:
             criterion <callable>: criterion is expected acceptable (input, target, batch_mean) when called.
         """
+        super().__init__()
+
         self.criterion = criterion
         patterns = list(itertools.permutations(range(n_sources)))
         self.patterns = torch.Tensor(patterns).long()
-        
-    def __call__(self, input, target, batch_mean=True):
+    
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
             input (batch_size, n_sources, *)
@@ -83,16 +85,18 @@ class PIT2d(PIT):
         """
         super().__init__(criterion, n_sources)
 
-class ORPIT:
+class ORPIT(nn.Module):
     """
     One-and-Rest permutation invariant training
     """
     def __init__(self, criterion):
+        super().__init__()
+
         self.criterion = criterion
         patterns = list(itertools.permutations(range(2))) # 2 means 'one' and 'rest'
         self.patterns = torch.Tensor(patterns).long()
 
-    def __call__(self, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
             input (batch_size, 2, *)
@@ -157,9 +161,70 @@ class ORPIT:
             
         return batch_loss, batch_indices
 
-def _test_pit():
-    from criterion.sdr import SISDR
+def sinkpit(criterion, input, target, n_sources=None, coldness=1e+0, iteration=10, batch_mean=True):    
+    if n_sources is None:
+        n_sources = input.size(1)
 
+    batch_size = input.size(0)
+
+    input_size, target_size = input.size()[2:], target.size()[2:]
+    input, target = input.unsqueeze(dim=2).expand(-1, -1, n_sources, -1).contiguous(), target.unsqueeze(dim=1).expand(-1, n_sources, -1, -1).contiguous()
+    input, target = input.view(batch_size * n_sources * n_sources, *input_size), target.view(batch_size * n_sources * n_sources, *target_size)
+    possible_loss = criterion(input, target, batch_mean=False)
+    possible_loss = possible_loss.view(batch_size, n_sources, n_sources)
+
+    if hasattr(criterion, "maximize") and criterion.maximize:
+        possible_loss = - possible_loss
+    
+    Z = - coldness * possible_loss
+
+    for idx in range(iteration):
+        Z = Z - torch.logsumexp(Z, dim=1, keepdim=True)
+        Z = Z - torch.logsumexp(Z, dim=2, keepdim=True)
+    
+    permutaion_matrix = torch.exp(Z)
+    loss = torch.sum((possible_loss + Z / coldness) * permutaion_matrix, dim=(1,2))
+
+    if hasattr(criterion, "maximize") and criterion.maximize:
+        loss = - loss
+
+    if batch_mean:
+        loss = loss.mean(dim=0)
+    
+    return loss, permutaion_matrix
+
+class SinkPIT(nn.Module):
+    """
+    "Towards Listening to 10 People Simultaneously: An Efficient Permutation Invariant Training of Audio Source Separation Using Sinkhorn's Algorithm"
+    See https://arxiv.org/abs/2010.11871
+    """
+    def __init__(self, criterion, n_sources=None, coldness=1, iteration=10):
+        super().__init__()
+
+        self.criterion = criterion
+        self.n_sources = n_sources
+
+        self.coldness = coldness
+        self.iteration = iteration
+
+    def forward(self, input, target, batch_mean=True):
+        loss, permutation_matrix = sinkpit(self.criterion, input, target, n_sources=self.n_sources, coldness=self.coldness, iteration=self.iteration, batch_mean=batch_mean)
+        pattern = torch.argmax(permutation_matrix, dim=2)
+
+        return loss, pattern
+    
+class ProbPIT(nn.Module):
+    """
+    "Probabilistic permutation invariant training for speech separation"
+    See https://arxiv.org/abs/1908.01768
+    """
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, input, target, batch_mean=True):
+        pass
+
+def _test_pit():
     torch.manual_seed(111)
 
     batch_size, C, T = 4, 2, 1024
@@ -201,9 +266,6 @@ def _test_pit():
     print(pattern)
 
 def _test_orpit():
-    from criterion.sdr import SISDR
-    from criterion.distance import L1Loss
-    
     torch.manual_seed(111)
 
     T = 6
@@ -261,7 +323,48 @@ def _test_orpit():
     print(loss)
     print(indices)
 
+def _test_sinkpit():
+    random.seed(111)
+    torch.manual_seed(111)
+
+    batch_size, C, T = 4, 3, 1024
+    input = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    target = torch.randint(2, (batch_size, C, T), dtype=torch.float)
+    
+    print('-'*10, "Negative SI-SDR (PIT)", '-'*10)
+    criterion = NegSISDR()
+    pit_criterion = PIT(criterion, n_sources=C)
+    loss, pattern = pit_criterion(input, target)
+    
+    print(loss)
+    print(pattern)
+    print()
+    
+    print('-'*10, "Negative SI-SDR", '-'*10)
+    criterion = NegSISDR()
+    pit_criterion = SinkPIT(criterion, n_sources=C, coldness=1)
+    loss, pattern = pit_criterion(input, target, batch_mean=False)
+    
+    print(loss)
+    print(pattern)
+    print()
+
+    print('-'*10, "SI-SDR", '-'*10)
+    criterion = SISDR()
+    pit_criterion = SinkPIT(criterion, n_sources=C, coldness=1)
+    loss, pattern = pit_criterion(input, target, batch_mean=False)
+    
+    print(loss)
+    print(pattern)
+    print()
+
 if __name__ == '__main__':
+    import random
+    from itertools import permutations
+
+    from criterion.sdr import SISDR, NegSISDR
+    from criterion.distance import L1Loss
+
     print('='*10, "Permutation invariant training", '='*10)
     _test_pit()
     print()
@@ -269,3 +372,6 @@ if __name__ == '__main__':
     print('='*10, "One-and-Rest permutation invariant training", '='*10)
     _test_orpit()
     print()
+
+    print('='*10, "SinkPIT", '='*10)
+    _test_sinkpit()

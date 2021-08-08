@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import argparse
-from numpy.core.fromnumeric import size
 
-import yaml
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import TrainDataLoader, EvalDataLoader
-from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset
+from dataset import TrainDataLoader
+from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.d3net import D3Net
 from criterion.distance import MeanSquaredError
@@ -19,16 +16,16 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Training of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--train_json_path', type=str, default=None, help='Path to training json file')
+parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
-parser.add_argument('--duration', type=float, default=2, help='Duration')
-parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
+parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
+parser.add_argument('--max_duration', type=float, default=10, help='Max duration for validation')
+parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
+parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--fft_size', type=int, default=512, help='Window length')
-parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
-parser.add_argument('--config_path', type=str, default='config_d3net.yaml', help='Model configuration')
-parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Source names')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['mse'], help='Criterion')
+parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
+parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
+parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -46,33 +43,24 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = args.duration
-    overlap = samples / 2
+    args.sources = args.sources.replace('[', '').replace(']', '').split(',')
+    patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
+    overlap = patch_duration / 2
     
-    if args.train_json_path and os.path.exists(args.train_json_path):
-        train_dataset = SpectrogramTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, duration=args.duration, fft_size=args.fft_size, hop_size=args.hop_size, overlap=overlap, target=args.target)
-    else:
-        train_dataset = SpectrogramTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, fft_size=args.fft_size, hop_size=args.hop_size, overlap=overlap, target=args.target)
-        train_dataset.save_as_json(args.train_json_path)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, fft_size=args.fft_size, hop_size=args.hop_size, target=args.target)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, max_duration=args.max_duration, sources=args.sources, target=args.target)
+    
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
-
-    with open(args.config_path) as file:
-        config = yaml.safe_load(file.read())
-    config_model = config['d3net']
     
-    args.n_bins = args.fft_size // 2 + 1
-    model = D3Net(
-        config_model['in_channels'], config_model['num_features'], config_model['growth_rate'], config_model['bottleneck_channels'], kernel_size=config_model['kernel_size'], sections=config_model['sections'], scale=config_model['scale'],
-        num_d3blocks=config_model['num_d3blocks'], num_d2blocks=config_model['num_d2blocks'], depth=config_model['depth'], compressed_depth=config_model['compressed_depth'],
-        growth_rate_d2block=config_model['growth_rate_d2block'], kernel_size_d2block=config_model['kernel_size_d2block'], depth_d2block=config_model['depth_d2block'],
-        kernel_size_gated=config_model['kernel_size_gated']
-    )
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
+    model = D3Net.build_from_config(config_path=args.config_path)
+
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
     
@@ -85,7 +73,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-
+        
     # Optimizer
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -98,14 +86,13 @@ def main(args):
     
     # Criterion
     if args.criterion == 'mse':
-        criterion = MeanSquaredError(dim=(1, 2, 3))
+        criterion = MeanSquaredError(dim=(1,2,3))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

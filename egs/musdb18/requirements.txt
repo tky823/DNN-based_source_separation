@@ -1,7 +1,8 @@
-numpy==1.19.0
-scipy==1.4.1
-matplotlib==3.2.2
-torch==1.8.0
-soundfile==0.10.3.post1
+numpy>=1.19.0
+scipy>=1.6.1
+matplotlib>=3.3.2
+ipython~=5.5.0
+torch>=1.8.0
+torchaudio>=0.8.0
 mir_eval==0.6
 musdb==0.4.0
