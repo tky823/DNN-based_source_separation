@@ -6,7 +6,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from driver import TrainerBase
+from driver import TrainerBase, TesterBase
 
 BITS_PER_SAMPLE = 16
 
@@ -220,7 +220,6 @@ class AdhocTrainer(TrainerBase):
         valid_loss /= n_valid
         
         return valid_loss
-
 
 class AdhocTester(TesterBase):
     def __init__(self, model, loader, criterion, args):
