@@ -1,0 +1,16 @@
+name: DNN-based_source_separation_wsj0-cpu
+
+channels:
+  - pytorch
+  - conda-forge
+
+dependencies:
+  - python>=3.6,<=3.8
+  - numpy>=1.19
+  - scipy
+  - matplotlib>=3.3.2
+  - pyaudio=0.2
+  - mir_eval==0.6
+  - pytorch>=1.8.0
+  - torchaudio>=0.8.0
+  - mir_eval==0.6
