@@ -426,7 +426,7 @@ class AttractorTrainer(Trainer):
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
+            if (idx + 1) % 100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
