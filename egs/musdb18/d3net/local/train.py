@@ -13,7 +13,7 @@ from adhoc_driver import AdhocTrainer
 from models.d3net import D3Net
 from criterion.distance import MeanSquaredError
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Training of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
@@ -48,7 +48,7 @@ def main(args):
     overlap = patch_duration / 2
     
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, max_duration=args.max_duration, sources=args.sources, target=args.target)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, max_duration=args.max_duration, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
@@ -92,8 +92,7 @@ def main(args):
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

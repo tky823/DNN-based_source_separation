@@ -8,7 +8,7 @@ target='vocals'
 patch=256
 max_duration=30
 
-musdb18_root="../../../dataset/musdb18"
+musdb18_root="../../../dataset/musdb18hq"
 sr=44100
 
 window_fn='hann'
@@ -38,12 +38,12 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${sources}/${target}/sr${sr}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
-model_dir="${save_dir}/model"
-loss_dir="${save_dir}/loss"
-sample_dir="${save_dir}/sample"
-log_dir="${save_dir}/log"
+model_dir="${save_dir}/${target}/model"
+loss_dir="${save_dir}/${target}/loss"
+sample_dir="${save_dir}/${target}/sample"
+log_dir="${save_dir}/${target}/log"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
