@@ -24,11 +24,13 @@ criterion='mse'
 # Optimizer
 optimizer='adam'
 lr=1e-3
+anneal_lr=1e-4
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
 batch_size=6
-epochs=100
+epochs=50
+anneal_epoch=40
 
 use_cuda=1
 overwrite=0
@@ -38,7 +40,7 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}-${anneal_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/${target}/model"
 loss_dir="${save_dir}/${target}/loss"
@@ -67,10 +69,12 @@ train.py \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
+--anneal_lr ${anneal_lr} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
 --epochs ${epochs} \
+--anneal_epoch ${anneal_epoch} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \

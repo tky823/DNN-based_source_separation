@@ -39,7 +39,8 @@ class AdhocTrainer(TrainerBase):
         os.makedirs(self.loss_dir, exist_ok=True)
         os.makedirs(self.sample_dir, exist_ok=True)
         
-        self.epochs = args.epochs
+        self.epochs, self.anneal_epoch = args.epochs, args.anneal_epoch
+        self.anneal_lr = args.anneal_lr
         
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
@@ -85,10 +86,18 @@ class AdhocTrainer(TrainerBase):
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
+            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
+
+            if self.anneal_epoch is not None and epoch + 1 == self.anneal_epoch - 1:
+                # From the next epoch, learning rate is channged.
+                anneal_lr = self.anneal_lr
+                for param_group in self.optimizer.param_groups:
+                    prev_lr = param_group['lr']
+                    print("Learning rate: {} -> {}".format(prev_lr, anneal_lr))
+                    param_group['lr'] = anneal_lr
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
@@ -98,9 +107,6 @@ class AdhocTrainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 10:
-                        print("Stop training")
-                        break
                 else:
                     self.no_improvement = 0
             
@@ -188,6 +194,7 @@ class AdhocTrainer(TrainerBase):
                     mixture = mixture.view(-1, *mixture.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
                     estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
                     
+                    mixture, estimated_source = mixture.cpu(), estimated_source.cpu()
                     mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
                     estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
 
@@ -196,11 +203,9 @@ class AdhocTrainer(TrainerBase):
                     
                     batch_size, n_mics, T_segment = mixture.size()
                     
-                    mixture = mixture.cpu()
                     mixture = mixture.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
                     mixture = mixture.reshape(n_mics, batch_size * T_segment)
 
-                    estimated_source = estimated_source.cpu()
                     estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
                     estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)
                     
@@ -294,13 +299,13 @@ class AdhocTester(TesterBase):
                 estimated_source_channels = estimated_source.size()[:-2] # -> (batch_size, n_mics)
                 estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
                 
+                estimated_source = estimated_source.cpu()
                 estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T)
 
                 estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (batch_size, n_mics, T_segment)
                 
                 batch_size, n_mics, T_segment = estimated_source.size()
                 
-                estimated_source = estimated_source.cpu()
                 estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
                 estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)[:, :samples]
                 

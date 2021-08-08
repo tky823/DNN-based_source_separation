@@ -2,6 +2,7 @@ import os
 import time
 
 import numpy as np
+import musdb
 import museval
 import torch
 import torchaudio
@@ -251,24 +252,36 @@ class TesterBase:
         raise NotImplementedError("Implement `run` in sub-class.")
 
 class EvaluaterBase:
-    def __init__(self, loader, args):
-        self.loader = loader
+    def __init__(self, args):
+        self._reset(args)
+    
+    def _reset(self, args):
+        self.target = [
+            'drums', 'bass', 'other', 'vocals', 'accompaniment'
+        ]
+        self.mus = musdb.DB(root=args.musdb18_root, subsets="test", is_wav=True)
+        self.estimated_mus = musdb.DB(root=args.estimated_musdb18_root, subsets="test", is_wav=True)
+        self.json_dir = args.json_dir
+
+        os.makedirs(self.json_dir)
     
     def run(self):
-        mus, est = self.loader['mus'], self.loader['est']
-
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
 
-        for mus_track, est_track in zip(mus.tracks, est.tracks):
-            assert mus_track.name == est_track.name, "Invalid pair is compared. Check folders."
-
-            estimates = {
-                'vocals': est_track.targets['vocals'].audio,
-                'accompaniment': est_track.targets['accompaniment'].audio
-            }
-
-            scores = museval.eval_mus_track(
-                mus_track, estimates
-            )
-
+        for track, estimated_track in zip(self.mus, self.estimated_mus):
+            scores = self.run_one_track(track, estimated_track)
             results.add_track(scores)
+        
+        print(results)
+    
+    def run_one_track(self, track, estimated_track):
+        estimates = {}
+
+        for _target in self.target:
+            estimates[_target] = estimated_track.targets[_target].audio
+        
+        scores = museval.eval_mus_track(
+            track, estimates, output_dir=self.json_dir
+        )
+
+        return scores
