@@ -1,14 +1,16 @@
 import os
 import time
-import numpy as np
+
 import torch
+import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from utils.utils_audio import write_wav
 from driver import TrainerBase
 from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
+
+BITS_PER_SAMPLE_WSJ0 = 16
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -160,23 +162,23 @@ class AdhocTrainer(TrainerBase):
                     real, imag = ratio * real, ratio * imag
                     estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
                     estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
-                    estimated_sources = estimated_sources.cpu().numpy()
+                    estimated_sources = estimated_sources.cpu()
                     
                     mixture = self.istft(mixture) # -> (1, T)
-                    mixture = mixture.squeeze(dim=0).numpy() # -> (T,)
+                    mixture = mixture.squeeze(dim=0) # -> (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    write_wav(save_path, signal=mixture, sr=self.sr)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
-                        norm = np.abs(estimated_source).max()
+                        norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        write_wav(save_path, signal=estimated_source, sr=self.sr)
+                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
         
         valid_loss /= n_valid
         
