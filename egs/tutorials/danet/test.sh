@@ -21,6 +21,7 @@ H=256
 B=4
 causal=0
 mask_nonlinear='sigmoid'
+iter_clustering=10
 
 # Criterion
 criterion='l2loss'
@@ -66,6 +67,7 @@ test.py \
 --window_fn ${window_fn} \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
+--iter_clustering ${iter_clustering} \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
 --n_sources ${n_sources} \

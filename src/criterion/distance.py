@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-EPS=1e-12
+EPS = 1e-12
 
 class L1Loss(nn.Module):
     def __init__(self, dim=1, reduction='mean'):

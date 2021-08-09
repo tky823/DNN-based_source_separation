@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
-EPS=1e-12
+EPS = 1e-12
 
 class WSJ0Dataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, list_path):
@@ -344,7 +344,7 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
+    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, n_sources=2, eps=EPS):
         super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
 
     def __getitem__(self, idx):
@@ -401,6 +401,40 @@ def test_collate_fn(batch):
         batched_segment_ID.append(segmend_ID)
     
     return batched_mixture, batched_sources, batched_segment_ID
+
+class AttractorTestDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+        
+        self.collate_fn = attractor_test_collate_fn
+
+def attractor_test_collate_fn(batch):
+    batched_mixture, batched_sources, batched_assignment, batched_weight_threshold = [], [], [], []
+    batched_T = []
+    batched_segment_ID = []
+    
+    for mixture, sources, assignment, weight_threshold, T, segmend_ID in batch:
+        mixture = mixture.unsqueeze(dim=0)
+        sources = sources.unsqueeze(dim=0)
+        assignment = assignment.unsqueeze(dim=0)
+        weight_threshold = weight_threshold.unsqueeze(dim=0)
+        
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
+        batched_assignment.append(assignment)
+        batched_weight_threshold.append(weight_threshold)
+
+        batched_T.append(T)
+        batched_segment_ID.append(segmend_ID)
+    
+    batched_mixture = torch.cat(batched_mixture, dim=0)
+    batched_sources = torch.cat(batched_sources, dim=0)
+    batched_assignment = torch.cat(batched_assignment, dim=0)
+    batched_weight_threshold = torch.cat(batched_weight_threshold, dim=0)
+    
+    return batched_mixture, batched_sources, batched_assignment, batched_weight_threshold, batched_T, batched_segment_ID
 
 """
 Dataset for unknown number of sources.
