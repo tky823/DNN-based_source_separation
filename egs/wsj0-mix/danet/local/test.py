@@ -42,8 +42,13 @@ def main(args):
     loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
     model = DANet.build_model(args.model_path)
+    
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
+
+    if model.iter_clustering != args.iter_clustering:
+        print("model.iter_clustering is changed from {} -> {}.".format(model.iter_clustering, args.iter_clustering))
+        model.iter_clustering = args.iter_clustering
     
     if args.use_cuda:
         if torch.cuda.is_available():
