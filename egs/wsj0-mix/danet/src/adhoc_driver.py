@@ -301,7 +301,7 @@ class AdhocTester(TesterBase):
 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
-                mixture_ID = "+".join(segment_IDs)
+                mixture_ID = segment_IDs
 
                 # Generate random number temporary wav file.
                 random_ID = str(uuid.uuid4())
