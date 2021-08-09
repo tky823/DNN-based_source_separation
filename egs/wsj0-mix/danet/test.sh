@@ -73,6 +73,8 @@ test.py \
 --window_fn ${window_fn} \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
+--fft_size ${fft_size} \
+--hop_size ${hop_size} \
 --iter_clustering ${iter_clustering} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
