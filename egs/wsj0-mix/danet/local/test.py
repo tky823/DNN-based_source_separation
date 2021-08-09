@@ -11,6 +11,7 @@ from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
 from models.danet import DANet
 from criterion.distance import L1Loss, L2Loss
+from criterion.pit import PIT2d
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
@@ -61,8 +62,10 @@ def main(args):
         criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+
+    pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
     
-    tester = AdhocTester(model, loader, criterion, args)
+    tester = AdhocTester(model, loader, pit_criterion, args)
     tester.run()
 
 if __name__ == '__main__':
