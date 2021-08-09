@@ -292,14 +292,14 @@ class TesterBase:
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 segment_IDs = segment_IDs[0] # -> <str>
 
-                repeated_mixture = np.tile(mixture.numpy(), reps=(self.n_sources, 1))
+                repeated_mixture = torch.tile(mixture, reps=(self.n_sources, 1))
                 result_estimated = bss_eval_sources(
                     reference_sources=sources.numpy(),
                     estimated_sources=estimated_sources.numpy()
                 )
                 result_mixed = bss_eval_sources(
                     reference_sources=sources.numpy(),
-                    estimated_sources=repeated_mixture
+                    estimated_sources=repeated_mixture.numpy()
                 )
         
                 sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
