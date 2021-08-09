@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-EPS=1e-12
+EPS = 1e-12
 
 def kl_divergence(input, target, eps=EPS):
     """
