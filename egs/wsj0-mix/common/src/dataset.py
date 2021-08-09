@@ -32,7 +32,7 @@ class WaveDataset(WSJ0Dataset):
                 ID = line.strip()
                 wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
                 
-                wave, sr = torchaudio.load(wav_path)
+                wave, _ = torchaudio.load(wav_path)
                 
                 _, T_total = wave.size()
                 
@@ -47,11 +47,11 @@ class WaveDataset(WSJ0Dataset):
                     
                     for source_idx in range(n_sources):
                         source_data = {
-                            'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                            'path': os.path.join('s{}'.format(source_idx + 1), '{}.wav'.format(ID)),
                             'start': start_idx,
                             'end': end_idx
                         }
-                        data['sources']['s{}'.format(source_idx+1)] = source_data
+                        data['sources']['s{}'.format(source_idx + 1)] = source_data
                     
                     mixture_data = {
                         'path': os.path.join('mix', '{}.wav'.format(ID)),
@@ -138,11 +138,11 @@ class WaveEvalDataset(WaveDataset):
                 
                 for source_idx in range(n_sources):
                     source_data = {
-                        'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                        'path': os.path.join('s{}'.format(source_idx + 1), '{}.wav'.format(ID)),
                         'start': 0,
                         'end': samples
                     }
-                    data['sources']['s{}'.format(source_idx+1)] = source_data
+                    data['sources']['s{}'.format(source_idx + 1)] = source_data
                 
                 mixture_data = {
                     'path': os.path.join('mix', '{}.wav'.format(ID)),
@@ -313,7 +313,7 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
                 
                 for source_idx in range(n_sources):
                     source_data = {
-                        'path': os.path.join('s{}'.format(source_idx+1), '{}.wav'.format(ID)),
+                        'path': os.path.join('s{}'.format(source_idx + 1), '{}.wav'.format(ID)),
                         'start': 0,
                         'end': samples
                     }
