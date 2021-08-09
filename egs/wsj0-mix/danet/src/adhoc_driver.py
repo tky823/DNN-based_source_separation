@@ -38,7 +38,8 @@ class AdhocTrainer(TrainerBase):
         else:
             self.window = None
         
-        self.normalize = args.normalize # TODO: check
+        self.normalize = self.train_loader.dataset.normalize
+        assert self.normalize == self.valid_loader.dataset.normalize, "Nomalization of STFT is different between `train_loader.dataset` and `valid_loader.dataset`."
 
         self.lr_decay = (args.lr_end / args.lr)**(1/self.epochs)
     

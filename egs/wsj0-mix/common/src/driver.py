@@ -419,7 +419,8 @@ class AttractorTrainer(TrainerBase):
         else:
             self.window = None
         
-        self.normalize = args.normalize # TODO: check
+        self.normalize = self.train_loader.dataset.normalize
+        assert self.normalize == self.valid_loader.dataset.normalize, "Nomalization of STFT is different between `train_loader.dataset` and `valid_loader.dataset`."
     
     def run_one_epoch_train(self, epoch):
         # Override
@@ -551,7 +552,7 @@ class AttractorTester(TesterBase):
         else:
             self.window = None
         
-        self.normalize = args.normalize # TODO: check
+        self.normalize = self.train_loader.dataset.normalize
     
     def run(self):
         n_sources = self.n_sources
