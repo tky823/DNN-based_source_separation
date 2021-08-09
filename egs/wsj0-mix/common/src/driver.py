@@ -559,11 +559,14 @@ class AttractorTester(TesterBase):
         self.normalize = self.train_loader.dataset.normalize
     
     def run(self):
-        n_sources = self.n_sources
-        
         self.model.eval()
-        
+
+        n_sources = self.n_sources
+
         test_loss = 0
+        test_sdr_improvement = 0
+        test_sir_improvement = 0
+        test_sar = 0
         test_pesq = 0
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
@@ -576,11 +579,11 @@ class AttractorTester(TesterBase):
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
-                mixture (1, 1, ,n_bins, n_frames)
-                sources (1, n_sources, n_bins, n_frames)
-                assignment (1, n_sources, n_bins, n_frames)
-                threshold_weight (1, n_bins, n_frames)
-                T (1,)
+                    mixture (1, 1, n_bins, n_frames)
+                    sources (1, n_sources, n_bins, n_frames)
+                    assignment (1, n_sources, n_bins, n_frames)
+                    threshold_weight (1, n_bins, n_frames)
+                    T (1,)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -610,6 +613,20 @@ class AttractorTester(TesterBase):
                 sources = torch.istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
                 estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
                 
+                repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
+                result_estimated = bss_eval_sources(
+                    reference_sources=sources.numpy(),
+                    estimated_sources=estimated_sources.numpy()
+                )
+                result_mixed = bss_eval_sources(
+                    reference_sources=sources.numpy(),
+                    estimated_sources=repeated_mixture.numpy()
+                )
+        
+                sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
+                sir_improvement = np.mean(result_estimated[1] - result_mixed[1])
+                sar = np.mean(result_estimated[2])
+
                 norm = torch.abs(mixture).max()
                 mixture /= norm
                 mixture_ID = segment_IDs
@@ -672,15 +689,21 @@ class AttractorTester(TesterBase):
                 print("{}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), pesq), flush=True)
                 
                 test_loss += loss.item()
+                test_sdr_improvement += sdr_improvement
+                test_sir_improvement += sir_improvement
+                test_sar += sar
                 test_pesq += pesq
-        
+
         test_loss /= n_test
+        test_sdr_improvement /= n_test
+        test_sir_improvement /= n_test
+        test_sar /= n_test
         test_pesq /= n_test
         
         os.chdir("../") # back to the original directory
 
-        print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
-        print("Evaluation of PESQ returns error {} times.".format(n_pesq_error))
+        print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
+        print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
 class AnchoredAttractorTrainer(AttractorTrainer):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -740,9 +763,9 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         with torch.no_grad():
             for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, n_bins, n_frames)
-                sources (batch_size, n_sources, n_bins, n_frames)
-                threshold_weight (batch_size, n_bins, n_frames)
+                    mixture (batch_size, 1, n_bins, n_frames)
+                    sources (batch_size, n_sources, n_bins, n_frames)
+                    threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()

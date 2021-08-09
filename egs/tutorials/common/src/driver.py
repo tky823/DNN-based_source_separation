@@ -546,9 +546,9 @@ class AttractorTester(Tester):
         self.normalize = self.loader.dataset.normalize
     
     def run(self):
-        n_sources = self.n_sources
-        
         self.model.eval()
+
+        n_sources = self.n_sources
         
         test_loss = 0
         test_sdr_improvement = 0
@@ -753,9 +753,9 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         with torch.no_grad():
             for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, n_bins, n_frames)
-                sources (batch_size, n_sources, n_bins, n_frames)
-                threshold_weight (batch_size, n_bins, n_frames)
+                    mixture (batch_size, 1, n_bins, n_frames)
+                    sources (batch_size, n_sources, n_bins, n_frames)
+                    threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
