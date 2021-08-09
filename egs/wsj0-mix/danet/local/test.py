@@ -21,7 +21,7 @@ parser.add_argument('--window_fn', type=str, default='hamming', help='Window fun
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
 parser.add_argument('--model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
