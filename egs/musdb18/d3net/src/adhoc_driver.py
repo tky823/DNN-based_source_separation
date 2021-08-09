@@ -8,7 +8,7 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from driver import TrainerBase, TesterBase
 
-BITS_PER_SAMPLE = 16
+BITS_PER_SAMPLE_MUSDB18 = 16
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -215,12 +215,12 @@ class AdhocTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     norm = torch.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE)
+                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         
@@ -314,7 +314,7 @@ class AdhocTester(TesterBase):
                 save_dir = os.path.join(self.out_dir, name)
                 os.makedirs(save_dir, exist_ok=True)
                 estimated_path = os.path.join(save_dir, "{}.wav".format(target))
-                torchaudio.save(estimated_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE)
+                torchaudio.save(estimated_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 
                 test_loss += loss.item()
                 test_loss_improvement += loss_improvement

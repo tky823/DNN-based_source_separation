@@ -1,4 +1,3 @@
-import os
 import json
 
 import numpy as np
@@ -7,10 +6,10 @@ import torch
 
 from dataset import MUSDB18Dataset
 
-__sources__=['drums','bass','other','vocals']
+__sources__ = ['drums', 'bass', 'other', 'vocals']
 
-EPS=1e-12
-THRESHOLD_POWER=1e-5
+EPS = 1e-12
+THRESHOLD_POWER = 1e-5
 
 class WaveDataset(MUSDB18Dataset):
     def __init__(self, musdb18_root, sr=44100, target=None):
@@ -56,7 +55,6 @@ class WaveDataset(MUSDB18Dataset):
             return True
         else:
             return False
-
 
 class WaveTrainDataset(WaveDataset):
     def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, target=None, json_path=None, threshold=THRESHOLD_POWER):
@@ -158,7 +156,6 @@ def _test_train_dataset():
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break
-
 
 if __name__ == '__main__':
     _test_train_dataset()

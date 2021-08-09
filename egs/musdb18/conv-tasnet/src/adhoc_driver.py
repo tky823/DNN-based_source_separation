@@ -2,10 +2,12 @@ import os
 
 import numpy as np
 import torch
+import torchaudio
 import torch.nn as nn
 
-from utils.utils_audio import write_wav
 from driver import TrainerBase, TesterBase
+
+BITS_PER_SAMPLE_MUSDB18 = 16
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -78,7 +80,6 @@ class SingleTargetTrainer(TrainerBase):
             self.prev_loss = float('infinity')
             self.no_improvement = 0
 
-    
     def run_one_epoch_eval(self, epoch):
         """
         Validation
@@ -108,12 +109,12 @@ class SingleTargetTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = np.abs(mixture).max()
                     mixture = mixture / norm
-                    write_wav(save_path, signal=mixture.T, sr=self.sr)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     norm = np.abs(estimated_source).max()
                     estimated_source = estimated_source / norm
-                    write_wav(save_path, signal=estimated_source.T, sr=self.sr)
+                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         

@@ -4,11 +4,11 @@ exp_dir="./exp"
 continue_from=""
 
 sources="[drums,bass,other,vocals]"
-target='drums'
+target='vocals'
 duration=4
 valid_duration=10
 
-musdb18_root="../../../dataset/musdb18"
+musdb18_root="../../../dataset/musdb18hq"
 sr=44100
 
 # Encoder & decoder
