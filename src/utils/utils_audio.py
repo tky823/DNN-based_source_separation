@@ -1,15 +1,21 @@
 import math
+import warnings
+
 from scipy.io import wavfile
 import numpy as np
 import torch
 
 def read_wav(path):
+    warnings.warn("Use torchaudio.load instead.", DeprecationWarning)
+
     sr, signal = wavfile.read(path)
     signal = signal / 32768
     
     return signal, sr
 
 def write_wav(path, signal, sr):
+    warnings.warn("Use torchaudio.save instead.", DeprecationWarning)
+
     signal = signal * 32768
     signal = np.clip(signal, -32768, 32767).astype(np.int16)
     wavfile.write(path, sr, signal)

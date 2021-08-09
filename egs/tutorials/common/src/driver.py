@@ -11,10 +11,10 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from algorithm.stft import BatchInvSTFT
 from criterion.pit import pit
 
-MIN_PESQ=-0.5
+BITS_PER_SAMPLE_LIBRISPEECH = 16
+MIN_PESQ = -0.5
 
 class Trainer:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -84,7 +84,7 @@ class Trainer:
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
+            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
@@ -110,7 +110,7 @@ class Trainer:
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
     
     def run_one_epoch(self, epoch):
         """
@@ -149,7 +149,7 @@ class Trainer:
             train_loss += loss.item()
             
             if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -178,18 +178,20 @@ class Trainer:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu()
                     estimated_sources = output[0].detach().cpu()
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
         
         valid_loss /= n_valid
         
@@ -283,7 +285,7 @@ class Tester:
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 segment_IDs = segment_IDs[0] # -> (n_sources,)
 
-                repeated_mixture = torch.tile(mixture, dims=(self.n_sources, 1))
+                repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(
                     reference_sources=sources.numpy(),
                     estimated_sources=estimated_sources.numpy()
@@ -306,7 +308,8 @@ class Tester:
                 
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
-                    torchaudio.save(mixture_path, mixture.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(mixture_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
@@ -317,18 +320,22 @@ class Tester:
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
-                        torchaudio.save(source_path, source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
+                        torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
-                    torchaudio.save(source_path, source.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
+                    torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                     # Estimated source
                     norm = torch.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
-                        torchaudio.save(estimated_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx + 1, random_ID)
-                    torchaudio.save(estimated_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                 
                 pesq = 0
                 
@@ -389,7 +396,21 @@ class AttractorTrainer(Trainer):
         super()._reset(args)
         
         self.n_bins = args.n_bins
-        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+
+        if args.window_fn:
+            if args.window_fn == 'hann':
+                self.window = torch.hann_window(self.fft_size, periodic=True)
+            elif args.window_fn == 'hamming':
+                self.window = torch.hamming_window(self.fft_size, periodic=True)
+            else:
+                raise ValueError("Invalid argument.")
+        else:
+            self.window = None
+        
+        self.normalize = self.train_loader.dataset.normalize
+
+        assert self.normalize == self.valid_loader.dataset.normalize, "Nomalization of STFT is different between `train_loader.dataset` and `valid_loader.dataset`."
     
     def run_one_epoch_train(self, epoch):
         # Override
@@ -407,11 +428,9 @@ class AttractorTrainer(Trainer):
                 sources = sources.cuda()
                 assignment = assignment.cuda()
                 threshold_weight = threshold_weight.cuda()
-                
-            real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2+imag**2)
-            real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2+imag**2)
+            
+            mixture_amplitude = torch.abs(mixture)
+            sources_amplitude = torch.abs(sources)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -427,7 +446,7 @@ class AttractorTrainer(Trainer):
             train_loss += loss.item()
             
             if (idx + 1) % 100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -459,10 +478,8 @@ class AttractorTrainer(Trainer):
                     threshold_weight = threshold_weight.cuda()
                     assignment = assignment.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
@@ -471,31 +488,29 @@ class AttractorTrainer(Trainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (1, 2*n_bins, n_frames)
+                    mixture = mixture[0].cpu() # -> (1, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
                     estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[...,0], mixture[...,1]
-                    real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
-                    estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
-                    estimated_sources = estimated_sources.cpu()
+                    estimated_sources = ratio * mixture
+                    estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (n_sources, T)
                     
-                    mixture = self.istft(mixture) # -> (1, T)
-                    mixture = mixture.squeeze(dim=0) # -> (T,)
+                    mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window).squeeze(dim=0) # -> (T,)
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
         
         valid_loss /= n_valid
         
@@ -514,9 +529,21 @@ class AttractorTester(Tester):
     def _reset(self, args):
         # Override
         super()._reset(args)
-        
+
         self.n_bins = args.n_bins
-        self.istft = BatchInvSTFT(args.fft_size, args.hop_size, window_fn=args.window_fn)
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+
+        if args.window_fn:
+            if args.window_fn == 'hann':
+                self.window = torch.hann_window(self.fft_size, periodic=True)
+            elif args.window_fn == 'hamming':
+                self.window = torch.hamming_window(self.fft_size, periodic=True)
+            else:
+                raise ValueError("Invalid argument.")
+        else:
+            self.window = None
+        
+        self.normalize = self.loader.dataset.normalize
     
     def run(self):
         n_sources = self.n_sources
@@ -543,10 +570,8 @@ class AttractorTester(Tester):
                     ideal_mask = ideal_mask.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2) # -> (1, 1, n_bins, n_frames)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.abs(mixture) # -> (1, 1, n_bins, n_frames)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
                 loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
@@ -558,16 +583,14 @@ class AttractorTester(Tester):
                 mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
                 estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                 ratio = estimated_sources_amplitude / mixture_amplitude
-                real, imag = mixture[...,0], mixture[...,1] # -> (1, n_bins, n_frames), (1, n_bins, n_frames)
-                real, imag = ratio * real, ratio * imag # -> (n_sources, n_bins, n_frames), (n_sources, n_bins, n_frames)
-                estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
-                
+                estimated_sources = ratio * mixture # -> (n_sources, n_bins, n_frames)
+
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 T = T[0]  # -> ()
                 segment_IDs = segment_IDs[0] # -> (n_sources,)
-                mixture = self.istft(mixture, T=T).squeeze(dim=0) # -> (T,)
-                sources = self.istft(sources, T=T) # -> (n_sources, T)
-                estimated_sources = self.istft(estimated_sources, T=T) # -> (n_sources, T)
+                mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # -> (T,)
+                sources = torch.istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
+                estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
                 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
@@ -578,7 +601,8 @@ class AttractorTester(Tester):
                     
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
-                    torchaudio.save(mixture_path, mixture.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(mixture_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
@@ -589,18 +613,22 @@ class AttractorTester(Tester):
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
-                        torchaudio.save(source_path, source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
+                        torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     source_path = "tmp-{}-target_{}.wav".format(order_idx, random_ID)
-                    torchaudio.save(source_path, source.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
+                    torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                     # Estimated source
                     norm = torch.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
-                        torchaudio.save(estimated_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx, random_ID)
-                    torchaudio.save(estimated_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                 
                 pesq = 0
                     
@@ -655,10 +683,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 sources = sources.cuda()
                 threshold_weight = threshold_weight.cuda()
             
-            real, imag = mixture[...,0], mixture[...,1]
-            mixture_amplitude = torch.sqrt(real**2+imag**2)
-            real, imag = sources[...,0], sources[...,1]
-            sources_amplitude = torch.sqrt(real**2+imag**2)
+            mixture_amplitude = torch.abs(mixture)
+            sources_amplitude = torch.abs(sources)
             
             estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=sources.size(1))
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
@@ -674,7 +700,7 @@ class AnchoredAttractorTrainer(AttractorTrainer):
             train_loss += loss.item()
             
             if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -695,8 +721,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         with torch.no_grad():
             for idx, (mixture, sources, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, n_bins, n_frames, 2)
-                sources (batch_size, n_sources, n_bins, n_frames, 2)
+                mixture (batch_size, 1, n_bins, n_frames)
+                sources (batch_size, n_sources, n_bins, n_frames)
                 threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
@@ -704,10 +730,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                     sources = sources.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                real, imag = mixture[...,0], mixture[...,1]
-                mixture_amplitude = torch.sqrt(real**2+imag**2)
-                real, imag = sources[...,0], sources[...,1]
-                sources_amplitude = torch.sqrt(real**2+imag**2)
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
                 
                 output = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
@@ -716,31 +740,30 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                 valid_loss += loss.item()
                 
                 if idx < 5:
-                    mixture = mixture[0].cpu() # -> (1, 2*n_bins, n_frames)
+                    mixture = mixture[0].cpu() # -> (1, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
                     estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
-                    real, imag = mixture[...,0], mixture[...,1]
-                    real, imag = ratio * real, ratio * imag
-                    estimated_sources = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3) # -> (n_sources, n_bins, n_frames, 2)
-                    estimated_sources = self.istft(estimated_sources) # -> (n_sources, T)
+                    estimated_sources = ratio * mixture
+                    estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = self.istft(mixture) # -> (1, T)
-                    mixture = mixture.squeeze(dim=0) # -> (T,)
+                    mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window).squeeze(dim=0) # -> (T,)
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
         
         valid_loss /= n_valid
         
@@ -805,7 +828,7 @@ class ORPITTrainer(Trainer):
             train_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, end - start), flush=True)
+            print("[Epoch {}/{}] loss (train): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
             
@@ -813,7 +836,7 @@ class ORPITTrainer(Trainer):
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], save_path=save_path)
     
     def run_one_epoch(self, epoch):
         """
@@ -853,18 +876,20 @@ class ORPITTrainer(Trainer):
                     mixture = mixture[0].squeeze(dim=0).detach().cpu()
                     estimated_sources = output[0].detach().cpu()
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=self.sr)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=self.sr)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
         
         return -1
     

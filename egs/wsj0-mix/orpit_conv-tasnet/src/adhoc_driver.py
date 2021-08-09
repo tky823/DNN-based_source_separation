@@ -128,13 +128,15 @@ class ORPITTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                 
                 n_sources_count[n_sources[0]] += 1
         
@@ -231,7 +233,8 @@ class Tester(TesterBase):
 
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
-                    torchaudio.save(mixture_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(mixture_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
@@ -241,18 +244,22 @@ class Tester(TesterBase):
                     source /= norm
                     if idx < 10 and self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
-                        torchaudio.save(source_path, source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
+                        torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
-                    torchaudio.save(source_path, source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
+                    torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     # Estimated source
                     norm = torch.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
-                        torchaudio.save(estimated_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx + 1, random_ID)
-                    torchaudio.save(estimated_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                 
                 pesq = 0
                 
@@ -472,13 +479,15 @@ class FinetuneTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
-                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
         
         valid_loss /= n_valid
 

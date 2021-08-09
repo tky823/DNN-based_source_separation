@@ -1,4 +1,4 @@
-name: DNN-based_source_separation_wsj0-gpu
+name: DNN-based_source_separation_tutorials-gpu
 
 channels:
   - pytorch

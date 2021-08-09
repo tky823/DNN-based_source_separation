@@ -1,4 +1,4 @@
-name: DNN-based_source_separation_wsj0-gpu
+name: DNN-based_source_separation_tutorials-cpu
 
 channels:
   - pytorch
@@ -12,4 +12,3 @@ dependencies:
   - mir_eval==0.6
   - pytorch>=1.8.0
   - torchaudio>=0.8.0
-  - cudatoolkit>=10
