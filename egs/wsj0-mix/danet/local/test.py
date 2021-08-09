@@ -11,11 +11,14 @@ from adhoc_driver import Tester
 from models.danet import DANet
 from criterion.distance import L1Loss, L2Loss
 
-parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
+parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -27,7 +30,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    test_dataset = IdealMaskSpectrogramTestDataset(args.test_wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     args.n_bins = args.fft_size // 2 + 1

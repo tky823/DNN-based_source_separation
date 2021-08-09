@@ -69,6 +69,9 @@ test.py \
 --test_wav_root ${wav_root} \
 --test_list_path ${test_list_path} \
 --sr ${sr} \
+--window_fn ${window_fn} \
+--ideal_mask ${ideal_mask} \
+--threshold ${threshold} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
