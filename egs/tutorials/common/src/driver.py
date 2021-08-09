@@ -400,7 +400,9 @@ class AttractorTrainer(Trainer):
 
         if args.window_fn:
             if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.fft_size)
+                self.window = torch.hann_window(self.fft_size, periodic=True)
+            elif args.window_fn == 'hamming':
+                self.window = torch.hamming_window(self.fft_size, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:
@@ -533,7 +535,9 @@ class AttractorTester(Tester):
 
         if args.window_fn:
             if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.fft_size)
+                self.window = torch.hann_window(self.fft_size, periodic=True)
+            elif args.window_fn == 'hamming':
+                self.window = torch.hamming_window(self.fft_size, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:
