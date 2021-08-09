@@ -148,7 +148,7 @@ class Trainer:
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
+            if (idx + 1) % 100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
@@ -551,18 +551,28 @@ class AttractorTester(Tester):
         self.model.eval()
         
         test_loss = 0
+        test_sdr_improvement = 0
+        test_sir_improvement = 0
+        test_sar = 0
         test_pesq = 0
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
+
+        print("ID, Loss, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+
+        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        os.makedirs(tmp_dir, exist_ok=True)
+        shutil.copy('./PESQ', os.path.join(tmp_dir, 'PESQ'))
+        os.chdir(tmp_dir)
         
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
                 """
-                mixture (1, 1, n_bins, n_frames, 2)
-                sources (1, n_sources, n_bins, n_frames, 2)
-                assignment (1, n_sources, n_bins, n_frames)
-                threshold_weight (1, n_bins, n_frames)
-                T (1,)
+                    mixture (1, 1, n_bins, n_frames)
+                    sources (1, n_sources, n_bins, n_frames)
+                    assignment (1, n_sources, n_bins, n_frames)
+                    threshold_weight (1, n_bins, n_frames)
+                    T (1,)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -592,6 +602,20 @@ class AttractorTester(Tester):
                 sources = torch.istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
                 estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
                 
+                repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
+                result_estimated = bss_eval_sources(
+                    reference_sources=sources.numpy(),
+                    estimated_sources=estimated_sources.numpy()
+                )
+                result_mixed = bss_eval_sources(
+                    reference_sources=sources.numpy(),
+                    estimated_sources=repeated_mixture.numpy()
+                )
+
+                sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
+                sir_improvement = np.mean(result_estimated[1] - result_mixed[1])
+                sar = np.mean(result_estimated[2])
+
                 norm = torch.abs(mixture).max()
                 mixture /= norm
                 mixture_ID = "+".join(segment_IDs)
@@ -644,23 +668,31 @@ class AttractorTester(Tester):
                     if pesq_output == '':
                         # If processing error occurs in PESQ software, it is regarded as PESQ score is -0.5. (minimum of PESQ)
                         n_pesq_error += 1
-                        pesq += -0.5
+                        pesq += MIN_PESQ
                     else:
                         pesq += float(pesq_output)
                     
                     subprocess.call("rm {}".format(source_path), shell=True)
                     subprocess.call("rm {}".format(estimated_path), shell=True)
-                
+
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), pesq), flush=True)
+                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement, sir_improvement, sar, pesq), flush=True)
                 
                 test_loss += loss.item()
+                test_sdr_improvement += sdr_improvement
+                test_sir_improvement += sir_improvement
+                test_sar += sar
                 test_pesq += pesq
         
         test_loss /= n_test
+        test_sdr_improvement /= n_test
+        test_sir_improvement /= n_test
+        test_sar /= n_test
         test_pesq /= n_test
-                
-        print("Loss: {:.3f}, PESQ: {:.3f}".format(test_loss, test_pesq))
+
+        os.chdir("../") # back to the original directory
+
+        print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
 class AnchoredAttractorTrainer(AttractorTrainer):
@@ -699,7 +731,7 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
+            if (idx + 1) % 100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
