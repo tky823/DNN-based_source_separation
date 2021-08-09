@@ -14,4 +14,3 @@ dependencies:
   - pytorch>=1.8.0
   - torchaudio>=0.8.0
   - cudatoolkit>=10
-  - mir_eval==0.6
