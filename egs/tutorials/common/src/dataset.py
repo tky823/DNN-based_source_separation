@@ -92,14 +92,16 @@ class SpectrogramDataset(WaveDataset):
         super().__init__(wav_root, json_path)
         
         if hop_size is None:
-            hop_size = fft_size//2
+            hop_size = fft_size // 2
         
         self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size//2 + 1
+        self.n_bins = fft_size // 2 + 1
 
         if window_fn:
             if window_fn == 'hann':
-                self.window = torch.hann_window(fft_size)
+                self.window = torch.hann_window(fft_size, periodic=True)
+            elif window_fn == 'hamming':
+                self.window = torch.hamming_window(fft_size, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:

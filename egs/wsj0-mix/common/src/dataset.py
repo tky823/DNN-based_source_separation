@@ -187,7 +187,9 @@ class SpectrogramDataset(WaveDataset):
 
         if window_fn:
             if window_fn == 'hann':
-                self.window = torch.hann_window(fft_size)
+                self.window = torch.hann_window(fft_size, periodic=True)
+            elif window_fn == 'hamming':
+                self.window = torch.hamming_window(fft_size, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:
