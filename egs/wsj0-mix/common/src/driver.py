@@ -299,7 +299,7 @@ class TesterBase:
                 )
                 result_mixed = bss_eval_sources(
                     reference_sources=sources.numpy(),
-                    estimated_sources=repeated_mixture.numpy()
+                    estimated_sources=repeated_mixture
                 )
         
                 sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
