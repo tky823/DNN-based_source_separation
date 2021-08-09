@@ -636,10 +636,10 @@ class AttractorTester(Tester):
                     norm = torch.abs(source).max()
                     source /= norm
                     if idx < 10 and  self.out_dir is not None:
-                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx))
+                        source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
                         signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
                         torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
-                    source_path = "tmp-{}-target_{}.wav".format(order_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
                     signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
                     torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                     
@@ -647,18 +647,18 @@ class AttractorTester(Tester):
                     norm = torch.abs(estimated_source).max()
                     estimated_source /= norm
                     if idx < 10 and  self.out_dir is not None:
-                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx))
+                        estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                         torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
-                    estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx, random_ID)
+                    estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx + 1, random_ID)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_LIBRISPEECH)
                 
                 pesq = 0
                     
                 for source_idx in range(self.n_sources):
-                    source_path = "tmp-{}-target_{}.wav".format(source_idx, random_ID)
-                    estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx, random_ID)
+                    source_path = "tmp-{}-target_{}.wav".format(source_idx + 1, random_ID)
+                    estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx + 1, random_ID)
                     
                     command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
                     command += " | grep Prediction | awk '{print $5}'"

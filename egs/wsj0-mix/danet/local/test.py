@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
-from adhoc_driver import Tester
+from adhoc_driver import AdhocTester
 from models.danet import DANet
 from criterion.distance import L1Loss, L2Loss
 
@@ -59,7 +59,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    tester = Tester(model, loader, criterion, args)
+    tester = AdhocTester(model, loader, criterion, args)
     tester.run()
 
 if __name__ == '__main__':
