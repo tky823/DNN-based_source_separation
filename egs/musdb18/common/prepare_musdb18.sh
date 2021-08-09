@@ -2,12 +2,12 @@
 
 musdb18_root="../../../dataset/musdb18"
 musdb18hq_root="../../../dataset/musdb18hq"
-file=musdb18.zip
 is_hq=0
 
 . ./parse_options.sh || exit 1
 
 if [ ${is_hq} -eq 0 ]; then
+    file=musdb18.zip
     if [ -e "${musdb18_root}/train/A Classic Education - NightOwl.stem.mp4" ]; then
         echo "Already downloaded dataset ${musdb18_root}"
     else
@@ -17,6 +17,7 @@ if [ ${is_hq} -eq 0 ]; then
         rm "/tmp/${file}"
     fi
 else
+    file=musdb18hq.zip
     if [ -e "${musdb18hq_root}/train/A Classic Education - NightOwl.stem.mp4" ]; then
         echo "Already downloaded dataset ${musdb18hq_root}"
     else
