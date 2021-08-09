@@ -156,8 +156,6 @@ if __name__ == '__main__':
 
     amplitude = torch.cat([amplitude_source1, amplitude_source2], dim=0)
 
-    exit
-
     _test('IBM')
     _test('IRM')
     _test('WFM')
