@@ -7,16 +7,16 @@ import torch.nn.functional as F
 
 from dataset import WaveDataset, SpectrogramDataset
 
-__sources__=['drums','bass','other','vocals']
+__sources__ = ['drums', 'bass', 'other', 'vocals']
 
-SAMPLE_RATE_MUSDB = 44100
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 MINSCALE = 0.75
 MAXSCALE = 1.25
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -191,7 +191,7 @@ class WaveTrainDataset(WaveDataset):
         return mixture, target
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=10, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=10, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -297,7 +297,7 @@ class WaveEvalDataset(WaveDataset):
         return batch_mixture, batch_target, name
 
 class WaveTestDataset(WaveEvalDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=10, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=10, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -331,7 +331,7 @@ class WaveTestDataset(WaveEvalDataset):
             self.json_data.append(song_data)
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -517,7 +517,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=10, max_duration=None, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=10, max_duration=None, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -644,7 +644,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return batch_mixture, batch_target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=5, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=5, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -793,4 +793,4 @@ def test_collate_fn(batch):
     return mixture, sources, T, name
 
 def assert_sample_rate(sr):
-    assert sr == SAMPLE_RATE_MUSDB, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB, sr)
+    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)

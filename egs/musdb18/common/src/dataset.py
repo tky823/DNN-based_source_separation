@@ -6,12 +6,12 @@ import torch
 
 __sources__=['drums','bass','other','vocals']
 
-SAMPLE_RATE_MUSDB = 44100
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         """
         Args:
             musdb18_root <str>: Path to MUSDB18 root.
@@ -39,7 +39,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         self.target = target
 
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         """
         Args:
             musdb18_root <int>: Path to MUSDB or MUSDB-HQ
@@ -95,7 +95,7 @@ class WaveDataset(MUSDB18Dataset):
         return len(self.json_data)
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -131,7 +131,7 @@ class WaveTrainDataset(WaveDataset):
         return mixture, target
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, max_duration=10, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -169,7 +169,7 @@ class WaveEvalDataset(WaveDataset):
         return mixture, target, name
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, sources=__sources__):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__):
         super().__init__(musdb18_root, sr=sr, sources=sources)
 
         assert_sample_rate(sr)
@@ -186,7 +186,7 @@ class WaveTestDataset(WaveDataset):
             self.json_data.append(data)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         if hop_size is None:
@@ -249,7 +249,7 @@ class SpectrogramDataset(WaveDataset):
         return mixture, target, T, name
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', sample_rate=sr)
@@ -291,7 +291,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, max_duration=10, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', sample_rate=sr)
@@ -370,7 +370,7 @@ def test_collate_fn(batch):
     return batched_mixture, batched_sources, batched_segment_ID
 
 def assert_sample_rate(sr):
-    assert sr == SAMPLE_RATE_MUSDB, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB, sr)
+    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
 
 def _test_train_dataset():
     torch.manual_seed(111)

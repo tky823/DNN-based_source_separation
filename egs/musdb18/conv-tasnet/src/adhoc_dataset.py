@@ -8,12 +8,21 @@ from dataset import MUSDB18Dataset
 
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 
+
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=44100, target=None):
-        super().__init__(musdb18_root, sr=sr, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        """
+        Args:
+            musdb18_root <int>: Path to MUSDB or MUSDB-HQ
+            sr: Sampling frequency. Default: 44100
+            sources <list<str>>: Sources included in mixture
+            target <str> or <list<str>>: 
+        """
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
 
         self.json_data = None
 
@@ -22,8 +31,8 @@ class WaveDataset(MUSDB18Dataset):
         Args:
             idx <int>: index
         Returns:
-            mixture (2, T) <torch.Tensor>
-            target (2, T) <torch.Tensor>
+            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
+            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
             name <str>: Artist and title of song
         """
         data = self.json_data[idx]
@@ -34,8 +43,24 @@ class WaveDataset(MUSDB18Dataset):
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
-        mixture = track.audio.transpose(1, 0)[None]
-        target = track.targets[self.target].audio.transpose(1, 0)[None]
+        if set(self.sources) == set(__sources__):
+            mixture = track.audio.transpose(1, 0)
+        else:
+            sources = []
+            for _source in self.sources:
+                sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+            sources = np.concatenate(sources, axis=0)
+            mixture = sources.sum(axis=0)
+        
+        if type(self.target) is list:
+            target = []
+            for _target in self.target:
+                target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis])
+            target = np.concatenate(target, axis=0)
+            mixture = mixture[np.newaxis]
+        else:
+            target = track.targets[self.target].audio.transpose(1, 0)
+
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
 
@@ -57,11 +82,12 @@ class WaveDataset(MUSDB18Dataset):
             return False
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, sr=sr, target=target)
-        
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
 
+        assert_sample_rate(sr)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
+        
         self.threshold = threshold
         self.duration = duration
 
@@ -94,10 +120,11 @@ class WaveTrainDataset(WaveDataset):
         return mixture, sources
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, max_duration=4, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, target=None):
         super().__init__(musdb18_root, sr=sr, target=target)
 
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
+        assert_sample_rate(sr)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
 
         self.max_duration = max_duration
 
@@ -119,6 +146,9 @@ class WaveEvalDataset(WaveDataset):
             }
             self.json_data.append(data)
 
+def assert_sample_rate(sr):
+    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
+
 def _test_train_dataset():
     torch.manual_seed(111)
     
@@ -132,7 +162,7 @@ def _test_train_dataset():
 
     dataset.save_as_json('data/tmp.json')
 
-    WaveTrainDataset.from_json(musdb18_root, 'data/tmp.json', sr=44100, target='vocals')
+    WaveTrainDataset.from_json(musdb18_root, 'data/tmp.json', sr=SAMPLE_RATE_MUSDB18, target='vocals')
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break
