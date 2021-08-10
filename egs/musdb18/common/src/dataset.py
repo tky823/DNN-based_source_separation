@@ -137,7 +137,7 @@ class WaveEvalDataset(WaveDataset):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True, is_wav=is_wav)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.max_duration = max_duration
 
