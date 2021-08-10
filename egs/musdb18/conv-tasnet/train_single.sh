@@ -5,7 +5,7 @@ continue_from=""
 
 sources="[drums,bass,other,vocals]"
 target='vocals'
-duration=4
+duration=8
 valid_duration=10
 
 musdb18_root="../../../dataset/musdb18hq"
