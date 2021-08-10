@@ -80,6 +80,42 @@ class SingleTargetTrainer(TrainerBase):
             self.prev_loss = float('infinity')
             self.no_improvement = 0
 
+    def run_one_epoch_train(self, epoch):
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+        
+        for idx, (mixture, sources) in enumerate(self.train_loader):
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+            
+            mixture = mixture.unsqueeze(dim=1)
+            estimated_sources = self.model(mixture)
+            estimated_sources = estimated_sources.squeeze(dim=1)
+            loss = self.criterion(estimated_sources, sources)
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            train_loss += loss.item()
+            
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
+
     def run_one_epoch_eval(self, epoch):
         """
         Validation

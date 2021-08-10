@@ -193,7 +193,7 @@ class WaveTrainDataset(WaveDataset):
         return self.samples_per_epoch
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, sources=__sources__, target=None, is_wav=False):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None, is_wav=False):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
 
         assert_sample_rate(sr)
