@@ -1,4 +1,4 @@
-import json
+import random
 
 import numpy as np
 import musdb
@@ -12,9 +12,11 @@ __sources__ = ['drums', 'bass', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
+MINSCALE = 0.75
+MAXSCALE = 1.25
 
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
         """
         Args:
             musdb18_root <int>: Path to MUSDB or MUSDB-HQ
@@ -22,7 +24,7 @@ class WaveDataset(MUSDB18Dataset):
             sources <list<str>>: Sources included in mixture
             target <str> or <list<str>>: 
         """
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
 
         self.json_data = None
 
@@ -68,63 +70,134 @@ class WaveDataset(MUSDB18Dataset):
 
     def __len__(self):
         return len(self.json_data)
-    
-    def save_as_json(self, json_path):
-        with open(json_path, 'w') as f:
-            json.dump(self.json_data, f, indent=4)
-
-    def _is_active(self, input, threshold=THRESHOLD_POWER):
-        power = torch.mean(input**2) # (2, T)
-
-        if power.item() >= threshold:
-            return True
-        else:
-            return False
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
-
-        assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
-        self.threshold = threshold
+        assert_sample_rate(sr)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
+        
         self.duration = duration
 
-        if overlap is None:
-            overlap = self.duration / 2
-
-        self.json_data = []
+        self.std = {}
+        self.json_data = None
 
         for songID, track in enumerate(self.mus.tracks):
-            for start in np.arange(0, track.duration, duration - overlap):
-                if start + duration >= track.duration:
-                    break
-                
-                track.chunk_start = start
-                track.chunk_duration = duration
-                target = track.targets[self.target].audio.transpose(1, 0)
-                target = torch.Tensor(target).float()
-
-                if self._is_active(target, threshold=self.threshold):
-                    data = {
-                        'songID': songID,
-                        'start': start,
-                        'duration': duration
-                    }
-                    self.json_data.append(data)
-    
-    def __getitem__(self, idx):
-        mixture, sources, _ = super().__getitem__(idx)
+            if set(self.sources) == set(__sources__):
+                mixture = track.audio.transpose(1, 0)
+            else:
+                sources = []
+                for _source in self.sources:
+                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+                sources = np.concatenate(sources, axis=0)
+                mixture = sources.sum(axis=0)
+            
+            self.std[songID] = np.std(mixture.mean(axis=0))
         
-        return mixture, sources
+        self.samples_per_epoch = samples_per_epoch
+
+    def __getitem__(self, idx):
+        """
+        Args:
+            idx <int>: index
+        Returns:
+            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
+            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+        """
+        n_songs = len(self.mus.tracks)
+        song_indices = random.choices(range(n_songs), k=len(self.sources))
+
+        sources = []
+        songIDs = []
+        starts = []
+        flips = []
+        scales = []
+
+        for _source, songID in zip(self.sources, song_indices):
+            track = self.mus.tracks[songID]
+            std = self.std[songID]
+
+            start = random.uniform(0, track.duration - self.duration)
+            flip = random.choice([True, False])
+            scale = random.uniform(MINSCALE, MAXSCALE)
+
+            track.chunk_start = start
+            track.chunk_duration = self.duration
+
+            source = track.targets[_source].audio.transpose(1, 0) / std
+
+            if flip:
+                source = source[::-1]
+
+            sources.append(scale * source[np.newaxis])
+            songIDs.append(songID)
+            starts.append(start)
+            flips.append(flip)
+            scales.append(scale)
+        
+        sources = np.concatenate(sources, axis=0)
+        mixture = sources.sum(axis=0)
+        
+        if type(self.target) is list:
+            target = []
+            for _target in self.target:
+                idx = self.sources.index(_target)
+                songID = songIDs[idx]
+                start = starts[idx]
+                flip = flips[idx]
+                scale = scales[idx]
+                std = self.std[songID]
+                
+                track = self.mus.tracks[songID]
+
+                track.chunk_start = start
+                track.chunk_duration = self.duration
+
+                _target = track.targets[_target].audio.transpose(1, 0) / std
+                
+                if flip:
+                    _target = _target[::-1]
+
+                target.append(scale * _target[np.newaxis])
+            
+            target = np.concatenate(target, axis=0)
+            mixture = mixture[np.newaxis]
+        else:
+            _target = self.target
+            idx = self.sources.index(_target)
+            songID = songIDs[idx]
+            start = starts[idx]
+            flip = flips[idx]
+            scale = scales[idx]
+            std = self.std[songID]
+            
+            track = self.mus.tracks[songID]
+            
+            track.chunk_start = start
+            track.chunk_duration = self.duration
+
+            _target = track.targets[_target].audio.transpose(1, 0) / std
+                
+            if flip:
+                _target = _target[::-1]
+            
+            target = scale * _target
+
+        mixture = torch.Tensor(mixture).float()
+        target = torch.Tensor(target).float()
+
+        return mixture, target
+
+    def __len__(self):
+        return self.samples_per_epoch
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
 
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.max_duration = max_duration
 

@@ -57,10 +57,9 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = args.duration
-    overlap = samples / 2
+    samples_per_epoch = 40 * 3000 // args.duration
     
-    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, target=args.target)
+    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, samples_per_epoch=samples_per_epoch, target=args.target, is_wav=args.is_wav)
     valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, target=args.target)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
