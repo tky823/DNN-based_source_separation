@@ -262,12 +262,12 @@ class EvaluaterBase:
         self.estimated_mus = musdb.DB(root=args.estimated_musdb18_root, subsets="test", is_wav=True)
         self.json_dir = args.json_dir
 
-        os.makedirs(self.json_dir)
+        os.makedirs(self.json_dir, exist_ok=True)
     
     def run(self):
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
 
-        for track, estimated_track in zip(self.mus, self.estimated_mus):
+        for track, estimated_track in zip(self.mus.tracks, self.estimated_mus.tracks):
             scores = self.run_one_track(track, estimated_track)
             results.add_track(scores)
         
