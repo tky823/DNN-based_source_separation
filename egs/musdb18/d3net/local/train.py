@@ -48,9 +48,9 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
-    overlap = patch_duration / 2
+    samples_per_epoch = int(40 * 3000 // patch_duration)
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target, is_wav=args.is_wav)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, samples_per_epoch=samples_per_epoch, sources=args.sources, target=args.target, augmentation=True, is_wav=args.is_wav)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, max_duration=args.max_duration, sources=args.sources, target=args.target, is_wav=args.is_wav)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))

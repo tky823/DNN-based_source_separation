@@ -331,7 +331,7 @@ class WaveTestDataset(WaveEvalDataset):
             self.json_data.append(song_data)
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
@@ -345,21 +345,26 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         self.augmentation = augmentation
 
-        self.json_data = {
-            source: [] for source in sources
-        }
+        if augmentation:
+            self.samples_per_epoch = samples_per_epoch
+            self.json_data = None
+        else:
+            self.samples_per_epoch = None
+            self.json_data = {
+                source: [] for source in sources
+            }
 
-        for songID, track in enumerate(self.mus.tracks):
-            for start in np.arange(0, track.duration, patch_duration - overlap):
-                if start + patch_duration >= track.duration:
-                    break
-                data = {
-                    'songID': songID,
-                    'start': start,
-                    'duration': patch_duration
-                }
-                for source in sources:
-                    self.json_data[source].append(data)
+            for songID, track in enumerate(self.mus.tracks):
+                for start in np.arange(0, track.duration, patch_duration - overlap):
+                    if start + patch_duration >= track.duration:
+                        break
+                    data = {
+                        'songID': songID,
+                        'start': start,
+                        'duration': patch_duration
+                    }
+                    for source in sources:
+                        self.json_data[source].append(data)
     
     def __getitem__(self, idx):
         """
@@ -390,9 +395,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
     
     def __len__(self):
-        source = self.sources[0]
-        
-        return len(self.json_data[source])
+        if self.augmentation:
+            return self.samples_per_epoch
+        else:
+            source = self.sources[0]
+            
+            return len(self.json_data[source])
     
     def _getitem(self, idx):
         """

@@ -4,7 +4,7 @@ import numpy as np
 import musdb
 import torch
 
-from dataset import MUSDB18Dataset
+from dataset import WaveDataset
 
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 
@@ -14,62 +14,6 @@ EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 MINSCALE = 0.75
 MAXSCALE = 1.25
-
-class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
-        """
-        Args:
-            musdb18_root <int>: Path to MUSDB or MUSDB-HQ
-            sr: Sampling frequency. Default: 44100
-            sources <list<str>>: Sources included in mixture
-            target <str> or <list<str>>: 
-        """
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
-
-        self.json_data = None
-
-    def __getitem__(self, idx):
-        """
-        Args:
-            idx <int>: index
-        Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
-            name <str>: Artist and title of song
-        """
-        data = self.json_data[idx]
-
-        songID = data['songID']
-        track = self.mus.tracks[songID]
-        name = track.name
-        track.chunk_start = data['start']
-        track.chunk_duration = data['duration']
-
-        if set(self.sources) == set(__sources__):
-            mixture = track.audio.transpose(1, 0)
-        else:
-            sources = []
-            for _source in self.sources:
-                sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
-            sources = np.concatenate(sources, axis=0)
-            mixture = sources.sum(axis=0)
-        
-        if type(self.target) is list:
-            target = []
-            for _target in self.target:
-                target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis])
-            target = np.concatenate(target, axis=0)
-            mixture = mixture[np.newaxis]
-        else:
-            target = track.targets[self.target].audio.transpose(1, 0)
-
-        mixture = torch.Tensor(mixture).float()
-        target = torch.Tensor(target).float()
-
-        return mixture, target, name
-
-    def __len__(self):
-        return len(self.json_data)
 
 class WaveTrainDataset(WaveDataset):
     def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
