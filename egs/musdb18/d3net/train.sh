@@ -6,7 +6,7 @@ continue_from=""
 sources="[drums,bass,other,vocals]"
 target='vocals'
 patch=256
-max_duration=30
+max_duration=100
 
 musdb18_root="../../../dataset/musdb18"
 is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
