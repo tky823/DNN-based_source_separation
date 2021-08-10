@@ -82,8 +82,8 @@ class WaveDataset(MUSDB18Dataset):
             return False
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, sr=sr, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
 
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
@@ -120,8 +120,8 @@ class WaveTrainDataset(WaveDataset):
         return mixture, sources
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, target=None):
-        super().__init__(musdb18_root, sr=sr, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
 
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
