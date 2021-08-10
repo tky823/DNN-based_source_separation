@@ -44,9 +44,9 @@ model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/${target}/log"
 
 if [ ${is_wav} -eq 0 ]; then
-    out_dir="${save_dir}/musdb18hq/test"
-else
     out_dir="${save_dir}/musdb18/test"
+else
+    out_dir="${save_dir}/musdb18hq/test"
 fi
 
 if [ ! -e "${log_dir}" ]; then
