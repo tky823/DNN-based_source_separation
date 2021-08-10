@@ -16,11 +16,11 @@ MINSCALE = 0.75
 MAXSCALE = 1.25
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
         
         self.threshold = threshold
         self.duration = duration
@@ -191,11 +191,11 @@ class WaveTrainDataset(WaveDataset):
         return mixture, target
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=10, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=10, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.duration = duration
         self.json_data = []
@@ -297,11 +297,11 @@ class WaveEvalDataset(WaveDataset):
         return batch_mixture, batch_target, name
 
 class WaveTestDataset(WaveEvalDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=10, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=10, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=is_wav)
 
         self.duration = duration
         self.json_data = []
@@ -331,11 +331,11 @@ class WaveTestDataset(WaveEvalDataset):
             self.json_data.append(song_data)
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
         
         self.threshold = threshold
         self.patch_duration = patch_duration
@@ -517,11 +517,11 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=10, max_duration=None, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=10, max_duration=None, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.patch_duration = patch_duration
 
@@ -644,11 +644,11 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return batch_mixture, batch_target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=5, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=5, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=is_wav)
 
         self.patch_duration = patch_duration
         self.json_data = []

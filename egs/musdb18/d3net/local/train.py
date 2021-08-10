@@ -16,6 +16,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Training of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
+parser.add_argument('--is_wav', type=int, default=None, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
@@ -49,8 +50,8 @@ def main(args):
     patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
     overlap = patch_duration / 2
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, max_duration=args.max_duration, sources=args.sources, target=args.target)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, overlap=overlap, sources=args.sources, target=args.target, is_wav=args.is_wav)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, max_duration=args.max_duration, sources=args.sources, target=args.target, is_wav=args.is_wav)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

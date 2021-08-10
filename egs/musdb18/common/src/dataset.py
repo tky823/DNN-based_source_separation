@@ -11,13 +11,14 @@ EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
         """
         Args:
             musdb18_root <str>: Path to MUSDB18 root.
             sr <int>: Sampling rate.
             sources <list<str>>: Sources for mixture. Default: ['drums','bass','other','vocals']
             target <str> or <list<str>>: Target source(s). If None is given, `sources` is used by default.
+            is_wav: If MUSDB is used, extension is .mp4 (is_wav=False). If MUSDB-HQ is used, extension is .wav (is_wav=True).
         """
         super().__init__()
 
@@ -33,21 +34,22 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         self.musdb18_root = os.path.abspath(musdb18_root)
 
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, is_wav=is_wav)
 
         self.sources = sources
         self.target = target
 
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
         """
         Args:
             musdb18_root <int>: Path to MUSDB or MUSDB-HQ
             sr: Sampling frequency. Default: 44100
             sources <list<str>>: Sources included in mixture
             target <str> or <list<str>>: 
+            is_wav <bool>
         """
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
 
         self.json_data = None
 
@@ -95,11 +97,11 @@ class WaveDataset(MUSDB18Dataset):
         return len(self.json_data)
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
         
         self.threshold = threshold
         self.duration = duration
@@ -131,11 +133,11 @@ class WaveTrainDataset(WaveDataset):
         return mixture, target
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True, is_wav=is_wav)
 
         self.max_duration = max_duration
 
@@ -169,11 +171,11 @@ class WaveEvalDataset(WaveDataset):
         return mixture, target, name
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__):
-        super().__init__(musdb18_root, sr=sr, sources=sources)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, is_wav=is_wav)
 
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=True)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=is_wav)
 
         self.json_data = []
 
@@ -186,8 +188,8 @@ class WaveTestDataset(WaveDataset):
             self.json_data.append(data)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         if hop_size is None:
             hop_size = fft_size//2
@@ -249,10 +251,10 @@ class SpectrogramDataset(WaveDataset):
         return mixture, target, T, name
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER, is_wav=False):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', sample_rate=sr)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', sample_rate=sr, is_wav=is_wav)
         
         self.threshold = threshold
         self.duration = duration
@@ -291,10 +293,10 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', sample_rate=sr)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', sample_rate=sr, is_wav=is_wav)
 
         self.max_duration = max_duration
 

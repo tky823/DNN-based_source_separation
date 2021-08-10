@@ -7,6 +7,7 @@ target='vocals'
 patch=256
 
 musdb18_root="../../../dataset/musdb18hq"
+is_wav=1 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
 sr=44100
 
 window_fn='hann'
@@ -53,6 +54,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 test.py \
 --musdb18_root ${musdb18_root} \
+--is_wav ${is_wav} \
 --sr ${sr} \
 --patch_size ${patch} \
 --window_fn "${window_fn}" \

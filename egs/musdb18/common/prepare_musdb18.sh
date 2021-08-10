@@ -18,7 +18,7 @@ if [ ${is_hq} -eq 0 ]; then
     fi
 else
     file=musdb18hq.zip
-    if [ -e "${musdb18hq_root}/train/A Classic Education - NightOwl.stem.mp4" ]; then
+    if [ -e "${musdb18hq_root}/train/A Classic Education - NightOwl.wav" ]; then
         echo "Already downloaded dataset ${musdb18hq_root}"
     else
         mkdir -p "${musdb18hq_root}"

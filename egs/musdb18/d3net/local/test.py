@@ -15,6 +15,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Evaluation of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
+parser.add_argument('--is_wav', type=int, default=None, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -33,7 +34,7 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
-    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, sources=args.sources, target=args.target)
+    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_duration=patch_duration, sources=args.sources, target=args.target, is_wav=args.is_wav)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
