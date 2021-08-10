@@ -42,7 +42,12 @@ model_choice="best"
 model_dir="${save_dir}/${target}/model"
 model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/${target}/log"
-out_dir="${save_dir}/musdb18hq/test"
+
+if [ ${is_wav} -eq 0 ]; then
+    out_dir="${save_dir}/musdb18hq/test"
+else
+    out_dir="${save_dir}/musdb18/test"
+fi
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
