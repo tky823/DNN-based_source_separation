@@ -24,13 +24,13 @@ class WaveDataset(MUSDB18Dataset):
         Returns:
             mixture (2, T) <torch.Tensor>
             target (2, T) <torch.Tensor>
-            title <str>: title of song
+            name <str>: Artist and title of song
         """
         data = self.json_data[idx]
 
         songID = data['songID']
         track = self.mus.tracks[songID]
-        title = track.title
+        name = track.name
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 
@@ -39,7 +39,7 @@ class WaveDataset(MUSDB18Dataset):
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
 
-        return mixture, target, title
+        return mixture, target, name
 
     def __len__(self):
         return len(self.json_data)
@@ -48,7 +48,7 @@ class WaveDataset(MUSDB18Dataset):
         with open(json_path, 'w') as f:
             json.dump(self.json_data, f, indent=4)
 
-    def _is_active(self, input, threshold=1e-5):
+    def _is_active(self, input, threshold=THRESHOLD_POWER):
         power = torch.mean(input**2) # (2, T)
 
         if power.item() >= threshold:

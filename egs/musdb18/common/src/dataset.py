@@ -125,7 +125,6 @@ class WaveTrainDataset(WaveDataset):
         Returns:
             mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
             target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
-            title <str>: Title of song
         """
         mixture, target, _ = super().__getitem__(idx)
         
@@ -163,11 +162,11 @@ class WaveEvalDataset(WaveDataset):
         Returns:
             mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
             target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
-            title <str>: Title of song
+            name <str>: Artist and title of song
         """
-        mixture, target, title = super().__getitem__(idx)
+        mixture, target, name = super().__getitem__(idx)
         
-        return mixture, target, title
+        return mixture, target, name
 
 class WaveTestDataset(WaveDataset):
     def __init__(self, musdb18_root, sr=44100, sources=__sources__):
@@ -323,11 +322,11 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
             T (), <int>: Number of samples in time-domain
-            title <str>: Title of song
+            name <str>: Artist and title of song
         """
-        mixture, sources, T, title = super().__getitem__(idx)
+        mixture, sources, T, name = super().__getitem__(idx)
         
-        return mixture, sources, T, title
+        return mixture, sources, T, name
 
 """
     Data loader

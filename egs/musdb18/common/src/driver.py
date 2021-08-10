@@ -1,7 +1,6 @@
 import os
 import time
 
-import numpy as np
 import musdb
 import museval
 import torch
@@ -184,14 +183,14 @@ class TrainerBase:
                     save_dir = os.path.join(self.sample_dir, titles[0])
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
+                    norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         target = self.valid_loader.dataset.target[source_idx]
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
-                        norm = np.abs(estimated_source).max()
+                        norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
