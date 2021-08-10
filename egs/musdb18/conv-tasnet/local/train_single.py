@@ -17,7 +17,6 @@ from criterion.sdr import NegSISDR
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--train_json_path', type=str, default=None, help='Path to training json file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
@@ -62,11 +61,7 @@ def main(args):
     samples = args.duration
     overlap = samples / 2
     
-    if args.train_json_path and os.path.exists(args.train_json_path):
-        train_dataset = WaveTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, target=args.target)
-    else:
-        train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, target=args.target)
-        train_dataset.save_as_json(args.train_json_path)
+    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, target=args.target)
     valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, target=args.target)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

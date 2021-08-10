@@ -57,15 +57,10 @@ class WaveDataset(MUSDB18Dataset):
             return False
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, target=None, json_path=None, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, sr=44100, duration=4, overlap=None, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, sr=sr, target=target)
-
+        
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train')
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
 
         self.threshold = threshold
         self.duration = duration
@@ -97,22 +92,12 @@ class WaveTrainDataset(WaveDataset):
         mixture, sources, _ = super().__getitem__(idx)
         
         return mixture, sources
-    
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
-        dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path)
-        return dataset
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=44100, max_duration=4, target=None, json_path=None):
+    def __init__(self, musdb18_root, sr=44100, max_duration=4, target=None):
         super().__init__(musdb18_root, sr=sr, target=target)
 
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid')
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
 
         self.max_duration = max_duration
 
@@ -133,11 +118,6 @@ class WaveEvalDataset(WaveDataset):
                 'duration': duration
             }
             self.json_data.append(data)
-    
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, sr=44100, target=None):
-        dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path)
-        return dataset
 
 def _test_train_dataset():
     torch.manual_seed(111)

@@ -1,12 +1,10 @@
 #!/bin/bash
 
 exp_dir="./exp"
-continue_from=""
 
 sources="[drums,bass,other,vocals]"
 target='vocals'
 patch=256
-max_duration=30
 
 musdb18_root="../../../dataset/musdb18hq"
 sr=44100
@@ -14,9 +12,6 @@ sr=44100
 window_fn='hann'
 fft_size=4096
 hop_size=1024
-
-# model
-config_path="./config/${target}.yaml"
 
 # Criterion
 criterion='mse'
@@ -33,7 +28,6 @@ epochs=50
 anneal_epoch=40
 
 use_cuda=1
-overwrite=0
 seed=111
 gpu_id="0"
 
@@ -59,7 +53,6 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 test.py \
 --musdb18_root ${musdb18_root} \
---config_path "${config_path}" \
 --sr ${sr} \
 --patch_size ${patch} \
 --window_fn "${window_fn}" \
@@ -71,5 +64,4 @@ test.py \
 --out_dir "${out_dir}" \
 --model_path "${model_path}" \
 --use_cuda ${use_cuda} \
---overwrite ${overwrite} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"

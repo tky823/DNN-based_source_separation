@@ -53,8 +53,6 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-train_json_path="../../../dataset/musdb18/train/${target}/sr${sr}_${duration}sec.json"
-
 prefix=""
 
 if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
@@ -82,7 +80,6 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train_single.py \
 --musdb18_root ${musdb18_root} \
---train_json_path "${train_json_path}" \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \

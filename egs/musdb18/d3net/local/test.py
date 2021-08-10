@@ -15,7 +15,6 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Evaluation of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -27,7 +26,6 @@ parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], hel
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
 parser.add_argument('--model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
-parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 1: FORCE overwrite')
 parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):

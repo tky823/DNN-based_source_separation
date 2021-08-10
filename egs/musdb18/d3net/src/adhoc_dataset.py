@@ -1,5 +1,4 @@
 import random
-import json
 
 import numpy as np
 import musdb
@@ -17,16 +16,11 @@ MINSCALE = 0.75
 MAXSCALE = 1.25
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=4, overlap=None, sources=__sources__, target=None, json_path=None, augmentation=True, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
         
         self.threshold = threshold
         self.duration = duration
@@ -195,23 +189,13 @@ class WaveTrainDataset(WaveDataset):
         target = torch.Tensor(target).float()
 
         return mixture, target
-    
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, sr=SAMPLE_RATE_MUSDB, target=None, **kwargs):
-        dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path, **kwargs)
-        return dataset
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=10, sources=__sources__, target=None, json_path=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=10, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
 
         self.duration = duration
         self.json_data = []
@@ -311,23 +295,13 @@ class WaveEvalDataset(WaveDataset):
         batch_target = torch.cat(batch_target_padded, dim=0)
         
         return batch_mixture, batch_target, name
-    
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, sr=SAMPLE_RATE_MUSDB, target=None, **kwargs):
-        dataset = cls(musdb18_root, sr=sr, target=target, json_path=json_path, **kwargs)
-        return dataset
 
 class WaveTestDataset(WaveEvalDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=10, sources=__sources__, target=None, json_path=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB, duration=10, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=True)
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
 
         self.duration = duration
         self.json_data = []
@@ -357,16 +331,11 @@ class WaveTestDataset(WaveEvalDataset):
             self.json_data.append(song_data)
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=4, overlap=None, sources=__sources__, target=None, json_path=None, augmentation=True, threshold=THRESHOLD_POWER):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=4, overlap=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=True)
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
         
         self.threshold = threshold
         self.patch_duration = patch_duration
@@ -547,22 +516,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         return mixture, target
 
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, fft_size, sr=SAMPLE_RATE_MUSDB, target=None, **kwargs):
-        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
-        return dataset
-
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=10, max_duration=None, sources=__sources__, target=None, json_path=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=10, max_duration=None, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=True)
-
-        if json_path is not None:
-            with open(json_path, 'r') as f:
-                self.json_data = json.load(f)
-            return
 
         self.patch_duration = patch_duration
 
@@ -683,11 +642,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
         
         return batch_mixture, batch_target, name
-    
-    @classmethod
-    def from_json(cls, musdb18_root, json_path, fft_size, sr=SAMPLE_RATE_MUSDB, target=None, **kwargs):
-        dataset = cls(musdb18_root, fft_size, sr=sr, target=target, json_path=json_path, **kwargs)
-        return dataset
 
 class SpectrogramTestDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB, patch_duration=5, sources=__sources__, target=None):
