@@ -8,8 +8,8 @@ target='vocals'
 patch=256
 max_duration=30
 
-musdb18_root="../../../dataset/musdb18hq"
-is_wav=1 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
+musdb18_root="../../../dataset/musdb18"
+is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
 sr=44100
 
 window_fn='hann'

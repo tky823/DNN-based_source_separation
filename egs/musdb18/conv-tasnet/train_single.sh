@@ -8,7 +8,8 @@ target='vocals'
 duration=8
 valid_duration=10
 
-musdb18_root="../../../dataset/musdb18hq"
+musdb18_root="../../../dataset/musdb18"
+is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
 sr=44100
 
 # Encoder & decoder
@@ -80,6 +81,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train_single.py \
 --musdb18_root ${musdb18_root} \
+--is_wav ${is_wav} \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
