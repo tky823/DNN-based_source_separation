@@ -8,7 +8,8 @@ target='vocals'
 patch=256
 max_duration=30
 
-musdb18_root="../../../dataset/musdb18hq"
+musdb18_root="../../../dataset/musdb18"
+is_wav=0
 sr=44100
 
 window_fn='hann'
@@ -54,5 +55,6 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 eval_all.py \
 --musdb18_root "${musdb18_root}" \
 --estimated_musdb18_root "${estimated_musdb18_root}" \
+--is_wav ${is_wav} \
 --json_dir "${json_dir}" \
 --seed ${seed} | tee "${log_dir}/eval_${time_stamp}.log"

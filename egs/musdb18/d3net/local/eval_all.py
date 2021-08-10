@@ -9,6 +9,7 @@ from driver import EvaluaterBase as Evaluater
 parser = argparse.ArgumentParser(description="Evaluation of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
+parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--estimated_musdb18_root', type=str, default=None, help='Path to estimated MUSDB18')
 parser.add_argument('--json_dir', type=str, default=None, help='Output json directory')
 parser.add_argument('--seed', type=int, default=42, help='Random seed')

@@ -258,7 +258,7 @@ class EvaluaterBase:
         self.target = [
             'drums', 'bass', 'other', 'vocals', 'accompaniment'
         ]
-        self.mus = musdb.DB(root=args.musdb18_root, subsets="test", is_wav=True)
+        self.mus = musdb.DB(root=args.musdb18_root, subsets="test", is_wav=args.is_wav)
         self.estimated_mus = musdb.DB(root=args.estimated_musdb18_root, subsets="test", is_wav=True)
         self.json_dir = args.json_dir
 
