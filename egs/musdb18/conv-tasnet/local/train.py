@@ -15,6 +15,7 @@ from criterion.sdr import NegSISDR
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
+parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')

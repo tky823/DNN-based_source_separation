@@ -15,7 +15,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Evaluation of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--is_wav', type=int, default=None, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
+parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
