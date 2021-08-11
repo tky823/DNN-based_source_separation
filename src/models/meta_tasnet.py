@@ -44,8 +44,6 @@ class MetaTasNet(nn.Module):
         
         self.net = nn.ModuleList(net)
 
-        self.num_parameters = self._get_num_parameters()
-
     def forward(self, input):
         latent = None
         x = input
