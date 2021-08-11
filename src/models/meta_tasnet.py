@@ -245,7 +245,6 @@ class Decoder(nn.Module):
         for idx in range(num_filters):
             _in_channels = n_bases // (2**(idx + 1))
             _kernel_size = kernel_size * (2**idx)
-            print(_in_channels)
             filters.append(nn.ConvTranspose1d(_in_channels, 1, kernel_size=_kernel_size, stride=stride, bias=False, padding=(_kernel_size - stride)//2))
 
         self.filters = nn.ModuleList(filters)
