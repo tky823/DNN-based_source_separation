@@ -125,7 +125,6 @@ def _test_conv1d():
     print(conv1d)
     print(input.size(), embedding.size(), output.size())
 
-
     input = torch.randn(batch_size, n_sources, C_in, T_in)
     conv1d = Conv1dStatic(C_in, C_out, kernel_size=3, n_sources=n_sources)
     output = conv1d(input)
