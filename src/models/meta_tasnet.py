@@ -5,14 +5,268 @@ import torch.nn.functional as F
 EPS = 1e-12
 
 class MetaTasNet(nn.Module):
-    def __init__(self):
-        pass
+    def __init__(self,
+        n_bases, kernel_size, stride=None,
+        enc_fft_size=None, enc_hop_size=None, enc_compression_rate=4, num_filters=6, n_mels=256,
+        sep_hidden_channels=256, sep_bottleneck_channels=128, sep_skip_channels=128,
+        sep_kernel_size=3, sep_num_blocks=3, sep_num_layers=8,
+        dilated=True, separable=True, dropout=0.0,
+        sep_nonlinear='prelu', mask_nonlinear='sigmoid',
+        causal=True,
+        conv_name='generated', norm_name='generated',
+        num_stages=3, n_sources=2,
+        eps=EPS, **kwargs
+    ):
+        super().__init__()
+
+        self.num_stages = num_stages
+        self.n_bases = n_bases
+
+        net = []
+        sep_in_channels = 0
+        for idx in range(num_stages):
+            scale = 2**idx
+            sep_in_channels += scale*n_bases
+            
+            backbone = MetaTasNetBackbone(
+                scale*n_bases, scale*kernel_size, stride=stride,
+                enc_fft_size=enc_fft_size[idx], enc_hop_size=enc_hop_size[idx], enc_compression_rate=enc_compression_rate, num_filters=scale*num_filters, n_mels=n_mels,
+                sep_in_channels=sep_in_channels, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels,
+                sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers,
+                dilated=dilated, separable=separable, dropout=dropout,
+                sep_nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+                causal=causal,
+                conv_name=conv_name, norm_name=norm_name,
+                n_sources=n_sources,
+                eps=eps, **kwargs
+            )
+            net.append(backbone)
+        
+        self.net = nn.ModuleList(net)
+
+        self.num_parameters = self._get_num_parameters()
+
+    def forward(self, input):
+        latent = None
+        x = input
+
+        for idx in range(self.num_stages):
+            output, latent = self.net[idx].extract_latent(x, input_partial=latent)
+
+        return output
+    
+    def _get_num_parameters(self):
+        num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                num_parameters += p.numel()
+                
+        return num_parameters
+    
+    @property
+    def num_parameters(self):
+        return self._get_num_parameters()
+
+class MetaTasNetBackbone(nn.Module):
+    def __init__(self,
+        n_bases, kernel_size, stride=None,
+        enc_fft_size=None, enc_hop_size=None, enc_compression_rate=4, num_filters=6, n_mels=256,
+        sep_in_channels=None, sep_hidden_channels=256, sep_bottleneck_channels=128, sep_skip_channels=128,
+        sep_kernel_size=3, sep_num_blocks=3, sep_num_layers=8,
+        dilated=True, separable=True, dropout=0.0,
+        sep_nonlinear='prelu', mask_nonlinear='sigmoid',
+        causal=True,
+        conv_name='generated', norm_name='generated',
+        n_sources=2,
+        eps=EPS, **kwargs
+    ):
+        """
+        Args:
+            n_bases
+            kernel_size
+            stride
+            enc_fft_size
+            enc_hop_size
+            enc_compression_rate
+            num_filters
+            n_mels
+            sep_in_channels
+            sep_hidden_channels
+            sep_bottleneck_channels
+            sep_skip_channels
+            sep_kernel_size
+            sep_num_blocks
+            sep_num_layers
+            dilated
+            separable
+            dropout
+            sep_nonlinear
+            mask_nonlinear
+            causal=True,
+            conv_name
+            norm_name
+            n_sources
+            eps
+        """
+        super().__init__()
+
+        self.n_bases = n_bases
+        self.kernel_size, self.stride = kernel_size, stride
+        self.n_sources = n_sources
+        self.norm_name = norm_name
+
+        self.encoder = Encoder(n_bases, kernel_size, stride=stride, fft_size=enc_fft_size, hop_size=enc_hop_size, n_mels=n_mels, num_filters=num_filters, compression_rate=enc_compression_rate)
+
+        self.dropout1d = nn.Dropout(dropout)
+        
+        if norm_name == 'generated':
+            latent_dim = kwargs['latent_dim']
+            self.embedding = nn.Embedding(n_sources, latent_dim)
+        else:
+            self.embedding = None
+
+        if sep_in_channels is None:
+            sep_in_channels = n_bases
+        
+        self.separator = Separator(
+            sep_in_channels, n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels, skip_channels=sep_skip_channels,
+            kernel_size=sep_kernel_size, num_blocks=sep_num_blocks, num_layers=sep_num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+            conv_name=conv_name, norm_name=norm_name,
+            n_sources=n_sources,
+            eps=eps,
+            **kwargs
+        )
+
+        self.decoder = Decoder(n_bases, kernel_size, stride=stride, num_filters=num_filters)
+    
+    def forward(self, input, input_partial=None):
+        output, _ = self.extract_latent(input, input_partial=input_partial)
+
+        return output
+    
+    def extract_latent(self, input, input_partial=None):
+        # TODO: Pad
+        n_sources = self.n_sources
+        n_bases = self.n_bases
+        kernel_size, stride = self.kernel_size, self.stride
+
+        batch_size, C_in, T = input.size()
+        assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+
+        x = self.encoder(input)
+        x = x.unsqueeze(dim=1)
+        x = x.repeat(1, n_sources, 1, 1).contiguous()
+
+        batch_size, n_sources, num_features, n_frames = x.size()
+        x = x.view(batch_size, n_sources, num_features, n_frames)
+        # TODO: dropout2d?
+        w = self.dropout1d(x)
+
+        if self.embedding:
+            input_source = torch.arange(n_sources).long()
+            latent = self.embedding(input_source)
+            mask = self.separator(x, latent=latent, input_partial=input_partial)
+        else:
+            mask = self.separator(x, input_partial=input_partial)
+        
+        w_hat = w * mask
+        latent = w_hat
+        w_hat = w_hat.view(batch_size * n_sources, n_bases, n_frames)
+
+        x_hat = self.decoder(w_hat)
+        output = x_hat.view(batch_size, n_sources, 1, -1)
+    
+        return output, latent
+
+class Encoder(nn.Module):
+    def __init__(self, n_bases, kernel_size, stride=20, fft_size=None, hop_size=None, n_mels=256, num_filters=6, compression_rate=4):
+
+        super().__init__()
+
+        if hop_size is None:
+            hop_size = fft_size // 4
+        
+        self.num_filters = num_filters
+        
+        self.spectrogram = Spectrogram(fft_size=fft_size, hop_size=hop_size, n_mels=n_mels)
+
+        _out_channels = n_bases // compression_rate
+        out_channels = 0
+        filters = []
+
+        for idx in range(num_filters):
+            _kernel_size = kernel_size * (2**idx)
+            filters.append(nn.Conv1d(1, _out_channels, kernel_size=_kernel_size, stride=stride, bias=False, padding=(_kernel_size - stride)//2))
+            out_channels += _out_channels
+        
+        out_channels += n_mels
+
+        self.filters = nn.ModuleList(filters)
+        self.nonlinear = nn.ReLU()
+        self.postprocess = nn.Sequential(
+            nn.Conv1d(out_channels, n_bases, kernel_size=1, stride=1, bias=False),
+            nn.ReLU(),
+            nn.Conv1d(n_bases, n_bases, kernel_size=1, stride=1, bias=False),
+        )
+
+    def forward(self, input):
+        num_filters = self.num_filters
+        latent = []
+
+        for idx in range(num_filters):
+            x = self.filters[idx](input)
+            latent.append(x)
+
+        x = torch.cat(latent, dim=1)
+        x = self.nonlinear(x)
+
+        batch_size, _, T = input.size()
+        input = input.view(-1, T)
+        x_spectrogram = self.spectrogram(input, x.size(-1))
+        x_spectrogram = x_spectrogram.view(batch_size, *x_spectrogram.size()[-2:])
+        x = torch.cat([x, x_spectrogram], dim=1)
+        output = self.postprocess(x)
+
+        return output
+
+class Decoder(nn.Module):
+    def __init__(self, n_bases, kernel_size, stride=20, num_filters=6):
+        super().__init__()
+
+        self.sections = [n_bases // (2**(idx + 1)) for idx in range(num_filters)]
+        out_channels = sum(self.sections)
+
+        self.preprocess = nn.Sequential(
+            nn.ConvTranspose1d(n_bases, out_channels, kernel_size=1, stride=1, bias=False),
+            nn.ReLU()
+        )
+        
+        filters = []
+
+        for idx in range(num_filters):
+            _in_channels = n_bases // (2**(idx + 1))
+            _kernel_size = kernel_size * (2**idx)
+            print(_in_channels)
+            filters.append(nn.ConvTranspose1d(_in_channels, 1, kernel_size=_kernel_size, stride=stride, bias=False, padding=(_kernel_size - stride)//2))
+
+        self.filters = nn.ModuleList(filters)
+
+    def forward(self, input):
+        x = self.preprocess(input)
+        x = torch.split(x, self.sections, dim=1)
+
+        output = 0
+
+        for idx in range(len(x)):
+            output = output + self.filters[idx](x[idx])
+        
+        return output
 
 class Separator(nn.Module):
-    def __init__(
-        self,
+    def __init__(self,
         in_channels, out_channels, bottleneck_channels=128, hidden_channels=256, skip_channels=128,
-        kernel_size=3, num_blocks=3, num_layers=8, dilated=True, separable=True, causal=True, nonlinear='prelu', mask_nonlinear='softmax',
+        kernel_size=3, num_blocks=3, num_layers=8, dilated=True, separable=True, causal=False, nonlinear='prelu', mask_nonlinear='softmax',
         conv_name='generated', norm_name='generated',
         n_sources=2,
         eps=EPS,
@@ -77,6 +331,48 @@ class Separator(nn.Module):
         output = x.view(batch_size, n_sources, out_channels, n_frames)
         
         return output
+
+class Spectrogram(nn.Module):
+    def __init__(self, fft_size, hop_size, n_mels, take_log=True):
+        super().__init__()
+
+        n_bins = fft_size // 2 + 1
+        
+        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_mels = n_mels
+        self.take_log = take_log
+
+        self.window = nn.Parameter(torch.hann_window(fft_size), requires_grad=False)
+
+        self.mel_transform = nn.Conv1d(n_bins, n_mels, kernel_size=1, stride=1, padding=0, bias=True)
+
+        self.mean = nn.Parameter(torch.empty(1, n_bins, 1), requires_grad=False)
+        self.std = nn.Parameter(torch.empty(1, n_bins, 1), requires_grad=False)
+
+        self.affine_bias = nn.Parameter(torch.zeros(1, n_bins, 1), requires_grad=True)
+        self.affine_scale = nn.Parameter(torch.ones(1, n_bins, 1), requires_grad=True)
+
+    def forward(self, input, length=None):
+        magnitude = self.compute_magnitude(input)
+        magnitude = (magnitude - self.mean) / self.std
+        magnitude = self.affine_scale * magnitude + self.affine_bias
+        output = self.mel_transform(magnitude)
+
+        if length is not None:
+            output = F.interpolate(output, size=length, mode='linear', align_corners=True)
+
+        return output
+    
+    def compute_magnitude(self, wave):
+        fft_size, hop_size = self.fft_size, self.hop_size
+
+        spectrogram = torch.stft(wave, n_fft=fft_size, hop_length=hop_size, window=self.window, return_complex=True)
+        magnitude = torch.abs(spectrogram)**2
+    
+        if self.take_log:
+            magnitude = torch.log10(magnitude + 1e-12)
+
+        return magnitude
 
 class TemporalConvNet(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, num_blocks=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear=None, n_sources=2, conv_name='generated', norm_name='generated', eps=EPS, **kwargs):
@@ -597,7 +893,7 @@ def _test_separator():
     B, H, Sc = 8, 10, 12
     P = 3
     R, X = 2, 4
-    
+
     print("-"*10, "Meta-TasNet (Generated)", "-"*10)
 
     N_in, N_out = 6, 6
@@ -638,7 +934,90 @@ def _test_separator():
     output = model(input, latent=latent, input_partial=input_partial)
     print(input.size(), latent.size(), input_partial.size(), output.size())
 
+def _test_meta_tasnet_backbone():
+    T = 128
+    n_sources = 4
+    
+    B, H, Sc = 8, 10, 12
+    P = 3
+    R, X = 2, 4
+
+    wave1, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_piano_16000.wav")
+    wave2, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_violin_16000.wav")
+    input = torch.cat([wave1.unsqueeze(dim=0), wave2.unsqueeze(dim=0)], dim=0)
+    input = input[:, :, : 2**13]
+
+    print(input.size())
+
+    print("-"*10, "Meta-TasNet Backbone (Generated)", "-"*10)
+
+    N = 16
+    D_l, B_l = 6, 5
+    
+    kernel_size, stride = 20, 6
+    fft_size, hop_size = 1024 * (sr//8000), 256 * (sr//8000)
+    F, M = 3, 256
+
+    model = MetaTasNetBackbone(
+        N, kernel_size, stride=stride,
+        enc_fft_size=fft_size, enc_hop_size=hop_size, num_filters=F, n_mels=M,
+        sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=X, sep_num_layers=R,
+        causal=False,
+        conv_name='generated', norm_name='generated',
+        n_sources=n_sources,
+        latent_dim=D_l, latent_bottleneck_channels=B_l
+    )
+    
+    print(model)
+    output = model(input)
+    print(input.size(), output.size())
+
+def _test_meta_tasnet():
+    n_sources = 4
+    B, H, Sc = 8, 10, 12
+    P = 3
+    R, X = 2, 4
+
+    wave1, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_piano_16000.wav")
+    wave2, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_violin_16000.wav")
+    input = torch.cat([wave1.unsqueeze(dim=0), wave2.unsqueeze(dim=0)], dim=0)
+    input = input[:, :, :8*16000]
+
+    print("-"*10, "Meta-TasNet (Generated)", "-"*10)
+
+    N = 256
+    D_l, B_l = 6, 5
+    
+    kernel_size, stride = 32, 6
+
+    sr = [8000, 16000, 32000]
+    fft_size, hop_size = [], []
+
+    for _sr in sr:
+        fft_size.append(1024 * (_sr//8000))
+        hop_size.append(256 * (_sr//8000))
+    
+    num_stages = len(sr)
+    F, M = 2, 256
+
+    model = MetaTasNet(
+        N, kernel_size, stride=stride,
+        enc_fft_size=fft_size, enc_hop_size=hop_size, num_filters=F, n_mels=M,
+        sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=X, sep_num_layers=R,
+        causal=False,
+        conv_name='generated', norm_name='generated',
+        num_stages=num_stages, n_sources=n_sources,
+        latent_dim=D_l, latent_bottleneck_channels=B_l
+    )
+    
+    print(model)
+    print(model.num_parameters)
+    output = model(input)
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
+    import torchaudio
+
     torch.manual_seed(111)
 
     print('='*10, "Conv1d", '='*10)
@@ -651,3 +1030,11 @@ if __name__ == '__main__':
 
     print('='*10, "Separator", '='*10)
     _test_separator()
+    print()
+
+    print('='*10, "MetaTasNet backbone", '='*10)
+    _test_meta_tasnet_backbone()
+    print()
+
+    print('='*10, "MetaTasNet", '='*10)
+    _test_meta_tasnet()
