@@ -39,6 +39,7 @@ class Trainer(TrainerBase):
                 mixture = mixture.cuda()
                 sources = sources.cuda()
             
+            print(sources.size())
             batch_size, n_sources, T = sources.size()
 
             mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
