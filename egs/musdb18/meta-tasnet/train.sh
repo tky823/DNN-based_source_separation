@@ -10,6 +10,7 @@ valid_duration=10
 musdb18_root="../../../dataset/musdb18"
 is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
 sr='[8000,16000,32000]'
+stage=1
 
 # Encoder & decoder
 enc_bases='trainable' # choose 'trainable' only
