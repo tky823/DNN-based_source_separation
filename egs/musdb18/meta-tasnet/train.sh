@@ -136,10 +136,10 @@ train.py \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
 --epochs ${epochs} \
---model_dir ${model_dir} \
---loss_dir ${loss_dir} \
---sample_dir ${sample_dir} \
---continue_from ${continue_from} \
+--model_dir "${model_dir}" \
+--loss_dir "${loss_dir}" \
+--sample_dir "${sample_dir}" \
+--continue_from "${continue_from}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
 --seed ${seed}
