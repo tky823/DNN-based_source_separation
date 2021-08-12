@@ -9,6 +9,7 @@ from dataset import MUSDB18Dataset
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
+SAMPLE_RATES_METATASNET = [8000, 16000, 32000]
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 MINSCALE = 0.75
@@ -40,10 +41,9 @@ class WaveDataset(MUSDB18Dataset):
         return 0
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=[8000,16000,32000], duration=8, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
+    def __init__(self, musdb18_root, duration=8, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
         super().__init__(musdb18_root, sources=sources, target=target, is_wav=is_wav)
         
-        assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
         
         self.duration = duration
@@ -154,10 +154,9 @@ class WaveTrainDataset(WaveDataset):
         return self.samples_per_epoch
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=4, sources=__sources__, target=None, is_wav=False):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
+    def __init__(self, musdb18_root, max_duration=4, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sources=sources, target=target, is_wav=is_wav)
 
-        assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.max_duration = max_duration
@@ -202,6 +201,3 @@ class WaveEvalDataset(WaveDataset):
             raise ValueError("Invalid tensor shape. 2D or 3D tensor is expected, but givem {}D tensor".format(n_dims))
 
         return mixture, target, name
-
-def assert_sample_rate(sr):
-    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
