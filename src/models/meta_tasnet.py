@@ -30,7 +30,7 @@ class MetaTasNet(nn.Module):
             
             backbone = MetaTasNetBackbone(
                 scale*n_bases, scale*kernel_size, stride=scale*stride,
-                enc_fft_size=scale*enc_fft_size, enc_hop_size=scale*enc_hop_size, enc_compression_rate=enc_compression_rate, num_filters=scale*num_filters, n_mels=n_mels,
+                enc_fft_size=scale*enc_fft_size, enc_hop_size=scale*enc_hop_size, enc_compression_rate=enc_compression_rate, num_filters=num_filters, n_mels=n_mels,
                 sep_in_channels=sep_in_channels, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels,
                 sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers,
                 dilated=dilated, separable=separable, dropout=dropout,
@@ -1033,10 +1033,10 @@ def _test_meta_tasnet():
 
     print(input_original.size())
 
-    print("-"*10, "Meta-TasNet Backbone (Generated, sr = 8000)", "-"*10)
+    print("-"*10, "Meta-TasNet (Generated, base sr = 8000)", "-"*10)
 
     sr_original = 16000
-    sr = [8000, 16000]
+    sr = [8000, 16000, 32000]
     input = []
 
     for sr_target in sr:
