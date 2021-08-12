@@ -51,36 +51,48 @@ class Trainer(TrainerBase):
                 mixture_resampled.append(_mixture)
                 sources_resampled.append(_sources)
             
+            # Forward
             estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
             reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
             _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
 
-            sdr_loss = 0
-
+            # Main loss
+            print("Main loss")
+            main_loss = 0
             for _estimated_sources, _sources in zip(estimated_sources, sources_resampled):
                 _sources = _sources.view(batch_size, n_sources, *_estimated_sources.size()[-2:])
-                _sdr_loss = self.criterion.metrics['neg_sisdr'](_estimated_sources, _sources).sum()
-                sdr_loss = sdr_loss + _sdr_loss
-                print(_estimated_sources.size(), _sources.size())    
+                print(_estimated_sources.size(), _sources.size(), _loss.size())
+                _loss = self.criterion.metrics['main'](_estimated_sources, _sources)
+                main_loss = main_loss + _loss
 
-            latent_loss = 0
-
-            for _estimated_sources, _latent_estimated, _latent_target in zip(estimated_sources, latent_estimated, latent_target):
+            # Reconstruction loss
+            print("Reconstruction loss")
+            reconstruction_loss = 0
+            for _reconstructed, _mixture in zip(reconstructed, mixture_resampled):
+                _loss = self.criterion.metrics['reconstruction'](_reconstructed, _mixture)
+                print(_mixture.size(), _reconstructed.size(), _loss.size())
+                reconstruction_loss = reconstruction_loss + _loss
+            
+            # Similarity loss
+            print("Similarity loss")
+            similarity_loss = 0
+            for _latent_estimated, _latent_target in zip(latent_estimated, latent_target):
                 _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
-                _latent_loss = self.criterion.metrics['mse'](_latent_estimated, _latent_target).sum()
-                latent_loss = latent_loss + _latent_loss
-                print(_estimated_sources.size(), _latent_estimated.size(), _latent_target.size(), _latent_loss.size())
+                _loss = self.criterion.metrics['similarity'](_latent_estimated, _latent_target)
+                print(_latent_estimated.size(), _latent_target.size(), _loss.size())
+                similarity_loss = similarity_loss + _loss
 
-            reconstruceted_loss = 0
-
-            for _mixture, _reconstructed in zip(mixture_resampled, reconstructed):
-                _reconstructed_loss = self.criterion.metrics['mse'](_reconstructed, _mixture).sum()
-                reconstruceted_loss = reconstruceted_loss + _reconstructed_loss
-                print(_mixture.size(), _reconstructed.size(), _reconstructed_loss.size())
+            # Dissimilarity loss
+            print("Dissimilarity loss")
+            dissimilarity_loss = 0
+            for _latent_estimated, _latent_target in zip(latent_estimated, latent_target):
+                _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
+                _loss = self.criterion.metrics['dissimilarity'](_latent_estimated, _latent_target)
+                print(_latent_estimated.size(), _latent_target.size(), _loss.size())
+                similarity_loss = similarity_loss + _loss
             
-            loss = self.criterion.weights['neg_sisdr'] * sdr_loss + self.criterion.weights['mse'] * latent_loss + self.criterion.weights['mse'] * reconstruceted_loss
-            
-            exit()
+            loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
+            loss = loss.mean(dim=0)
             
             self.optimizer.zero_grad()
             loss.backward()

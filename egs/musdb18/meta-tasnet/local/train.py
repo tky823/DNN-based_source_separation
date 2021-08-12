@@ -11,7 +11,7 @@ from utils.utils import set_seed
 from adhoc_dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from models.meta_tasnet import MetaTasNet
 from criterion.sdr import NegSISDR
-from criterion.distance import MeanSquaredError
+from criterion.distance import CosSimilarity, NegCosSimilarity
 from adhoc_criterion import MultiLoss
 from adhoc_driver import Trainer
 
@@ -54,7 +54,9 @@ parser.add_argument('--num_filters', type=int, default=6, help='# of filters')
 parser.add_argument('--n_mels', type=int, default=256, help='# of mel bins')
 parser.add_argument('--dropout', type=float, default=0.0, help='Dropout rate')
 parser.add_argument('--sources', type=str, default='[drums,bass,others,vocals]', help='Source names')
-parser.add_argument('--sisdr', type=float, default=5e-2, help='Weight for reconstrunction loss')
+parser.add_argument('--criterion_reconstruction', type=str, default='sisdr', help='Reconstruction criterion')
+parser.add_argument('--criterion_similarity', type=str, default='cos', help='Simirarity criterion')
+parser.add_argument('--reconstruction', type=float, default=5e-2, help='Weight for reconstrunction loss')
 parser.add_argument('--similarity', type=float, default=2e+0, help='Weight for similarity loss')
 parser.add_argument('--dissimilarity', type=float, default=3e+0, help='Weight for dissimilarity loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'radam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -152,18 +154,21 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'sisdr':
-        metrics = {
-            'neg_sisdr': NegSISDR(),
-            'mse': MeanSquaredError()
-        }
-        weights = {
-            'neg_sisdr': 1,
-            'mse': 5e-1
-        }
-        criterion = MultiLoss(metrics, weights)
+    metrics, weights = {}, {}
+
+    if args.criterion_reconstruction == 'sisdr':
+        metrics['main'], metrics['reconstruction'] = NegSISDR(), NegSISDR()
+        weights['main'], weights['reconstruction'] = 1, args.reconstruction
     else:
-        raise ValueError("Not support criterion {}".format(args.criterion))
+        raise ValueError("Not support criterion {}".format(args.criterion_reconstruction))
+    
+    if args.criterion_similarity == 'cos':
+        metrics['similarity'], metrics['dissimilarity'] = CosSimilarity(), NegCosSimilarity()
+        weights['similarity'], weights['dissimilarity'] = args.similarity, args.dissimilarity
+    else:
+        raise ValueError("Not support criterion {}".format(args.criterion_similarity))
+    
+    criterion = MultiLoss(metrics, weights)
     
     trainer = Trainer(model, loader, criterion, optimizer, args)
     trainer.run()

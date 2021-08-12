@@ -45,7 +45,9 @@ n_mels=256
 dropout=0
 
 # Criterion
-sisdr=5e-2
+criterion_reconstruction='sisdr'
+criterion_similarity='cos'
+reconstruction=5e-2
 similarity=2e+0
 dissimilarity=3e+0
 
@@ -72,7 +74,7 @@ if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pin
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
-save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_bases}-${dec_bases}/sisdr${sisdr}-sim${similarity}-dis${disimilarity}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_mask-${mask_nonlinear}_conv${conv_name}_norm${norm_name}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_bases}-${dec_bases}/${criterion_reconstruction}-${reconstruction}_${criterion_similarity}${similarity}-${disimilarity}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_mask-${mask_nonlinear}_conv${conv_name}_norm${norm_name}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -122,7 +124,9 @@ train.py \
 --n_mels ${n_mels} \
 --dropout ${dropout} \
 --sources ${sources} \
---sisdr ${sisdr} \
+--criterion_reconstruction ${criterion_reconstruction} \
+--criterion_similarity ${criterion_similarity} \
+--reconstruction ${reconstruction} \
 --similarity ${similarity} \
 --dissimilarity ${dissimilarity} \
 --optimizer ${optimizer} \
