@@ -39,7 +39,6 @@ class Trainer(TrainerBase):
                 mixture = mixture.cuda()
                 sources = sources.cuda()
             
-            print(mixture.size(), sources.size())
             batch_size, n_sources, _, T = sources.size()
 
             mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
@@ -58,41 +57,41 @@ class Trainer(TrainerBase):
             _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
 
             # Main loss
-            print("Main loss")
+            # print("Main loss")
             main_loss = 0
             for _estimated_sources, _sources in zip(estimated_sources, sources_resampled):
                 _sources = _sources.view(batch_size, n_sources, *_estimated_sources.size()[-2:])
-                print(_estimated_sources.size(), _sources.size())
+                # print(_estimated_sources.size(), _sources.size())
                 _loss = self.criterion.metrics['main'](_estimated_sources, _sources)
-                print(_loss.size())
+                # print(_loss.size())
                 main_loss = main_loss + _loss
 
             # Reconstruction loss
-            print("Reconstruction loss")
+            # print("Reconstruction loss")
             reconstruction_loss = 0
             for _reconstructed, _mixture in zip(reconstructed, mixture_resampled):
                 _loss = self.criterion.metrics['reconstruction'](_reconstructed, _mixture)
-                print(_mixture.size(), _reconstructed.size())
+                # print(_mixture.size(), _reconstructed.size())
                 reconstruction_loss = reconstruction_loss + _loss
-                print(_loss.size())
+                # print(_loss.size())
             
             # Similarity loss
-            print("Similarity loss")
+            # print("Similarity loss")
             similarity_loss = 0
             for _latent_estimated, _latent_target in zip(latent_estimated, latent_target):
                 _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
-                print(_latent_estimated.size(), _latent_target.size())
+                # print(_latent_estimated.size(), _latent_target.size())
                 _loss = self.criterion.metrics['similarity'](_latent_estimated, _latent_target)
-                print(_loss.size())
+                # print(_loss.size())
                 similarity_loss = similarity_loss + _loss
 
             # Dissimilarity loss
-            print("Dissimilarity loss")
+            # print("Dissimilarity loss")
             dissimilarity_loss = 0
             for _latent_estimated in latent_estimated:
-                print(_latent_estimated.size())
+                # print(_latent_estimated.size())
                 _loss = self.criterion.metrics['dissimilarity'](_latent_estimated)
-                print(_loss.size())
+                # print(_loss.size())
                 similarity_loss = similarity_loss + _loss
             
             loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
