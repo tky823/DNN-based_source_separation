@@ -144,13 +144,9 @@ class SingleTargetTrainer(TrainerBase):
 
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
-                    mixture = mixture / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
-                    norm = np.abs(estimated_source).max()
-                    estimated_source = estimated_source / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid

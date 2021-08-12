@@ -203,16 +203,12 @@ class AdhocTrainer(TrainerBase):
                     
                         save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source_name, scale))
                         estimated_source = self.resampler(estimated_source)
-                        norm = torch.abs(estimated_source).max()
-                        estimated_source = estimated_source / torch.clamp(norm, min=EPS)
                         torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
 
                     mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
 
                     save_path = os.path.join(save_dir, "mixture.wav")
                     mixture = self.resampler(mixture)
-                    norm = torch.abs(mixture).max()
-                    mixture = mixture / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
         
         valid_loss /= n_valid
