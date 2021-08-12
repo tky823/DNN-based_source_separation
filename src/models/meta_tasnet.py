@@ -47,11 +47,13 @@ class MetaTasNet(nn.Module):
 
     def forward(self, input, masking=True):
         latent = None
+        outputs = []
 
         for idx in range(self.num_stages):
             output, latent = self.net[idx].extract_latent(input[idx], latent=latent, masking=masking)
+            outputs.append(output)
 
-        return output
+        return outputs
 
     def extract_latent(self, input, masking=True):
         """
@@ -1085,7 +1087,9 @@ def _test_meta_tasnet():
     print(model)
     print(model.num_parameters)
     output = model(input)
-    print(output.size())
+
+    for _input, _output in zip(input, output):
+        print(_input.size(), _output.size())
 
     print("-"*10, "No masking", "-"*10)
 
@@ -1101,7 +1105,9 @@ def _test_meta_tasnet():
     print(model)
     print(model.num_parameters)
     output = model(input, masking=False)
-    print(output.size())
+
+    for _input, _output in zip(input, output):
+        print(_input.size(), _output.size())
 
 if __name__ == '__main__':
     import torchaudio
@@ -1109,19 +1115,19 @@ if __name__ == '__main__':
     torch.manual_seed(111)
 
     print('='*10, "Conv1d", '='*10)
-    #_test_conv1d()
+    _test_conv1d()
     print()
 
     print('='*10, "TCN", '='*10)
-    #_test_tcn()
+    _test_tcn()
     print()
 
     print('='*10, "Separator", '='*10)
-    #_test_separator()
+    _test_separator()
     print()
 
     print('='*10, "MetaTasNet backbone", '='*10)
-    #_test_meta_tasnet_backbone()
+    _test_meta_tasnet_backbone()
     print()
 
     print('='*10, "MetaTasNet", '='*10)
