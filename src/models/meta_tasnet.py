@@ -45,13 +45,32 @@ class MetaTasNet(nn.Module):
         
         self.net = nn.ModuleList(net)
 
-    def forward(self, input):
+    def forward(self, input, masking=True):
         latent = None
 
         for idx in range(self.num_stages):
-            output, latent = self.net[idx].extract_latent(input[idx], latent=latent)
+            output, latent = self.net[idx].extract_latent(input[idx], latent=latent, masking=masking)
 
         return output
+
+    def extract_latent(self, input, masking=True):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, n_sources, num_stages, n_bases, n_frames)
+            masking <bool>: Apply mask or not
+        Returns:
+            outputs: List of outputs
+            latents: List of latents
+        """
+        latent = None
+        outputs, latents = [], []
+
+        for idx in range(self.num_stages):
+            output, latent = self.net[idx].extract_latent(input[idx], latent=latent, masking=masking)
+            outputs.append(output)
+            latents.append(latent)
+
+        return outputs, latents
     
     def _get_num_parameters(self):
         num_parameters = 0
@@ -116,7 +135,7 @@ class MetaTasNetBackbone(nn.Module):
 
         self.encoder = Encoder(n_bases, kernel_size, stride=stride, fft_size=enc_fft_size, hop_size=enc_hop_size, n_mels=n_mels, num_filters=num_filters, compression_rate=enc_compression_rate)
 
-        self.dropout1d = nn.Dropout(dropout)
+        self.dropout2d = nn.Dropout2d(dropout)
         
         if norm_name == 'generated':
             embed_dim = kwargs['embed_dim']
@@ -138,13 +157,12 @@ class MetaTasNetBackbone(nn.Module):
 
         self.decoder = Decoder(n_bases, kernel_size, stride=stride, num_filters=num_filters)
     
-    def forward(self, input, latent=None):
-        output, _ = self.extract_latent(input, latent=latent)
+    def forward(self, input, latent=None, masking=True):
+        output, _ = self.extract_latent(input, latent=latent, masking=masking)
 
         return output
     
-    def extract_latent(self, input, latent=None):
-        # TODO: Pad
+    def extract_latent(self, input, latent=None, masking=True):
         n_sources = self.n_sources
         n_bases = self.n_bases
         kernel_size, stride = self.kernel_size, self.stride
@@ -162,32 +180,39 @@ class MetaTasNetBackbone(nn.Module):
         padding_right = padding - padding_left
 
         input = F.pad(input, (padding_left, padding_right))
-        x = self.encoder(input)
-        x = x.unsqueeze(dim=1)
-        x = x.repeat(1, n_sources, 1, 1).contiguous()
+        w = self.encoder(input)
 
-        batch_size, n_sources, num_features, n_frames = x.size()
-        w = x.view(batch_size, n_sources, num_features, n_frames)
-        if latent is not None:
-            w_concat = torch.cat([w, latent], dim=2)
+        batch_size, num_features, n_frames = w.size()
+        w = w.unsqueeze(dim=1) # (batch_size, 1, num_features, n_frames)
+
+        if masking:
+            w_repeated = w.repeat(1, n_sources, 1, 1).contiguous() # (batch_size, n_sources, num_features, n_frames)
+
+            if latent is not None:
+                w_repeated = torch.cat([w_repeated, latent], dim=2) # (batch_size, n_sources, sep_in_channels, n_frames)
+            
+            # TODO: dropout2d?
+            w_repeated = self.dropout2d(w_repeated) # (batch_size, n_sources, sep_in_channels, n_frames)
+
+            if self.embedding:
+                input_source = torch.arange(n_sources).long()
+                embedding = self.embedding(input_source)
+                mask = self.separator(w_repeated, embedding=embedding) # (batch_size, n_sources, n_bases, n_frames)
+            else:
+                mask = self.separator(w_repeated) # (batch_size, n_sources, n_bases, n_frames)
+            
+            w_hat = w * mask
+            latent = w_hat
+            w_hat = w_hat.view(batch_size * n_sources, n_bases, n_frames)
+
+            x_hat = self.decoder(w_hat)
+            x_hat = x_hat.view(batch_size, n_sources, 1, -1)
         else:
-            w_concat = w
-        # TODO: dropout2d?
-        w_concat = self.dropout1d(w_concat)
+            w = self.dropout2d(w) # (batch_size, 1, num_features, n_frames)
+            latent = w # (batch_size, 1, num_features, n_frames)
+            w = w.view(batch_size, n_bases, n_frames)
 
-        if self.embedding:
-            input_source = torch.arange(n_sources).long()
-            embedding = self.embedding(input_source)
-            mask = self.separator(w_concat, embedding=embedding)
-        else:
-            mask = self.separator(w_concat)
-        
-        w_hat = w * mask
-        latent = w_hat
-        w_hat = w_hat.view(batch_size * n_sources, n_bases, n_frames)
-
-        x_hat = self.decoder(w_hat)
-        x_hat = x_hat.view(batch_size, n_sources, 1, -1)
+            x_hat = self.decoder(w) # (batch_size, 1, T_pad)
 
         output = F.pad(x_hat, (-padding_left, -padding_right))
     
@@ -1065,25 +1090,41 @@ def _test_meta_tasnet():
     output = model(input)
     print(output.size())
 
+    print("-"*10, "No masking", "-"*10)
+
+    model = MetaTasNet(
+        N, K, stride=S,
+        enc_fft_size=fft_size, enc_hop_size=hop_size, num_filters=F, n_mels=M,
+        sep_hidden_channels=H, sep_bottleneck_channels=B, sep_skip_channels=Sc, sep_kernel_size=P, sep_num_blocks=X, sep_num_layers=R,
+        conv_name='generated', norm_name='generated',
+        num_stages=num_stages, n_sources=n_sources,
+        embed_dim=D_l, embed_bottleneck_channels=B_l
+    )
+
+    print(model)
+    print(model.num_parameters)
+    output = model(input, masking=False)
+    print(output.size())
+
 if __name__ == '__main__':
     import torchaudio
 
     torch.manual_seed(111)
 
     print('='*10, "Conv1d", '='*10)
-    _test_conv1d()
+    #_test_conv1d()
     print()
 
     print('='*10, "TCN", '='*10)
-    _test_tcn()
+    #_test_tcn()
     print()
 
     print('='*10, "Separator", '='*10)
-    _test_separator()
+    #_test_separator()
     print()
 
     print('='*10, "MetaTasNet backbone", '='*10)
-    _test_meta_tasnet_backbone()
+    #_test_meta_tasnet_backbone()
     print()
 
     print('='*10, "MetaTasNet", '='*10)
