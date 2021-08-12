@@ -60,7 +60,7 @@ class MultiDissimilarityLoss(nn.Module):
             left.append(_left)
             right.append(_right)
         
-        self.left, self.right = right
+        self.left, self.right = left, right
         self.n_combinations = len(left)
         self.eps = eps
 
@@ -73,7 +73,9 @@ class MultiDissimilarityLoss(nn.Module):
 
         left, right = self.left, self.right
 
+        print(input_permuted.size(), end="->")
         input_left, input_right = torch.abs(input_permuted[left]), torch.abs(input_permuted[right])
+        print(input_left.size(), input_right.size())
         loss = - F.cosine_similarity(input_left, input_right, dim=2, eps=self.eps)
 
         loss = loss.permute(1, 0, 2).contiguous() / self.n_combinations
