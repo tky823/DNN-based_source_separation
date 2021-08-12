@@ -27,6 +27,27 @@ class SimilarityLoss(nn.Module):
 
         return loss
 
+class NegSimilarityLoss(nn.Module):
+    def __init__(self, eps=EPS):
+        super().__init__()
+
+        self.eps = eps
+    
+    def forward(self, input, target, batch_mean=False):
+        """
+        Args:
+            input: (batch_size, n_sources, n_channels, n_frames)
+            output: (batch_size, n_sources, n_channels, n_frames)
+        """
+        loss = - F.cosine_similarity(input, target, dim=2, eps=self.eps)
+        loss = loss.sum(dim=2)
+        loss = loss.mean(dim=1)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+
 
 class MultiDissimilarityLoss(nn.Module):
     def  __init__(self, n_sources=None, eps=EPS):

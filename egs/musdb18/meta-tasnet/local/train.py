@@ -12,7 +12,7 @@ from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from dataset import TrainDataLoader, EvalDataLoader
 from models.meta_tasnet import MetaTasNet
 from criterion.sdr import NegSISDR
-from adhoc_criterion import SimilarityLoss, MultiDissimilarityLoss, MultiLoss
+from adhoc_criterion import NegSimilarityLoss, MultiDissimilarityLoss, MultiLoss
 from adhoc_driver import Trainer
 
 SAMPLE_RATE_MUSDB18 = 16000
@@ -163,7 +163,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion_reconstruction))
     
     if args.criterion_similarity == 'cos':
-        metrics['similarity'], metrics['dissimilarity'] = SimilarityLoss(), MultiDissimilarityLoss()
+        metrics['similarity'], metrics['dissimilarity'] = NegSimilarityLoss(), MultiDissimilarityLoss()
         weights['similarity'], weights['dissimilarity'] = args.similarity, args.dissimilarity
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_similarity))
