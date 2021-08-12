@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 EPS = 1e-12
 
@@ -188,6 +189,38 @@ class MeanSquaredError(nn.Module):
         if batch_mean:
             loss = loss.mean(dim=0)
         
+        return loss
+
+class CosineSimilarity(nn.Module):
+    def __init__(self, dim=1, maximize=False, eps=EPS):
+        super().__init__()
+
+        self.dim = dim
+        self.maximize = maximize
+        self.eps = eps
+    
+    def forward(self, input, target, batch_mean=False):
+        loss = F.cosine_similarity(input, target, dim=self.dim, eps=self.eps)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+
+class NegCosineSimilarity(nn.Module):
+    def __init__(self, dim=1, maximize=True, eps=EPS):
+        super().__init__()
+
+        self.dim = dim
+        self.maximize = maximize
+        self.eps = eps
+    
+    def forward(self, input, target, batch_mean=False):
+        loss = - F.cosine_similarity(input, target, dim=self.dim, eps=self.eps)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
         return loss
 
 def _test_l1loss():
