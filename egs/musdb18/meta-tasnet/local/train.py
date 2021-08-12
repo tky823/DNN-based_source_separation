@@ -12,8 +12,7 @@ from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from dataset import TrainDataLoader, EvalDataLoader
 from models.meta_tasnet import MetaTasNet
 from criterion.sdr import NegSISDR
-from criterion.distance import SimilarityLoss, MultiDissimilarityLoss
-from adhoc_criterion import MultiLoss
+from adhoc_criterion import SimilarityLoss, MultiDissimilarityLoss, MultiLoss
 from adhoc_driver import Trainer
 
 SAMPLE_RATE_MUSDB18 = 16000
