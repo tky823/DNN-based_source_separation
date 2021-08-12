@@ -40,8 +40,8 @@ class WaveDataset(MUSDB18Dataset):
         return 0
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
+    def __init__(self, musdb18_root, sr=[8000,16000,32000], duration=8, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
+        super().__init__(musdb18_root, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
