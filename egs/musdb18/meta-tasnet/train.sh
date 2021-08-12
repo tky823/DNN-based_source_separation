@@ -99,8 +99,8 @@ train.py \
 --stage ${stage} \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
---enc_nonlinear ${enc_nonlinear} \
---window_fn ${window_fn} \
+--enc_nonlinear "${enc_nonlinear}" \
+--window_fn "${window_fn}" \
 -N ${N} \
 -L ${L} \
 -B ${B} \
@@ -112,8 +112,8 @@ train.py \
 --dilated ${dilated} \
 --separable ${separable} \
 --causal ${causal} \
---sep_nonlinear ${sep_nonlinear} \
---mask_nonlinear ${mask_nonlinear} \
+--sep_nonlinear "${sep_nonlinear}" \
+--mask_nonlinear "${mask_nonlinear}" \
 --conv_name ${conv_name} \
 --norm_name ${norm_name} \
 --embed_dim ${embed_dim} \
