@@ -74,13 +74,13 @@ class MetaTasNet(nn.Module):
     
     @property
     def num_parameters(self):
-        num_parameters = 0
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 class MetaTasNetBackbone(nn.Module):
     def __init__(self,

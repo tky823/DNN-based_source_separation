@@ -75,8 +75,6 @@ class D3Net(nn.Module):
         self.eps = eps
         
         self._reset_parameters()
-
-        self.num_parameters = self._get_num_parameters()
     
     def forward(self, input):
         """
@@ -223,13 +221,13 @@ class D3Net(nn.Module):
     
     @property
     def num_parameters(self):
-        num_parameters = 0
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 class D3NetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, depth=None, out_channels=None, eps=EPS):
