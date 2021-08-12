@@ -163,7 +163,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion_reconstruction))
     
     if args.criterion_similarity == 'cos':
-        metrics['similarity'], metrics['dissimilarity'] = NegSimilarityLoss(), MultiDissimilarityLoss()
+        metrics['similarity'], metrics['dissimilarity'] = NegSimilarityLoss(), MultiDissimilarityLoss(n_sources=args.n_sources)
         weights['similarity'], weights['dissimilarity'] = args.similarity, args.dissimilarity
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_similarity))
