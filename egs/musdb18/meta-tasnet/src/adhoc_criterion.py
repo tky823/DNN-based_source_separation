@@ -12,7 +12,7 @@ class SimilarityLoss(nn.Module):
 
         self.eps = eps
     
-    def forward(self, input, target, batch_mean=False):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
             input: (batch_size, n_sources, n_channels, n_frames)
@@ -33,7 +33,7 @@ class NegSimilarityLoss(nn.Module):
 
         self.eps = eps
     
-    def forward(self, input, target, batch_mean=False):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
             input: (batch_size, n_sources, n_channels, n_frames)
@@ -73,9 +73,7 @@ class MultiDissimilarityLoss(nn.Module):
 
         left, right = self.left, self.right
 
-        print(input_permuted.size(), end="->")
         input_left, input_right = torch.abs(input_permuted[left]), torch.abs(input_permuted[right])
-        print(input_left.size(), input_right.size())
         loss = - F.cosine_similarity(input_left, input_right, dim=2, eps=self.eps)
 
         loss = loss.permute(1, 0, 2).contiguous() / self.n_combinations
