@@ -51,8 +51,8 @@ class WaveTrainDataset(WaveDataset):
         Args:
             idx <int>: index
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
         """
         if self.augmentation:
             mixture, target = self._getitem_augmentation()
@@ -71,8 +71,8 @@ class WaveTrainDataset(WaveDataset):
         Args:
             idx <int>: index
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
             name <str>: Artist and title of song
         """
         _source = self.sources[0]
@@ -229,8 +229,8 @@ class WaveEvalDataset(WaveDataset):
         Args:
             idx <int>: index
         Returns:
-            batch_mixture <torch.Tensor>: (n_segments, 1, 2, T_segment) if `target` is list, otherwise (n_segments, 2, T_segment)
-            batch_target <torch.Tensor>: (n_segments, len(target), 2, T_segment) if `target` is list, otherwise (n_segments, 2, T_segment)
+            batch_mixture <torch.Tensor>: (n_segments, 1, n_mics, T_segment) if `target` is list, otherwise (n_segments, n_mics, T_segment)
+            batch_target <torch.Tensor>: (n_segments, len(target), n_mics, T_segment) if `target` is list, otherwise (n_segments, n_mics, T_segment)
             T <float>: Duration [sec]
             name <str>: Artist and title of song
         """
@@ -369,8 +369,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
         """
         if self.augmentation:
             mixture, target = self._getitem_augmentation()
@@ -385,8 +385,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             mixture = mixture.reshape(-1, mixture.size(-1))
             target = target.reshape(-1, target.size(-1))
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         if n_dims > 2:
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
@@ -407,8 +407,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         Args:
             idx <int>: index
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
             name <str>: Artist and title of song
         """
         _source = self.sources[0]
@@ -569,8 +569,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T <float>: Duration [sec]
             name <str>: Artist and title of song
         """
@@ -642,8 +642,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             batch_mixture = batch_mixture.reshape(-1, batch_mixture.size(-1))
             batch_target = batch_target.reshape(-1, batch_target.size(-1))
 
-        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         if n_dims > 2:
             batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
@@ -688,8 +688,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T <float>: Duration [sec]
             name <str>: Artist and title of song
         """
@@ -762,8 +762,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
             batch_mixture = batch_mixture.reshape(-1, batch_mixture.size(-1))
             batch_target = batch_target.reshape(-1, batch_target.size(-1))
 
-        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         if n_dims > 2:
             batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])

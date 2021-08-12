@@ -58,8 +58,8 @@ class WaveDataset(MUSDB18Dataset):
         Args:
             idx <int>: index
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
             name <str>: Artist and title of song
         """
         data = self.json_data[idx]
@@ -125,8 +125,8 @@ class WaveTrainDataset(WaveDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
         """
         mixture, target, _ = super().__getitem__(idx)
         
@@ -162,8 +162,8 @@ class WaveEvalDataset(WaveDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
             name <str>: Artist and title of song
         """
         mixture, target, name = super().__getitem__(idx)
@@ -213,8 +213,8 @@ class SpectrogramDataset(WaveDataset):
         if n_dims > 2:
             input = input.reshape(-1, input.size(-1))
 
-        input = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources)*2, n_bins, n_frames)
-        power = torch.sum(torch.abs(input)**2, dim=-1) # (len(sources)*2, n_bins, n_frames)
+        input = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources)*n_mics, n_bins, n_frames)
+        power = torch.sum(torch.abs(input)**2, dim=-1) # (len(sources)*n_mics, n_bins, n_frames)
         power = torch.mean(power)
 
         if power.item() >= threshold:
@@ -225,8 +225,8 @@ class SpectrogramDataset(WaveDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T (), <int>: Number of samples in time-domain
             name <str>: Artist and title of song
         """
@@ -241,8 +241,8 @@ class SpectrogramDataset(WaveDataset):
             mixture = mixture.reshape(-1, mixture.size(-1))
             target = target.reshape(-1, target.size(-1))
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         if n_dims > 2:
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
@@ -285,8 +285,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
         """
         mixture, target, _, _ = super().__getitem__(idx)
         
@@ -321,8 +321,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T (), <int>: Number of samples in time-domain
             name <str>: Artist and title of song
         """

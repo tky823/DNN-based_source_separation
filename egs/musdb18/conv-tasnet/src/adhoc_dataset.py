@@ -46,8 +46,8 @@ class WaveTrainDataset(WaveDataset):
         Args:
             idx <int>: index
         Returns:
-            mixture <torch.Tensor>: (1, 2, T) if `target` is list, otherwise (2, T)
-            target <torch.Tensor>: (len(target), 2, T) if `target` is list, otherwise (2, T)
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
         """
         n_songs = len(self.mus.tracks)
         song_indices = random.choices(range(n_songs), k=len(self.sources))

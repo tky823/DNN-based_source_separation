@@ -22,6 +22,9 @@ class MetaTasNet(nn.Module):
         self.num_stages = num_stages
         self.n_bases = n_bases
 
+        if stride is None:
+            stride = kernel_size
+
         net = []
         sep_in_channels = 0
         for idx in range(num_stages):
