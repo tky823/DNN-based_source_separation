@@ -89,10 +89,9 @@ class Trainer(TrainerBase):
             # Dissimilarity loss
             print("Dissimilarity loss")
             dissimilarity_loss = 0
-            for _latent_estimated, _latent_target in zip(latent_estimated, latent_target):
-                _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
-                print(_latent_estimated.size(), _latent_target.size())
-                _loss = self.criterion.metrics['dissimilarity'](_latent_estimated, _latent_target)
+            for _latent_estimated in latent_estimated:
+                print(_latent_estimated.size())
+                _loss = self.criterion.metrics['dissimilarity'](_latent_estimated)
                 print(_loss.size())
                 similarity_loss = similarity_loss + _loss
             
