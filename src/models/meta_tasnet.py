@@ -138,11 +138,11 @@ class MetaTasNetBackbone(nn.Module):
         self.decoder = Decoder(n_bases, kernel_size, stride=stride, num_filters=num_filters)
     
     def forward(self, input, latent=None):
-        output, _ = self.extract_latent(input, input_partial=latent)
+        output, _ = self.extract_latent(input, latent=latent)
 
         return output
     
-    def extract_latent(self, input, input_partial=None):
+    def extract_latent(self, input, latent=None):
         # TODO: Pad
         n_sources = self.n_sources
         n_bases = self.n_bases
@@ -167,8 +167,8 @@ class MetaTasNetBackbone(nn.Module):
 
         batch_size, n_sources, num_features, n_frames = x.size()
         w = x.view(batch_size, n_sources, num_features, n_frames)
-        if input_partial is not None:
-            w_concat = torch.cat([w, input_partial], dim=2)
+        if latent is not None:
+            w_concat = torch.cat([w, latent], dim=2)
         else:
             w_concat = w
         # TODO: dropout2d?
