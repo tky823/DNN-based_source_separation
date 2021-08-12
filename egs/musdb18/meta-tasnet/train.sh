@@ -75,7 +75,7 @@ if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pin
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
-save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_bases}-${dec_bases}/${criterion_reconstruction}-${reconstruction}_${criterion_similarity}${similarity}-${disimilarity}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_mask-${mask_nonlinear}_conv${conv_name}_norm${norm_name}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_bases}-${dec_bases}/${criterion_reconstruction}-${reconstruction}_${criterion_similarity}${similarity}-${dissimilarity}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_mask-${mask_nonlinear}_conv${conv_name}_norm${norm_name}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"

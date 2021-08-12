@@ -191,7 +191,7 @@ class MeanSquaredError(nn.Module):
         
         return loss
 
-class CosineSimilarity(nn.Module):
+class CosineSimilarityLoss(nn.Module):
     def __init__(self, dim=1, maximize=False, eps=EPS):
         super().__init__()
 
@@ -207,7 +207,7 @@ class CosineSimilarity(nn.Module):
 
         return loss
 
-class NegCosineSimilarity(nn.Module):
+class NegCosineSimilarityLoss(nn.Module):
     def __init__(self, dim=1, maximize=True, eps=EPS):
         super().__init__()
 
