@@ -185,18 +185,15 @@ class DPTNet(nn.Module):
         
         return model
     
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
-    
-    @property
-    def num_parameters(self):
-        return self._get_num_parameters()
+        return _num_parameters
 
 class Separator(nn.Module):
     def __init__(

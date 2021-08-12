@@ -169,18 +169,15 @@ class ConvTasNet(nn.Module):
         
         return model
     
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
-    
-    @property
-    def num_parameters(self):
-        return self._get_num_parameters()
+        return _num_parameters
 
 class Separator(nn.Module):
     def __init__(self, num_features, bottleneck_channels=128, hidden_channels=256, skip_channels=128, kernel_size=3, num_blocks=3, num_layers=8, dilated=True, separable=True, causal=True, nonlinear='prelu', norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):

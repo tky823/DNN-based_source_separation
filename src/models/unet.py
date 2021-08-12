@@ -35,14 +35,15 @@ class UNetBase(nn.Module):
         
         return package
         
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 class UNet1d(UNetBase):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear_enc='relu', nonlinear_dec='relu', out_channels=None):
@@ -78,8 +79,6 @@ class UNet1d(UNetBase):
         self.encoder = Encoder1d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv1d(channels[-1], channels[-1], kernel_size=1, stride=1)
         self.decoder = Decoder1d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
-
-        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -122,8 +121,6 @@ class UNet2d(UNetBase):
         self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
         self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
-
-        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         x, skip = self.encoder(input)

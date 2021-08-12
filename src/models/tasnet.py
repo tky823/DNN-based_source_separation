@@ -51,19 +51,16 @@ class TasNetBase(nn.Module):
         output = F.pad(output, (-padding_left, -padding_right))
         
         return output, latent
-        
-    def _get_num_parameters(self):
-        num_parameters = 0
-        
-        for p in self.parameters():
-            if p.requires_grad:
-                num_parameters += p.numel()
-                
-        return num_parameters
     
     @property
     def num_parameters(self):
-        return self._get_num_parameters()
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
 class TasNet(nn.Module):
     """
@@ -93,8 +90,6 @@ class TasNet(nn.Module):
         self.encoder = GatedEncoder(self.in_channels, n_bases, kernel_size=kernel_size, stride=stride, eps=eps)
         self.separator = Separator(n_bases, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
         self.decoder = Decoder(n_bases, self.in_channels, kernel_size=kernel_size, stride=stride)
-        
-        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         """
@@ -152,14 +147,15 @@ class TasNet(nn.Module):
         
         return output, latent
         
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
         
     def get_package(self):
         package = {
