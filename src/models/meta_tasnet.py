@@ -41,6 +41,7 @@ class MetaTasNet(nn.Module):
                 eps=eps, **kwargs
             )
             net.append(backbone)
+            sep_in_channels = scale*n_bases
         
         self.net = nn.ModuleList(net)
 
@@ -985,7 +986,7 @@ def _test_meta_tasnet_backbone():
         embed_dim=D_l, embed_bottleneck_channels=B_l
     )
     
-    # print(model)
+    print(model)
     output0, latent0 = model.extract_latent(input0)
     print(input0.size(), latent0.size(), output0.size())
     print()
@@ -1012,7 +1013,7 @@ def _test_meta_tasnet_backbone():
         embed_dim=D_l, embed_bottleneck_channels=B_l
     )
     
-    # print(model)
+    print(model)
     output1, latent1 = model.extract_latent(input1, latent=latent0)
     print(input1.size(), latent1.size(), output1.size())
     print()
@@ -1059,7 +1060,7 @@ def _test_meta_tasnet():
         embed_dim=D_l, embed_bottleneck_channels=B_l
     )
     
-    # print(model)
+    print(model)
     print(model.num_parameters)
     output = model(input)
     print(output.size())
