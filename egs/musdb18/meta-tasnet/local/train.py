@@ -82,8 +82,8 @@ def main(args):
     args.sr = [int(sr) for sr in args.sr.replace('[', '').replace(']', '').split(',')]
     samples_per_epoch = int(40 * 3000 // args.duration)
     
-    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, samples_per_epoch=samples_per_epoch, sources=args.sources, is_wav=args.is_wav)
-    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources, is_wav=args.is_wav)
+    train_dataset = WaveTrainDataset(args.musdb18_root, samples_per_epoch=samples_per_epoch, sources=args.sources, is_wav=args.is_wav)
+    valid_dataset = WaveEvalDataset(args.musdb18_root, max_duration=args.valid_duration, sources=args.sources, is_wav=args.is_wav)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
