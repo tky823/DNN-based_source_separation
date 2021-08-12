@@ -221,7 +221,8 @@ class D3Net(nn.Module):
         
         return model
     
-    def _get_num_parameters(self):
+    @property
+    def num_parameters(self):
         num_parameters = 0
         
         for p in self.parameters():

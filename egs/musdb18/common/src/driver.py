@@ -10,6 +10,7 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 
 BITS_PER_SAMPLE_MUSDB18 = 16
+EPS = 1e-12
 
 class TrainerBase:
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -184,14 +185,14 @@ class TrainerBase:
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
-                    mixture = mixture / norm
+                    mixture = mixture / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         target = self.valid_loader.dataset.target[source_idx]
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
                         norm = torch.abs(estimated_source).max()
-                        estimated_source = estimated_source / norm
+                        estimated_source = estimated_source / torch.clamp(norm, min=EPS)
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid

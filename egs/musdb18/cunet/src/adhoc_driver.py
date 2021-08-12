@@ -1,7 +1,6 @@
 import os
 import time
 
-import numpy as np
 import torch
 import torchaudio
 import torch.nn as nn
@@ -9,8 +8,9 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from driver import TrainerBase
 
-SAMPLE_RATE_MUSDB18=44100
-BITS_PER_SAMPLE=16 # 16 bit
+SAMPLE_RATE_MUSDB18 = 44100
+BITS_PER_SAMPLE = 16 # 16 bit
+EPS = 1e-12
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -194,7 +194,7 @@ class AdhocTrainer(TrainerBase):
                     mixture = mixture[0].cpu() # -> (2, n_bins, n_frames)
                     mixture_amplitude = mixture_amplitude[0].cpu() # -> (2, n_bins, n_frames)
                     estimated_target_amplitude = estimated_target_amplitude.cpu() # -> (len(source_names), 2, n_bins, n_frames)
-                    ratio = estimated_target_amplitude / mixture_amplitude
+                    ratio = estimated_target_amplitude / torch.clamp(mixture_amplitude, min=EPS)
                     estimated_sources = ratio * mixture # -> (2, n_bins, n_frames)
 
                     for idx, source_name in enumerate(source_names):
@@ -204,7 +204,7 @@ class AdhocTrainer(TrainerBase):
                         save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source_name, scale))
                         estimated_source = self.resampler(estimated_source)
                         norm = torch.abs(estimated_source).max()
-                        estimated_source = estimated_source / norm
+                        estimated_source = estimated_source / torch.clamp(norm, min=EPS)
                         torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
 
                     mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (2, T)
@@ -212,7 +212,7 @@ class AdhocTrainer(TrainerBase):
                     save_path = os.path.join(save_dir, "mixture.wav")
                     mixture = self.resampler(mixture)
                     norm = torch.abs(mixture).max()
-                    mixture = mixture / norm
+                    mixture = mixture / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
         
         valid_loss /= n_valid

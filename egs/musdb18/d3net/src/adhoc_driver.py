@@ -9,6 +9,7 @@ from utils.utils import draw_loss_curve
 from driver import TrainerBase, TesterBase
 
 BITS_PER_SAMPLE_MUSDB18 = 16
+EPS = 1e-12
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -186,7 +187,7 @@ class AdhocTrainer(TrainerBase):
                 valid_loss += loss.item()
 
                 if idx < 5:
-                    ratio = estimated_source_amplitude / mixture_amplitude
+                    ratio = estimated_source_amplitude / torch.clamp(mixture_amplitude, min=EPS)
                     estimated_source = ratio * mixture # -> (batch_size, n_mics, n_bins, n_frames)
 
                     mixture_channels = mixture.size()[:-2] # -> (batch_size, n_mics)
@@ -214,12 +215,12 @@ class AdhocTrainer(TrainerBase):
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
-                    mixture = mixture / norm
+                    mixture = mixture / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     norm = torch.abs(estimated_source).max()
-                    estimated_source = estimated_source / norm
+                    estimated_source = estimated_source / torch.clamp(norm, min=EPS)
                     torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
@@ -293,7 +294,7 @@ class AdhocTester(TesterBase):
 
                 loss_improvement = loss_mixture.item() - loss.item()
 
-                ratio = estimated_source_amplitude / mixture_amplitude
+                ratio = estimated_source_amplitude / torch.clamp(mixture_amplitude, min=EPS)
                 estimated_source = ratio * mixture # -> (batch_size, n_mics, n_bins, n_frames)
 
                 estimated_source_channels = estimated_source.size()[:-2] # -> (batch_size, n_mics)

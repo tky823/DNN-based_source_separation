@@ -72,7 +72,8 @@ class MetaTasNet(nn.Module):
 
         return outputs, latents
     
-    def _get_num_parameters(self):
+    @property
+    def num_parameters(self):
         num_parameters = 0
         
         for p in self.parameters():
@@ -80,10 +81,6 @@ class MetaTasNet(nn.Module):
                 num_parameters += p.numel()
                 
         return num_parameters
-    
-    @property
-    def num_parameters(self):
-        return self._get_num_parameters()
 
 class MetaTasNetBackbone(nn.Module):
     def __init__(self,
