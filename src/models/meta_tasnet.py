@@ -29,7 +29,7 @@ class MetaTasNet(nn.Module):
             sep_in_channels += scale*n_bases
             
             backbone = MetaTasNetBackbone(
-                scale*n_bases, scale*kernel_size, stride=stride,
+                scale*n_bases, scale*kernel_size, stride=scale*stride,
                 enc_fft_size=scale*enc_fft_size, enc_hop_size=scale*enc_hop_size, enc_compression_rate=enc_compression_rate, num_filters=scale*num_filters, n_mels=n_mels,
                 sep_in_channels=sep_in_channels, sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels,
                 sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers,
@@ -1035,8 +1035,8 @@ def _test_meta_tasnet():
 
     print("-"*10, "Meta-TasNet Backbone (Generated, sr = 8000)", "-"*10)
 
-    sr_original = 8000
-    sr = [8000, 16000, 32000]
+    sr_original = 16000
+    sr = [8000, 16000]
     input = []
 
     for sr_target in sr:
@@ -1047,7 +1047,7 @@ def _test_meta_tasnet():
     num_stages = len(sr)
     K, S = 20, 6
     F, M = 3, 256
-    N = 128
+    N = 32
     fft_size, hop_size = 1024 * (sr[0]//8000), 256 * (sr[0]//8000)
 
     model = MetaTasNet(
@@ -1070,19 +1070,19 @@ if __name__ == '__main__':
     torch.manual_seed(111)
 
     print('='*10, "Conv1d", '='*10)
-    _test_conv1d()
+    #_test_conv1d()
     print()
 
     print('='*10, "TCN", '='*10)
-    _test_tcn()
+    #_test_tcn()
     print()
 
     print('='*10, "Separator", '='*10)
-    _test_separator()
+    #_test_separator()
     print()
 
     print('='*10, "MetaTasNet backbone", '='*10)
-    _test_meta_tasnet_backbone()
+    #_test_meta_tasnet_backbone()
     print()
 
     print('='*10, "MetaTasNet", '='*10)
