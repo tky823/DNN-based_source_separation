@@ -82,8 +82,6 @@ class DPTNet(nn.Module):
         )
         self.decoder = decoder
         
-        self.num_parameters = self._get_num_parameters()
-        
     def forward(self, input):
         output, latent = self.extract_latent(input)
         
@@ -195,6 +193,10 @@ class DPTNet(nn.Module):
                 num_parameters += p.numel()
                 
         return num_parameters
+    
+    @property
+    def num_parameters(self):
+        return self._get_num_parameters()
 
 class Separator(nn.Module):
     def __init__(

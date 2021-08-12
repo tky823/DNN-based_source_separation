@@ -65,8 +65,6 @@ class ConvTasNet(nn.Module):
         self.separator = Separator(n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels, skip_channels=sep_skip_channels, kernel_size=sep_kernel_size, num_blocks=sep_num_blocks, num_layers=sep_num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=sep_nonlinear, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         self.decoder = decoder
         
-        self.num_parameters = self._get_num_parameters()
-        
     def forward(self, input):
         output, latent = self.extract_latent(input)
         
@@ -179,6 +177,10 @@ class ConvTasNet(nn.Module):
                 num_parameters += p.numel()
                 
         return num_parameters
+    
+    @property
+    def num_parameters(self):
+        return self._get_num_parameters()
 
 class Separator(nn.Module):
     def __init__(self, num_features, bottleneck_channels=128, hidden_channels=256, skip_channels=128, kernel_size=3, num_blocks=3, num_layers=8, dilated=True, separable=True, causal=True, nonlinear='prelu', norm=True, mask_nonlinear='sigmoid', n_sources=2, eps=EPS):
@@ -278,7 +280,6 @@ def _test_conv_tasnet():
     reconstruction = np.matmul(weight_pinverse, weight)
     print(reconstruction)
 
-
 def _test_multichannel_conv_tasnet():
     batch_size = 4
     C = 2
@@ -344,7 +345,6 @@ def _test_conv_tasnet_paper():
     plt.savefig('data/bases_enc-trainable.png', bbox_inches='tight')
     plt.close()
 
-        
 if __name__ == '__main__':
     import numpy as np
     import matplotlib.pyplot as plt
