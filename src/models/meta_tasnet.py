@@ -1070,19 +1070,19 @@ if __name__ == '__main__':
     torch.manual_seed(111)
 
     print('='*10, "Conv1d", '='*10)
-    #_test_conv1d()
+    _test_conv1d()
     print()
 
     print('='*10, "TCN", '='*10)
-    #_test_tcn()
+    _test_tcn()
     print()
 
     print('='*10, "Separator", '='*10)
-    #_test_separator()
+    _test_separator()
     print()
 
     print('='*10, "MetaTasNet backbone", '='*10)
-    #_test_meta_tasnet_backbone()
+    _test_meta_tasnet_backbone()
     print()
 
     print('='*10, "MetaTasNet", '='*10)
