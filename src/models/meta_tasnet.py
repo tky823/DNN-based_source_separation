@@ -48,17 +48,20 @@ class MetaTasNet(nn.Module):
         
         self.net = nn.ModuleList(net)
 
-    def forward(self, input, masking=True):
+    def forward(self, input, masking=True, max_stage=None):
         latent = None
         outputs = []
 
-        for idx in range(self.num_stages):
+        if max_stage is None:
+            max_stage = len(input)
+
+        for idx in range(max_stage):
             output, latent = self.net[idx].extract_latent(input[idx], latent=latent, masking=masking)
             outputs.append(output)
 
         return outputs
 
-    def extract_latent(self, input, masking=True):
+    def extract_latent(self, input, masking=True, max_stage=None):
         """
         Args:
             input <torch.Tensor>: (batch_size, n_sources, num_stages, n_bases, n_frames)
@@ -70,7 +73,10 @@ class MetaTasNet(nn.Module):
         latent = None
         outputs, latents = [], []
 
-        for idx in range(self.num_stages):
+        if max_stage is None:
+            max_stage = len(input)
+        
+        for idx in range(max_stage):
             output, latent = self.net[idx].extract_latent(input[idx], latent=latent, masking=masking)
             outputs.append(output)
             latents.append(latent)

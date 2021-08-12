@@ -24,8 +24,9 @@ parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (
 parser.add_argument('--sr', type=str, default='[8000,16000,32000]', help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
-parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
-parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
+parser.add_argument('--stage', type=int, default=1, help='Stage')
+parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable'], help='Encoder type')
+parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--n_bases', '-N', type=int, default=512, help='# bases')
@@ -41,7 +42,6 @@ parser.add_argument('--dilated', type=int, default=1, help='Dilated convolution'
 parser.add_argument('--separable', type=int, default=1, help='Depthwise-separable convolution')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear function of separator')
-parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--conv_name', type=str, default='generated', help='Conv1D type')
 parser.add_argument('--norm_name', type=str, default='generated', help='Normalization type')
@@ -54,12 +54,14 @@ parser.add_argument('--num_filters', type=int, default=6, help='# of filters')
 parser.add_argument('--n_mels', type=int, default=256, help='# of mel bins')
 parser.add_argument('--dropout', type=float, default=0.0, help='Dropout rate')
 parser.add_argument('--sources', type=str, default='[drums,bass,others,vocals]', help='Source names')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--sisdr', type=float, default=5e-2, help='Weight for reconstrunction loss')
+parser.add_argument('--similarity', type=float, default=2e+0, help='Weight for similarity loss')
+parser.add_argument('--dissimilarity', type=float, default=3e+0, help='Weight for dissimilarity loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'radam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
+parser.add_argument('--batch_size', type=int, default=12, help='Batch size. Default: 12')
 parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -106,7 +108,7 @@ def main(args):
             warnings.warn("`embed_bottleneck_channels` is NOT used.", UserWarning)
         kwargs = {}
     if args.fft_size is None:
-        args.fft_size = args.sr[0] // 8000
+        args.fft_size = 1024 * (args.sr[0] // 8000)
     if args.hop_size is None:
         args.hop_size = args.fft_size // 4
     

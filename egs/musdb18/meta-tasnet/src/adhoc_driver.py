@@ -23,6 +23,7 @@ class Trainer(TrainerBase):
             resamplers.append(torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr_target))
 
         self.resamplers = nn.ModuleList(resamplers)
+        self.stage = args.stage
     
     def run_one_epoch_train(self, epoch):
         """
@@ -44,15 +45,15 @@ class Trainer(TrainerBase):
 
             mixture_resampled, sources_resampled = [], []
 
-            for idx, _ in enumerate(self.sr):
+            for idx in range(self.stage):
                 _mixture, _sources = self.resamplers[idx](mixture), self.resamplers[idx](sources)
                 _mixture, _sources = _mixture.view(batch_size, 1, -1), _sources.view(batch_size * n_sources, 1, -1)
                 mixture_resampled.append(_mixture)
                 sources_resampled.append(_sources)
             
-            estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True)
-            reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False)
-            _, latent_target = self.model.extract_latent(sources_resampled, masking=False)
+            estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
+            reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+            _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
 
             sdr_loss = 0
 
@@ -71,6 +72,7 @@ class Trainer(TrainerBase):
                 print(_estimated_sources.size(), _latent_estimated.size(), _latent_target.size(), _latent_loss.size())
 
             reconstruceted_loss = 0
+
             for _mixture, _reconstructed in zip(mixture_resampled, reconstructed):
                 _reconstructed_loss = self.criterion.metrics['mse'](_reconstructed, _mixture).sum()
                 reconstruceted_loss = reconstruceted_loss + _reconstructed_loss
