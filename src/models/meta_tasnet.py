@@ -168,7 +168,7 @@ class MetaTasNetBackbone(nn.Module):
         batch_size, n_sources, num_features, n_frames = x.size()
         w = x.view(batch_size, n_sources, num_features, n_frames)
         if latent is not None:
-            w_concat = torch.cat([w, latent], dim=3)
+            w_concat = torch.cat([w, latent], dim=2)
         else:
             w_concat = w
         # TODO: dropout2d?
