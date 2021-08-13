@@ -10,6 +10,7 @@ from driver import TrainerBase
 
 SAMPLE_RATE_MUSDB18 = 44100
 BITS_PER_SAMPLE_MUSDB18 = 16
+EPS = 1e-12
 
 class Trainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -317,12 +318,16 @@ class Trainer(TrainerBase):
                         save_dir = os.path.join(self.sample_dir, titles)
                         os.makedirs(save_dir, exist_ok=True)
                         save_path = os.path.join(save_dir, "mixture-{}.wav".format(_sr))
+                        norm = torch.abs(_mixture_resampled).max()
+                        _mixture_resampled = _mixture_resampled / torch.clamp(norm, min=EPS)
                         signal = _mixture_resampled.unsqueeze(dim=0) if _mixture_resampled.dim() == 1 else _mixture_resampled
                         torchaudio.save(save_path, signal, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                         
                         for source_idx, _estimated_source in enumerate(_estimated_sources):
                             target = self.valid_loader.dataset.target[source_idx]
                             save_path = os.path.join(save_dir, "epoch{}-{}-{}.wav".format(epoch + 1, target, _sr))
+                            norm = torch.abs(_estimated_source).max()
+                            _estimated_source = _estimated_source / torch.clamp(norm, min=EPS)
                             signal = _estimated_source.unsqueeze(dim=0) if _estimated_source.dim() == 1 else _estimated_source
                             torchaudio.save(save_path, signal, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             
