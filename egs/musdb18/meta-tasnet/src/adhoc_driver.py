@@ -123,8 +123,8 @@ class Trainer(TrainerBase):
         """
         Training
         """
-        train_loss, train_main_loss, train_reconstruction_loss, train_similarity_loss, train_similarity_loss, train_dissimilarity_loss = self.run_one_epoch_train(epoch)
-        valid_loss, valid_main_loss, valid_reconstruction_loss, valid_similarity_loss, valid_similarity_loss, valid_dissimilarity_loss = self.run_one_epoch_eval(epoch)
+        train_loss, train_main_loss, train_reconstruction_loss, train_similarity_loss, train_dissimilarity_loss = self.run_one_epoch_train(epoch)
+        valid_loss, valid_main_loss, valid_reconstruction_loss, valid_similarity_loss, valid_dissimilarity_loss = self.run_one_epoch_eval(epoch)
         
         train_loss = {
             'loss': train_loss,
@@ -229,7 +229,7 @@ class Trainer(TrainerBase):
         train_similarity_loss /= n_train_batch
         train_dissimilarity_loss /= n_train_batch
         
-        return train_loss, train_main_loss, train_reconstruction_loss, train_similarity_loss, train_similarity_loss, train_dissimilarity_loss
+        return train_loss, train_main_loss, train_reconstruction_loss, train_similarity_loss, train_dissimilarity_loss
     
     def run_one_epoch_eval(self, epoch):
         """
