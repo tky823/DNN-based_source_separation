@@ -387,8 +387,8 @@ class Spectrogram(nn.Module):
 
         self.mel_transform = nn.Conv1d(n_bins, n_mels, kernel_size=1, stride=1, padding=0, bias=True)
 
-        self.mean = nn.Parameter(torch.empty(1, n_bins, 1), requires_grad=False)
-        self.std = nn.Parameter(torch.empty(1, n_bins, 1), requires_grad=False)
+        self.mean = nn.Parameter(torch.zeros(1, n_bins, 1), requires_grad=False)
+        self.std = nn.Parameter(torch.ones(1, n_bins, 1), requires_grad=False)
 
         self.affine_bias = nn.Parameter(torch.zeros(1, n_bins, 1), requires_grad=True)
         self.affine_scale = nn.Parameter(torch.ones(1, n_bins, 1), requires_grad=True)
