@@ -131,6 +131,7 @@ class AdhocTrainer(TrainerBase):
         
         for idx, (mixture, source) in enumerate(self.train_loader):
             print(mixture.size(), source.size())
+            raise NotImplementedError
             if self.use_cuda:
                 mixture = mixture.cuda()
                 source = source.cuda()
