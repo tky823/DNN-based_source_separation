@@ -154,18 +154,17 @@ class Trainer(TrainerBase):
         n_train_batch = len(self.train_loader)
         
         for idx, (mixture, sources) in enumerate(self.train_loader):
-            if self.use_cuda:
-                mixture = mixture.cuda()
-                sources = sources.cuda()
-            
             batch_size, n_sources, T = sources.size()
-
             mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
-
             mixture_resampled, sources_resampled = [], []
 
             for idx in range(self.stage):
                 _mixture, _sources = self.resamplers[idx](mixture), self.resamplers[idx](sources)
+
+                if self.use_cuda:
+                    _mixture = _mixture.cuda()
+                    _sources = _sources.cuda()
+                
                 _mixture, _sources = _mixture.view(batch_size, 1, -1), _sources.view(batch_size * n_sources, 1, -1)
                 mixture_resampled.append(_mixture)
                 sources_resampled.append(_sources)
@@ -254,6 +253,11 @@ class Trainer(TrainerBase):
 
                 for idx in range(self.stage):
                     _mixture, _sources = self.resamplers[idx](mixture), self.resamplers[idx](sources)
+
+                    if self.use_cuda:
+                        _mixture = _mixture.cuda()
+                        _sources = _sources.cuda()
+                    
                     _mixture, _sources = _mixture.view(batch_size, 1, -1), _sources.view(batch_size * n_sources, 1, -1)
                     mixture_resampled.append(_mixture)
                     sources_resampled.append(_sources)
