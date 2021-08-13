@@ -130,6 +130,7 @@ class AdhocTrainer(TrainerBase):
         n_train_batch = len(self.train_loader)
         
         for idx, (mixture, sources) in enumerate(self.train_loader):
+            print(mixture.size(), source.size())
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
