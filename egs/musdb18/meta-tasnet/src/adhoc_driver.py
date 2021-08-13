@@ -170,9 +170,14 @@ class Trainer(TrainerBase):
                 sources_resampled.append(_sources)
             
             # Forward
-            estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
-            reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
-            _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
+            if isinstance(self.model, nn.DataParallel):
+                estimated_sources, latent_estimated = self.model.module.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
+                reconstructed, _ = self.model.module.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+                _, latent_target = self.model.module.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
+            else:
+                estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
+                reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+                _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
 
             # Main loss
             main_loss = 0
@@ -263,9 +268,14 @@ class Trainer(TrainerBase):
                     sources_resampled.append(_sources)
             
                 # Forward
-                estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
-                reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
-                _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
+                if isinstance(self.model, nn.DataParallel):
+                    estimated_sources, latent_estimated = self.model.module.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
+                    reconstructed, _ = self.model.module.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+                    _, latent_target = self.model.module.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
+                else:
+                    estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
+                    reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+                    _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
 
                 """
                 reconstructed, latent = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
