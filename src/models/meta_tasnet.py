@@ -45,7 +45,7 @@ class MetaTasNet(nn.Module):
         self.mask_nonlinear = mask_nonlinear
 
         for key in kwargs:
-            setattr(self, key, kwargs[kwargs])
+            setattr(self, key, kwargs[key])
 
         # Others
         self.dropout = dropout
