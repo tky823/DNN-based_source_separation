@@ -138,8 +138,9 @@ class AdhocTrainer(TrainerBase):
             source_amplitude = torch.abs(source)
             
             print(source_amplitude.size(), flush=True)
-            raise NotImplementedError
             estimated_sources_amplitude = self.model(mixture_amplitude)
+            print(estimated_sources_amplitude.size(), flush=True)
+            raise NotImplementedError
             loss = self.criterion(estimated_sources_amplitude, source_amplitude)
             
             self.optimizer.zero_grad()
