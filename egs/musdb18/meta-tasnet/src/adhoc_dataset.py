@@ -39,7 +39,7 @@ class WaveDataset(MUSDB18Dataset):
         raise NotImplementedError("Implement __getitem__ in sub-class.")
 
     def __len__(self):
-        return 0
+        raise NotImplementedError("Implement __len__ in sub-class.")
 
 class WaveTrainDataset(WaveDataset):
     def __init__(self, musdb18_root, duration=8, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):

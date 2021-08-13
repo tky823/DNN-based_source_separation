@@ -499,7 +499,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             source_idx = self.sources.index(self.target)
             target = sources[source_idx]
-            target = target.squeeze(dim=0)
+            target = target.squeeze(axis=0)
 
             sources = np.array(sources) # from list to np.ndarray
             mixture = sources.sum(axis=0)
