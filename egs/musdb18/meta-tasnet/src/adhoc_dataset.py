@@ -258,8 +258,7 @@ class WaveEvalDataset(WaveDataset):
         return batch_mixture, batch_target, name
     
     def __len__(self):
-        return 2
-        # return len(self.json_data)
+        return len(self.json_data)
 
 class EvalDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
