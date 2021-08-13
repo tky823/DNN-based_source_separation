@@ -149,11 +149,11 @@ class Trainer(TrainerBase):
         """
         self.model.train()
         
+        train_loss = 0
         train_main_loss = 0
         train_reconstruction_loss = 0
         train_similarity_loss = 0
         train_dissimilarity_loss = 0
-        train_loss = 0
 
         n_train_batch = len(self.train_loader)
         
@@ -238,6 +238,11 @@ class Trainer(TrainerBase):
         self.model.eval()
         
         valid_loss = 0
+        valid_main_loss = 0
+        valid_reconstruction_loss = 0
+        valid_similarity_loss = 0
+        valid_dissimilarity_loss = 0
+        
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
@@ -290,8 +295,12 @@ class Trainer(TrainerBase):
                 loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
-                
-                self.optimizer.zero_grad()
+
+                valid_loss += loss.item()
+                valid_main_loss += main_loss.item()
+                valid_reconstruction_loss += reconstruction_loss.item()
+                valid_similarity_loss += similarity_loss.item()
+                valid_dissimilarity_loss += dissimilarity_loss.item()
                 
                 if idx < 5:
                     for _mixture_resampled, _estimated_sources in zip(mixture_resampled, estimated_sources):
@@ -311,5 +320,9 @@ class Trainer(TrainerBase):
                             torchaudio.save(save_path, _estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             
         valid_loss /= n_valid
+        valid_main_loss /= n_valid
+        valid_reconstruction_loss /= n_valid
+        valid_similarity_loss /= n_valid
+        valid_dissimilarity_loss /= n_valid
         
-        return valid_loss
+        return valid_loss, valid_main_loss, valid_reconstruction_loss, valid_similarity_loss, valid_dissimilarity_loss
