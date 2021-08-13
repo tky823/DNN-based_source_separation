@@ -96,55 +96,25 @@ class WaveTrainDataset(WaveDataset):
             source = track.targets[_source].audio.transpose(1, 0) / std
             source = source[channel]
 
-            sources.append(scale * source[np.newaxis, np.newaxis])
+            sources.append(scale * source[np.newaxis])
             songIDs.append(songID)
             starts.append(start)
             channels.append(channel)
             scales.append(scale)
         
-        sources = np.concatenate(sources, axis=0)
-        mixture = sources.sum(axis=0)
-        
         if type(self.target) is list:
             target = []
             for _target in self.target:
-                idx = self.sources.index(_target)
-                songID = songIDs[idx]
-                start = starts[idx]
-                channel = channels[idx]
-                scale = scales[idx]
-                std = self.std[songID]
-                
-                track = self.mus.tracks[songID]
-
-                track.chunk_start = start
-                track.chunk_duration = self.duration
-
-                _target = track.targets[_target].audio.transpose(1, 0) / std
-                _target = _target[channel]
-
-                target.append(scale * _target[np.newaxis, np.newaxis])
+                source_idx = self.sources.index(_target)
+                _target = sources[source_idx]
+                target.append(_target)
             
             target = np.concatenate(target, axis=0)
-            mixture = mixture[np.newaxis]
+            mixture = target.sum(axis=0, keepdims=True)
         else:
-            _target = self.target
-            idx = self.sources.index(_target)
-            songID = songIDs[idx]
-            start = starts[idx]
-            channel = channels[idx]
-            scale = scales[idx]
-            std = self.std[songID]
-            
-            track = self.mus.tracks[songID]
-            
-            track.chunk_start = start
-            track.chunk_duration = self.duration
-
-            _target = track.targets[_target].audio.transpose(1, 0) / std
-            _target = _target[channel]
-            
-            target = scale * _target[np.newaxis]
+            source_idx = self.sources.index(self.target)
+            target = sources[source_idx]
+            mixture = sources.sum(axis=0, keepdims=True)
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
