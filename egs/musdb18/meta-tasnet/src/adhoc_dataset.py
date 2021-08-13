@@ -121,7 +121,6 @@ class WaveTrainDataset(WaveDataset):
             mixture = sources.sum(axis=0)
 
         mixture, target = torch.Tensor(mixture).float(), torch.Tensor(target).float()
-        print(mixture.size(), target.size())
 
         return mixture, target
 

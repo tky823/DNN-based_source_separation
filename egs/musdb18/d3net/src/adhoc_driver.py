@@ -130,8 +130,6 @@ class AdhocTrainer(TrainerBase):
         n_train_batch = len(self.train_loader)
         
         for idx, (mixture, source) in enumerate(self.train_loader):
-            print(mixture.size(), source.size())
-            raise NotImplementedError
             if self.use_cuda:
                 mixture = mixture.cuda()
                 source = source.cuda()
@@ -176,7 +174,6 @@ class AdhocTrainer(TrainerBase):
                     sources: (batch_size, n_mics, n_bins, n_frames)
                     name <list<str>>: Artist and title of song
                 """
-                print(mixture.size(), source.size())
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     source = source.cuda()
