@@ -316,7 +316,7 @@ class Trainer(TrainerBase):
 
                         _mixture_resampled = _mixture_resampled.squeeze(dim=1).cpu() # (batch_size, T)
                         _estimated_sources = _estimated_sources.squeeze(dim=2).cpu() # (batch_size, n_sources, T)
-                        _mixture_resampled = _mixture_resampled.contiguous().view(batch_size * T)
+                        _mixture_resampled = _mixture_resampled.contiguous().view(1, batch_size * T)
                         _estimated_sources = _estimated_sources.permute(1, 0, 2).contiguous().view(n_sources, batch_size * T)
                         
                         save_dir = os.path.join(self.sample_dir, titles)
