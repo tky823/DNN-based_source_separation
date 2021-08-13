@@ -275,19 +275,16 @@ class WaveEvalDataset(WaveDataset):
         batch_mixture = torch.cat(batch_mixture_padded, dim=0)
         batch_target = torch.cat(batch_target_padded, dim=0)
 
-        # batch_mixture : (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
-        # batch_target : (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
-
-        print("batch_mixture:", batch_mixture.size(), "batch_target:", batch_target.size())
-        raise NotImplementedError
+        # batch_mixture : (batch_size, 1, n_mics, T) if `target` is list, otherwise (batch_size, n_mics, T)
+        # batch_target : (batch_size, len(target), n_mics, T) if `target` is list, otherwise (batch_size, n_mics, T)
 
         n_dims = batch_mixture.dim()
 
-        if n_dims == 2:
+        if n_dims == 3:
             # Use only first channel for validation
-            batch_mixture, batch_target = batch_mixture[0], batch_target[0]
-        elif n_dims == 3:
-            batch_mixture, batch_target = batch_mixture[:, 0, :], batch_target[:, 0, :]
+            batch_mixture, batch_target = batch_mixture[:, 0], batch_target[:, 0]
+        elif n_dims == 4:
+            batch_mixture, batch_target = batch_mixture[:, :, 0, :], batch_target[:, :, 0, :]
         else:
             raise ValueError("Invalid tensor shape. 2D or 3D tensor is expected, but givem {}D tensor".format(n_dims))
         
