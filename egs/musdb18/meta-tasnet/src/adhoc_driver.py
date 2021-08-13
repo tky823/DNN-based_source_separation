@@ -250,8 +250,7 @@ class Trainer(TrainerBase):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-
-                print(mixture.size(), sources.size())
+                
                 batch_size, n_sources, T = sources.size()
                 mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
 
@@ -305,20 +304,22 @@ class Trainer(TrainerBase):
                         _mixture_resampled, _estimated_sources = mixture_resampled[stage_idx], estimated_sources[stage_idx]
                         _sr = self.sr[stage_idx]
 
-                        print(_mixture_resampled.size(), _estimated_sources.size(), _sr)
-                        raise NotImplementedError
-                        _mixture_resampled = _mixture_resampled[0].squeeze(dim=0).cpu()
-                        _estimated_sources = _estimated_sources[0].cpu()
+                        batch_size, n_sources, T = _estimated_sources.size()
+
+                        _mixture_resampled = _mixture_resampled.squeeze(dim=1).cpu() # (batch_size, T)
+                        _estimated_sources = _estimated_sources.squeeze(dim=2).cpu() # (batch_size, n_sources, T)
+                        _mixture_resampled = _mixture_resampled.view(batch_size * T)
+                        _estimated_sources = _estimated_sources.permute(1, 0, 2).contiguous().view(n_sources, batch_size * T)
                         
-                        save_dir = os.path.join(self.sample_dir, titles[0])
+                        save_dir = os.path.join(self.sample_dir, titles)
                         os.makedirs(save_dir, exist_ok=True)
-                        save_path = os.path.join(save_dir, "mixture.wav")
-                        torchaudio.save(save_path, _mixture_resampled, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        save_path = os.path.join(save_dir, "mixture-{}.wav".format(_sr))
+                        torchaudio.save(save_path, _mixture_resampled, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                         
                         for source_idx, _estimated_source in enumerate(_estimated_sources):
                             target = self.valid_loader.dataset.target[source_idx]
-                            save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
-                            torchaudio.save(save_path, _estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                            save_path = os.path.join(save_dir, "epoch{}-{}-{}.wav".format(epoch + 1, target, _sr))
+                            torchaudio.save(save_path, _estimated_source, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             
         valid_loss /= n_valid
         valid_main_loss /= n_valid
