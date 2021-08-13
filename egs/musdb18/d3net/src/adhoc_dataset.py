@@ -504,6 +504,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
 
+        print(mixture.size(), target.size())
+
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
