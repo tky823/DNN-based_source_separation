@@ -496,8 +496,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             source_idx = self.sources.index(self.target)
             target = sources[source_idx]
+            target = target.squeeze(axis=0)
         
-        sources = np.concatenate(sources) # from list to np.ndarray
+        sources = np.concatenate(sources, axis=0)
         mixture = sources.sum(axis=0, keepdims=True)
 
         mixture = torch.Tensor(mixture).float()
