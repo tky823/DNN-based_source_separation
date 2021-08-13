@@ -94,6 +94,7 @@ class Trainer(TrainerBase):
                 # print(_loss.size())
                 similarity_loss = similarity_loss + _loss
             
+            print("main:", main_loss, "reconstruction:", reconstruction_loss, "similarity:", similarity_loss, "dissimilarity:", dissimilarity_loss)
             loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
             loss = loss.mean(dim=0)
             
