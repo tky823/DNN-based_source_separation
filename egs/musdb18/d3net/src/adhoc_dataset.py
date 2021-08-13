@@ -504,7 +504,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             sources = np.array(sources) # from list to np.ndarray
             mixture = sources.sum(axis=0)
 
-            print(mixture.size(), sources.size())
+            print(mixture.size())
+            print(sources.size())
         
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
