@@ -119,8 +119,6 @@ class WaveTrainDataset(WaveDataset):
 
             sources = np.concatenate(sources, axis=0)
             mixture = sources.sum(axis=0)
-            print(mixture.shape)
-            mixture = mixture.squeeze(axis=1)
 
         print(mixture.size(), target.size())
 
