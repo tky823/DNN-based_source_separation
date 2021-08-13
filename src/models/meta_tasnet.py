@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -83,6 +85,43 @@ class MetaTasNet(nn.Module):
 
         return outputs, latents
     
+    def forward_separators(self, input, max_stage=None):
+        """
+        Forward separators (masking modules)
+        """
+        warnings.warn("in progress", UserWarning)
+        
+        outputs = []
+
+        if max_stage is None:
+            max_stage = len(input)
+        
+        for idx in range(max_stage):
+            latent = input[idx]
+            mask = self.net[idx].forward_separator(latent)
+            outputs.append(mask)
+        
+        return outputs
+
+    def forward_decoders(self, input, mask=None, max_stage=None):
+        warnings.warn("in progress", UserWarning)
+        
+        outputs = []
+
+        if max_stage is None:
+            max_stage = len(input)
+        
+        for idx in range(max_stage):
+            if mask is None:
+                latent = input[idx]
+            else:
+                latent = mask[idx] * input[idx]
+            
+            x_hat = self.net[idx].forward_decoder(latent)
+            outputs.append(x_hat)
+        
+        return outputs
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -171,6 +210,13 @@ class MetaTasNetBackbone(nn.Module):
         return output
     
     def extract_latent(self, input, latent=None, masking=True):
+        """
+        Args:
+            input: (batch_size, 1, T)
+        Returns:
+            output: (batch_size, n_sources, T)
+            latent: (batch_size, n_sources, num_features, n_frames) or (batch_size, 1, num_features, n_frames) if masking = False
+        """
         n_sources = self.n_sources
         n_bases = self.n_bases
         kernel_size, stride = self.kernel_size, self.stride
@@ -214,7 +260,7 @@ class MetaTasNetBackbone(nn.Module):
             w_hat = w_hat.view(batch_size * n_sources, n_bases, n_frames)
 
             x_hat = self.decoder(w_hat)
-            x_hat = x_hat.view(batch_size, n_sources, 1, -1)
+            x_hat = x_hat.view(batch_size, n_sources, -1) # (batch_size, n_sources, T_pad)
         else:
             w = self.dropout2d(w) # (batch_size, 1, num_features, n_frames)
             latent = w # (batch_size, 1, num_features, n_frames)
@@ -225,6 +271,22 @@ class MetaTasNetBackbone(nn.Module):
         output = F.pad(x_hat, (-padding_left, -padding_right))
     
         return output, latent
+
+    def forward_separator(self, input):
+        n_sources = self.n_sources
+
+        if self.embedding:
+            input_source = torch.arange(n_sources).long()
+            embedding = self.embedding(input_source)
+            output = self.separator(input, embedding=embedding) # (batch_size, n_sources, n_bases, n_frames)
+        else:
+            output = self.separator(input)
+        
+        return output
+
+    def forward_decoder(self, input):
+        output = self.decoder(input)
+        return output
 
 class Encoder(nn.Module):
     def __init__(self, n_bases, kernel_size, stride=20, fft_size=None, hop_size=None, n_mels=256, num_filters=6, compression_rate=4):
