@@ -3,6 +3,7 @@ import random
 import numpy as np
 import musdb
 import torch
+import torch.nn.functional as F
 
 from dataset import MUSDB18Dataset
 
@@ -160,10 +161,20 @@ class WaveEvalDataset(WaveDataset):
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.max_duration = max_duration
-
-        self.json_data = []
+        self.std = {}
 
         for songID, track in enumerate(self.mus.tracks):
+            if set(self.sources) == set(__sources__):
+                mixture = track.audio.transpose(1, 0)
+            else:
+                sources = []
+                for _source in self.sources:
+                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+                sources = np.concatenate(sources, axis=0)
+                mixture = sources.sum(axis=0)
+            
+            self.std[songID] = np.std(mixture.mean(axis=0))
+            
             if max_duration is None:
                 duration = track.duration
             else:
@@ -172,12 +183,29 @@ class WaveEvalDataset(WaveDataset):
                 else:
                     duration = max_duration
             
-            data = {
+            song_data = {
                 'songID': songID,
-                'start': 0,
-                'duration': duration
+                'patches': []
             }
-            self.json_data.append(data)
+
+            for start in np.arange(0, track.duration, duration):
+                if start + duration > track.duration:
+                    data = {
+                        'start': start,
+                        'duration': track.duration - start,
+                        'padding_start': 0,
+                        'padding_end': start + duration - track.duration
+                    }
+                else:
+                    data = {
+                        'start': start,
+                        'duration': duration,
+                        'padding_start': 0,
+                        'padding_end': 0
+                    }
+                song_data['patches'].append(data)
+            
+            self.json_data.append(song_data)
     
     def __getitem__(self, idx):
         """
@@ -186,18 +214,83 @@ class WaveEvalDataset(WaveDataset):
             target <torch.Tensor>: (len(target), 1, T) if `target` is list, otherwise (1, T)
             name <str>: Artist and title of song
         """
-        mixture, target, name = super().__getitem__(idx) # mixture
-        # mixture : (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
-        # target : (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+        song_data = self.json_data[idx]
+
+        songID = song_data['songID']
+        track = self.mus.tracks[songID]
+        name = track.name
+
+        batch_mixture, batch_target = [], []
+        max_samples = 0
+
+        for data in song_data['patches']:
+            track.chunk_start = data['start']
+            track.chunk_duration = data['duration']
+
+            if set(self.sources) == set(__sources__):
+                mixture = track.audio.transpose(1, 0)
+            else:
+                sources = []
+                for _source in self.sources:
+                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+                sources = np.concatenate(sources, axis=0)
+                mixture = sources.sum(axis=0)
+            
+            if type(self.target) is list:
+                target = []
+                for _target in self.target:
+                    target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis])
+                target = np.concatenate(target, axis=0)
+                mixture = mixture[np.newaxis]
+            else:
+                target = track.targets[self.target].audio.transpose(1, 0)
+
+            mixture = torch.Tensor(mixture).float()
+            target = torch.Tensor(target).float()
+
+            max_samples = max(max_samples, mixture.size(-1))
+
+            batch_mixture.append(mixture)
+            batch_target.append(target)
         
-        n_dims = mixture.dim()
+        batch_mixture_padded, batch_target_padded = [], []
+        start_segement = True
+
+        for mixture, target in zip(batch_mixture, batch_target):
+            if mixture.size(-1) < max_samples:
+                padding = max_samples - mixture.size(-1)
+                if start_segement:
+                    mixture = F.pad(mixture, (padding, 0))
+                    target = F.pad(target, (padding, 0))
+                else:
+                    mixture = F.pad(mixture, (0, padding))
+                    target = F.pad(target, (0, padding))
+            else:
+                start_segement = False
+            
+            batch_mixture_padded.append(mixture.unsqueeze(dim=0))
+            batch_target_padded.append(target.unsqueeze(dim=0))
+
+        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
+        batch_target = torch.cat(batch_target_padded, dim=0)
+
+        # batch_mixture : (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+        # batch_target : (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+
+        print("batch_mixture:", batch_mixture.size(), "batch_target:", batch_target.size())
+        raise NotImplementedError
+
+        n_dims = batch_mixture.dim()
 
         if n_dims == 2:
             # Use only first channel for validation
-            mixture, target = mixture[0], target[0]
+            batch_mixture, batch_target = batch_mixture[0], batch_target[0]
         elif n_dims == 3:
-            mixture, target = mixture[:, 0, :], target[:, 0, :]
+            batch_mixture, batch_target = batch_mixture[:, 0, :], batch_target[:, 0, :]
         else:
             raise ValueError("Invalid tensor shape. 2D or 3D tensor is expected, but givem {}D tensor".format(n_dims))
-
-        return mixture, target, name
+        
+        return batch_mixture, batch_target, name
+    
+    def __len__(self):
+        return len(self.json_data)

@@ -9,6 +9,7 @@ from utils.utils import draw_loss_curve
 from driver import TrainerBase
 
 SAMPLE_RATE_MUSDB18 = 44100
+BITS_PER_SAMPLE_MUSDB18 = 16
 
 class Trainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -234,7 +235,6 @@ class Trainer(TrainerBase):
         """
         Validation
         """
-        return 0
         self.model.eval()
         
         valid_loss = 0
@@ -245,25 +245,71 @@ class Trainer(TrainerBase):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                output = self.model(mixture)
-                loss = self.criterion(output, sources, batch_mean=False)
+
+                print(mixture.size(), sources.size())
+                batch_size, n_sources, _, T = sources.size()
+                mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
+
+                mixture_resampled, sources_resampled = [], []
+
+                for idx in range(self.stage):
+                    _mixture, _sources = self.resamplers[idx](mixture), self.resamplers[idx](sources)
+                    _mixture, _sources = _mixture.view(batch_size, 1, -1), _sources.view(batch_size * n_sources, 1, -1)
+                    mixture_resampled.append(_mixture)
+                    sources_resampled.append(_sources)
+            
+                # Forward
+                estimated_sources, latent_estimated = self.model.extract_latent(mixture_resampled, masking=True, max_stage=self.stage)
+                reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+                _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
+
+                # Main loss
+                main_loss = 0
+                for _estimated_sources, _sources in zip(estimated_sources, sources_resampled):
+                    _sources = _sources.view(batch_size, n_sources, *_estimated_sources.size()[-2:])
+                    _loss = self.criterion.metrics['main'](_estimated_sources, _sources, batch_mean=False)
+                    main_loss = main_loss + _loss
+
+                # Reconstruction loss
+                reconstruction_loss = 0
+                for _reconstructed, _mixture in zip(reconstructed, mixture_resampled):
+                    _loss = self.criterion.metrics['reconstruction'](_reconstructed, _mixture, batch_mean=False)
+                    reconstruction_loss = reconstruction_loss + _loss
+                
+                # Similarity and dissimilarity loss
+                similarity_loss, dissimilarity_loss = 0, 0
+                for _latent_estimated, _latent_target in zip(latent_estimated, latent_target):
+                    _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
+
+                    _loss = self.criterion.metrics['similarity'](_latent_estimated, _latent_target, batch_mean=False)
+                    similarity_loss = similarity_loss + _loss
+
+                    _loss = self.criterion.metrics['dissimilarity'](_latent_estimated, batch_mean=False)
+                    dissimilarity_loss = dissimilarity_loss + _loss
+            
+                loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
+                self.optimizer.zero_grad()
+                
                 if idx < 5:
-                    mixture = mixture[0].squeeze(dim=0).detach().cpu()
-                    estimated_sources = output[0].detach().cpu()
-                    
-                    save_dir = os.path.join(self.sample_dir, titles[0])
-                    os.makedirs(save_dir, exist_ok=True)
-                    save_path = os.path.join(save_dir, "mixture.wav")
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
-                    
-                    for source_idx, estimated_source in enumerate(estimated_sources):
-                        target = self.valid_loader.dataset.target[source_idx]
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
-                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
-        
+                    for _mixture_resampled, _estimated_sources in zip(mixture_resampled, estimated_sources):
+                        print(_mixture_resampled.size(), _estimated_sources.size())
+                        raise NotImplementedError
+                        _mixture_resampled = _mixture_resampled[0].squeeze(dim=0).cpu()
+                        _estimated_sources = _estimated_sources[0].cpu()
+                        
+                        save_dir = os.path.join(self.sample_dir, titles[0])
+                        os.makedirs(save_dir, exist_ok=True)
+                        save_path = os.path.join(save_dir, "mixture.wav")
+                        torchaudio.save(save_path, _mixture_resampled, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        
+                        for source_idx, _estimated_source in enumerate(_estimated_sources):
+                            target = self.valid_loader.dataset.target[source_idx]
+                            save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
+                            torchaudio.save(save_path, _estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+            
         valid_loss /= n_valid
         
         return valid_loss
