@@ -502,7 +502,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             target = target.squeeze(axis=0)
 
             sources = np.concatenate(sources, axis=0)
-            mixture = sources.sum(axis=0, keepdims=True)
+            mixture = sources.sum(axis=(0, 1), keepdims=True)
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
