@@ -22,13 +22,36 @@ class MetaTasNet(nn.Module):
         super().__init__()
 
         self.num_stages = num_stages
-        self.n_bases = n_bases
 
         if stride is None:
             stride = kernel_size
+        
+        # Encoder & Decoder configuration
+        self.n_bases = n_bases
+        self.kernel_size, self.stride = kernel_size, stride
+        self.enc_fft_size, self.enc_hop_size = enc_hop_size, enc_hop_size
+        self.enc_compression_rate = enc_compression_rate
+        self.num_filters, self.n_mels = num_filters, n_mels
+
+        # Separator configuration
+        self.conv_name, self.norm_name = conv_name, norm_name
+
+        self.sep_hidden_channels, self.sep_bottleneck_channels, self.sep_skip_channels = sep_hidden_channels, sep_bottleneck_channels, sep_skip_channels
+        self.sep_kernel_size = sep_kernel_size
+        self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
+        
+        self.dilated, self.separable, self.causal = dilated, separable, causal
+        self.sep_nonlinear = sep_nonlinear
+        self.mask_nonlinear = mask_nonlinear
+
+        # Others
+        self.dropout = dropout
+        self.n_sources = n_sources
+        self.eps = eps
 
         net = []
         sep_in_channels = 0
+
         for idx in range(num_stages):
             scale = 2**idx
             sep_in_channels += scale*n_bases
@@ -121,6 +144,40 @@ class MetaTasNet(nn.Module):
             outputs.append(x_hat)
         
         return outputs
+    
+    def get_package(self):
+        return self.get_config()
+    
+    def get_config(self):
+        package = {
+            'n_bases': self.n_bases,
+            'kernel_size': self.kernel_size,
+            'stride': self.stride,
+            'enc_fft_size': self.enc_fft_size,
+            'enc_hop_size': self.enc_hop_size,
+            'enc_compression_rate': self.enc_compression_rate,
+            'num_filters': self.num_filters,
+            'n_mels': self.n_mels,
+            'sep_hidden_channels': self.sep_hidden_channels,
+            'sep_bottleneck_channels': self.sep_bottleneck_channels,
+            'sep_skip_channels': self.sep_skip_channels,
+            'sep_kernel_size': self.sep_kernel_size,
+            'sep_num_blocks': self.sep_num_blocks,
+            'sep_num_layers': self.sep_num_layers,
+            'dilated': self.dilated,
+            'separable': self.separable,
+            'dropout': self.dropout,
+            'sep_nonlinear': self.sep_nonlinear,
+            'mask_nonlinear': self.mask_nonlinear,
+            'causal': self.causal,
+            'conv_name': self.conv_name,
+            'norm_name': self.norm_name,
+            'n_sources': self.n_sources,
+            'eps': self.eps
+        }
+        
+        return package
+
 
     @property
     def num_parameters(self):
@@ -174,11 +231,30 @@ class MetaTasNetBackbone(nn.Module):
             eps
         """
         super().__init__()
-
+        
+        # Encoder & Decoder configuration
         self.n_bases = n_bases
         self.kernel_size, self.stride = kernel_size, stride
+        self.enc_fft_size, self.enc_hop_size = enc_hop_size, enc_hop_size
+        self.enc_compression_rate = enc_compression_rate
+        self.num_filters, self.n_mels = num_filters, n_mels
+
+        # Separator configuration
+        self.conv_name, self.norm_name = conv_name, norm_name
+
+        self.sep_in_channels = sep_in_channels
+        self.sep_hidden_channels, self.sep_bottleneck_channels, self.sep_skip_channels = sep_hidden_channels, sep_bottleneck_channels, sep_skip_channels
+        self.sep_kernel_size = sep_kernel_size
+        self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
+        
+        self.dilated, self.separable, self.causal = dilated, separable, causal
+        self.sep_nonlinear = sep_nonlinear
+        self.mask_nonlinear = mask_nonlinear
+
+        # Others
+        self.dropout = dropout
         self.n_sources = n_sources
-        self.norm_name = norm_name
+        self.eps = eps
 
         self.encoder = Encoder(n_bases, kernel_size, stride=stride, fft_size=enc_fft_size, hop_size=enc_hop_size, n_mels=n_mels, num_filters=num_filters, compression_rate=enc_compression_rate)
 
@@ -287,6 +363,40 @@ class MetaTasNetBackbone(nn.Module):
     def forward_decoder(self, input):
         output = self.decoder(input)
         return output
+
+    def get_package(self):
+        return self.get_package()
+
+    def get_config(self):
+        package = {
+            'n_bases': self.n_bases,
+            'kernel_size': self.kernel_size,
+            'stride': self.stride,
+            'enc_fft_size': self.enc_fft_size,
+            'enc_hop_size': self.enc_hop_size,
+            'enc_compression_rate': self.enc_compression_rate,
+            'num_filters': self.num_filters,
+            'n_mels': self.n_mels,
+            'sep_in_channels': self.sep_in_channels,
+            'sep_hidden_channels': self.sep_hidden_channels,
+            'sep_bottleneck_channels': self.sep_bottleneck_channels,
+            'sep_skip_channels': self.sep_skip_channels,
+            'sep_kernel_size': self.sep_kernel_size,
+            'sep_num_blocks': self.sep_num_blocks,
+            'sep_num_layers': self.sep_num_layers,
+            'dilated': self.dilated,
+            'separable': self.separable,
+            'dropout': self.dropout,
+            'sep_nonlinear': self.sep_nonlinear,
+            'mask_nonlinear': self.mask_nonlinear,
+            'causal': self.causal,
+            'conv_name': self.conv_name,
+            'norm_name': self.norm_name,
+            'n_sources': self.n_sources,
+            'eps': self.eps
+        }
+        
+        return package
 
 class Encoder(nn.Module):
     def __init__(self, n_bases, kernel_size, stride=20, fft_size=None, hop_size=None, n_mels=256, num_filters=6, compression_rate=4):

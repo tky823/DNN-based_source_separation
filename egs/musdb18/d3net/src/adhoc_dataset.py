@@ -475,50 +475,22 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             flips.append(flip)
             scales.append(scale)
         
-        sources = np.concatenate(sources, axis=0)
-        mixture = sources.sum(axis=0)
-        
         if type(self.target) is list:
             target = []
             for _target in self.target:
-                idx = self.sources.index(_target)
-                songID = songIDs[idx]
-                start = starts[idx]
-                flip = flips[idx]
-                scale = scales[idx]
-                
-                track = self.mus.tracks[songID]
-                track.chunk_start = start
-                track.chunk_duration = self.patch_duration
-
-                _target = track.targets[_target].audio.transpose(1, 0)
-                
-                if flip:
-                    _target = _target[::-1]
-
-                target.append(scale * _target[np.newaxis])
-            
+                source_idx = self.sources.index(_target)
+                _target = sources[source_idx]
+                target.append(_target)
             target = np.concatenate(target, axis=0)
-            mixture = mixture[np.newaxis]
+            mixture = sources.sum(axis=0, keepdims=True)
         else:
-            _target = self.target
-            idx = self.sources.index(_target)
-            songID = songIDs[idx]
-            start = starts[idx]
-            flip = flips[idx]
-            scale = scales[idx]
-            
-            track = self.mus.tracks[songID]
-            track.chunk_start = start
-            track.chunk_duration = self.patch_duration
-
-            _target = track.targets[_target].audio.transpose(1, 0)
-                
-            if flip:
-                _target = _target[::-1]
-            
-            target = scale * _target
-
+            source_idx = self.sources.index(self.target)
+            target = sources[source_idx]
+            mixture = sources.sum(axis=0, keepdims=True)
+        
+        sources = np.concatenate(sources, axis=0)
+        mixture = sources.sum(axis=0)
+        
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
 

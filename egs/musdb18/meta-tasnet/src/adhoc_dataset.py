@@ -70,8 +70,8 @@ class WaveTrainDataset(WaveDataset):
         Args:
             idx <int>: index
         Returns:
-            mixture <torch.Tensor>: (1, 1, T) if `target` is list, otherwise (1, T)
-            target <torch.Tensor>: (len(target), 1, T) if `target` is list, otherwise (1, T)
+            mixture <torch.Tensor>: (1, T) if `target` is list, otherwise (T,)
+            target <torch.Tensor>: (len(target), T) if `target` is list, otherwise (T,)
         """
         n_songs = len(self.mus.tracks)
         song_indices = random.choices(range(n_songs), k=len(self.sources))
@@ -108,9 +108,8 @@ class WaveTrainDataset(WaveDataset):
                 source_idx = self.sources.index(_target)
                 _target = sources[source_idx]
                 target.append(_target)
-            
             target = np.concatenate(target, axis=0)
-            mixture = target.sum(axis=0, keepdims=True)
+            mixture = sources.sum(axis=0, keepdims=True)
         else:
             source_idx = self.sources.index(self.target)
             target = sources[source_idx]
