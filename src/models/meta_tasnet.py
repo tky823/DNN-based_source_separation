@@ -44,8 +44,12 @@ class MetaTasNet(nn.Module):
         self.sep_nonlinear = sep_nonlinear
         self.mask_nonlinear = mask_nonlinear
 
+        self._additional_keys = []
+
         for key in kwargs:
-            setattr(self, key, kwargs[key])
+            if not isinstance(kwargs[key], nn.Module):
+                setattr(self, key, kwargs[key])
+                self._additional_keys.append(key)
 
         # Others
         self.dropout = dropout
@@ -180,12 +184,12 @@ class MetaTasNet(nn.Module):
             'eps': self.eps
         }
 
-        if self.embedding:
-            kwargs = {
-                'embed_dim': self.embed_dim,
-                'embed_bottleneck_channels': self.embed_bottleneck_channels
-            }
-            config['kwargs'] = kwargs
+        kwargs = {}
+
+        for key in self._additional_keys:
+            kwargs[key] = getattr(self, key)
+        
+        config['kwargs'] = kwargs
         
         return config
     
