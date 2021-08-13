@@ -326,6 +326,7 @@ class MetaTasNetBackbone(nn.Module):
 
             if self.embedding:
                 input_source = torch.arange(n_sources).long()
+                input_source = input_source.to(w_repeated.device)
                 embedding = self.embedding(input_source)
                 mask = self.separator(w_repeated, embedding=embedding) # (batch_size, n_sources, n_bases, n_frames)
             else:
