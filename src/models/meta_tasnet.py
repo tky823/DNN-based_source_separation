@@ -44,6 +44,9 @@ class MetaTasNet(nn.Module):
         self.sep_nonlinear = sep_nonlinear
         self.mask_nonlinear = mask_nonlinear
 
+        for key in kwargs:
+            setattr(self, key, kwargs[kwargs])
+
         # Others
         self.dropout = dropout
         self.n_sources = n_sources
@@ -149,7 +152,7 @@ class MetaTasNet(nn.Module):
         return self.get_config()
     
     def get_config(self):
-        package = {
+        config = {
             'n_bases': self.n_bases,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
@@ -172,12 +175,61 @@ class MetaTasNet(nn.Module):
             'causal': self.causal,
             'conv_name': self.conv_name,
             'norm_name': self.norm_name,
+            'num_stages': self.num_stages,
             'n_sources': self.n_sources,
             'eps': self.eps
         }
-        
-        return package
 
+        if self.embedding:
+            kwargs = {
+                'embed_dim': self.embed_dim,
+                'embed_bottleneck_channels': self.embed_bottleneck_channels
+            }
+            config['kwargs'] = kwargs
+        
+        return config
+    
+    @classmethod
+    def build_model(cls, model_path):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+
+        n_bases = config['n_bases']
+        kernel_size, stride = config['kernel_size'], config['stride']
+        enc_fft_size, enc_hop_size = config['enc_fft_size'], config['enc_hop_size']
+        enc_compression_rate = config['enc_compression_rate']
+        num_filters, n_mels = config['num_filters'], config['n_mels']
+
+        sep_hidden_channels, sep_bottleneck_channels, sep_skip_channels = config['sep_hidden_channels'], config['sep_bottleneck_channels'], config['sep_skip_channels']
+        sep_kernel_size = config['sep_kernel_size']
+        sep_num_blocks, sep_num_layers = config['sep_num_blocks'], config['sep_num_layers']
+
+        dilated, separable, causal = config['dilated'], config['separable'], config['causal']
+        dropout = config['dropout']
+        sep_nonlinear, mask_nonlinear = config['sep_nonlinear'], config['mask_nonlinear']
+
+        conv_name, norm_name = config['conv_name'], config['norm_name']
+        
+        num_stages = config['num_stages']
+        n_sources = config['n_sources']
+
+        eps = config['eps']
+
+        kwargs = config['kwargs']
+        
+        model = cls(
+            n_bases, kernel_size, stride=stride,
+            enc_fft_size=enc_fft_size, enc_hop_size=enc_hop_size, enc_compression_rate=enc_compression_rate, num_filters=num_filters, n_mels=n_mels,
+            sep_hidden_channels=sep_hidden_channels, sep_bottleneck_channels=sep_bottleneck_channels, sep_skip_channels=sep_skip_channels,
+            sep_kernel_size=sep_kernel_size, sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers,
+            dilated=dilated, separable=separable, dropout=dropout,
+            sep_nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            conv_name=conv_name, norm_name=norm_name,
+            num_stages=num_stages, n_sources=n_sources,
+            eps=eps, **kwargs
+        )
+        
+        return model
 
     @property
     def num_parameters(self):

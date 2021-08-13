@@ -252,8 +252,8 @@ class Trainer(TrainerBase):
 
                 mixture_resampled, sources_resampled = [], []
 
-                for idx in range(self.stage):
-                    _mixture, _sources = self.resamplers[idx](mixture), self.resamplers[idx](sources)
+                for stage_idx in range(self.stage):
+                    _mixture, _sources = self.resamplers[stage_idx](mixture), self.resamplers[stage_idx](sources)
 
                     if self.use_cuda:
                         _mixture = _mixture.cuda()
