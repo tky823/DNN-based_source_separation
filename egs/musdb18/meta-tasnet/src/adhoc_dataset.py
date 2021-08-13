@@ -112,12 +112,15 @@ class WaveTrainDataset(WaveDataset):
         else:
             source_idx = self.sources.index(self.target)
             target = sources[source_idx]
+            target = target.squeeze(axis=0)
         
-        sources = np.array(sources) # from list to np.ndarray
+        sources = np.concatenate(sources, axis=0)
         mixture = sources.sum(axis=0, keepdims=True)
 
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
+
+        print(mixture.size(), target.size())
 
         return mixture, target
 
