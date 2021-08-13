@@ -316,18 +316,20 @@ class Trainer(TrainerBase):
 
                         _mixture_resampled = _mixture_resampled.squeeze(dim=1).cpu() # (batch_size, T)
                         _estimated_sources = _estimated_sources.squeeze(dim=2).cpu() # (batch_size, n_sources, T)
-                        _mixture_resampled = _mixture_resampled.contiguous().view(1, batch_size * T)
+                        _mixture_resampled = _mixture_resampled.contiguous().view(batch_size * T)
                         _estimated_sources = _estimated_sources.permute(1, 0, 2).contiguous().view(n_sources, batch_size * T)
                         
                         save_dir = os.path.join(self.sample_dir, titles)
                         os.makedirs(save_dir, exist_ok=True)
                         save_path = os.path.join(save_dir, "mixture-{}.wav".format(_sr))
-                        torchaudio.save(save_path, _mixture_resampled, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        signal = _mixture_resampled.unsqueeze(dim=0) if _mixture_resampled.dim() == 1 else _mixture_resampled
+                        torchaudio.save(save_path, signal, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                         
                         for source_idx, _estimated_source in enumerate(_estimated_sources):
                             target = self.valid_loader.dataset.target[source_idx]
                             save_path = os.path.join(save_dir, "epoch{}-{}-{}.wav".format(epoch + 1, target, _sr))
-                            torchaudio.save(save_path, _estimated_source, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                            signal = _estimated_source.unsqueeze(dim=0) if _estimated_source.dim() == 1 else _estimated_source
+                            torchaudio.save(save_path, signal, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             
         valid_loss /= n_valid
         valid_main_loss /= n_valid
