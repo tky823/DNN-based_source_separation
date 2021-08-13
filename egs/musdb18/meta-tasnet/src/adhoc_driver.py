@@ -247,10 +247,6 @@ class Trainer(TrainerBase):
         
         with torch.no_grad():
             for idx, (mixture, sources, titles) in enumerate(self.valid_loader):
-                if self.use_cuda:
-                    mixture = mixture.cuda()
-                    sources = sources.cuda()
-                
                 batch_size, n_sources, T = sources.size()
                 mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
 
