@@ -39,8 +39,11 @@ class Trainer(TrainerBase):
         
         self.epochs = args.epochs
         
-        self.train_loss = torch.empty(self.epochs)
-        self.valid_loss = torch.empty(self.epochs)
+        self.train_loss = {}
+        self.valid_loss = {}
+        for key in ['loss', 'main', 'reconstruction', 'similarity', 'dissimilarity']:
+            self.train_loss[key] = torch.empty(self.epochs)
+            self.valid_loss[key] = torch.empty(self.epochs)
         
         self.use_cuda = args.use_cuda
         
@@ -98,15 +101,7 @@ class Trainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 10:
-                        print("Stop training")
-                        break
-                    if self.no_improvement >= 3:
-                        for param_group in self.optimizer.param_groups:
-                            prev_lr = param_group['lr']
-                            lr = 0.5 * prev_lr
-                            print("Learning rate: {} -> {}".format(prev_lr, lr))
-                            param_group['lr'] = lr
+                    # TODO: Halving learning rate
                 else:
                     self.no_improvement = 0
             
