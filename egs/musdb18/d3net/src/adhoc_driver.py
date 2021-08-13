@@ -174,6 +174,7 @@ class AdhocTrainer(TrainerBase):
                     sources: (batch_size, n_mics, n_bins, n_frames)
                     name <list<str>>: Artist and title of song
                 """
+                print(mixture.size(), source.size())
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     source = source.cuda()
