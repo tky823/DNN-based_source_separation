@@ -129,17 +129,17 @@ class AdhocTrainer(TrainerBase):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources) in enumerate(self.train_loader):
+        for idx, (mixture, source) in enumerate(self.train_loader):
             print(mixture.size(), source.size())
             if self.use_cuda:
                 mixture = mixture.cuda()
-                sources = sources.cuda()
+                source = source.cuda()
             
             mixture_amplitude = torch.abs(mixture)
-            sources_amplitude = torch.abs(sources)
+            source_amplitude = torch.abs(source)
             
             estimated_sources_amplitude = self.model(mixture_amplitude)
-            loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
+            loss = self.criterion(estimated_sources_amplitude, source_amplitude)
             
             self.optimizer.zero_grad()
             loss.backward()
