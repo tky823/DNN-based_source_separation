@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
-from dataset import TrainDataLoader, EvalDataLoader
+from adhoc_dataset import WaveTrainDataset, WaveEvalDataset, EvalDataLoader
+from dataset import TrainDataLoader
 from models.meta_tasnet import MetaTasNet
 from criterion.sdr import NegSISDR
 from adhoc_criterion import NegSimilarityLoss, MultiDissimilarityLoss, MultiLoss

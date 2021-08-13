@@ -294,4 +294,18 @@ class WaveEvalDataset(WaveDataset):
         return batch_mixture, batch_target, name
     
     def __len__(self):
-        return len(self.json_data)
+        return 2
+        # return len(self.json_data)
+
+class EvalDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
+        self.collate_fn = eval_collate_fn
+
+def eval_collate_fn(batch):
+    mixture, sources, name = batch[0]
+    
+    return mixture, sources, name
