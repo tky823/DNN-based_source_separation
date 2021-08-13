@@ -202,7 +202,7 @@ class Trainer(TrainerBase):
             dissimilarity_loss = 0
             for _latent_estimated in latent_estimated:
                 _loss = self.criterion.metrics['dissimilarity'](_latent_estimated)
-                similarity_loss = similarity_loss + _loss
+                dissimilarity_loss = dissimilarity_loss + _loss
             
             print("main:", main_loss, "reconstruction:", reconstruction_loss, "similarity:", similarity_loss, "dissimilarity:", dissimilarity_loss)
             loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
