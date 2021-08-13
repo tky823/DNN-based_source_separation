@@ -273,13 +273,13 @@ class Trainer(TrainerBase):
                 for _estimated_sources, _sources in zip(estimated_sources, sources_resampled):
                     _sources = _sources.view(batch_size, n_sources, *_estimated_sources.size()[-2:])
                     _loss = self.criterion.metrics['main'](_estimated_sources, _sources, batch_mean=False)
-                    main_loss = main_loss + _loss
+                    main_loss = main_loss + _loss.sum()
 
                 # Reconstruction loss
                 reconstruction_loss = 0
                 for _reconstructed, _mixture in zip(reconstructed, mixture_resampled):
                     _loss = self.criterion.metrics['reconstruction'](_reconstructed, _mixture, batch_mean=False)
-                    reconstruction_loss = reconstruction_loss + _loss
+                    reconstruction_loss = reconstruction_loss + _loss.sum()
                 
                 # Similarity and dissimilarity loss
                 similarity_loss, dissimilarity_loss = 0, 0
@@ -287,14 +287,12 @@ class Trainer(TrainerBase):
                     _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
 
                     _loss = self.criterion.metrics['similarity'](_latent_estimated, _latent_target, batch_mean=False)
-                    similarity_loss = similarity_loss + _loss
+                    similarity_loss = similarity_loss + _loss.sum()
 
                     _loss = self.criterion.metrics['dissimilarity'](_latent_estimated, batch_mean=False)
-                    dissimilarity_loss = dissimilarity_loss + _loss
+                    dissimilarity_loss = dissimilarity_loss + _loss.sum()
             
                 loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
-                loss = loss.sum(dim=0)
-                valid_loss += loss.item()
 
                 valid_loss += loss.item()
                 valid_main_loss += main_loss.item()
