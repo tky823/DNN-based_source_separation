@@ -211,8 +211,8 @@ class WaveEvalDataset(WaveDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: (1, 1, T) if `target` is list, otherwise (1, T)
-            target <torch.Tensor>: (len(target), 1, T) if `target` is list, otherwise (1, T)
+            mixture <torch.Tensor>: (batch_size, 1, T) if `target` is list, otherwise (batch_size, T)
+            target <torch.Tensor>: (batch_size, len(target), T) if `target` is list, otherwise (batch_size, T)
             name <str>: Artist and title of song
         """
         song_data = self.json_data[idx]
@@ -272,11 +272,8 @@ class WaveEvalDataset(WaveDataset):
             batch_mixture_padded.append(mixture.unsqueeze(dim=0))
             batch_target_padded.append(target.unsqueeze(dim=0))
 
-        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
-        batch_target = torch.cat(batch_target_padded, dim=0)
-
-        # batch_mixture : (batch_size, 1, n_mics, T) if `target` is list, otherwise (batch_size, n_mics, T)
-        # batch_target : (batch_size, len(target), n_mics, T) if `target` is list, otherwise (batch_size, n_mics, T)
+        batch_mixture = torch.cat(batch_mixture_padded, dim=0) # batch_mixture : (batch_size, 1, n_mics, T) if `target` is list, otherwise (batch_size, n_mics, T)
+        batch_target = torch.cat(batch_target_padded, dim=0) # batch_target : (batch_size, len(target), n_mics, T) if `target` is list, otherwise (batch_size, n_mics, T)
 
         n_dims = batch_mixture.dim()
 

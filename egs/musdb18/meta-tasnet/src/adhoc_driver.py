@@ -252,7 +252,7 @@ class Trainer(TrainerBase):
                     sources = sources.cuda()
 
                 print(mixture.size(), sources.size())
-                batch_size, n_sources, _, T = sources.size()
+                batch_size, n_sources, T = sources.size()
                 mixture, sources = mixture.view(batch_size, T), sources.view(batch_size * n_sources, T)
 
                 mixture_resampled, sources_resampled = [], []
@@ -303,8 +303,11 @@ class Trainer(TrainerBase):
                 valid_dissimilarity_loss += dissimilarity_loss.item()
                 
                 if idx < 5:
-                    for _mixture_resampled, _estimated_sources in zip(mixture_resampled, estimated_sources):
-                        print(_mixture_resampled.size(), _estimated_sources.size())
+                    for stage_idx in range(self.stage):
+                        _mixture_resampled, _estimated_sources = mixture_resampled[stage_idx], estimated_sources[stage_idx]
+                        _sr = self.sr[stage_idx]
+
+                        print(_mixture_resampled.size(), _estimated_sources.size(), _sr)
                         raise NotImplementedError
                         _mixture_resampled = _mixture_resampled[0].squeeze(dim=0).cpu()
                         _estimated_sources = _estimated_sources[0].cpu()
