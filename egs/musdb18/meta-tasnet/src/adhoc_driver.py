@@ -191,20 +191,17 @@ class Trainer(TrainerBase):
                 _loss = self.criterion.metrics['reconstruction'](_reconstructed, _mixture)
                 reconstruction_loss = reconstruction_loss + _loss
             
-            # Similarity loss
-            similarity_loss = 0
+            # Similarity and dissimilarity loss
+            similarity_loss, dissimilarity_loss = 0, 0
             for _latent_estimated, _latent_target in zip(latent_estimated, latent_target):
                 _latent_target = _latent_target.view(batch_size, n_sources, *_latent_target.size()[-2:])
+
                 _loss = self.criterion.metrics['similarity'](_latent_estimated, _latent_target)
                 similarity_loss = similarity_loss + _loss
 
-            # Dissimilarity loss
-            dissimilarity_loss = 0
-            for _latent_estimated in latent_estimated:
                 _loss = self.criterion.metrics['dissimilarity'](_latent_estimated)
                 dissimilarity_loss = dissimilarity_loss + _loss
             
-            print("main:", main_loss, "reconstruction:", reconstruction_loss, "similarity:", similarity_loss, "dissimilarity:", dissimilarity_loss)
             loss = main_loss + self.criterion.weights['reconstruction'] * reconstruction_loss + self.criterion.weights['similarity'] * similarity_loss + self.criterion.weights['dissimilarity'] * dissimilarity_loss
             loss = loss.mean(dim=0)
             
