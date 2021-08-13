@@ -215,10 +215,12 @@ class AdhocTrainer(TrainerBase):
 
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
-                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         
@@ -312,7 +314,8 @@ class AdhocTester(TesterBase):
                 save_dir = os.path.join(self.out_dir, name)
                 os.makedirs(save_dir, exist_ok=True)
                 estimated_path = os.path.join(save_dir, "{}.wav".format(target))
-                torchaudio.save(estimated_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 
                 test_loss += loss.item()
                 test_loss_improvement += loss_improvement
