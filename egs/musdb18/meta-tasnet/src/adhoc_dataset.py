@@ -162,6 +162,7 @@ class WaveEvalDataset(WaveDataset):
 
         self.max_duration = max_duration
         self.std = {}
+        self.json_data = []
 
         for songID, track in enumerate(self.mus.tracks):
             if set(self.sources) == set(__sources__):
