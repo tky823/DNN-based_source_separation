@@ -267,6 +267,12 @@ class Trainer(TrainerBase):
                 reconstructed, _ = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
                 _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
 
+                """
+                reconstructed, latent = self.model.extract_latent(mixture_resampled, masking=False, max_stage=self.stage)
+                mask = self.model.forward_separators(mixture_resampled, masking=False, max_stage=self.stage)
+                _, latent_target = self.model.extract_latent(sources_resampled, masking=False, max_stage=self.stage)
+                """
+
                 # Main loss
                 main_loss = 0
                 for _estimated_sources, _sources in zip(estimated_sources, sources_resampled):
@@ -303,6 +309,9 @@ class Trainer(TrainerBase):
                     for stage_idx in range(self.stage):
                         _mixture_resampled, _estimated_sources = mixture_resampled[stage_idx], estimated_sources[stage_idx]
                         _sr = self.sr[stage_idx]
+
+                        print(_mixture_resampled.size(), _estimated_sources.size())
+                        raise NotImplementedError
 
                         batch_size, n_sources, T = _estimated_sources.size()
 
