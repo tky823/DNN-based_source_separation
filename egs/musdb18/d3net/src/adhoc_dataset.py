@@ -404,6 +404,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     
     def _getitem(self, idx):
         """
+        Returns time domain signals
         Args:
             idx <int>: index
         Returns:
@@ -411,6 +412,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
             name <str>: Artist and title of song
         """
+        raise NotImplementedError("Not support naive __getitem__")
         _source = self.sources[0]
 
         data = self.json_data[_source][idx]
@@ -445,6 +447,15 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
     
     def _getitem_augmentation(self):
+        """
+        Returns time domain signals
+        Args:
+            idx <int>: index
+        Returns:
+            mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
+            target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+            name <str>: Artist and title of song
+        """
         n_songs = len(self.mus.tracks)
         song_indices = random.choices(range(n_songs), k=len(self.sources))
 
@@ -482,12 +493,16 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 _target = sources[source_idx]
                 target.append(_target)
             target = np.concatenate(target, axis=0)
+
+            sources = np.array(sources) # from list to np.ndarray
+            mixture = sources.sum(axis=0, keepdims=True)
         else:
             source_idx = self.sources.index(self.target)
             target = sources[source_idx]
-        
-        sources = np.array(sources) # from list to np.ndarray
-        mixture = sources.sum(axis=0, keepdims=True)
+            target = target.squeeze(dim=0)
+
+            sources = np.array(sources) # from list to np.ndarray
+            mixture = sources.sum(axis=0)
         
         mixture = torch.Tensor(mixture).float()
         target = torch.Tensor(target).float()
