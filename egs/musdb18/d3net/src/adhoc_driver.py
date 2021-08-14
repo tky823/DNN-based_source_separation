@@ -239,6 +239,7 @@ class AdhocTester(TesterBase):
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
         
+        self.save_dir = args.save_dir
         self.out_dir = args.out_dir
         
         if self.out_dir is not None:
@@ -247,12 +248,16 @@ class AdhocTester(TesterBase):
         
         self.use_cuda = args.use_cuda
         
-        package = torch.load(args.model_path, map_location=lambda storage, loc: storage)
-        
         if isinstance(self.model, nn.DataParallel):
-            self.model.module.load_state_dict(package['state_dict'])
+            for target in self.sources:
+                model_path = os.path.join(self.save_dir, target, "{}.pth".format(args.model_choice))
+                package = torch.load(model_path, map_location=lambda storage, loc: storage)
+                self.model.module.net[target].load_state_dict(package['state_dict'])
         else:
-            self.model.load_state_dict(package['state_dict'])
+            for target in self.sources:
+                model_path = os.path.join(self.save_dir, target, "{}.pth".format(args.model_choice))
+                package = torch.load(model_path, map_location=lambda storage, loc: storage)
+                self.model.net[target].load_state_dict(package['state_dict'])
     
     def run(self):
         self.model.eval()
