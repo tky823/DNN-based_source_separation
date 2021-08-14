@@ -7,6 +7,7 @@ low:
   kernel_size: 3
   scale: 2
   num_d2blocks: [2, 2, 2, 2, 2, 2, 2]
+  dilated: [True, True, True, True, True, True, True]
   depth: [5, 5, 5, 5, 4, 4, 4]
 middle:
   sections: 1344
@@ -15,6 +16,7 @@ middle:
   kernel_size: 3
   scale: 2
   num_d2blocks: [1, 1, 1, 1, 1, 1, 1]
+  dilated: [True, True, True, True, True, True, True]
   depth: [1, 1, 1, 1, 1, 1, 1]
 full:
   num_features: 32
@@ -22,8 +24,10 @@ full:
   kernel_size: 3
   scale: 2
   num_d2blocks: [4, 5, 6, 7, 8, 6, 5, 4, 4]
+  dilated: [True, True, True, True, True, True, True, True, True]
   depth: [2, 2, 2, 2, 2, 2, 2, 2, 2]
 final:
   growth_rate: 12
   kernel_size: 3
+  dilated: True
   depth: 3

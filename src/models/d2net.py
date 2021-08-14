@@ -3,15 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-EPS=1e-12
+EPS = 1e-12
      
 class D2Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, dilated=True, depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: # of input channels
             growth_rate <int> or <list<int>>: # of output channels
             kernel_size <int> or <tuple<int>>: Kernel size
+            dilated <bool> or <list<bool>>: Applies dilated convolution.
             depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
         """
         super().__init__()
@@ -26,6 +27,16 @@ class D2Block(nn.Module):
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
         
+        if type(dilated) is bool:
+            assert depth is not None, "Specify `depth`"
+            dilated = [dilated] * depth
+        elif type(dilated) is list:
+            if depth is not None:
+                assert depth == len(dilated), "`depth` is different from `len(dilated)`"
+            depth = len(dilated)
+        else:
+            raise ValueError("Not support dilated={}".format(dilated))
+        
         self.growth_rate = growth_rate
         self.depth = depth
 
@@ -34,7 +45,10 @@ class D2Block(nn.Module):
 
         for idx in range(depth):
             _out_channels = sum(growth_rate[idx:])
-            dilation = 2**idx
+            if dilated:
+                dilation = 2**idx
+            else:
+                dilation = 1
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, eps=eps)
             net.append(conv_block)
             _in_channels = growth_rate[idx]
@@ -108,20 +122,39 @@ def _test_d2block():
     batch_size = 4
     n_bins, n_frames = 16, 64
     in_channels = 3
-    growth_rate = 2
     kernel_size = (3, 3)
     depth = 4
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+
+    print("-"*10, "D2 Block when `growth_rate` is given as int and `dilated` is given as bool.", "-"*10)
+
+    growth_rate = 2
+    dilated = True
     model = D2Block(in_channels, growth_rate, kernel_size=kernel_size, depth=depth)
+
+    print("-"*10, "D2 Block", "-"*10)
+    print(model)
+    output = model(input)
+    print(input.size(), output.size())
+    print()
+
+    print("-"*10, "D2 Block when `growth_rate` is given as list and `dilated` is given as bool.", "-"*10)
+
+    growth_rate = [3, 4, 5, 6] # depth = 4
+    dilated = False
+    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size)
 
     print(model)
     output = model(input)
     print(input.size(), output.size())
     print()
 
-    growth_rate = [3, 4, 5, 6]
-    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size)
+    print("-"*10, "D2 Block when `growth_rate` is given as list and `dilated` is given as list.", "-"*10)
+
+    growth_rate = [3, 4, 5, 6] # depth = 4
+    dilated = [True, False, False, True] # depth = 4
+    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size, dilated=dilated)
 
     print(model)
     output = model(input)
@@ -130,4 +163,5 @@ def _test_d2block():
 if __name__ == '__main__':
     torch.manual_seed(111)
 
+    print("="*10, "D2 Block", "="*10)
     _test_d2block()

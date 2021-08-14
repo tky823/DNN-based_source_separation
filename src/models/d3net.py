@@ -13,7 +13,7 @@ Reference: D3Net: Densely connected multidilated DenseNet for music source separ
 See https://arxiv.org/abs/2010.01733
 """
 
-EPS=1e-12
+EPS = 1e-12
 
 class D3Net(nn.Module):
     def __init__(
@@ -23,9 +23,10 @@ class D3Net(nn.Module):
         kernel_size,
         bands=['low','middle'], sections=[256,1344],
         scale=(2,2),
-        num_d2blocks=None, depth=None,
+        num_d2blocks=None, dilated=True, depth=None,
         growth_rate_final=None,
         kernel_size_final=None,
+        dilated_final=True,
         depth_final=None,
         eps=EPS,
         **kwargs
@@ -46,8 +47,8 @@ class D3Net(nn.Module):
                 _out_channels = out_channels
             else:
                 _out_channels = None
-            net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], depth=depth[band], out_channels=_out_channels, eps=eps)
-        net['full'] = D3NetBackbone(in_channels, num_features['full'], growth_rate['full'], kernel_size['full'], scale=scale['full'], num_d2blocks=num_d2blocks['full'], depth=depth['full'], eps=eps)
+            net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], dilated=dilated[band], depth=depth[band], out_channels=_out_channels, eps=eps)
+        net['full'] = D3NetBackbone(in_channels, num_features['full'], growth_rate['full'], kernel_size['full'], scale=scale['full'], num_d2blocks=num_d2blocks['full'], dilated=dilated['full'], depth=depth['full'], eps=eps)
 
         self.net = nn.ModuleDict(net)
 
@@ -56,7 +57,7 @@ class D3Net(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, depth=depth_final, eps=eps)
+        self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, eps=eps)
         self.norm2d = nn.BatchNorm2d(growth_rate_final, eps=eps)
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.nonlinear2d = nn.ReLU()
@@ -68,9 +69,10 @@ class D3Net(nn.Module):
         self.growth_rate = growth_rate
         self.kernel_size = kernel_size
         self.scale = scale
-        self.num_d2blocks, self.depth = num_d2blocks, depth
+        self.num_d2blocks, self.dilated, self.depth = num_d2blocks, dilated, depth
         self.growth_rate_final = growth_rate_final
         self.kernel_size_final = kernel_size_final
+        self.dilated_final = dilated_final
         self.depth_final = depth_final
         self.eps = eps
         
@@ -125,9 +127,10 @@ class D3Net(nn.Module):
             'kernel_size': self.kernel_size,
             'bands': self.bands, 'sections': self.sections,
             'scale': self.scale,
-            'num_d2blocks': self.num_d2blocks, 'depth': self.depth,
+            'num_d2blocks': self.num_d2blocks, 'dilated': self.dilated, 'depth': self.depth,
             'growth_rate_final': self.growth_rate_final,
             'kernel_size_final': self.kernel_size_final,
+            'dilated_final': self.dilated_final,
             'depth_final': self.depth_final,
             'eps': self.eps
         }
@@ -160,13 +163,17 @@ class D3Net(nn.Module):
         num_d2blocks = {
             band: config[band]['num_d2blocks'] for band in bands + ['full']
         }
+        dilated = {
+            band: config[band]['dilated'] for band in bands + ['full']
+        }
         depth = {
             band: config[band]['depth'] for band in bands + ['full']
         }
 
         growth_rate_final = config['final']['growth_rate']
         kernel_size_final = config['final']['kernel_size']
-        depth_final = config['final']['depth']
+        dilated_final = config['final']['dilated']
+        depth_final = config['final'].get('depth') or True
 
         eps = config.get('eps') or EPS
 
@@ -176,9 +183,10 @@ class D3Net(nn.Module):
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
-            num_d2blocks=num_d2blocks, depth=depth,
+            num_d2blocks=num_d2blocks, dilated=dilated, depth=depth,
             growth_rate_final=growth_rate_final,
             kernel_size_final=kernel_size_final,
+            dilated_final=dilated_final,
             depth_final=depth_final,
             eps=eps
         )
@@ -196,10 +204,11 @@ class D3Net(nn.Module):
         bands, sections = config['bands'], config['sections']
         scale = config['scale']
 
-        num_d2blocks, depth = config['num_d2blocks'], config['depth']
+        num_d2blocks, dilated, depth = config['num_d2blocks'], config['dilated'], config['depth']
 
         growth_rate_final = config['growth_rate_final']
         kernel_size_final = config['kernel_size_final']
+        dilated_final = config['dilated_final']
         depth_final = config['depth_final']
 
         eps = config['eps']
@@ -210,9 +219,10 @@ class D3Net(nn.Module):
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
-            num_d2blocks=num_d2blocks, depth=depth,
+            num_d2blocks=num_d2blocks, dilated=dilated, depth=depth,
             growth_rate_final=growth_rate_final,
             kernel_size_final=kernel_size_final,
+            dilated_final=dilated_final,
             depth_final=depth_final,
             eps=eps
         )
@@ -230,7 +240,7 @@ class D3Net(nn.Module):
         return _num_parameters
 
 class D3NetBackbone(nn.Module):
-    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, depth=None, out_channels=None, eps=EPS):
+    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, dilated=True, depth=None, out_channels=None, eps=EPS):
         """
         Args:
             in_channels <int>
@@ -250,7 +260,7 @@ class D3NetBackbone(nn.Module):
         self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size, stride=(1,1))
 
         encoder, decoder = [], []
-        encoder = Encoder(num_features, growth_rate[:num_encoder_blocks], kernel_size=kernel_size, down_scale=scale, num_d2blocks=num_d2blocks[:num_encoder_blocks], depth=depth[:num_encoder_blocks], eps=eps)
+        encoder = Encoder(num_features, growth_rate[:num_encoder_blocks], kernel_size=kernel_size, down_scale=scale, num_d2blocks=num_d2blocks[:num_encoder_blocks], dilated=dilated[:num_encoder_blocks], depth=depth[:num_encoder_blocks], eps=eps)
 
         skip_channels = []
         for downsample_block in encoder.net:
@@ -259,10 +269,10 @@ class D3NetBackbone(nn.Module):
 
         # encoder.net[-1].out_channels == skip_channels[0]
         _in_channels, _growth_rate = encoder.net[-1].out_channels, growth_rate[num_encoder_blocks]
-        bottleneck_d3block = D3Block(_in_channels, _growth_rate, kernel_size=kernel_size, num_blocks=num_d2blocks[num_encoder_blocks], depth=depth[num_encoder_blocks])
+        bottleneck_d3block = D3Block(_in_channels, _growth_rate, kernel_size=kernel_size, num_blocks=num_d2blocks[num_encoder_blocks], dilated=dilated[num_encoder_blocks], depth=depth[num_encoder_blocks])
 
         _in_channels = bottleneck_d3block.out_channels
-        decoder = Decoder(_in_channels, skip_channels, growth_rate[num_encoder_blocks+1:], kernel_size=kernel_size, up_scale=scale, num_d2blocks=num_d2blocks[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], eps=eps)
+        decoder = Decoder(_in_channels, skip_channels, growth_rate[num_encoder_blocks+1:], kernel_size=kernel_size, up_scale=scale, num_d2blocks=num_d2blocks[num_encoder_blocks+1:], dilated=dilated[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], eps=eps)
         
         self.encoder = encoder
         self.bottleneck_conv2d = bottleneck_d3block
@@ -305,7 +315,7 @@ class D3NetBackbone(nn.Module):
         return output
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_d2blocks=None, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_d2blocks=None, dilated=True, depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: 
@@ -329,6 +339,13 @@ class Encoder(nn.Module):
             assert num_d3blocks == len(num_d2blocks), "Invalid length of `num_d2blocks`"
         else:
             raise ValueError("Invalid type of `num_d2blocks`.")
+
+        if type(dilated) is bool:
+            dilated = [dilated] * num_d3blocks
+        elif type(dilated) is list:
+            assert num_d3blocks == len(dilated), "Invalid length of `dilated`"
+        else:
+            raise ValueError("Invalid type of `dilated`.")
             
         if depth is None:
             depth = [None] * num_d3blocks
@@ -345,7 +362,7 @@ class Encoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_d3blocks):
-            downsample_block = DownSampleD3Block(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, num_blocks=num_d2blocks[idx], depth=depth[idx], eps=eps)
+            downsample_block = DownSampleD3Block(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], depth=depth[idx], eps=eps)
             net.append(downsample_block)
             _in_channels = downsample_block.out_channels
         
@@ -368,7 +385,7 @@ class Encoder(nn.Module):
         return output, skip
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), num_d2blocks=None, depth=None, eps=EPS):
+    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), num_d2blocks=None, dilated=True, depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: 
@@ -393,7 +410,14 @@ class Decoder(nn.Module):
             assert num_d3blocks == len(num_d2blocks), "Invalid length of `num_d2blocks`"
         else:
             raise ValueError("Invalid type of `num_d2blocks`.")
-            
+        
+        if type(dilated) is bool:
+            dilated = [dilated] * num_d3blocks
+        elif type(dilated) is list:
+            assert num_d3blocks == len(dilated), "Invalid length of `dilated`"
+        else:
+            raise ValueError("Invalid type of `dilated`.")
+
         if depth is None:
             depth = [None] * num_d3blocks
         elif type(depth) is int:
@@ -409,7 +433,7 @@ class Decoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_d3blocks):
-            upsample_block = UpSampleBlock(_in_channels, growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], depth=depth[idx], eps=eps)
+            upsample_block = UpSampleBlock(_in_channels, growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], depth=depth[idx], eps=eps)
             net.append(upsample_block)
             _in_channels = upsample_block.out_channels + skip_channels[idx]
         
@@ -447,13 +471,14 @@ class Decoder(nn.Module):
         return output
 
 class D3Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), num_blocks=None, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), num_blocks=None, dilated=True, depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: # of input channels
             growth_rate <int> or <list<int>>: # of output channels, TODO: <list<list<int>>>
             kernel_size <int> or <tuple<int>>: Kernel size
             num_blocks <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `num_blocks`.
+            dilated <bool> or <list<bool>>: Applies dilated convolution.
             depth <int>: 
         """
         super().__init__()
@@ -467,6 +492,16 @@ class D3Block(nn.Module):
             num_blocks = len(growth_rate)
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
+
+        if type(dilated) is bool:
+            assert num_blocks is not None, "Specify `num_blocks`"
+            dilated = [dilated] * num_blocks
+        elif type(dilated) is list:
+            if num_blocks is not None:
+                assert num_blocks == len(dilated), "`num_blocks` is different from `len(dilated)`"
+            num_blocks = len(dilated)
+        else:
+            raise ValueError("Not support growth_rate={}".format(growth_rate))
     
         self.growth_rate = growth_rate
         self.num_blocks = num_blocks
@@ -477,7 +512,7 @@ class D3Block(nn.Module):
 
         for idx in range(num_blocks):
             _out_channels = sum(growth_rate[idx:])
-            d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, depth=depth, eps=eps)
+            d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], depth=depth, eps=eps)
             net.append(d2block)
             _in_channels = growth_rate[idx]
 
@@ -514,12 +549,12 @@ class DownSampleD3Block(nn.Module):
     """
     D3Block + down sample
     """
-    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), num_blocks=None, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), num_blocks=None, dilated=True, depth=None, eps=EPS):
         super().__init__()
 
         self.down_scale = _pair(down_scale)
 
-        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, eps=eps)
+        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, depth=depth, eps=eps)
         self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
 
         self.out_channels = self.d3block.out_channels
@@ -556,12 +591,12 @@ class DownSampleD3Block(nn.Module):
         return output, skip
 
 class UpSampleBlock(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, depth=None, eps=EPS):
         super().__init__()
 
         self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
-        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, depth=depth, eps=eps)
+        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, depth=depth, eps=eps)
 
         self.out_channels = self.d3block.out_channels
     
@@ -660,10 +695,11 @@ def _test_d3net_backbone():
     kernel_size = 3
     num_d2blocks = [2, 2, 2, 2, 2]
     
+    dilated = [True, True, True, True, True]
     depth = [3, 3, 4, 2, 2]
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
 
-    model = D3NetBackbone(in_channels, num_features, growth_rate, kernel_size, num_d2blocks=num_d2blocks, depth=depth)
+    model = D3NetBackbone(in_channels, num_features, growth_rate, kernel_size, num_d2blocks=num_d2blocks, dilated=dilated, depth=depth)
 
     print(model)
 
