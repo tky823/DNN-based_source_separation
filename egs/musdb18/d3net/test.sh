@@ -39,6 +39,7 @@ save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_siz
 model_choice="last"
 
 log_dir="${save_dir}/log"
+json_dir="${save_dir}/json"
 
 if [ ${is_wav} -eq 0 ]; then
     out_dir="${save_dir}/musdb18/test"
@@ -65,6 +66,7 @@ test.py \
 --sources ${sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
+--json_dir "${json_dir}" \
 --save_dir "${save_dir}" \
 --model_choice "${model_choice}" \
 --use_cuda ${use_cuda} \

@@ -1,6 +1,7 @@
 import os
 import time
 
+import museval
 import norbert
 import torch
 import torchaudio
@@ -241,10 +242,15 @@ class AdhocTester(TesterBase):
         
         self.save_dir = args.save_dir
         self.out_dir = args.out_dir
+        self.json_dir = args.json_dir
         
         if self.out_dir is not None:
             self.out_dir = os.path.abspath(args.out_dir)
             os.makedirs(self.out_dir, exist_ok=True)
+        
+        if self.json_dir is not None:
+            self.json_dir = os.path.abspath(args.json_dir)
+            os.makedirs(self.json_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
         
@@ -320,11 +326,11 @@ class AdhocTester(TesterBase):
                 estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
                 estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
-                save_dir = os.path.join(self.out_dir, name)
-                os.makedirs(save_dir, exist_ok=True)
+                track_dir = os.path.join(self.out_dir, name)
+                os.makedirs(track_dir, exist_ok=True)
 
                 for source_idx, target in enumerate(self.sources):
-                    estimated_path = os.path.join(save_dir, "{}.wav".format(target))
+                    estimated_path = os.path.join(track_dir, "{}.wav".format(target))
                     estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
@@ -344,6 +350,16 @@ class AdhocTester(TesterBase):
             s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
 
         print(s)
+
+        self.evaluate_all()
+
+    def evaluate_all(self):
+        score = museval.eval_mus_dir(
+            dataset=self.loader.dataset.mus,
+            estimates_dir=self.out_dir,
+            output_dir=self.json_dir,
+        )
+        print(score)
 
 def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=EPS):
     """
