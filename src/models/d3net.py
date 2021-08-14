@@ -173,7 +173,7 @@ class D3Net(nn.Module):
         growth_rate_final = config['final']['growth_rate']
         kernel_size_final = config['final']['kernel_size']
         dilated_final = config['final']['dilated']
-        depth_final = config['final'].get('depth') or True
+        depth_final = config['final']['depth']
 
         eps = config.get('eps') or EPS
 
