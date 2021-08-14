@@ -15,6 +15,42 @@ See https://arxiv.org/abs/2010.01733
 
 EPS = 1e-12
 
+class ParallelD3Net(nn.Module):
+    def __init__(self, modules):
+        super().__init__()
+
+        if isinstance(modules, nn.ModuleDict):
+            pass
+        elif isinstance(modules, dict):
+            modules = nn.ModuleDict(modules)
+        else:
+            raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
+    
+        for key in modules.keys():
+            module = modules[key]
+            if not isinstance(module, D3Net):
+                raise ValueError("All modules must be D3Net.")
+        
+        self.net = modules
+
+    def forward(self, input, target=None):
+        if type(target) is not str:
+            raise TypeError("`target` is expected str, but given {}".format(type(target)))
+        
+        output = self.net[target](input)
+
+        return output
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
+
 class D3Net(nn.Module):
     def __init__(
         self,

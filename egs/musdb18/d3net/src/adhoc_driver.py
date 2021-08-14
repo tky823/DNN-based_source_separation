@@ -1,6 +1,7 @@
 import os
 import time
 
+import norbert
 import torch
 import torchaudio
 import torch.nn as nn
@@ -232,6 +233,7 @@ class AdhocTester(TesterBase):
 
     def _reset(self, args):
         self.sr = args.sr
+        self.sources = args.sources
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.loader.dataset.window
@@ -260,67 +262,108 @@ class AdhocTester(TesterBase):
         n_test = len(self.loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, source, T, name) in enumerate(self.loader):
+            for idx, (mixture, sources, T, name) in enumerate(self.loader):
                 """
-                    mixture: (batch_size, 2, n_bins, n_frames)
-                    source: (batch_size, 2, n_bins, n_frames)
+                    mixture: (batch_size, 1, n_mics, n_bins, n_frames)
+                    sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
                     T <float>: Length in time domain
                     name <str>: Artist and title of song
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
-                    source = source.cuda()
+                    sources = sources.cuda()
                 
                 samples = int(self.sr * T)
+                batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
                 
                 mixture_amplitude = torch.abs(mixture)
-                source_amplitude = torch.abs(source)
+                sources_amplitude = torch.abs(sources)
                 
-                loss_mixture = self.criterion(mixture_amplitude, source_amplitude, batch_mean=False)
-                loss_mixture = loss_mixture.mean(dim=0)
-                
-                estimated_source_amplitude = []
+                estimated_sources_amplitude = {
+                    target: [] for target in self.sources
+                }
 
                 # Serial operation
                 for _mixture_amplitude in mixture_amplitude:
-                    _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=0)
-                    _estimated_source_amplitude = self.model(_mixture_amplitude)
-                    estimated_source_amplitude.append(_estimated_source_amplitude)
+                    # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
+                    for target in self.sources:
+                        _estimated_sources_amplitude = self.model(_mixture_amplitude, target=target)
+                        estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
                 
-                estimated_source_amplitude = torch.cat(estimated_source_amplitude, dim=0)
-                loss = self.criterion(estimated_source_amplitude, source_amplitude, batch_mean=False)
-                loss = loss.mean(dim=0)
+                estimated_sources_amplitude = [
+                    torch.cat(estimated_sources_amplitude[target], dim=0).unsqueeze(dim=0) for target in self.sources
+                ]
+                estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
+                estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
+                
+                mixture = mixture.permute(0, 2, 3, 1, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                mixture_amplitude = mixture_amplitude.permute(0, 2, 3, 1, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                sources_amplitude = sources_amplitude.permute(0, 2, 3, 1, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
 
-                loss_improvement = loss_mixture.item() - loss.item()
+                loss_mixture = self.criterion(mixture_amplitude, sources_amplitude, batch_mean=False)
+                loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
 
-                ratio = estimated_source_amplitude / torch.clamp(mixture_amplitude, min=EPS)
-                estimated_source = ratio * mixture # -> (batch_size, n_mics, n_bins, n_frames)
+                loss_improvement = loss_mixture - loss
 
-                estimated_source_channels = estimated_source.size()[:-2] # -> (batch_size, n_mics)
-                estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
-                
-                estimated_source = estimated_source.cpu()
-                estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T)
+                mixture = mixture.cpu()
+                estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
-                estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (batch_size, n_mics, T_segment)
-                
-                batch_size, n_mics, T_segment = estimated_source.size()
-                
-                estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
-                estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)[:, :samples]
-                
-                # Estimated source
-                target = self.loader.dataset.target
+                estimated_sources = apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude)
+                estimated_sources_channels = estimated_sources.size()[:-2]
+
+                estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+
+                estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
+
                 save_dir = os.path.join(self.out_dir, name)
                 os.makedirs(save_dir, exist_ok=True)
-                estimated_path = os.path.join(save_dir, "{}.wav".format(target))
-                signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+
+                for source_idx, target in enumerate(self.sources):
+                    estimated_path = os.path.join(save_dir, "{}.wav".format(target))
+                    estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
+                    signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 
-                test_loss += loss.item()
-                test_loss_improvement += loss_improvement
+                test_loss += loss # (n_sources,)
+                test_loss_improvement += loss_improvement # (n_sources,)
 
         test_loss /= n_test
         test_loss_improvement /= n_test
         
-        print("Loss: {:.3f}, loss improvement: {:3f}".format(test_loss, test_loss_improvement))
+        s = "Loss:"
+        for idx, target in enumerate(self.sources):
+            s += " ({}) {:.3f}".format(target, test_loss[idx].item())
+        
+        s += ", loss improvement:"
+        for idx, target in enumerate(self.sources):
+            s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
+
+        print(s)
+
+def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=EPS):
+    """
+    Args:
+        mixture <torch.Tensor>: (n_channels, n_bins, n_frames), complex tensor
+        estimated_amplitude <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), real (nonnegative) tensor
+    Returns:
+        estimated_sources <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), complex tensor
+    """
+    assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
+
+    assert mixture.dim() == 3, "mixture.dim() is expected 3, but given {}.".format(mixture.dim())
+    assert estimated_amplitude.dim() == 4, "estimated_amplitude.dim() is expected 4, but given {}.".format(estimated_amplitude.dim())
+
+    device = mixture.device
+    dtype = mixture.dtype
+
+    mixture = mixture.detach().cpu().numpy()
+    estimated_amplitude = estimated_amplitude.detach().cpu().numpy()
+
+    mixture = mixture.transpose(2, 1, 0)
+    estimated_amplitude = estimated_amplitude.transpose(3, 2, 1, 0)
+
+    estimated_sources = norbert.wiener(estimated_amplitude, mixture, eps=eps)
+    estimated_sources = estimated_sources.transpose(3, 2, 1, 0)
+    estimated_sources = torch.Tensor(estimated_sources).to(device, dtype)
+
+    return estimated_sources

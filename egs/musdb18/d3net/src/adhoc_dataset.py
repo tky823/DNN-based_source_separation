@@ -285,6 +285,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         batch_mixture_padded, batch_target_padded = [], []
         start_segement = True
 
+        # TODO: remove start segement
         for mixture, target in zip(batch_mixture, batch_target):
             if mixture.size(-1) < max_samples:
                 padding = max_samples - mixture.size(-1)
