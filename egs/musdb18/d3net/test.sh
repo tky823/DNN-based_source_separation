@@ -3,7 +3,6 @@
 exp_dir="./exp"
 
 sources="[drums,bass,other,vocals]"
-target='vocals'
 patch=256
 
 musdb18_root="../../../dataset/musdb18"
@@ -39,9 +38,7 @@ save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_siz
 
 model_choice="last"
 
-model_dir="${save_dir}/${target}/model"
-model_path="${model_dir}/${model_choice}.pth"
-log_dir="${save_dir}/${target}/log"
+log_dir="${save_dir}/log"
 
 if [ ${is_wav} -eq 0 ]; then
     out_dir="${save_dir}/musdb18/test"
