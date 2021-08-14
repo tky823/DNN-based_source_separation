@@ -250,12 +250,12 @@ class AdhocTester(TesterBase):
         
         if isinstance(self.model, nn.DataParallel):
             for target in self.sources:
-                model_path = os.path.join(self.save_dir, target, "{}.pth".format(args.model_choice))
+                model_path = os.path.join(self.save_dir, target, "model", "{}.pth".format(args.model_choice))
                 package = torch.load(model_path, map_location=lambda storage, loc: storage)
                 self.model.module.net[target].load_state_dict(package['state_dict'])
         else:
             for target in self.sources:
-                model_path = os.path.join(self.save_dir, target, "{}.pth".format(args.model_choice))
+                model_path = os.path.join(self.save_dir, target, "model", "{}.pth".format(args.model_choice))
                 package = torch.load(model_path, map_location=lambda storage, loc: storage)
                 self.model.net[target].load_state_dict(package['state_dict'])
     
