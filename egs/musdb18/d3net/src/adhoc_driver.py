@@ -326,7 +326,7 @@ class AdhocTester(TesterBase):
                 estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
                 estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
-                track_dir = os.path.join(self.out_dir, name)
+                track_dir = os.path.join(self.estimates_dir, name)
                 os.makedirs(track_dir, exist_ok=True)
 
                 for source_idx, target in enumerate(self.sources):
