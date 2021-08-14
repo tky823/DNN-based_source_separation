@@ -351,9 +351,6 @@ class AdhocTester(TesterBase):
 
         print(s)
 
-        self.evaluate_all()
-
-    def evaluate_all(self):
         score = museval.eval_mus_dir(
             dataset=self.loader.dataset.mus,
             estimates_dir=self.out_dir,
