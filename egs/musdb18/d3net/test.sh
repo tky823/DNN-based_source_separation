@@ -37,7 +37,7 @@ gpu_id="0"
 
 save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}-${anneal_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
-model_choice="best"
+model_choice="last"
 
 model_dir="${save_dir}/${target}/model"
 model_path="${model_dir}/${model_choice}.pth"
