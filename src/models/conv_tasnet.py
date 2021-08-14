@@ -113,9 +113,9 @@ class ConvTasNet(nn.Module):
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
-        
-    def get_package(self):
-        package = {
+    
+    def get_config(self):
+        config = {
             'in_channels': self.in_channels,
             'n_bases': self.n_bases,
             'kernel_size': self.kernel_size,
@@ -140,7 +140,10 @@ class ConvTasNet(nn.Module):
             'eps': self.eps
         }
         
-        return package
+        return config
+
+    def get_package(self):
+        return self.get_config()
     
     @classmethod
     def build_model(cls, model_path):
