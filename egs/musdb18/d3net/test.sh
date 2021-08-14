@@ -66,9 +66,9 @@ test.py \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
 --sources ${sources} \
---target ${target} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
---model_path "${model_path}" \
+--save_dir "${save_dir}"
+--model_choice "${model_choice}" \
 --use_cuda ${use_cuda} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
