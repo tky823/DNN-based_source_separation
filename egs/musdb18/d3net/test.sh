@@ -42,9 +42,9 @@ log_dir="${save_dir}/log"
 json_dir="${save_dir}/json"
 
 if [ ${is_wav} -eq 0 ]; then
-    out_dir="${save_dir}/musdb18/test"
+    estimates_dir="${save_dir}/musdb18/test"
 else
-    out_dir="${save_dir}/musdb18hq/test"
+    estimates_dir="${save_dir}/musdb18hq/test"
 fi
 
 if [ ! -e "${log_dir}" ]; then
@@ -65,7 +65,7 @@ test.py \
 --hop_size ${hop_size} \
 --sources ${sources} \
 --criterion ${criterion} \
---out_dir "${out_dir}" \
+--estimates_dir "${estimates_dir}" \
 --json_dir "${json_dir}" \
 --save_dir "${save_dir}" \
 --model_choice "${model_choice}" \

@@ -241,12 +241,12 @@ class AdhocTester(TesterBase):
         self.normalize = self.loader.dataset.normalize
         
         self.save_dir = args.save_dir
-        self.out_dir = args.out_dir
+        self.estimates_dir = args.estimates_dir
         self.json_dir = args.json_dir
         
-        if self.out_dir is not None:
-            self.out_dir = os.path.abspath(args.out_dir)
-            os.makedirs(self.out_dir, exist_ok=True)
+        if self.estimates_dir is not None:
+            self.estimates_dir = os.path.abspath(args.estimates_dir)
+            os.makedirs(self.estimates_dir, exist_ok=True)
         
         if self.json_dir is not None:
             self.json_dir = os.path.abspath(args.json_dir)
@@ -353,7 +353,7 @@ class AdhocTester(TesterBase):
 
         score = museval.eval_mus_dir(
             dataset=self.loader.dataset.mus,
-            estimates_dir=self.out_dir,
+            estimates_dir=self.estimates_dir,
             output_dir=self.json_dir,
         )
         print(score)
