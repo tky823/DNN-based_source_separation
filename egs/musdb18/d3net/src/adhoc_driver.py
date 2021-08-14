@@ -299,16 +299,16 @@ class AdhocTester(TesterBase):
                     torch.cat(estimated_sources_amplitude[target], dim=0).unsqueeze(dim=0) for target in self.sources
                 ]
                 estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
-                estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
-                
+                estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4)
+                estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
+
                 mixture = mixture.permute(0, 2, 3, 1, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
                 mixture_amplitude = mixture_amplitude.permute(0, 2, 3, 1, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
                 sources_amplitude = sources_amplitude.permute(0, 2, 3, 1, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
 
-                loss_mixture = self.criterion(mixture_amplitude, sources_amplitude, batch_mean=False)
-                loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
-
-                loss_improvement = loss_mixture - loss
+                loss_mixture = self.criterion(mixture_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
+                loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
+                loss_improvement = loss_mixture - loss # (n_sources,)
 
                 mixture = mixture.cpu()
                 estimated_sources_amplitude = estimated_sources_amplitude.cpu()
@@ -316,8 +316,8 @@ class AdhocTester(TesterBase):
                 estimated_sources = apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude)
                 estimated_sources_channels = estimated_sources.size()[:-2]
 
+                estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
                 estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
-
                 estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                 save_dir = os.path.join(self.out_dir, name)
@@ -348,14 +348,20 @@ class AdhocTester(TesterBase):
 def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=EPS):
     """
     Args:
-        mixture <torch.Tensor>: (n_channels, n_bins, n_frames), complex tensor
+        mixture <torch.Tensor>: (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames), complex tensor
         estimated_amplitude <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), real (nonnegative) tensor
     Returns:
         estimated_sources <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), complex tensor
     """
     assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
 
-    assert mixture.dim() == 3, "mixture.dim() is expected 3, but given {}.".format(mixture.dim())
+    n_dims = mixture.dim()
+
+    if n_dims == 4:
+        mixture = mixture.squeeze(dim=0)
+    elif n_dims != 3:
+        raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
+
     assert estimated_amplitude.dim() == 4, "estimated_amplitude.dim() is expected 4, but given {}.".format(estimated_amplitude.dim())
 
     device = mixture.device
@@ -366,9 +372,8 @@ def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_firs
 
     mixture = mixture.transpose(2, 1, 0)
     estimated_amplitude = estimated_amplitude.transpose(3, 2, 1, 0)
-
     estimated_sources = norbert.wiener(estimated_amplitude, mixture, eps=eps)
     estimated_sources = estimated_sources.transpose(3, 2, 1, 0)
-    estimated_sources = torch.Tensor(estimated_sources).to(device, dtype)
+    estimated_sources = torch.from_numpy(estimated_sources).to(device, dtype)
 
     return estimated_sources

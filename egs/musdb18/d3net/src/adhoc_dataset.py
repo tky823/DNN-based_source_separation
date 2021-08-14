@@ -126,8 +126,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             target = track.targets[self.target].audio.transpose(1, 0)
 
-        mixture = torch.Tensor(mixture).float()
-        target = torch.Tensor(target).float()
+        mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
 
         return mixture, target
     
@@ -189,7 +188,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             sources = np.concatenate(sources, axis=0)
             mixture = sources.sum(axis=0)
 
-        mixture, target = torch.Tensor(mixture).float(), torch.Tensor(target).float()
+        mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
 
         return mixture, target
 
@@ -274,8 +273,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             else:
                 target = track.targets[self.target].audio.transpose(1, 0)
 
-            mixture = torch.Tensor(mixture).float()
-            target = torch.Tensor(target).float()
+            mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
 
             max_samples = max(max_samples, mixture.size(-1))
 
@@ -395,8 +393,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             else:
                 target = track.targets[self.target].audio.transpose(1, 0)
 
-            mixture = torch.Tensor(mixture).float()
-            target = torch.Tensor(target).float()
+            mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
 
             max_samples = max(max_samples, mixture.size(-1))
 
