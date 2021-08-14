@@ -68,7 +68,7 @@ test.py \
 --sources ${sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
---save_dir "${save_dir}"
+--save_dir "${save_dir}" \
 --model_choice "${model_choice}" \
 --use_cuda ${use_cuda} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
