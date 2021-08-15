@@ -267,6 +267,10 @@ class AdhocTester(TesterBase):
                 self.model.net[target].load_state_dict(package['state_dict'])
     
     def run(self):
+        self.estimate_all()
+        self.eval_all()
+
+    def estimate_all(self):
         self.model.eval()
         
         test_loss = 0
