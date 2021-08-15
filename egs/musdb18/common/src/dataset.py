@@ -206,6 +206,7 @@ class SpectrogramDataset(WaveDataset):
             self.window = None
         
         self.normalize = normalize
+        self.is_wav = is_wav
 
     def _is_active(self, input, threshold=1e-5):
         n_dims = input.dim()
