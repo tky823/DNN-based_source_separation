@@ -367,6 +367,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         track = self.mus.tracks[songID]
         name = track.name
         samples, _ = track.audio.shape
+        original_duration = track.duration
 
         batch_mixture, batch_target = [], []
         max_samples = 0
@@ -435,6 +436,10 @@ class SpectrogramTestDataset(SpectrogramDataset):
         if n_dims > 2:
             batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
             batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
+        
+        # To avoid shortening track
+        track.chunk_start = 0
+        track.chunk_duration = original_duration
         
         return batch_mixture, batch_target, samples, name
 
