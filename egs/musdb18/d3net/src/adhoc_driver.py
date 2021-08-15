@@ -1,6 +1,7 @@
 import os
 import time
 
+import musdb
 import museval
 import norbert
 import torch
@@ -351,12 +352,24 @@ class AdhocTester(TesterBase):
 
         print(s)
 
-        score = museval.eval_mus_dir(
-            dataset=self.loader.dataset.mus,
-            estimates_dir=self.estimates_dir,
-            output_dir=self.json_dir,
-        )
-        print(score)
+        self.eval_all()
+    
+    def eval_all(self):
+        mus = self.loader.dataset.mus
+        est = musdb.DB(root=self.estimates_dir, subsets="test", is_wav=True)
+        results = museval.EvalStore(frames_agg='median', tracks_agg='median')
+
+        for track, estimated_track in zip(mus.tracks, est.tracks):
+            estimates = {}
+            for target in self.sources + ['accompaniment']:
+                estimates[target] = estimated_track.targets[target].audio
+
+            # Evaluate using museval
+            scores = museval.eval_mus_track(track, estimates, output_dir=self.json_dir)
+            results.add_track(scores)
+            print(scores)
+
+        print(results)
 
 def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=EPS):
     """
