@@ -439,7 +439,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         
         # To avoid shortening track
         track.chunk_start = 0
-        track.chunk_duration = original_duration
+        track.chunk_duration = None
         
         return batch_mixture, batch_target, samples, name
 
