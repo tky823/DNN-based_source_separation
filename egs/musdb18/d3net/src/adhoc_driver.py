@@ -355,8 +355,6 @@ class AdhocTester(TesterBase):
             s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
 
         print(s)
-
-        self.eval_all()
     
     def eval_all(self):
         mus = self.loader.dataset.mus
