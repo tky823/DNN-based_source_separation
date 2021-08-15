@@ -278,18 +278,17 @@ class AdhocTester(TesterBase):
         n_test = len(self.loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources, T, name) in enumerate(self.loader):
+            for idx, (mixture, sources, samples, name) in enumerate(self.loader):
                 """
                     mixture: (batch_size, 1, n_mics, n_bins, n_frames)
                     sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
-                    T <float>: Length in time domain
+                    samples <int>: Length in time domain
                     name <str>: Artist and title of song
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
-                samples = int(self.sr * T)
                 batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
                 
                 mixture_amplitude = torch.abs(mixture)
@@ -358,18 +357,30 @@ class AdhocTester(TesterBase):
     
     def eval_all(self):
         mus = self.loader.dataset.mus
-        est = musdb.DB(root=self.estimates_dir, subsets="test", is_wav=True)
+        
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
 
-        for track, estimated_track in zip(mus.tracks, est.tracks):
+        for track in mus.tracks:
+            name = track.name
+            
             estimates = {}
-            for target in self.sources + ['accompaniment']:
-                estimates[target] = estimated_track.targets[target].audio
+            estimated_accompaniment = 0
+
+            for target in self.sources:
+                estimated_path = os.path.join(self.estimates_dir, name, "{}.wav".format(target))
+                estimated, _ = torchaudio.load(estimated_path)
+                estimated = estimated.numpy().transpose(1, 0)
+                estimates[target] = estimated
+                estimated_accompaniment += estimated
+
+            estimates['accompaniment'] = estimated_accompaniment
 
             # Evaluate using museval
             scores = museval.eval_mus_track(track, estimates, output_dir=self.json_dir)
             results.add_track(scores)
-            print(scores)
+
+            print(name)
+            print(scores, flush=True)
 
         print(results)
 
