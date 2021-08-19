@@ -43,7 +43,7 @@ def main(args):
     
     modules = {}
     for source in args.sources:
-        model_path = os.path.join(args.save_dir, source, "model", "{}.pth".format(args.model_choice))
+        model_path = os.path.join(args.save_dir, "model", source, "{}.pth".format(args.model_choice))
         modules[source] = D3Net.build_model(model_path)
     
     model = ParallelD3Net(modules)
