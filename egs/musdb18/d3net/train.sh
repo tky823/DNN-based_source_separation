@@ -43,10 +43,10 @@ gpu_id="0"
 
 save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}-${anneal_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
-model_dir="${save_dir}/${target}/model"
-loss_dir="${save_dir}/${target}/loss"
-sample_dir="${save_dir}/${target}/sample"
-log_dir="${save_dir}/${target}/log"
+model_dir="${save_dir}/model/${target}"
+loss_dir="${save_dir}/loss/${target}"
+sample_dir="${save_dir}/sample/${target}"
+log_dir="${save_dir}/log/${target}"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"

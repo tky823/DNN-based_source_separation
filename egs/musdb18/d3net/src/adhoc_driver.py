@@ -254,16 +254,14 @@ class AdhocTester(TesterBase):
             os.makedirs(self.json_dir, exist_ok=True)
         
         self.use_cuda = args.use_cuda
+        is_data_parallel = isinstance(self.model, nn.DataParallel)
         
-        if isinstance(self.model, nn.DataParallel):
-            for target in self.sources:
-                model_path = os.path.join(self.save_dir, target, "model", "{}.pth".format(args.model_choice))
-                package = torch.load(model_path, map_location=lambda storage, loc: storage)
+        for target in self.sources:
+            model_path = os.path.join(self.save_dir, "model", target, "{}.pth".format(args.model_choice))
+            package = torch.load(model_path, map_location=lambda storage, loc: storage)
+            if is_data_parallel:
                 self.model.module.net[target].load_state_dict(package['state_dict'])
-        else:
-            for target in self.sources:
-                model_path = os.path.join(self.save_dir, target, "model", "{}.pth".format(args.model_choice))
-                package = torch.load(model_path, map_location=lambda storage, loc: storage)
+            else:
                 self.model.net[target].load_state_dict(package['state_dict'])
     
     def run(self):
