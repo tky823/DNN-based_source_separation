@@ -1,9 +1,7 @@
 import os
 import time
 
-import musdb
 import museval
-import norbert
 import torch
 import torchaudio
 import torch.nn as nn
@@ -392,7 +390,7 @@ def apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude, itera
     elif n_dims != 3:
         raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
 
-    assert estimated_sources_amplitude.dim() == 4, "estimated_sources_amplitude.dim() is expected 4, but given {}.".format(estimated_amplitude.dim())
+    assert estimated_sources_amplitude.dim() == 4, "estimated_sources_amplitude.dim() is expected 4, but given {}.".format(estimated_sources_amplitude.dim())
 
     ratio = estimated_sources_amplitude / estimated_sources_amplitude.sum(dim=0)
     estimated_sources = ratio * mixture
@@ -460,6 +458,8 @@ def _apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_fir
     Returns:
         estimated_sources <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), complex tensor
     """
+    import norbert
+
     assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
 
     n_dims = mixture.dim()
