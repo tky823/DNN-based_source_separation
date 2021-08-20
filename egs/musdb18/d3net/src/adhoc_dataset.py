@@ -16,17 +16,18 @@ MINSCALE = 0.75
 MAXSCALE = 1.25
 
 class SpectrogramTrainDataset(SpectrogramDataset):
+    """
+    Training dataset that returns randomly selected mixture spectrograms.
+    In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 songs.
+    """
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
+        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", is_wav=is_wav) # train (86 songs) + valid (14 songs)
         
         self.threshold = threshold
         self.patch_duration = patch_duration
-
-        if overlap is None:
-            overlap = self.patch_duration / 2
 
         self.augmentation = augmentation
 
@@ -34,6 +35,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
+            if overlap is None:
+                overlap = self.patch_duration / 2
             self.samples_per_epoch = None
             self.json_data = {
                 source: [] for source in sources
