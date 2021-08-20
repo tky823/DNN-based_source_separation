@@ -382,7 +382,77 @@ class AdhocTester(TesterBase):
 
         print(results)
 
-def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=EPS):
+def apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude, iterations=1, channels_first=True, eps=EPS):
+    assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
+
+    n_dims = mixture.dim()
+
+    if n_dims == 4:
+        mixture = mixture.squeeze(dim=0)
+    elif n_dims != 3:
+        raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
+
+    assert estimated_sources_amplitude.dim() == 4, "estimated_sources_amplitude.dim() is expected 4, but given {}.".format(estimated_amplitude.dim())
+
+    ratio = estimated_sources_amplitude / estimated_sources_amplitude.sum(dim=0)
+    estimated_sources = ratio * mixture
+
+    norm = max(1, torch.abs(mixture).max() / 10)
+    mixture, estimated_sources = mixture / norm, estimated_sources / norm
+    estimated_sources = update_em(mixture, estimated_sources, iterations, eps=eps)
+    estimated_sources = norm * estimated_sources
+
+    return estimated_sources
+
+def update_em(mixture, estimated_sources, iterations=1, eps=EPS):
+    """
+    Args:
+        mixture: (n_channels, n_frames, n_bins)
+        estimated_sources: (n_sources, n_channels, n_bins, n_frames)
+    Returns
+        estiamted_sources: (n_sources, n_channels, n_bins, n_frames)
+    """
+    _, n_channels, _, _ = estimated_sources.size()
+
+    for iteration_idx in range(iterations):
+        v, R = get_local_gaussian_model(estimated_sources, eps=eps) # v: (n_sources, n_bins, n_frames), R: (n_sources, n_bins, n_frames, n_channels, n_channels)
+        v = v.view(*v.size(), 1, 1)
+        Cxx = torch.sum(v * R, dim=0) # (n_bins, n_frames, n_channels, n_channels)
+        inv_Cxx = torch.linalg.inv(Cxx + eps * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+        gain = v * torch.sum(R.unsqueeze(dim=5) * inv_Cxx.unsqueeze(dim=2), dim=4) # (n_sources, n_bins, n_frames, n_channels, n_channels)
+        gain = gain.permute(0, 3, 4, 1, 2).contiguous() # (n_sources, n_channels, n_channels, n_bins, n_frames)
+        estimated_sources = gain * mixture
+    
+    return estimated_sources
+
+def get_local_gaussian_model(spectrogram, eps=EPS):
+    """
+    Compute empirical parameters of local gaussian model.
+    Args:
+        spectrogram <torch.Tensor>: (n_mics, n_bins, n_frames) or (n_sources, n_mics, n_bins, n_frames)
+    Returns:
+        psd <torch.Tensor>: (n_bins, n_frames) or (n_sources, n_bins, n_frames)
+        covariance <torch.Tensor>: (n_bins, n_frames, n_mics, n_mics) or (n_sources, n_bins, n_frames, n_mics, n_mics)
+    """
+    n_dims = spectrogram.dim()
+
+    if n_dims == 3:
+        psd = torch.mean(torch.abs(spectrogram)**2, dim=0) # (n_bins, n_frames)
+        R = spectrogram.unsqueeze(dim=1) * spectrogram.unsqueeze(dim=0).conj() # (n_mics, n_mics, n_bins, n_frames)
+        R = R / (psd.sum(dim=1, keepdim=True) + eps) # (n_mics, n_mics, n_bins, n_frames)
+        covariance = R.permute(2, 3, 0, 1).contiguous() # (n_bins, n_frames, n_mics, n_mics)
+    elif n_dims == 4:
+        psd = torch.mean(torch.abs(spectrogram)**2, dim=1, keepdim=True) # (n_sources, 1, n_bins, n_frames)
+        R = spectrogram.unsqueeze(dim=2) * spectrogram.unsqueeze(dim=1).conj() # (n_sources, n_mics, n_mics, n_bins, n_frames)
+        R = R / (psd.sum(dim=3, keepdim=True).unsqueeze(dim=2) + eps) # (n_sources, n_mics, n_mics, n_bins, n_frames)
+        psd = psd.squeeze(dim=1) # (n_sources, n_bins, n_frames)
+        covariance = R.permute(0, 3, 4, 1, 2).contiguous() # (n_sources, n_bins, n_frames, n_mics, n_mics)
+    else:
+        raise ValueError("Invalid dimension of tensor is given.")
+
+    return psd, covariance
+
+def _apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=EPS):
     """
     Args:
         mixture <torch.Tensor>: (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames), complex tensor
