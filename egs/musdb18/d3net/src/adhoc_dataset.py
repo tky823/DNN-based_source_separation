@@ -32,6 +32,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         self.augmentation = augmentation
 
         if augmentation:
+            if samples_per_epoch is None:
+                total_duration = 0
+                for track in self.mus.tracks:
+                    total_duration += track.duration
+                samples_per_epoch = int(total_duration / patch_duration) # 3862 is expected.
+
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
