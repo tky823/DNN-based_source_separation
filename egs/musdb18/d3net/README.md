@@ -3,9 +3,26 @@ Reference: [D3Net: Densely connected multidilated DenseNet for music source sepa
 
 ## How to Run
 ### 0. Preparation
+Build environment by pip
+```
+cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
+pip install -r requirements.txt
+```
+or by conda.
+```
+cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
+conda env create -f environment-gpu.yaml
+```
+
+Download MUSDB18 dataset.
 ```
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
 . ./prepare_musdb18.sh --musdb18_root <MUSDB18_ROOT>
+```
+If you want to download MUSDB18-HQ dataset, 
+```
+cd <REPOSITORY_ROOT>/egs/musdb18/common/
+. ./prepare_musdb18.sh --musdb18hq_root <MUSDB18HQ_ROOT> --is_hq 1
 ```
 
 ### 1. Training
