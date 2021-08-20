@@ -163,7 +163,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
-            samples = track.shape[0]
+            samples = track.audio.shape[0]
 
             start = random.randint(0, samples - self.patch_samples - 1)
             flip = random.choice([True, False])
