@@ -20,19 +20,20 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     Training dataset that returns randomly selected mixture spectrograms.
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 songs.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", is_wav=is_wav) # train (86 songs) + valid (14 songs)
         
         self.threshold = threshold
-        self.patch_duration = patch_duration
+        self.patch_samples = patch_samples
 
         self.augmentation = augmentation
 
         if augmentation:
             if samples_per_epoch is None:
+                patch_duration = patch_samples / sr
                 total_duration = 0
                 for track in self.mus.tracks:
                     total_duration += track.duration
@@ -42,20 +43,22 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             self.json_data = None
         else:
             if overlap is None:
-                overlap = self.patch_duration / 2
+                overlap = self.patch_samples / 2
+            
             self.samples_per_epoch = None
             self.json_data = {
                 source: [] for source in sources
             }
 
             for songID, track in enumerate(self.mus.tracks):
-                for start in np.arange(0, track.duration, patch_duration - overlap):
-                    if start + patch_duration >= track.duration:
+                samples = track.audio.shape[0]
+                for start in np.arange(0, samples, patch_samples - overlap):
+                    if start + patch_samples >= samples:
                         break
                     data = {
                         'songID': songID,
                         'start': start,
-                        'duration': patch_duration
+                        'duration': patch_samples
                     }
                     for source in sources:
                         self.json_data[source].append(data)
@@ -160,15 +163,14 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
+            samples = track.shape[0]
 
-            start = random.uniform(0, track.duration - self.patch_duration)
+            start = random.randint(0, samples - self.patch_samples - 1)
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
+            end = start + self.patch_samples
 
-            track.chunk_start = start
-            track.chunk_duration = self.patch_duration
-
-            source = track.targets[_source].audio.transpose(1, 0)
+            source = track.targets[_source].audio.transpose(1, 0)[:, start: end]
 
             if flip:
                 source = source[::-1]
@@ -202,17 +204,18 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_duration=10, max_duration=None, sources=__sources__, target=None, is_wav=False):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=10*SAMPLE_RATE_MUSDB18, max_samples=None, sources=__sources__, target=None, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
-        self.patch_duration = patch_duration
+        self.patch_samples = patch_samples
 
-        if max_duration is None:
-            max_duration = patch_duration
-        self.max_duration = max_duration
+        if max_samples is None:
+            max_samples = patch_samples
+        
+        self.max_samples = max_samples
 
         self.json_data = []
 
@@ -221,21 +224,23 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                 'songID': songID,
                 'patches': []
             }
-            
-            max_duration = min(track.duration, self.max_duration)
 
-            for start in np.arange(0, max_duration, patch_duration):
-                if start + patch_duration > max_duration:
+            samples = track.audio.shape[0]
+            
+            max_samples = min(samples, self.max_samples)
+
+            for start in np.arange(0, max_samples, patch_samples):
+                if start + patch_samples > max_samples:
                     data = {
                         'start': start,
-                        'duration': max_duration - start,
+                        'samples': max_samples - start,
                         'padding_start': 0,
-                        'padding_end': start + patch_duration - max_duration
+                        'padding_end': start + patch_samples - max_samples
                     }
                 else:
                     data = {
                         'start': start,
-                        'duration': patch_duration,
+                        'samples': patch_samples,
                         'padding_start': 0,
                         'padding_end': 0
                     }
@@ -261,26 +266,26 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         max_samples = 0
 
         for data in song_data['patches']:
-            track.chunk_start = data['start']
-            track.chunk_duration = data['duration']
+            start = data['start']
+            end = start + data['samples']
 
             if set(self.sources) == set(__sources__):
-                mixture = track.audio.transpose(1, 0)
+                mixture = track.audio.transpose(1, 0)[:, start: end]
             else:
                 sources = []
                 for _source in self.sources:
-                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
+                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis, :, start: end])
                 sources = np.concatenate(sources, axis=0)
                 mixture = sources.sum(axis=0)
             
             if type(self.target) is list:
                 target = []
                 for _target in self.target:
-                    target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis])
+                    target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis, :, start: end])
                 target = np.concatenate(target, axis=0)
                 mixture = mixture[np.newaxis]
             else:
-                target = track.targets[self.target].audio.transpose(1, 0)
+                target = track.targets[self.target].audio.transpose(1, 0)[:, start: end]
 
             mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
 
