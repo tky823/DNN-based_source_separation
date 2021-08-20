@@ -38,7 +38,7 @@ save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_siz
 
 model_choice="last"
 
-log_dir="${save_dir}/log"
+log_dir="${save_dir}/log/test"
 json_dir="${save_dir}/json"
 
 if [ ${is_wav} -eq 0 ]; then
