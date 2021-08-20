@@ -392,7 +392,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             target = []
             for _target in self.target:
                 target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis])
-            target = np.concatenate(target, axis=0) # (n_sources, n_mics, T)
+            target = np.concatenate(target, axis=0) # (len(target), n_mics, T)
             mixture = mixture[np.newaxis] # (1, n_mics, T)
         else:
             # mixture: (n_mics, T)
@@ -406,13 +406,13 @@ class SpectrogramTestDataset(SpectrogramDataset):
         mixture_padded, target_padded = mixture_padded.reshape(*mixture_padded.size()[:-1], -1, patch_samples), target_padded.reshape(*target_padded.size()[:-1], -1, patch_samples)
 
         if type(self.target) is list:
-            # mixture_padded: (1, n_mics, batch_size, patch_samples), target_padded: (n_sources, n_mics, batch_size, patch_samples)
+            # mixture_padded: (1, n_mics, batch_size, patch_samples), target_padded: (len(target), n_mics, batch_size, patch_samples)
             batch_mixture, batch_target = mixture_padded.permute(2, 0, 1, 3).contiguous(), target_padded.permute(2, 0, 1, 3).contiguous()
-            # mixture_padded: (batch_size, 1, n_mics, patch_samples), target_padded: (batch_size, n_sources, n_mics, patch_samples)
+            # batch_mixture: (batch_size, 1, n_mics, patch_samples), batch_target: (batch_size, len(target), n_mics, patch_samples)
         else:
             # mixture_padded: (n_mics, batch_size, patch_samples), target_padded: (n_mics, batch_size, patch_samples)
             batch_mixture, batch_target = mixture_padded.permute(1, 0, 2).contiguous(), target_padded.permute(1, 0, 2).contiguous()
-            # mixture_padded: (batch_size, n_mics, patch_samples), target_padded: (batch_size, n_mics, patch_samples)
+            # batch_mixture: (batch_size, n_mics, patch_samples), batch_target: (batch_size, n_mics, patch_samples)
 
         n_dims = batch_mixture.dim()
 
