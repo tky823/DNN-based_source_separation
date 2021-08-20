@@ -6,7 +6,7 @@ continue_from=""
 sources="[drums,bass,other,vocals]"
 target='vocals'
 patch=256
-max_duration=100
+valid_duration=100
 
 musdb18_root="../../../dataset/musdb18"
 is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
@@ -62,7 +62,7 @@ train.py \
 --config_path "${config_path}" \
 --sr ${sr} \
 --patch_size ${patch} \
---max_duration ${max_duration} \
+--valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
