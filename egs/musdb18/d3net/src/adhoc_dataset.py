@@ -24,6 +24,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
+        self.sr = sr
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", is_wav=is_wav) # train (86 songs) + valid (14 songs)
         
         self.threshold = threshold
@@ -163,14 +164,15 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
-            samples = track.audio.shape[0]
 
-            start = random.randint(0, samples - self.patch_samples - 1)
+            start = random.uniform(0, track.duration - self.patch_samples / self.sr)
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
-            end = start + self.patch_samples
 
-            source = track.targets[_source].audio.transpose(1, 0)[:, start: end]
+            track.chunk_start = start
+            track.chunk_duration = self.patch_samples / self.sr
+
+            source = track.targets[_source].audio.transpose(1, 0)
 
             if flip:
                 source = source[::-1]
@@ -208,6 +210,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
+        self.sr = sr
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
 
         self.patch_samples = patch_samples
@@ -253,7 +256,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         Returns:
             mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
-            T <float>: Duration [sec]
             name <str>: Artist and title of song
         """
         song_data = self.json_data[idx]
@@ -265,27 +267,34 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         batch_mixture, batch_target = [], []
         max_samples = 0
 
+        audio = {
+            'mixture': track.audio.transpose(1, 0)
+        }
+
+        for _source in self.sources:
+            audio[_source] = track.targets[_source].audio.transpose(1, 0)
+
         for data in song_data['patches']:
             start = data['start']
             end = start + data['samples']
 
             if set(self.sources) == set(__sources__):
-                mixture = track.audio.transpose(1, 0)[:, start: end]
+                mixture = audio['mixture'][:, start: end]
             else:
                 sources = []
                 for _source in self.sources:
-                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis, :, start: end])
+                    sources.append(audio[_source][np.newaxis, :, start: end])
                 sources = np.concatenate(sources, axis=0)
                 mixture = sources.sum(axis=0)
             
             if type(self.target) is list:
                 target = []
                 for _target in self.target:
-                    target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis, :, start: end])
+                    target.append(audio[_target][np.newaxis, :, start: end])
                 target = np.concatenate(target, axis=0)
                 mixture = mixture[np.newaxis]
             else:
-                target = track.targets[self.target].audio.transpose(1, 0)[:, start: end]
+                target = audio[self.target][:, start: end]
 
             mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
 
@@ -338,6 +347,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
+        self.sr = sr
         self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=is_wav)
 
         self.patch_samples = patch_samples
