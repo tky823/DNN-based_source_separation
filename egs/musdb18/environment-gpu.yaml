@@ -1,6 +1,7 @@
 name: DNN-based_source_separation_musdb18-gpu
 
 channels:
+  - defaults
   - pytorch
   - conda-forge
 
