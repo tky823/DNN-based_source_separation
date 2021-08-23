@@ -131,7 +131,7 @@ def _test_d2block():
 
     growth_rate = 2
     dilated = True
-    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size, depth=depth)
+    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size, dilated=dilated, depth=depth)
 
     print("-"*10, "D2 Block", "-"*10)
     print(model)
@@ -143,7 +143,7 @@ def _test_d2block():
 
     growth_rate = [3, 4, 5, 6] # depth = 4
     dilated = False
-    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size)
+    model = D2Block(in_channels, growth_rate, kernel_size=kernel_size, dilated=dilated)
 
     print(model)
     output = model(input)

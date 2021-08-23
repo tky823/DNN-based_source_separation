@@ -146,6 +146,13 @@ class D3Net(nn.Module):
         x = self.nonlinear2d(x)
         x = self.out_scale.unsqueeze(dim=1) * x + self.out_bias.unsqueeze(dim=1)
 
+        _, _, _, n_frames = x.size()
+        _, _, _, n_frames_valid = x_invalid.size()
+        padding_width = n_frames - n_frames_valid
+        padding_left = padding_width // 2
+        padding_right = padding_width - padding_left
+
+        x = F.pad(x, (-padding_left, -padding_right))
         output = torch.cat([x, x_invalid], dim=2)
 
         return output
@@ -487,7 +494,6 @@ class Decoder(nn.Module):
             x_skip = skip[idx]
             x = self.net[idx](x)
             
-            """
             _, _, H, W = x.size()
             _, _, H_skip, W_skip = x_skip.size()
             padding_height = H - H_skip
@@ -498,7 +504,6 @@ class Decoder(nn.Module):
             padding_right = padding_width - padding_left
 
             x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
-            """
 
             x = torch.cat([x, x_skip], dim=1)
         
@@ -621,6 +626,7 @@ class DownSampleD3Block(nn.Module):
         
         x = self.d3block(input)
         skip = x
+        skip = F.pad(skip, (-padding_left, -padding_right, -padding_top, -padding_bottom))
 
         output = self.downsample2d(x)
 
@@ -745,7 +751,7 @@ def _test_d3net_backbone():
 
 def _test_d3net():
     config_path = "./data/d3net/vocals_toy.yaml"
-    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 128 # 4, 2, 2049, 256
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = D3Net.build_from_config(config_path)
