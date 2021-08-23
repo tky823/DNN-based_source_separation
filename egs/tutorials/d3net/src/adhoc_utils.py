@@ -74,15 +74,15 @@ def separate_by_d3net(filepath):
         estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
         os.makedirs("./estimations", exist_ok=True)
-        estimations = {}
+        estimated_paths = {}
 
         for idx in range(n_sources):
             source = __sources__[idx]
             path = "./estimations/{}.wav".format(source)
             torchaudio.save(path, estimated_sources[idx][:, :T], sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
-            estimations[source] = path
+            estimated_paths[source] = path
         
-        return estimations
+        return estimated_paths
 
 def load_d3net():
     modules = {}
