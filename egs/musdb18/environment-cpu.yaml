@@ -1,9 +1,9 @@
 name: DNN-based_source_separation_musdb18-cpu
 
 channels:
-  - defaults
   - pytorch
   - conda-forge
+  - defaults
 
 dependencies:
   - python>=3.6,<=3.8
