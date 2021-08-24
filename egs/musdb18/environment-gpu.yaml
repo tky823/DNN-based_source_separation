@@ -1,4 +1,4 @@
-name: DNN-based_source_separation_musdb18-gpu
+name: DNN-based_source_separation_musdb18
 
 channels:
   - defaults
