@@ -27,6 +27,7 @@ batch_size=6
 epochs=50
 anneal_epoch=40
 
+use_norbert=0
 use_cuda=1
 seed=111
 gpu_id="0"
@@ -69,5 +70,6 @@ test.py \
 --json_dir "${json_dir}" \
 --save_dir "${save_dir}" \
 --model_choice "${model_choice}" \
+--use_norbert ${use_norbert} \
 --use_cuda ${use_cuda} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
