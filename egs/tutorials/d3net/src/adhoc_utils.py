@@ -11,7 +11,7 @@ SAMPLE_RATE_MUSDB18 = 44100
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(filepath):
+def separate_by_d3net(filepath, out_dir):
     patch_size = 256
     fft_size, hop_size = 4096, 1024
     window = torch.hann_window(fft_size)
@@ -73,12 +73,12 @@ def separate_by_d3net(filepath):
         estimated_sources = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, return_complex=False)
         estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
-        os.makedirs("./estimations", exist_ok=True)
+        os.makedirs(out_dir, exist_ok=True)
         estimated_paths = {}
 
         for idx in range(n_sources):
             source = __sources__[idx]
-            path = "./estimations/{}.wav".format(source)
+            path = os.path.join(out_dir, "{}.wav".format(source))
             torchaudio.save(path, estimated_sources[idx][:, :T], sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             estimated_paths[source] = path
         
