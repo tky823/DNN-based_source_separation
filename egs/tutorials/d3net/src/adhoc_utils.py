@@ -1,6 +1,5 @@
 import os
 
-import norbert
 import torch
 import torchaudio
 import torch.nn.functional as F
@@ -10,6 +9,7 @@ from models.d3net import D3Net, ParallelD3Net
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
 BITS_PER_SAMPLE_MUSDB18 = 16
+EPS = 1e-12
 
 def separate_by_d3net(filepath):
     patch_size = 256
@@ -66,7 +66,7 @@ def separate_by_d3net(filepath):
         mixture = mixture.cpu()
         estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
-        estimated_sources = apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude)
+        estimated_sources = apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
         estimated_sources_channels = estimated_sources.size()[:-2]
 
         estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
@@ -106,14 +106,7 @@ def load_d3net():
     
     return model
 
-def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_first=True, eps=1e-12):
-    """
-    Args:
-        mixture <torch.Tensor>: (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames), complex tensor
-        estimated_amplitude <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), real (nonnegative) tensor
-    Returns:
-        estimated_sources <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames), complex tensor
-    """
+def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):
     assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
 
     n_dims = mixture.dim()
@@ -123,18 +116,98 @@ def apply_multichannel_wiener_filter(mixture, estimated_amplitude, channels_firs
     elif n_dims != 3:
         raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
 
-    assert estimated_amplitude.dim() == 4, "estimated_amplitude.dim() is expected 4, but given {}.".format(estimated_amplitude.dim())
+    assert estimated_sources_amplitude.dim() == 4, "estimated_sources_amplitude.dim() is expected 4, but given {}.".format(estimated_sources_amplitude.dim())
 
-    device = mixture.device
-    dtype = mixture.dtype
+    # Use soft mask
+    ratio = estimated_sources_amplitude / (estimated_sources_amplitude.sum(dim=0) + eps)
+    estimated_sources = ratio * mixture
 
-    mixture = mixture.detach().cpu().numpy()
-    estimated_amplitude = estimated_amplitude.detach().cpu().numpy()
+    norm = max(1, torch.abs(mixture).max() / 10)
+    mixture, estimated_sources = mixture / norm, estimated_sources / norm
 
-    mixture = mixture.transpose(2, 1, 0)
-    estimated_amplitude = estimated_amplitude.transpose(3, 2, 1, 0)
-    estimated_sources = norbert.wiener(estimated_amplitude, mixture, iterations=1, eps=eps)
-    estimated_sources = estimated_sources.transpose(3, 2, 1, 0)
-    estimated_sources = torch.from_numpy(estimated_sources).to(device, dtype)
+    estimated_sources = update_em(mixture, estimated_sources, iteration, eps=eps)
+    estimated_sources = norm * estimated_sources
 
     return estimated_sources
+
+def update_em(mixture, estimated_sources, iterations=1, source_parallel=False, eps=EPS):
+    """
+    Args:
+        mixture: (n_channels, n_bins, n_frames)
+        estimated_sources: (n_sources, n_channels, n_bins, n_frames)
+    Returns
+        estiamted_sources: (n_sources, n_channels, n_bins, n_frames)
+    """
+    n_sources, n_channels, _, _ = estimated_sources.size()
+
+    for iteration_idx in range(iterations):
+        v, R = [], []
+        Cxx = 0
+
+        if source_parallel:
+            v, R = get_stats(estimated_sources, eps=eps) # (n_sources, n_bins, n_frames), (n_sources, n_bins, n_channels, n_channels)
+            Cxx = torch.sum(v.unsqueeze(dim=4) * R, dim=0) # (n_bins, n_frames, n_channels, n_channels)
+        else:
+            for source_idx in range(n_sources):
+                y_n = estimated_sources[source_idx] # (n_channels, n_bins, n_frames)
+                v_n, R_n = get_stats(y_n, eps=eps) # (n_bins, n_frames), (n_bins, n_channels, n_channels)
+                Cxx = Cxx + v_n.unsqueeze(dim=2).unsqueeze(dim=3) * R_n.unsqueeze(dim=1) # (n_bins, n_frames, n_channels, n_channels)
+                v.append(v_n.unsqueeze(dim=0))
+                R.append(R_n.unsqueeze(dim=0))
+        
+            v, R = torch.cat(v, dim=0), torch.cat(R, dim=0) # (n_sources, n_bins, n_frames), (n_sources, n_bins, n_channels, n_channels)
+       
+        v, R = v.unsqueeze(dim=3), R.unsqueeze(dim=2) # (n_sources, n_bins, n_frames, 1), (n_sources, n_bins, 1, n_channels, n_channels)
+
+        inv_Cxx = torch.linalg.inv(Cxx + eps * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+
+        if source_parallel:
+            gain = v.unsqueeze(dim=4) * torch.sum(R.unsqueeze(dim=5) * inv_Cxx.unsqueeze(dim=2), dim=4) # (n_sources, n_bins, n_frames, n_channels, n_channels)
+            gain = gain.permute(0, 3, 4, 1, 2) # (n_sources, n_channels, n_channels, n_bins, n_frames)
+            estimated_sources = torch.sum(gain * mixture, dim=2) # (n_sources, n_channels, n_bins, n_frames)
+        else:
+            estimated_sources = []
+
+            for source_idx in range(n_sources):
+                v_n, R_n = v[source_idx], R[source_idx] # (n_bins, n_frames, 1), (n_bins, 1, n_channels, n_channels)
+
+                gain_n = v_n.unsqueeze(dim=3) * torch.sum(R_n.unsqueeze(dim=4) * inv_Cxx.unsqueeze(dim=2), dim=3) # (n_bins, n_frames, n_channels, n_channels)
+                gain_n = gain_n.permute(2, 3, 0, 1) # (n_channels, n_channels, n_bins, n_frames)
+                estimated_source = torch.sum(gain_n * mixture, dim=1) # (n_channels, n_bins, n_frames)
+                estimated_sources.append(estimated_source.unsqueeze(dim=0))
+            
+            estimated_sources = torch.cat(estimated_sources, dim=0) # (n_sources, n_channels, n_bins, n_frames)
+
+    return estimated_sources
+
+def get_stats(spectrogram, eps=EPS):
+    """
+    Compute empirical parameters of local gaussian model.
+    Args:
+        spectrogram <torch.Tensor>: (n_mics, n_bins, n_frames) or (n_sources, n_mics, n_bins, n_frames)
+    Returns:
+        psd <torch.Tensor>: (n_bins, n_frames) or (n_sources, n_bins, n_frames)
+        covariance <torch.Tensor>: (n_bins, n_frames, n_mics, n_mics) or (n_sources, n_bins, n_frames, n_mics, n_mics)
+    """
+    n_dims = spectrogram.dim()
+
+    if n_dims == 3:
+        psd = torch.mean(torch.abs(spectrogram)**2, dim=0) # (n_bins, n_frames)
+        covariance = spectrogram.unsqueeze(dim=1) * spectrogram.unsqueeze(dim=0).conj() # (n_mics, n_mics, n_bins, n_frames)
+        covariance = covariance.sum(dim=3) # (n_mics, n_mics, n_bins)
+        denominator = psd.sum(dim=1) + eps # (n_bins,)
+
+        covariance = covariance / denominator # (n_mics, n_mics, n_bins, n_frames)
+        covariance = covariance.permute(2, 0, 1) # (n_bins, n_mics, n_mics)
+    elif n_dims == 4:
+        psd = torch.mean(torch.abs(spectrogram)**2, dim=1) # (n_sources, n_bins, n_frames)
+        covariance = spectrogram.unsqueeze(dim=2) * spectrogram.unsqueeze(dim=1).conj() # (n_sources, n_mics, n_mics, n_bins, n_frames)
+        covariance = covariance.sum(dim=4) # (n_sources, n_mics, n_mics, n_bins)
+        denominator = psd.sum(dim=2) + eps # (n_sources, n_bins)
+        
+        covariance = covariance / denominator.unsqueeze(dim=1).unsqueeze(dim=2) # (n_sources, n_mics, n_mics, n_bins)
+        covariance = covariance.permute(0, 3, 1, 2) # (n_sources, n_bins, n_mics, n_mics)
+    else:
+        raise ValueError("Invalid dimension of tensor is given.")
+
+    return psd, covariance
