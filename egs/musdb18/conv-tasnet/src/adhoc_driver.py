@@ -2,10 +2,13 @@ import os
 
 import numpy as np
 import torch
+import torchaudio
 import torch.nn as nn
 
-from utils.utils_audio import write_wav
 from driver import TrainerBase, TesterBase
+
+BITS_PER_SAMPLE_MUSDB18 = 16
+EPS = 1e-12
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -78,7 +81,42 @@ class SingleTargetTrainer(TrainerBase):
             self.prev_loss = float('infinity')
             self.no_improvement = 0
 
-    
+    def run_one_epoch_train(self, epoch):
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+        
+        for idx, (mixture, sources) in enumerate(self.train_loader):
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+            
+            mixture = mixture.unsqueeze(dim=1)
+            estimated_sources = self.model(mixture)
+            estimated_sources = estimated_sources.squeeze(dim=1)
+            loss = self.criterion(estimated_sources, sources)
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            train_loss += loss.item()
+            
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
+
     def run_one_epoch_eval(self, epoch):
         """
         Validation
@@ -106,14 +144,10 @@ class SingleTargetTrainer(TrainerBase):
 
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = np.abs(mixture).max()
-                    mixture = mixture / norm
-                    write_wav(save_path, signal=mixture.T, sr=self.sr)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
-                    norm = np.abs(estimated_source).max()
-                    estimated_source = estimated_source / norm
-                    write_wav(save_path, signal=estimated_source.T, sr=self.sr)
+                    torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         

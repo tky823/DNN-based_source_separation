@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -14,6 +15,7 @@ from criterion.sdr import NegSISDR
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
+parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
@@ -71,6 +73,8 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     model = ConvTasNet(
         args.n_bases, args.kernel_size, stride=args.stride, in_channels=2, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
@@ -107,10 +111,8 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
-    
     
 if __name__ == '__main__':
     args = parser.parse_args()

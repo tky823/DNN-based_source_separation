@@ -19,10 +19,11 @@ parser.add_argument('--test_json_path', type=str, default=None, help='Path for t
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
-parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
+parser.add_argument('--threshold', type=float, default=40, help='Weight threshold. Default: 40 ')
 # Model configuration
 parser.add_argument('--fft_size', type=int, default=256, help='Window length')
 parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -37,12 +38,16 @@ def main(args):
     test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
-    args.n_bins = args.fft_size//2 + 1
+    args.n_bins = args.fft_size // 2 + 1
     loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
     model = DANet.build_model(args.model_path)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
+    
+    if model.iter_clustering != args.iter_clustering:
+        print("model.iter_clustering is changed from {} -> {}.".format(model.iter_clustering, args.iter_clustering))
+        model.iter_clustering = args.iter_clustering
     
     if args.use_cuda:
         if torch.cuda.is_available():

@@ -18,12 +18,12 @@ def sisdr(input, target, eps=EPS):
     Returns:
         loss (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics)
     """
-    n_dim = input.dim()
+    n_dims = input.dim()
     
-    assert n_dim in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dim)
+    assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dims)
 
-    alpha = torch.sum(input * target, dim=n_dim-1, keepdim=True) / (torch.sum(target**2, dim=n_dim-1, keepdim=True) + eps)
-    loss = (torch.sum((alpha * target)**2, dim=n_dim-1) + eps) / (torch.sum((alpha * target - input)**2, dim=n_dim-1) + eps)
+    alpha = torch.sum(input * target, dim=n_dims-1, keepdim=True) / (torch.sum(target**2, dim=n_dims-1, keepdim=True) + eps)
+    loss = (torch.sum((alpha * target)**2, dim=n_dims-1) + eps) / (torch.sum((alpha * target - input)**2, dim=n_dims-1) + eps)
     loss = 10 * torch.log10(loss)
 
     return loss
@@ -39,19 +39,19 @@ class SISDR(nn.Module):
         """
         Args:
             iinput (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
-        target (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
+            target (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
         Returns:
             loss (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics)
         """
-        n_dim = input.dim()
+        n_dims = input.dim()
         
-        assert n_dim in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dim)
+        assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dim)
         
         loss = sisdr(input, target, eps=self.eps)
         
-        if n_dim == 3:
+        if n_dims == 3:
             loss = loss.mean(dim=1)
-        elif n_dim == 4:
+        elif n_dims == 4:
             loss = loss.mean(dim=(1,2))
         
         if batch_mean:
@@ -74,15 +74,15 @@ class NegSISDR(nn.Module):
         Returns:
             loss (batch_size,)
         """
-        n_dim = input.dim()
+        n_dims = input.dim()
         
-        assert n_dim in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dim)
+        assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dim)
         
         loss = - sisdr(input, target, eps=self.eps)
         
-        if n_dim == 3:
+        if n_dims == 3:
             loss = loss.mean(dim=1)
-        elif n_dim == 4:
+        elif n_dims == 4:
             loss = loss.mean(dim=(1,2))
         
         if batch_mean:

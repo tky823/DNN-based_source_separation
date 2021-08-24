@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-EPS=1e-12
+EPS = 1e-12
 
 class TripletLoss(nn.Module):
     def __init__(self, dim=1, reduction='mean', margin=1, eps=EPS):

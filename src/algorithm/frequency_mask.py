@@ -88,9 +88,9 @@ See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurr
 def phase_sensitive_mask(input, eps=EPS):
     """
     Args:
-        input (n_sources, 2*n_bins, n_frames) or (batch_size, 2*n_sources, n_bins, n_frames)
+        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, 2*n_bins, n_frames) or (batch_size, 2*n_sources, n_bins, n_frames)
+        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
     raise NotImplementedError("No implementation")
 
@@ -105,63 +105,54 @@ def _test(method='IBM'):
         raise NotImplementedError("Not support {}".format(method))
     
     estimated_amplitude = amplitude * mask
-    
-    real, imag = estimated_amplitude * torch.cos(phase_mixture), estimated_amplitude * torch.sin(phase_mixture)
-    estimated_spectrgram = torch.cat([real.unsqueeze(dim=3), imag.unsqueeze(dim=3)], dim=3)
-    estimated_signal = istft(estimated_spectrgram, T=T)
-    estimated_signal = estimated_signal.detach().cpu().numpy()
+
+    estimated_spectrgram = estimated_amplitude / amplitude_mixture * spectrogram_mixture
+    estimated_signal = torch.istft(estimated_spectrgram, n_fft=fft_size, hop_length=hop_size, length=T)
+    estimated_signal = estimated_signal.detach().cpu()
     
     for signal, tag in zip(estimated_signal, ['man', 'woman']):
-        write_wav("data/frequency_mask/{}-estimated_{}.wav".format(tag, method), signal=signal, sr=16000)
-
+        torchaudio.save("data/frequency_mask/{}-estimated_{}.wav".format(tag, method), signal.unsqueeze(dim=0), sample_rate=16000, bits_per_sample=16)
 
 if __name__ == '__main__':
     import os
-    import numpy as np
     from scipy.signal import resample_poly
+    import torchaudio
     
     from utils.utils_audio import read_wav, write_wav
-    from stft import BatchSTFT, BatchInvSTFT
     
     os.makedirs("data/frequency_mask", exist_ok=True)
     
     fft_size, hop_size = 1024, 256
     n_basis = 4
     
+    """
     source1, sr = read_wav("data/man-44100.wav")
     source1 = resample_poly(source1, up=16000, down=sr)
-    write_wav("data/man-16000.wav", signal=source1, sr=16000)
-    T = len(source1)
+    torchaudio.save("data/man-16000.wav", source1, sample_rate=16000, bits_per_sample=16)
+    """
+    source1, sr = torchaudio.load("data/man-16000.wav")
+    _, T = source1.size()
     
+    """
     source2, sr = read_wav("data/woman-44100.wav")
     source2 = resample_poly(source2, up=16000, down=sr)
-    write_wav("data/woman-16000.wav", signal=source2, sr=16000)
+    torchaudio.save("data/woman-16000.wav", source2, sample_rate=16000, bits_per_sample=16)
+    """
+    source2, sr = torchaudio.load("data/woman-16000.wav")
     
     mixture = source1 + source2
-    write_wav("data/mixture-16000.wav", signal=mixture, sr=16000)
+    """
+    torchaudio.save("data/mixture-16000.wav", mixture, sample_rate=16000, bits_per_sample=16)
+    """
     
-    stft = BatchSTFT(fft_size=fft_size, hop_size=hop_size)
-    istft = BatchInvSTFT(fft_size=fft_size, hop_size=hop_size)
+    spectrogram_mixture = torch.stft(mixture, n_fft=fft_size, hop_length=hop_size, return_complex=True)
+    amplitude_mixture = torch.abs(spectrogram_mixture)
     
-    mixture = torch.Tensor(mixture).unsqueeze(dim=0)
-    source1 = torch.Tensor(source1).unsqueeze(dim=0)
-    source2 = torch.Tensor(source2).unsqueeze(dim=0)
+    spectrogram_source1 = torch.stft(source1, n_fft=fft_size, hop_length=hop_size, return_complex=True)
+    amplitude_source1 = torch.abs(spectrogram_source1)
     
-    spectrogram_mixture = stft(mixture)
-    real, imag = spectrogram_mixture[...,0], spectrogram_mixture[...,1]
-    power = real**2+imag**2
-    amplitude_mixture = torch.sqrt(power)
-    phase_mixture = torch.atan2(imag, real)
-    
-    spectrogram_source1 = stft(source1)
-    real, imag = spectrogram_source1[...,0], spectrogram_source1[...,1]
-    power = real**2+imag**2
-    amplitude_source1 = torch.sqrt(power)
-    
-    spectrogram_source2 = stft(source2)
-    real, imag = spectrogram_source2[...,0], spectrogram_source2[...,1]
-    power = real**2+imag**2
-    amplitude_source2 = torch.sqrt(power)
+    spectrogram_source2 = torch.stft(source2, n_fft=fft_size, hop_length=hop_size, return_complex=True)
+    amplitude_source2 = torch.abs(spectrogram_source2)
 
     amplitude = torch.cat([amplitude_source1, amplitude_source2], dim=0)
 

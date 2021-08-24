@@ -29,6 +29,7 @@ parser.add_argument('--hidden_channels', '-H', type=int, default=600, help='hidd
 parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM layers')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
+parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -59,7 +60,9 @@ def main(args):
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     args.n_bins = args.fft_size//2 + 1
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear)
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
+    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

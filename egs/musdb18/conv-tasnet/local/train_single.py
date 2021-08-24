@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import argparse
 
 import torch
@@ -17,7 +16,7 @@ from criterion.sdr import NegSISDR
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--train_json_path', type=str, default=None, help='Path to training json file')
+parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
@@ -59,15 +58,10 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = args.duration
-    overlap = samples / 2
+    samples_per_epoch = int(40 * 3000 // args.duration)
     
-    if args.train_json_path and os.path.exists(args.train_json_path):
-        train_dataset = WaveTrainDataset.from_json(args.musdb18_root, args.train_json_path, sr=args.sr, target=args.target)
-    else:
-        train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, target=args.target)
-        train_dataset.save_as_json(args.train_json_path)
-    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, target=args.target)
+    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, samples_per_epoch=samples_per_epoch, target=args.target, is_wav=args.is_wav)
+    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, target=args.target, is_wav=args.is_wav)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
@@ -77,6 +71,8 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     model = ConvTasNet(
         args.n_bases, args.kernel_size, stride=args.stride, in_channels=2, enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
@@ -115,7 +111,6 @@ def main(args):
     
     trainer = SingleTargetTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
-    
     
 if __name__ == '__main__':
     args = parser.parse_args()

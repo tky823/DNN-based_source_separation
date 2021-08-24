@@ -36,8 +36,6 @@ class DANet(nn.Module):
         
         self.iter_clustering = iter_clustering
         self.eps = eps
-        
-        self.num_parameters = self._get_num_parameters()
     
     def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
@@ -140,14 +138,15 @@ class DANet(nn.Module):
         
         return model
     
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 def _test_danet():
     torch.manual_seed(111)

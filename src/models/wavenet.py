@@ -38,8 +38,6 @@ class WaveNet(nn.Module):
         
         self.end_net = nn.Sequential(*end_net)
         
-        self.num_parameters = self._get_num_parameters()
-        
     def forward(self, input, enc_h=None):
         num_blocks = self.num_blocks
     
@@ -85,14 +83,15 @@ class WaveNet(nn.Module):
         
         return package
         
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 class ConvBlock1d(nn.Module):
     def __init__(self, hidden_channels, skip_channels, kernel_size=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear='gated', norm=True, conditioning=None, enc_dim=None, enc_kernel_size=None, enc_stride=None, eps=EPS):

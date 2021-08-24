@@ -35,14 +35,15 @@ class UNetBase(nn.Module):
         
         return package
         
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 class UNet1d(UNetBase):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear_enc='relu', nonlinear_dec='relu', out_channels=None):
@@ -78,8 +79,6 @@ class UNet1d(UNetBase):
         self.encoder = Encoder1d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv1d(channels[-1], channels[-1], kernel_size=1, stride=1)
         self.decoder = Decoder1d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
-
-        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -87,7 +86,6 @@ class UNet1d(UNetBase):
         output = self.decoder(x, skip[::-1])
         
         return output
-
 
 class UNet2d(UNetBase):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear_enc='relu', nonlinear_dec='relu', out_channels=None):
@@ -123,8 +121,6 @@ class UNet2d(UNetBase):
         self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
         self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
-
-        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -185,7 +181,6 @@ class Encoder1d(nn.Module):
             skip.append(x)
         
         return x, skip
-
 
 class Encoder2d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
@@ -282,8 +277,10 @@ class Decoder1d(nn.Module):
     def forward(self, input, skip):
         """
         Args:
-            input (batch_size, C1, H, W)
+            input (batch_size, C, T)
             skip <list<torch.Tensor>>
+        Returns:
+            output: (batch_size, C_out, T_out)
         """
         n_blocks = self.n_blocks
         
@@ -339,8 +336,10 @@ class Decoder2d(nn.Module):
     def forward(self, input, skip):
         """
         Args:
-            input (batch_size, C1, H, W)
+            input (batch_size, C, H, W)
             skip <list<torch.Tensor>>
+        Returns:
+            output: (batch_size, C_out, H_out, W_out)
         """
         n_blocks = self.n_blocks
         
@@ -354,7 +353,6 @@ class Decoder2d(nn.Module):
         output = x
         
         return output
-
 
 """
     Encoder Block
@@ -403,7 +401,6 @@ class EncoderBlock1d(nn.Module):
         output = self.nonlinear(x)
         
         return output
-
 
 class EncoderBlock2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
@@ -488,7 +485,8 @@ class DecoderBlock1d(nn.Module):
         Args:
             input (batch_size, C1, T)
             skip (batch_size, C2, T)
-                where C = C1 + C2
+        Returns:
+            output: (batch_size, C, T_out)
         """
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
         
@@ -539,7 +537,8 @@ class DecoderBlock2d(nn.Module):
         Args:
             input (batch_size, C1, H, W)
             skip (batch_size, C2, H, W)
-                where C = C1 + C2
+        Returns:
+            output: (batch_size, C, H_out, W_out)
         """
         Kh, Kw = self.kernel_size
         Sh, Sw = self.stride
