@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ID="18o9GUtBdSdAw4gsReH4FQ3UJfDLE8v8F"
+ID="1rzUBvqMyleVcWA-NNE5XN0BvX1VDaV4A"
 
 curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${ID}" > /dev/null
 code="$(awk '/_warning_/ {print $NF}' /tmp/cookie)"  
