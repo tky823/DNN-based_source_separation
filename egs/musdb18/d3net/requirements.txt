@@ -1,9 +1,0 @@
-numpy>=1.19.0
-scipy>=1.6.1
-matplotlib>=3.3.2
-musdb==0.4.0
-museval==0.4.0
-pyyaml>=0.2.5
-norbert>=0.2.1
-torch>=1.8.0
-torchaudio>=0.8.0
