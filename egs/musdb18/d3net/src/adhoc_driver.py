@@ -1,5 +1,6 @@
 import os
 import time
+import math
 
 import museval
 import torch
@@ -432,6 +433,16 @@ def apply_multichannel_wiener_filter_norbert(mixture, estimated_sources_amplitud
     return estimated_sources
 
 def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):
+    """
+    Multichannel Wiener filter.
+    Implementation is based on norbert package.
+    Args:
+        mixture <torch.Tensor>: Complex tensor with shape of (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames)
+        estimated_sources_amplitude <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames)
+        iteration <int>: Iteration of EM algorithm updates
+        channels_first <bool>: Only supports True
+        eps <float>: small value for numerical stability
+    """
     assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
 
     n_dims = mixture.dim()
@@ -484,7 +495,7 @@ def update_em(mixture, estimated_sources, iterations=1, source_parallel=False, e
        
         v, R = v.unsqueeze(dim=3), R.unsqueeze(dim=2) # (n_sources, n_bins, n_frames, 1), (n_sources, n_bins, 1, n_channels, n_channels)
 
-        inv_Cxx = torch.linalg.inv(Cxx + eps * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+        inv_Cxx = torch.linalg.inv(Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
 
         if source_parallel:
             gain = v.unsqueeze(dim=4) * torch.sum(R.unsqueeze(dim=5) * inv_Cxx.unsqueeze(dim=2), dim=4) # (n_sources, n_bins, n_frames, n_channels, n_channels)
