@@ -273,6 +273,17 @@ class D3Net(nn.Module):
         )
         
         return model
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
+
 class D3NetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, dilated=True, depth=None, out_channels=None, eps=EPS):
         """
