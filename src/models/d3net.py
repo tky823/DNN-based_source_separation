@@ -74,16 +74,18 @@ class D3Net(nn.Module):
 
         out_channels = 0
         for band in bands:
-            if out_channels < growth_rate[band][0] + growth_rate[band][-1]:
-                out_channels = growth_rate[band][0] + growth_rate[band][-1]
-        
+            if out_channels < growth_rate[band][-1]:
+                out_channels = growth_rate[band][-1]
+
         net = {}
         for band in bands:
-            if growth_rate[band][0] + growth_rate[band][-1] < out_channels:
+            if growth_rate[band][-1] < out_channels:
                 _out_channels = out_channels
             else:
                 _out_channels = None
+            
             net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], dilated=dilated[band], depth=depth[band], out_channels=_out_channels, eps=eps)
+        
         net['full'] = D3NetBackbone(in_channels, num_features['full'], growth_rate['full'], kernel_size['full'], scale=scale['full'], num_d2blocks=num_d2blocks['full'], dilated=dilated['full'], depth=depth['full'], eps=eps)
 
         self.net = nn.ModuleDict(net)
@@ -135,8 +137,8 @@ class D3Net(nn.Module):
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
+        
         x_bands = torch.cat(x_bands, dim=2)
-
         x_full = self.net['full'](x_valid)
         x = torch.cat([x_bands, x_full], dim=1)
 
@@ -271,16 +273,6 @@ class D3Net(nn.Module):
         )
         
         return model
-    
-    @property
-    def num_parameters(self):
-        _num_parameters = 0
-        
-        for p in self.parameters():
-            if p.requires_grad:
-                _num_parameters += p.numel()
-                
-        return _num_parameters
 
 class D3NetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, dilated=True, depth=None, out_channels=None, eps=EPS):
@@ -476,9 +468,9 @@ class Decoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_d3blocks):
-            upsample_block = UpSampleBlock(_in_channels, growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], depth=depth[idx], eps=eps)
+            upsample_block = UpSampleBlock(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], depth=depth[idx], eps=eps)
             net.append(upsample_block)
-            _in_channels = upsample_block.out_channels + skip_channels[idx]
+            _in_channels = upsample_block.out_channels
         
         self.net = nn.Sequential(*net)
 
@@ -492,20 +484,7 @@ class Decoder(nn.Module):
 
         for idx in range(num_d3blocks):
             x_skip = skip[idx]
-            x = self.net[idx](x)
-            
-            _, _, H, W = x.size()
-            _, _, H_skip, W_skip = x_skip.size()
-            padding_height = H - H_skip
-            padding_width = W - W_skip
-            padding_top = padding_height//2
-            padding_bottom = padding_height - padding_top
-            padding_left = padding_width//2
-            padding_right = padding_width - padding_left
-
-            x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
-
-            x = torch.cat([x, x_skip], dim=1)
+            x = self.net[idx](x, x_skip)
         
         output = x
 
@@ -633,19 +612,31 @@ class DownSampleD3Block(nn.Module):
         return output, skip
 
 class UpSampleBlock(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, depth=None, eps=EPS):
         super().__init__()
 
         self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
-        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, depth=depth, eps=eps)
+        self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, depth=depth, eps=eps)
 
         self.out_channels = self.d3block.out_channels
     
-    def forward(self, input):
-        # TODO: chomp
+    def forward(self, input, skip):
         x = self.norm2d(input)
         x = self.upsample2d(x)
+
+        _, _, H, W = x.size()
+        _, _, H_skip, W_skip = skip.size()
+        padding_height = H - H_skip
+        padding_width = W - W_skip
+        padding_top = padding_height//2
+        padding_bottom = padding_height - padding_top
+        padding_left = padding_width//2
+        padding_right = padding_width - padding_left
+
+        x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
+        x = torch.cat([x, skip], dim=1)
+
         output = self.d3block(x)
 
         return output
