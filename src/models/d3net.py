@@ -90,7 +90,7 @@ class D3Net(nn.Module):
 
         self.net = nn.ModuleDict(net)
 
-        _in_channels = out_channels + growth_rate['full'][0] + growth_rate['full'][-1] # channels for 'low' & 'middle' + channels for 'full'
+        _in_channels = out_channels + growth_rate['full'][-1] # channels for 'low' & 'middle' + channels for 'full'
         
         if kernel_size_final is None:
             kernel_size_final = kernel_size
@@ -273,7 +273,6 @@ class D3Net(nn.Module):
         )
         
         return model
-
 class D3NetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, dilated=True, depth=None, out_channels=None, eps=EPS):
         """
