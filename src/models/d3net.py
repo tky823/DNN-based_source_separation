@@ -96,7 +96,7 @@ class D3Net(nn.Module):
         self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, eps=eps)
         self.norm2d = nn.BatchNorm2d(growth_rate_final, eps=eps)
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
-        self.nonlinear2d = nn.ReLU()
+        self.relu2d = nn.ReLU()
 
         self.in_scale, self.in_bias = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
         self.out_scale, self.out_bias = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
@@ -143,8 +143,8 @@ class D3Net(nn.Module):
         x = self.d2block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.nonlinear2d(x)
         x = self.out_scale.unsqueeze(dim=1) * x + self.out_bias.unsqueeze(dim=1)
+        x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
         _, _, _, n_frames_valid = x_invalid.size()
