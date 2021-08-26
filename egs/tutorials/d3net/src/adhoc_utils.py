@@ -12,14 +12,15 @@ SAMPLE_RATE_MUSDB18 = 44100
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(filepath, out_dir):
+def separate_by_d3net(filepath, model_paths, out_dir):
     patch_size = 256
     fft_size, hop_size = 4096, 1024
     window = torch.hann_window(fft_size)
 
     x, sample_rate = torchaudio.load(filepath)
     _, T = x.size()
-    model = load_d3net()
+    
+    model = load_d3net(model_paths)
 
     assert sample_rate == SAMPLE_RATE_MUSDB18, "sample rate must be {}, but given {}".format(SAMPLE_RATE_MUSDB18, sample_rate)
 
@@ -85,12 +86,11 @@ def separate_by_d3net(filepath, out_dir):
         
         return estimated_paths
 
-def load_d3net():
+def load_d3net(model_paths):
     modules = {}
-    model_dir = "./model"
 
     for source in __sources__:
-        model_path = os.path.join(model_dir, source, "last.pth")
+        model_path = model_paths[source]
         modules[source] = D3Net.build_model(model_path)
         package = torch.load(model_path, map_location=lambda storage, loc: storage)
         modules[source].load_state_dict(package['state_dict'])
