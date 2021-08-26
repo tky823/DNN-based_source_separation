@@ -58,8 +58,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                         break
                     data = {
                         'songID': songID,
-                        'start': start,
-                        'duration': patch_samples
+                        'start': start / sr,
+                        'duration': patch_samples / sr
                     }
                     for source in sources:
                         self.json_data[source].append(data)
