@@ -545,7 +545,7 @@ class Decoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_d3blocks):
-            upsample_block = UpSampleBlock(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
+            upsample_block = UpSampleD3Block(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(upsample_block)
             _in_channels = upsample_block.out_channels
         
@@ -710,7 +710,7 @@ class DownSampleD3Block(nn.Module):
 
         return output, skip
 
-class UpSampleBlock(nn.Module):
+class UpSampleD3Block(nn.Module):
     def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         super().__init__()
 
