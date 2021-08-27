@@ -20,7 +20,7 @@ def separate_by_d3net(filepath, model_paths, out_dir):
     x, sample_rate = torchaudio.load(filepath)
     _, T = x.size()
     
-    model = load_d3net(model_paths)
+    model = load_pretrained_d3net(model_paths)
 
     assert sample_rate == SAMPLE_RATE_MUSDB18, "sample rate must be {}, but given {}".format(SAMPLE_RATE_MUSDB18, sample_rate)
 
@@ -86,7 +86,7 @@ def separate_by_d3net(filepath, model_paths, out_dir):
         
         return estimated_paths
 
-def load_d3net(model_paths):
+def load_pretrained_d3net(model_paths):
     modules = {}
 
     for source in __sources__:
