@@ -1,1 +1,1 @@
-../../tutorials/requirements.txt
+../../musdb18/requirements.txt
