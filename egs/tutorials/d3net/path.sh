@@ -1,3 +1,3 @@
 #!/bin/bash
 
-export PATH="../common"
+export PATH="../common:$PATH"
