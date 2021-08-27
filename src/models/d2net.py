@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+from utils.utils_d3net import choose_layer_norm
+
 EPS = 1e-12
      
 class D2Block(nn.Module):
@@ -117,7 +119,12 @@ class ConvBlock2d(nn.Module):
         self.nonlinear = nonlinear
 
         if self.norm:
-            self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
+            if type(self.norm) is bool:
+                name = 'BN'
+            else:
+                name = self.norm
+            self.norm2d = choose_layer_norm(name, in_channels, n_dims=2, eps=eps)
+        
         if self.nonlinear is not None:
             if self.nonlinear == 'relu':
                 self.nonlinear2d = nn.ReLU()

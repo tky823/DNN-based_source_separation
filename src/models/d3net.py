@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+from utils.utils_d3net import choose_layer_norm
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.d2net import D2Block
@@ -13,6 +14,7 @@ Reference: D3Net: Densely connected multidilated DenseNet for music source separ
 See https://arxiv.org/abs/2010.01733
 """
 
+FULL = 'full'
 EPS = 1e-12
 
 class ParallelD3Net(nn.Module):
@@ -88,17 +90,17 @@ class D3Net(nn.Module):
             
             net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], dilated=dilated[band], norm=norm[band], nonlinear=nonlinear[band], depth=depth[band], out_channels=_out_channels, eps=eps)
         
-        net['full'] = D3NetBackbone(in_channels, num_features['full'], growth_rate['full'], kernel_size['full'], scale=scale['full'], num_d2blocks=num_d2blocks['full'], dilated=dilated['full'], norm=norm['full'], nonlinear=nonlinear['full'], depth=depth['full'], eps=eps)
+        net[FULL] = D3NetBackbone(in_channels, num_features[FULL], growth_rate[FULL], kernel_size[FULL], scale=scale[FULL], num_d2blocks=num_d2blocks[FULL], dilated=dilated[FULL], norm=norm[FULL], nonlinear=nonlinear[FULL], depth=depth[FULL], eps=eps)
 
         self.net = nn.ModuleDict(net)
 
-        _in_channels = out_channels + growth_rate['full'][-1] # channels for 'low' & 'middle' + channels for 'full'
+        _in_channels = out_channels + growth_rate[FULL][-1] # channels for 'low' & 'middle' + channels for 'full'
         
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
         self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
-        self.norm2d = nn.BatchNorm2d(growth_rate_final, eps=eps)
+        self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
 
@@ -144,7 +146,7 @@ class D3Net(nn.Module):
             x_bands.append(x_band)
         
         x_bands = torch.cat(x_bands, dim=2)
-        x_full = self.net['full'](x_valid)
+        x_full = self.net[FULL](x_valid)
         x = torch.cat([x_bands, x_full], dim=1)
 
         x = self.d2block(x)
@@ -202,31 +204,31 @@ class D3Net(nn.Module):
             config[band]['sections'] for band in bands
         ]
         num_features = {
-            band: config[band]['num_features'] for band in bands + ['full']
+            band: config[band]['num_features'] for band in bands + [FULL]
         }
         growth_rate = {
-            band: config[band]['growth_rate'] for band in bands + ['full']
+            band: config[band]['growth_rate'] for band in bands + [FULL]
         }
         kernel_size = {
-            band: config[band]['kernel_size'] for band in bands + ['full']
+            band: config[band]['kernel_size'] for band in bands + [FULL]
         }
         scale = {
-            band: config[band]['scale'] for band in bands + ['full']
+            band: config[band]['scale'] for band in bands + [FULL]
         }
         num_d2blocks = {
-            band: config[band]['num_d2blocks'] for band in bands + ['full']
+            band: config[band]['num_d2blocks'] for band in bands + [FULL]
         }
         dilated = {
-            band: config[band]['dilated'] for band in bands + ['full']
+            band: config[band]['dilated'] for band in bands + [FULL]
         }
         norm = {
-            band: config[band]['norm'] for band in bands + ['full']
+            band: config[band]['norm'] for band in bands + [FULL]
         }
         nonlinear = {
-            band: config[band]['nonlinear'] for band in bands + ['full']
+            band: config[band]['nonlinear'] for band in bands + [FULL]
         }
         depth = {
-            band: config[band]['depth'] for band in bands + ['full']
+            band: config[band]['depth'] for band in bands + [FULL]
         }
 
         growth_rate_final = config['final']['growth_rate']
@@ -360,7 +362,8 @@ class D3NetBackbone(nn.Module):
             _in_channels = decoder.out_channels
 
             net = []
-            net.append(nn.BatchNorm2d(_in_channels, eps=eps))
+            norm2d = choose_layer_norm('BN', _in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
+            net.append(norm2d)
             net.append(nn.Conv2d(_in_channels, out_channels, kernel_size=(1,1), stride=(1,1)))
 
             self.pointwise_conv2d = nn.Sequential(*net)
@@ -714,7 +717,7 @@ class UpSampleD3Block(nn.Module):
     def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         super().__init__()
 
-        self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
+        self.norm2d = choose_layer_norm('BN', in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
         self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
 
