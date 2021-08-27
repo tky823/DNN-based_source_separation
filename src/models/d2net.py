@@ -6,7 +6,7 @@ from torch.nn.modules.utils import _pair
 EPS = 1e-12
      
 class D2Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, dilated=True, depth=None, norm=True, nonlinear='relu', eps=EPS):
         """
         Args:
             in_channels <int>: # of input channels
@@ -37,6 +37,26 @@ class D2Block(nn.Module):
         else:
             raise ValueError("Not support dilated={}".format(dilated))
         
+        if type(norm) is bool:
+            assert depth is not None, "Specify `depth`"
+            norm = [norm] * depth
+        elif type(norm) is list:
+            if depth is not None:
+                assert depth == len(norm), "`depth` is different from `len(norm)`"
+            depth = len(norm)
+        else:
+            raise ValueError("Not support norm={}".format(norm))
+
+        if type(nonlinear) is bool or type(nonlinear) is str:
+            assert depth is not None, "Specify `depth`"
+            nonlinear = [nonlinear] * depth
+        elif type(nonlinear) is list:
+            if depth is not None:
+                assert depth == len(nonlinear), "`depth` is different from `len(nonlinear)`"
+            depth = len(nonlinear)
+        else:
+            raise ValueError("Not support nonlinear={}".format(nonlinear))
+        
         self.growth_rate = growth_rate
         self.depth = depth
 
@@ -45,11 +65,11 @@ class D2Block(nn.Module):
 
         for idx in range(depth):
             _out_channels = sum(growth_rate[idx:])
-            if dilated:
+            if dilated[idx]:
                 dilation = 2**idx
             else:
                 dilation = 1
-            conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, eps=eps)
+            conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
             _in_channels = growth_rate[idx]
 
@@ -83,7 +103,7 @@ class D2Block(nn.Module):
         return output
 
 class ConvBlock2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, eps=EPS):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, norm=True, nonlinear='relu', eps=EPS):
         super().__init__()
 
         assert stride == 1, "`stride` is expected 1"
@@ -91,8 +111,17 @@ class ConvBlock2d(nn.Module):
         self.kernel_size = _pair(kernel_size)
         self.dilation = _pair(dilation)
 
-        self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
-        self.nonlinear2d = nn.ReLU()
+        self.norm = norm
+        self.nonlinear = nonlinear
+
+        if self.norm:
+            self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
+        if self.nonlinear is not None:
+            if self.nonlinear == 'relu':
+                self.nonlinear2d = nn.ReLU()
+            else:
+                raise NotImplementedError("Invalid nonlinear function is specified. Choose 'relu' instead of {}.".format(self.nonlinear))
+        
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
 
     def forward(self, input):
@@ -111,8 +140,13 @@ class ConvBlock2d(nn.Module):
         padding_left = padding_width // 2
         padding_right = padding_width - padding_left
 
-        x = self.norm2d(input)
-        x = self.nonlinear2d(x)
+        x = input
+
+        if self.norm:
+            x = self.norm2d(x)
+        if self.nonlinear:
+            x = self.nonlinear2d(x)
+        
         x = F.pad(x, (padding_left, padding_right, padding_up, padding_bottom))
         output = self.conv2d(x)
 
