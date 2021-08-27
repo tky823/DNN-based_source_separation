@@ -23,6 +23,7 @@ H=256
 B=4
 causal=0
 mask_nonlinear='sigmoid'
+iter_clustering=10
 
 # Criterion
 criterion='l2loss'
@@ -72,6 +73,7 @@ train.py \
 -B ${B} \
 --causal ${causal} \
 --mask_nonlinear ${mask_nonlinear} \
+--iter_clustering ${iter_clustering} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \

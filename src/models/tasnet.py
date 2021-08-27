@@ -51,16 +51,17 @@ class TasNetBase(nn.Module):
         output = F.pad(output, (-padding_left, -padding_right))
         
         return output, latent
-        
-    def _get_num_parameters(self):
-        num_parameters = 0
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
-        
+        return _num_parameters
+
 class TasNet(nn.Module):
     """
     LSTM-TasNet
@@ -89,8 +90,6 @@ class TasNet(nn.Module):
         self.encoder = GatedEncoder(self.in_channels, n_bases, kernel_size=kernel_size, stride=stride, eps=eps)
         self.separator = Separator(n_bases, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
         self.decoder = Decoder(n_bases, self.in_channels, kernel_size=kernel_size, stride=stride)
-        
-        self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
         """
@@ -148,14 +147,15 @@ class TasNet(nn.Module):
         
         return output, latent
         
-    def _get_num_parameters(self):
-        num_parameters = 0
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
         
     def get_package(self):
         package = {
@@ -171,8 +171,7 @@ class TasNet(nn.Module):
         }
         
         return package
-        
-        
+
 class FourierEncoder(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, window_fn='hann', trainable=False):
         super().__init__()
@@ -283,8 +282,7 @@ class Encoder(nn.Module):
             self.nonlinear = True
         else:
             self.nonlinear = False
-        
-        
+    
     def forward(self, input):
         x = self.conv1d(input)
         
@@ -294,7 +292,7 @@ class Encoder(nn.Module):
             output = x
         
         return output
-        
+    
     def get_bases(self):
         bases = self.conv1d.weight.squeeze(dim=1).detach().cpu().numpy()
     
@@ -476,8 +474,7 @@ class LSTMBlock(nn.Module):
         output = self.net(input)
         
         return output
-
-                    
+                  
 class LSTMLayer(nn.Module):
     def __init__(self, in_channels, out_channels, causal=False):
         super().__init__()
@@ -601,7 +598,6 @@ def _test_tasnet():
     plt.plot(range(T), output[0,0].detach().numpy())
     plt.savefig('data/pinverse.png', bbox_inches='tight')
     plt.close()
-
 
 def _test_multichannel_tasnet():
     batch_size = 2

@@ -17,17 +17,28 @@ A PyTorch implementation of DNN-based source separation.
 | FurcaNet | [FurcaNet: An End-to-End Deep Gated Convolutional, Long Short-term Memory, Deep Neural Networks for Single Channel Speech Separation](https://arxiv.org/abs/1902.00651) |  |
 | FurcaNeXt | [FurcaNeXt: End-to-End Monaural Speech Separation with Dynamic Gated Dilated Temporal Convolutional Networks](https://arxiv.org/abs/1902.04891) |
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
+| Conditioned-U-Net | [Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations](https://arxiv.org/abs/1907.01277) | ✔ |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
 | DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
 | D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) | ✔ |
+| LaSAFT | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) |  |
 | SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) |  |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
+
+## Modules
+| Module | Reference | Done |
+| :---: | :---: | :---: |
+| Depthwise-separable convolution |  | ✔ |
+| Gated Linear Units |  | ✔ |
+| FiLM | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
 
 ## Method related to training
 | Method | Reference | Done |
 | :---: | :---: | :---: |
 | Pemutation invariant training (PIT) | [Multi-talker Speech Separation with Utterance-level Permutation Invariant Training of Deep Recurrent Neural Networks](https://arxiv.org/abs/1703.06284) | ✔ |
 | One-and-rest PIT | [Recursive Speech Separation for Unknown Number of Speakers](https://arxiv.org/abs/1904.03065) | ✔ |
+| Probabilistic PIT | [Probabilistic Permutation Invariant Training for Speech Separation](https://arxiv.org/abs/1908.01768) |  |
+| Sinkhorn PIT | [Towards Listening to 10 People Simultaneously: An Efficient Permutation Invariant Training of Audio Source Separation Using Sinkhorn's Algorithm](https://arxiv.org/abs/2010.11871) | ✔ |
 
 ## Example
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
@@ -64,26 +75,3 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
-
-## Version
-- v0.0.0: Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
-- v0.0.1: Dataset is renamed.
-- v0.1.0: Dataset structure is changed.
-- v0.1.1: DANet is included.
-- v0.1.2: Layer name is changed. Input feature for DANet is replaced by log-magnitude.
-- v0.1.3: Add scripts for Wall Street Journal 0 (WSJ0) dataset.
-- v0.1.4: Add non-nagative matrix factorization (NMF).
-- v0.2.0: Change the representation of short time Fourier transform (STFT).
-- v0.2.1: `conv_tasnet` directory is renamed to `conv-tasnet`. Add one-and-rest PIT (ORPIT).
-- v0.3.0: `wsj0` is renamed to `wsj0-mix`. The result is updated.
-- v0.3.1: Implement Linear encoder for TasNet.
-- v0.3.2: Change the definition of `hidden_channels` in dual-path RNN.
-- v0.3.3: Fix trained models due to the update v0.3.2.
-- v0.4.0: Fix the network architecture of DPRNN-TasNet.
-- v0.4.1: Add DPTNet and GALRNet. Re-fix DPRNN-TasNet.
-- v0.4.2: Add training script for GALRNet.
-- v0.4.3: Re-fix DPRNN-TasNet.
-- v0.5.0: Add `parse_options.sh`.
-- v0.5.1: Multichannel support.
-- v0.5.2: Add metric learning tutorials.
-- v0.5.3: Update network architecture of D3Net.

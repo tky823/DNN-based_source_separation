@@ -67,7 +67,7 @@ def main(args):
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
     
-    args.n_bins = args.fft_size//2 + 1
+    args.n_bins = args.fft_size // 2 + 1
     model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
