@@ -59,7 +59,8 @@ class D3Net(nn.Module):
         kernel_size,
         bands=['low','middle'], sections=[256,1344],
         scale=(2,2),
-        num_d2blocks=None, dilated=True, depth=None,
+        num_d2blocks=None, dilated=True, norm=True, nonlinear='relu',
+        depth=None,
         growth_rate_final=None,
         kernel_size_final=None,
         dilated_final=True,
@@ -85,9 +86,9 @@ class D3Net(nn.Module):
             else:
                 _out_channels = None
             
-            net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], dilated=dilated[band], depth=depth[band], out_channels=_out_channels, eps=eps)
+            net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], dilated=dilated[band], norm=norm[band], nonlinear=nonlinear[band], depth=depth[band], out_channels=_out_channels, eps=eps)
         
-        net['full'] = D3NetBackbone(in_channels, num_features['full'], growth_rate['full'], kernel_size['full'], scale=scale['full'], num_d2blocks=num_d2blocks['full'], dilated=dilated['full'], depth=depth['full'], eps=eps)
+        net['full'] = D3NetBackbone(in_channels, num_features['full'], growth_rate['full'], kernel_size['full'], scale=scale['full'], num_d2blocks=num_d2blocks['full'], dilated=dilated['full'], norm=norm['full'], nonlinear=nonlinear['full'], depth=depth['full'], eps=eps)
 
         self.net = nn.ModuleDict(net)
 
@@ -108,7 +109,9 @@ class D3Net(nn.Module):
         self.growth_rate = growth_rate
         self.kernel_size = kernel_size
         self.scale = scale
-        self.num_d2blocks, self.dilated, self.depth = num_d2blocks, dilated, depth
+        self.num_d2blocks = num_d2blocks
+        self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
+        self.depth = depth
         self.growth_rate_final = growth_rate_final
         self.kernel_size_final = kernel_size_final
         self.dilated_final = dilated_final
@@ -174,7 +177,9 @@ class D3Net(nn.Module):
             'kernel_size': self.kernel_size,
             'bands': self.bands, 'sections': self.sections,
             'scale': self.scale,
-            'num_d2blocks': self.num_d2blocks, 'dilated': self.dilated, 'depth': self.depth,
+            'num_d2blocks': self.num_d2blocks,
+            'dilated': self.dilated, 'norm': self.norm, 'nonlinear': self.nonlinear,
+            'depth': self.depth,
             'growth_rate_final': self.growth_rate_final,
             'kernel_size_final': self.kernel_size_final,
             'dilated_final': self.dilated_final,
@@ -214,6 +219,12 @@ class D3Net(nn.Module):
         dilated = {
             band: config[band]['dilated'] for band in bands + ['full']
         }
+        norm = {
+            band: config[band]['norm'] for band in bands + ['full']
+        }
+        nonlinear = {
+            band: config[band]['nonlinear'] for band in bands + ['full']
+        }
         depth = {
             band: config[band]['depth'] for band in bands + ['full']
         }
@@ -222,7 +233,7 @@ class D3Net(nn.Module):
         kernel_size_final = config['final']['kernel_size']
         dilated_final = config['final']['dilated']
         depth_final = config['final']['depth']
-        norm_final, nonlinear_final = config['final'].get('norm') or True, config['final'].get('nonlinear') or 'relu'
+        norm_final, nonlinear_final = config['final']['norm'], config['final']['nonlinear']
 
         eps = config.get('eps') or EPS
 
@@ -232,7 +243,8 @@ class D3Net(nn.Module):
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
-            num_d2blocks=num_d2blocks, dilated=dilated, depth=depth,
+            num_d2blocks=num_d2blocks, dilated=dilated, norm=norm, nonlinear=nonlinear,
+            depth=depth,
             growth_rate_final=growth_rate_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
@@ -254,13 +266,14 @@ class D3Net(nn.Module):
         bands, sections = config['bands'], config['sections']
         scale = config['scale']
 
-        num_d2blocks, dilated, depth = config['num_d2blocks'], config['dilated'], config['depth']
+        num_d2blocks, dilated, norm, nonlinear = config['num_d2blocks'], config['dilated'], config['norm'], config['nonlinear']
+        depth = config['depth']
 
         growth_rate_final = config['growth_rate_final']
         kernel_size_final = config['kernel_size_final']
         dilated_final = config['dilated_final']
         depth_final = config['depth_final']
-        norm_final, nonlinear_final = config.get('norm_final') or True, config.get('nonlinear_final') or 'relu'
+        norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
         eps = config.get('eps') or EPS
         
@@ -270,7 +283,8 @@ class D3Net(nn.Module):
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
-            num_d2blocks=num_d2blocks, dilated=dilated, depth=depth,
+            num_d2blocks=num_d2blocks, dilated=dilated, norm=norm, nonlinear=nonlinear,
+            depth=depth,
             growth_rate_final=growth_rate_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
@@ -292,7 +306,7 @@ class D3Net(nn.Module):
         return _num_parameters
 
 class D3NetBackbone(nn.Module):
-    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, dilated=True, depth=None, out_channels=None, eps=EPS):
+    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), num_d2blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, out_channels=None, eps=EPS):
         """
         Args:
             in_channels <int>
@@ -300,6 +314,10 @@ class D3NetBackbone(nn.Module):
             growth_rate <list<int>>: `len(growth_rate)` must be an odd number.
             kernel_size <int>
             scale <int> or <list<int>>: Upsampling and Downsampling scale
+            num_d2blocks <list<int>>: # of D2 blocks
+            dilated <list<bool>>
+            norm <list<bool>>
+            nonlinear <list<str>>
         """
         super().__init__()
 
@@ -312,7 +330,11 @@ class D3NetBackbone(nn.Module):
         self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size, stride=(1,1))
 
         encoder, decoder = [], []
-        encoder = Encoder(num_features, growth_rate[:num_encoder_blocks], kernel_size=kernel_size, down_scale=scale, num_d2blocks=num_d2blocks[:num_encoder_blocks], dilated=dilated[:num_encoder_blocks], depth=depth[:num_encoder_blocks], eps=eps)
+        encoder = Encoder(
+            num_features, growth_rate[:num_encoder_blocks], kernel_size=kernel_size, down_scale=scale, num_d2blocks=num_d2blocks[:num_encoder_blocks],
+            dilated=dilated[:num_encoder_blocks], norm=norm[:num_encoder_blocks], nonlinear=nonlinear[:num_encoder_blocks], depth=depth[:num_encoder_blocks],
+            eps=eps
+        )
 
         skip_channels = []
         for downsample_block in encoder.net:
@@ -321,10 +343,14 @@ class D3NetBackbone(nn.Module):
 
         # encoder.net[-1].out_channels == skip_channels[0]
         _in_channels, _growth_rate = encoder.net[-1].out_channels, growth_rate[num_encoder_blocks]
-        bottleneck_d3block = D3Block(_in_channels, _growth_rate, kernel_size=kernel_size, num_blocks=num_d2blocks[num_encoder_blocks], dilated=dilated[num_encoder_blocks], depth=depth[num_encoder_blocks])
+        bottleneck_d3block = D3Block(_in_channels, _growth_rate, kernel_size=kernel_size, num_blocks=num_d2blocks[num_encoder_blocks], dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks], depth=depth[num_encoder_blocks])
 
         _in_channels = bottleneck_d3block.out_channels
-        decoder = Decoder(_in_channels, skip_channels, growth_rate[num_encoder_blocks+1:], kernel_size=kernel_size, up_scale=scale, num_d2blocks=num_d2blocks[num_encoder_blocks+1:], dilated=dilated[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], eps=eps)
+        decoder = Decoder(
+            _in_channels, skip_channels, growth_rate[num_encoder_blocks+1:], kernel_size=kernel_size, up_scale=scale, num_d2blocks=num_d2blocks[num_encoder_blocks+1:],
+            dilated=dilated[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], norm=norm[num_encoder_blocks+1:], nonlinear=nonlinear[num_encoder_blocks+1:],
+            eps=eps
+        )
         
         self.encoder = encoder
         self.bottleneck_conv2d = bottleneck_d3block
@@ -367,13 +393,16 @@ class D3NetBackbone(nn.Module):
         return output
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_d2blocks=None, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_d2blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: 
             growth_rate <list<int>>:
             kernel_size <tuple<int>> or <int>:
             num_d2blocks <list<int>> or <int>:
+            dilated <list<bool>> or <bool>:
+            norm <list<bool>> or <bool>:
+            nonlinear <list<str>> or <str>:
         """
         super().__init__()
 
@@ -398,7 +427,21 @@ class Encoder(nn.Module):
             assert num_d3blocks == len(dilated), "Invalid length of `dilated`"
         else:
             raise ValueError("Invalid type of `dilated`.")
-            
+
+        if type(norm) is bool:
+            norm = [norm] * num_d3blocks
+        elif type(norm) is list:
+            assert num_d3blocks == len(norm), "Invalid length of `norm`"
+        else:
+            raise ValueError("Invalid type of `norm`.")
+
+        if type(nonlinear) is str:
+            nonlinear = [nonlinear] * num_d3blocks
+        elif type(nonlinear) is list:
+            assert num_d3blocks == len(nonlinear), "Invalid length of `nonlinear`"
+        else:
+            raise ValueError("Invalid type of `nonlinear`.")
+        
         if depth is None:
             depth = [None] * num_d3blocks
         elif type(depth) is int:
@@ -414,7 +457,7 @@ class Encoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_d3blocks):
-            downsample_block = DownSampleD3Block(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], depth=depth[idx], eps=eps)
+            downsample_block = DownSampleD3Block(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(downsample_block)
             _in_channels = downsample_block.out_channels
         
@@ -437,7 +480,7 @@ class Encoder(nn.Module):
         return output, skip
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), num_d2blocks=None, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), num_d2blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: 
@@ -445,6 +488,9 @@ class Decoder(nn.Module):
             growth_rate <list<int>>:
             kernel_size <tuple<int>> or <int>:
             num_d2blocks <list<int>> or <int>:
+            dilated <list<bool>> or <bool>:
+            norm <list<bool>> or <bool>:
+            nonlinear <list<str>> or <str>:
         """
         super().__init__()
 
@@ -470,6 +516,20 @@ class Decoder(nn.Module):
         else:
             raise ValueError("Invalid type of `dilated`.")
 
+        if type(norm) is bool:
+            norm = [norm] * num_d3blocks
+        elif type(norm) is list:
+            assert num_d3blocks == len(norm), "Invalid length of `norm`"
+        else:
+            raise ValueError("Invalid type of `norm`.")
+
+        if type(nonlinear) is str:
+            nonlinear = [nonlinear] * num_d3blocks
+        elif type(nonlinear) is list:
+            assert num_d3blocks == len(nonlinear), "Invalid length of `nonlinear`"
+        else:
+            raise ValueError("Invalid type of `nonlinear`.")
+
         if depth is None:
             depth = [None] * num_d3blocks
         elif type(depth) is int:
@@ -485,7 +545,7 @@ class Decoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_d3blocks):
-            upsample_block = UpSampleBlock(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], depth=depth[idx], eps=eps)
+            upsample_block = UpSampleBlock(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(upsample_block)
             _in_channels = upsample_block.out_channels
         
@@ -508,7 +568,7 @@ class Decoder(nn.Module):
         return output
 
 class D3Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), num_blocks=None, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: # of input channels
@@ -516,6 +576,8 @@ class D3Block(nn.Module):
             kernel_size <int> or <tuple<int>>: Kernel size
             num_blocks <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `num_blocks`.
             dilated <bool> or <list<bool>>: Applies dilated convolution.
+            norm <bool> or <list<bool>>: Applies batch normalization.
+            nonlinear <str> or <list<str>>: Applies nonlinear function.
             depth <int>: 
         """
         super().__init__()
@@ -538,7 +600,27 @@ class D3Block(nn.Module):
                 assert num_blocks == len(dilated), "`num_blocks` is different from `len(dilated)`"
             num_blocks = len(dilated)
         else:
-            raise ValueError("Not support growth_rate={}".format(growth_rate))
+            raise ValueError("Not support dilated={}".format(dilated))
+
+        if type(norm) is bool:
+            assert num_blocks is not None, "Specify `num_blocks`"
+            norm = [norm] * num_blocks
+        elif type(norm) is list:
+            if num_blocks is not None:
+                assert num_blocks == len(norm), "`num_blocks` is different from `len(norm)`"
+            num_blocks = len(norm)
+        else:
+            raise ValueError("Not support norm={}".format(norm))
+        
+        if type(nonlinear) is str:
+            assert num_blocks is not None, "Specify `num_blocks`"
+            nonlinear = [nonlinear] * num_blocks
+        elif type(nonlinear) is list:
+            if num_blocks is not None:
+                assert num_blocks == len(nonlinear), "`num_blocks` is different from `len(nonlinear)`"
+            num_blocks = len(nonlinear)
+        else:
+            raise ValueError("Not support nonlinear={}".format(nonlinear))
     
         self.growth_rate = growth_rate
         self.num_blocks = num_blocks
@@ -549,7 +631,7 @@ class D3Block(nn.Module):
 
         for idx in range(num_blocks):
             _out_channels = sum(growth_rate[idx:])
-            d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], depth=depth, eps=eps)
+            d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
             net.append(d2block)
             _in_channels = growth_rate[idx]
 
@@ -586,12 +668,12 @@ class DownSampleD3Block(nn.Module):
     """
     D3Block + down sample
     """
-    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), num_blocks=None, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         super().__init__()
 
         self.down_scale = _pair(down_scale)
 
-        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, depth=depth, eps=eps)
+        self.d3block = D3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
         self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
 
         self.out_channels = self.d3block.out_channels
@@ -629,12 +711,12 @@ class DownSampleD3Block(nn.Module):
         return output, skip
 
 class UpSampleBlock(nn.Module):
-    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, depth=None, eps=EPS):
+    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         super().__init__()
 
         self.norm2d = nn.BatchNorm2d(in_channels, eps=eps)
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
-        self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, depth=depth, eps=eps)
+        self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
 
         self.out_channels = self.d3block.out_channels
     
@@ -746,10 +828,12 @@ def _test_d3net_backbone():
     num_d2blocks = [2, 2, 2, 2, 2]
     
     dilated = [True, True, True, True, True]
+    norm = [True, True, True, True, True]
+    nonlinear = ['relu', 'relu', 'relu', 'relu', 'relu']
     depth = [3, 3, 4, 2, 2]
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
 
-    model = D3NetBackbone(in_channels, num_features, growth_rate, kernel_size, num_d2blocks=num_d2blocks, dilated=dilated, depth=depth)
+    model = D3NetBackbone(in_channels, num_features, growth_rate, kernel_size, num_d2blocks=num_d2blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth)
 
     print(model)
 

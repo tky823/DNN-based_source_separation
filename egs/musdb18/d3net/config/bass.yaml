@@ -8,6 +8,8 @@ low:
   scale: 2
   num_d2blocks: [2, 2, 2, 2, 2, 2, 2]
   dilated: [True, True, True, True, True, True, True]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
   depth: [5, 5, 5, 5, 4, 4, 4]
 middle:
   sections: 1408
@@ -17,6 +19,8 @@ middle:
   scale: 2
   num_d2blocks: [1, 1, 1, 1, 1, 1, 1]
   dilated: [True, True, True, True, True, True, True]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
   depth: [1, 1, 1, 1, 1, 1, 1]
 full:
   num_features: 32
@@ -25,6 +29,8 @@ full:
   scale: 2
   num_d2blocks: [4, 5, 6, 7, 8, 6, 6, 4, 4]
   dilated: [True, True, True, True, True, True, True, True, True]
+  norm: [True, True, True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu, relu, relu]
   depth: [2, 2, 2, 2, 2, 2, 2, 2, 2]
 final:
   growth_rate: 12

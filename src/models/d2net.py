@@ -6,13 +6,15 @@ from torch.nn.modules.utils import _pair
 EPS = 1e-12
      
 class D2Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, dilated=True, depth=None, norm=True, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         """
         Args:
             in_channels <int>: # of input channels
             growth_rate <int> or <list<int>>: # of output channels
             kernel_size <int> or <tuple<int>>: Kernel size
             dilated <bool> or <list<bool>>: Applies dilated convolution.
+            norm <bool> or <list<bool>>: Applies batch normalization.
+            nonlinear <str> or <list<str>>: Applies nonlinear function.
             depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
         """
         super().__init__()
