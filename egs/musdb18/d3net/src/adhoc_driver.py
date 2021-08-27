@@ -1,5 +1,6 @@
 import os
 import time
+import math
 
 import museval
 import torch
@@ -432,26 +433,66 @@ def apply_multichannel_wiener_filter_norbert(mixture, estimated_sources_amplitud
     return estimated_sources
 
 def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):
+    """
+    Multichannel Wiener filter.
+    Implementation is based on norbert package.
+    Args:
+        mixture <torch.Tensor>: Complex tensor with shape of (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames) or (batch_size, 1, n_channels, n_bins, n_frames) or (batch_size, n_channels, n_bins, n_frames)
+        estimated_sources_amplitude <torch.Tensor>: (n_sources, n_channels, n_bins, n_frames) or (batch_size, n_sources, n_channels, n_bins, n_frames)
+        iteration <int>: Iteration of EM algorithm updates
+        channels_first <bool>: Only supports True
+        eps <float>: small value for numerical stability
+    """
     assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
 
-    n_dims = mixture.dim()
+    n_dims = estimated_sources_amplitude.dim()
+    n_dims_mixture = mixture.dim()
 
     if n_dims == 4:
-        mixture = mixture.squeeze(dim=0)
-    elif n_dims != 3:
-        raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
+        """
+        Shape of mixture is (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames)
+        """
+        if n_dims_mixture == 4:
+            mixture = mixture.squeeze(dim=1) # (n_channels, n_bins, n_frames)
+        elif n_dims_mixture != 3:
+            raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
+        
+        # Use soft mask
+        ratio = estimated_sources_amplitude / (estimated_sources_amplitude.sum(dim=0) + eps)
+        estimated_sources = ratio * mixture
 
-    assert estimated_sources_amplitude.dim() == 4, "estimated_sources_amplitude.dim() is expected 4, but given {}.".format(estimated_sources_amplitude.dim())
+        norm = max(1, torch.abs(mixture).max() / 10)
+        mixture, estimated_sources = mixture / norm, estimated_sources / norm
 
-    # Use soft mask
-    ratio = estimated_sources_amplitude / (estimated_sources_amplitude.sum(dim=0) + eps)
-    estimated_sources = ratio * mixture
+        estimated_sources = update_em(mixture, estimated_sources, iteration, eps=eps)
+        estimated_sources = norm * estimated_sources
+    elif n_dims == 5:
+        """
+        Shape of mixture is (batch_size, 1, n_channels, n_bins, n_frames) or (batch_size, n_channels, n_bins, n_frames)
+        """
+        if n_dims_mixture == 5:
+            mixture = mixture.squeeze(dim=1) # (batch_size, n_channels, n_bins, n_frames)
+        elif n_dims_mixture != 4:
+            raise ValueError("mixture.dim() is expected 4 or 5, but given {}.".format(mixture.dim()))
+        
+        estimated_sources = []
 
-    norm = max(1, torch.abs(mixture).max() / 10)
-    mixture, estimated_sources = mixture / norm, estimated_sources / norm
+        for _mixture, _estimated_sources_amplitude in zip(mixture, estimated_sources_amplitude):
+            # Use soft mask
+            ratio = _estimated_sources_amplitude / (_estimated_sources_amplitude.sum(dim=0) + eps)
+            _estimated_sources = ratio * _mixture
 
-    estimated_sources = update_em(mixture, estimated_sources, iteration, eps=eps)
-    estimated_sources = norm * estimated_sources
+            norm = max(1, torch.abs(_mixture).max() / 10)
+            _mixture, _estimated_sources = _mixture / norm, _estimated_sources / norm
+
+            _estimated_sources = update_em(_mixture, _estimated_sources, iteration, eps=eps)
+            _estimated_sources = norm * _estimated_sources
+
+            estimated_sources.append(_estimated_sources.unsqueeze(dim=0))
+        
+        estimated_sources = torch.cat(estimated_sources, dim=0)
+    else:
+        raise ValueError("estimated_sources_amplitude.dim() is expected 4 or 5, but given {}.".format(estimated_sources_amplitude.dim()))
 
     return estimated_sources
 
@@ -484,7 +525,7 @@ def update_em(mixture, estimated_sources, iterations=1, source_parallel=False, e
        
         v, R = v.unsqueeze(dim=3), R.unsqueeze(dim=2) # (n_sources, n_bins, n_frames, 1), (n_sources, n_bins, 1, n_channels, n_channels)
 
-        inv_Cxx = torch.linalg.inv(Cxx + eps * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+        inv_Cxx = torch.linalg.inv(Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
 
         if source_parallel:
             gain = v.unsqueeze(dim=4) * torch.sum(R.unsqueeze(dim=5) * inv_Cxx.unsqueeze(dim=2), dim=4) # (n_sources, n_bins, n_frames, n_channels, n_channels)

@@ -41,6 +41,7 @@ parser.add_argument('--sample_dir', type=str, default='./tmp/sample', help='Samp
 parser.add_argument('--continue_from', type=str, default=None, help='Resume training')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
 parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 1: FORCE overwrite')
+parser.add_argument('--num_workers', type=int, default=0, help='# of workers given to data loader for training.')
 parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
@@ -58,7 +59,7 @@ def main(args):
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
-    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if args.max_norm is not None and args.max_norm == 0:

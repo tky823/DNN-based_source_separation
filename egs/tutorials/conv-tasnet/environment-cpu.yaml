@@ -1,4 +1,4 @@
-name: DNN-based_source_separation_musdb18-cpu
+name: DNN-based_source_separation_tutorials-cpu
 
 channels:
   - pytorch
@@ -9,11 +9,7 @@ dependencies:
   - python>=3.6,<=3.8
   - numpy>=1.19
   - matplotlib>=3.3.2
-  - pyyaml>=0.2.5
-  - norbert>=0.2.1
   - pytorch>=1.8.0
   - torchaudio>=0.8.0
-  - pip
-  - pip:
-    - musdb==0.4.0
-    - museval==0.4.0
+  - mir_eval==0.6
+  - pyaudio>=0.2.11
