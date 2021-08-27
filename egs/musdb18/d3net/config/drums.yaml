@@ -31,3 +31,5 @@ final:
   kernel_size: 3
   dilated: True
   depth: 3
+  norm: True
+  nonlinear: relu

@@ -64,6 +64,7 @@ class D3Net(nn.Module):
         kernel_size_final=None,
         dilated_final=True,
         depth_final=None,
+        norm_final=True, nonlinear_final='relu',
         eps=EPS,
         **kwargs
     ):
@@ -95,7 +96,7 @@ class D3Net(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, eps=eps)
+        self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = nn.BatchNorm2d(growth_rate_final, eps=eps)
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
@@ -112,6 +113,7 @@ class D3Net(nn.Module):
         self.kernel_size_final = kernel_size_final
         self.dilated_final = dilated_final
         self.depth_final = depth_final
+        self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
         self.eps = eps
         
         self._reset_parameters()
@@ -177,6 +179,7 @@ class D3Net(nn.Module):
             'kernel_size_final': self.kernel_size_final,
             'dilated_final': self.dilated_final,
             'depth_final': self.depth_final,
+            'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
             'eps': self.eps
         }
         
@@ -219,6 +222,7 @@ class D3Net(nn.Module):
         kernel_size_final = config['final']['kernel_size']
         dilated_final = config['final']['dilated']
         depth_final = config['final']['depth']
+        norm_final, nonlinear_final = config['final'].get('norm') or True, config['final'].get('nonlinear') or 'relu'
 
         eps = config.get('eps') or EPS
 
@@ -233,6 +237,7 @@ class D3Net(nn.Module):
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
             depth_final=depth_final,
+            norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
         
@@ -255,8 +260,9 @@ class D3Net(nn.Module):
         kernel_size_final = config['kernel_size_final']
         dilated_final = config['dilated_final']
         depth_final = config['depth_final']
+        norm_final, nonlinear_final = config.get('norm_final') or True, config.get('nonlinear_final') or 'relu'
 
-        eps = config['eps']
+        eps = config.get('eps') or EPS
         
         model = cls(
             in_channels, num_features,
@@ -269,6 +275,7 @@ class D3Net(nn.Module):
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
             depth_final=depth_final,
+            norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
         
