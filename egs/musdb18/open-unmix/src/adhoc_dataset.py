@@ -147,8 +147,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def _getitem_augmentation(self):
         """
         Returns time domain signals
-        Args:
-            idx <int>: index
         Returns:
             mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)

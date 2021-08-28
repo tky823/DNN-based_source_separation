@@ -20,7 +20,7 @@ max_bin=1487
 # model
 hidden_channels=512
 num_layers=3
-dropout=0.4
+dropout=4e-1
 causal=0
 
 # Criterion
