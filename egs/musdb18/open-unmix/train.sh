@@ -20,6 +20,7 @@ max_bin=1487
 # model
 hidden_channels=512
 num_layers=3
+dropout=0.4
 causal=0
 
 # Criterion
@@ -33,7 +34,6 @@ max_norm=0 # 0 is handled as no clipping
 
 batch_size=16
 epochs=1000
-anneal_epoch=40
 
 use_cuda=1
 overwrite=0
@@ -44,7 +44,7 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}-${anneal_epoch}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model/${target}"
 loss_dir="${save_dir}/loss/${target}"
@@ -71,6 +71,7 @@ train.py \
 --max_bin ${max_bin} \
 --hidden_channels ${hidden_channels} \
 --num_layers ${num_layers} \
+--dropout ${dropout} \
 --causal ${causal} \
 --sources ${sources} \
 --target ${target} \

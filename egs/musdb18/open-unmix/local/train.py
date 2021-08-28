@@ -26,6 +26,7 @@ parser.add_argument('--max_bin', type=int, default=1487, help='Max frequency bin
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--hidden_channels', type=int, default=512, help='# of hidden channels')
 parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LSTM')
+parser.add_argument('--dropout', type=float, default=0, help='dropout')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
 parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
