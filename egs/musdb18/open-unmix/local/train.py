@@ -61,7 +61,7 @@ def main(args):
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
-    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if args.max_norm is not None and args.max_norm == 0:
