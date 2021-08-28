@@ -22,9 +22,11 @@ parser.add_argument('--duration', type=float, default=6, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--max_bin', type=int, default=1487, help='Max frequency bin')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--hidden_channels', type=int, default=512, help='# of hidden channels')
 parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LSTM')
+parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
 parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
@@ -65,7 +67,8 @@ def main(args):
         args.max_norm = None
     
     in_channels = 2
-    model = OpenUnmix(in_channels, hidden_channels=args.hidden_channels, num_layers=args.num_layers, n_bins=None, max_bin=None, dropout=None, causal=False)
+    args.n_bins = args.fft_size // 2 + 1
+    model = OpenUnmix(in_channels, hidden_channels=args.hidden_channels, num_layers=args.num_layers, n_bins=args.n_bins, max_bin=args.max_bin, dropout=args.dropout, causal=args.causal)
 
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)

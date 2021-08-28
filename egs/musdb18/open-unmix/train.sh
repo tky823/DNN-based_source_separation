@@ -15,6 +15,7 @@ sr=44100
 window_fn='hann'
 fft_size=4096
 hop_size=1024
+max_bin=1487
 
 # model
 hidden_channels=512
@@ -67,6 +68,7 @@ train.py \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+--max_bin ${max_bin} \
 --hidden_channels ${hidden_channels} \
 --num_layers ${num_layers} \
 --causal ${causal} \
