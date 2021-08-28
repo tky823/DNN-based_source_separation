@@ -40,7 +40,7 @@ class AdhocTrainer(TrainerBase):
         os.makedirs(self.loss_dir, exist_ok=True)
         os.makedirs(self.sample_dir, exist_ok=True)
         
-        self.epochs, self.anneal_epoch = args.epochs, args.anneal_epoch
+        self.epochs = args.epochs
         
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
