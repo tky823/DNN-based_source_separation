@@ -128,6 +128,8 @@ class OpenUnmix(nn.Module):
 
         batch_size, _, _, n_frames = input.size()
 
+        self.rnn.flatten_parameters()
+
         if max_bin == n_bins:
             x_valid = input
         else:
