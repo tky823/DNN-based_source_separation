@@ -145,7 +145,7 @@ class AdhocTrainer(TrainerBase):
             train_loss += loss.item()
             
             if (idx + 1) % 100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -164,8 +164,8 @@ class AdhocTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, source, name) in enumerate(self.valid_loader):
                 """
-                    mixture: (batch_size, n_mics, n_bins, n_frames)
-                    sources: (batch_size, n_mics, n_bins, n_frames)
+                    mixture: (1, n_mics, n_bins, n_frames)
+                    sources: (1, n_mics, n_bins, n_frames)
                     name <list<str>>: Artist and title of song
                 """
                 if self.use_cuda:
@@ -203,7 +203,7 @@ class AdhocTrainer(TrainerBase):
                     estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
                     estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)
                     
-                    save_dir = os.path.join(self.sample_dir, name)
+                    save_dir = os.path.join(self.sample_dir, name[0])
 
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
