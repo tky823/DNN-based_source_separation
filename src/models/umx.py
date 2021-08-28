@@ -84,7 +84,7 @@ class OpenUnmix(nn.Module):
             lstm_hidden_channels = hidden_channels // 2
             out_channels = hidden_channels
 
-        self.lstm = nn.LSTM(lstm_in_channels, lstm_hidden_channels, num_layers=num_layers, bidirectional=bidirectional, batch_first=True, dropout=dropout)
+        self.rnn = nn.LSTM(lstm_in_channels, lstm_hidden_channels, num_layers=num_layers, bidirectional=bidirectional, batch_first=True, dropout=dropout)
 
         net = []
         net.append(TransformBlock1d(hidden_channels + out_channels, hidden_channels, bias=False, nonlinear='relu'))
@@ -141,7 +141,7 @@ class OpenUnmix(nn.Module):
         x = self.block(x) # (batch_size * n_frames, hidden_channels)
 
         x = x.view(batch_size, n_frames, hidden_channels)
-        x_lstm, (_, _) = self.lstm(x) # (batch_size, n_frames, out_channels)
+        x_lstm, (_, _) = self.rnn(x) # (batch_size, n_frames, out_channels)
         x = torch.cat([x, x_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
         x = x.view(batch_size * n_frames, hidden_channels + out_channels)
         x_full = self.net(x) # (batch_size * n_frames, n_bins)
