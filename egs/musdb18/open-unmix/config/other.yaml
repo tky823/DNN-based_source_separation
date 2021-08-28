@@ -1,0 +1,7 @@
+in_channels: 2
+hidden_channels: 512
+num_layers: 3
+n_bins: 2049
+max_bin: 1487
+drop_out: 0.4
+causal: False

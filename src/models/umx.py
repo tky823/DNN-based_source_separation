@@ -1,3 +1,4 @@
+import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -167,6 +168,34 @@ class OpenUnmix(nn.Module):
         }
         
         return config
+    
+    @classmethod
+    def build_from_config(cls, config_path):
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        in_channels = config['in_channels']
+
+        hidden_channels = config['hidden_channels']
+        num_layers = config['num_layers']
+        n_bins, max_bin = config['n_bins'], config['max_bin']
+        dropout = config['dropout']
+        causal = config['causal']
+
+        eps = config.get('eps') or EPS
+
+        model = cls(
+            in_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            n_bins=n_bins, max_bin=max_bin,
+            dropout=dropout,
+            causal=causal,
+            eps=eps
+        )
+        
+        return model
+    
     
     @classmethod
     def build_model(cls, model_path):
