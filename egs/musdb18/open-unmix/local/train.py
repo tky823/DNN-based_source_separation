@@ -62,7 +62,7 @@ def main(args):
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
-    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False, pin_memory=True)
     
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
