@@ -20,7 +20,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     Training dataset that returns randomly selected mixture spectrograms.
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 songs.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True, threshold=THRESHOLD_POWER, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
         
         assert_sample_rate(sr)
@@ -28,23 +28,23 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         self.mus = musdb.DB(root=self.musdb18_root, subsets="train", is_wav=is_wav) # train (86 songs) + valid (14 songs)
         
         self.threshold = threshold
-        self.patch_samples = patch_samples
+        self.samples = samples
 
         self.augmentation = augmentation
 
         if augmentation:
             if samples_per_epoch is None:
-                patch_duration = patch_samples / sr
+                duration = samples / sr
                 total_duration = 0
                 for track in self.mus.tracks:
                     total_duration += track.duration
-                samples_per_epoch = int(total_duration / patch_duration) # 3862 is expected.
+                samples_per_epoch = int(total_duration / duration) # 3862 is expected.
 
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
             if overlap is None:
-                overlap = self.patch_samples / 2
+                overlap = self.samples / 2
             
             self.samples_per_epoch = None
             self.json_data = {
@@ -53,13 +53,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
             for songID, track in enumerate(self.mus.tracks):
                 samples = track.audio.shape[0]
-                for start in np.arange(0, samples, patch_samples - overlap):
-                    if start + patch_samples >= samples:
+                for start in np.arange(0, samples, samples - overlap):
+                    if start + samples >= samples:
                         break
                     data = {
                         'songID': songID,
                         'start': start / sr,
-                        'duration': patch_samples / sr
+                        'duration': samples / sr
                     }
                     for source in sources:
                         self.json_data[source].append(data)
@@ -162,12 +162,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         for _source, songID in zip(self.sources, song_indices):
             track = self.mus.tracks[songID]
 
-            start = random.uniform(0, track.duration - self.patch_samples / self.sr)
+            start = random.uniform(0, track.duration - self.samples / self.sr)
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
             track.chunk_start = start
-            track.chunk_duration = self.patch_samples / self.sr
+            track.chunk_duration = self.samples / self.sr
 
             source = track.targets[_source].audio.transpose(1, 0)
 
@@ -216,17 +216,15 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         self.json_data = []
 
         for songID, track in enumerate(self.mus.tracks):
-            song_data = {
-                'songID': songID,
-                'patches': []
-            }
-
             samples = track.audio.shape[0]
             
             max_samples = min(samples, self.max_samples)
 
-            song_data['start'] = 0
-            song_data['samples'] = max_samples
+            song_data = {
+                'songID': songID,
+                'start': 0,
+                'samples': max_samples
+            }
 
             self.json_data.append(song_data)
         
