@@ -182,7 +182,7 @@ class AdhocTrainer(TrainerBase):
 
                 if idx < 5:
                     mixture, source = mixture[0], source[0]
-                    estimated_source, estimated_source_amplitude = estimated_source[0], estimated_source_amplitude[0]
+                    estimated_source_amplitude = estimated_source_amplitude[0]
                     name = name[0]
                     estimated_source = estimated_source_amplitude * torch.exp(1j * torch.angle(mixture)) # -> (n_mics, n_bins, n_frames)
 
