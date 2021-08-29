@@ -464,6 +464,71 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         
         return mixture, sources, T, name
 
+class SpectrogramTestDataset(SpectrogramDataset):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+
+        assert_sample_rate(sr)
+
+        test_txt_path = os.path.join(musdb18_root, 'test.txt')
+
+        names = []
+        with open(test_txt_path, 'r') as f:
+            for line in f:
+                name = line.strip()
+                names.append(name)
+
+        self.max_samples = max_samples
+
+        self.tracks = []
+        self.json_data = []
+
+        for songID, name in enumerate(names):
+            mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
+            wave, sr = torchaudio.load(mixture_path)
+            track_samples = wave.size(1)
+
+            track = {
+                'name': name,
+                'samples': track_samples,
+                'path': {
+                    'mixture': mixture_path
+                }
+            }
+
+            if max_samples is None:
+                samples = track_samples
+            else:
+                if track_samples < max_samples:
+                    samples = track_samples
+                else:
+                    samples = max_samples
+
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
+            
+            self.tracks.append(track)
+
+            data = {
+                'songID': songID,
+                'start': 0,
+                'samples': samples
+            }
+
+            self.json_data.append(data)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
+            T (), <int>: Number of samples in time-domain
+            name <str>: Artist and title of song
+        """
+        mixture, sources, T, name = super().__getitem__(idx)
+        
+        return mixture, sources, T, name
+
 """
     Data loader
 """

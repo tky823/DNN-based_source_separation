@@ -279,24 +279,22 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         songID = song_data['songID']
         track = self.tracks[songID]
         name = track['name']
+        paths = track['path']
 
         batch_mixture, batch_target = [], []
         max_samples = 0
-
-        wav_paths = {}
-        for _source in self.sources + ['mixture']:
-            wav_paths[_source] = os.path.join(self.musdb18_root, 'train', name, '{}.wav'.format(_source))
 
         for data in song_data['patches']:
             start = data['start']
             samples = data['samples']
 
             if set(self.sources) == set(__sources__):
-                mixture, _ = torchaudio.load(wav_paths['mixture'], frame_offset=start, num_frames=samples)
+                
+                mixture, _ = torchaudio.load(paths['mixture'], frame_offset=start, num_frames=samples)
             else:
                 sources = []
                 for _source in self.sources:
-                    source, _ = torchaudio.load(wav_paths[_source], frame_offset=start, num_frames=samples)
+                    source, _ = torchaudio.load(paths[_source], frame_offset=start, num_frames=samples)
                     sources.append(source.unsqueeze(dim=0))
                 sources = torch.cat(sources, dim=0)
                 mixture = sources.sum(dim=0)
@@ -304,12 +302,12 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             if type(self.target) is list:
                 target = []
                 for _target in self.target:
-                    source, _ = torchaudio.load(wav_paths[_target], frame_offset=start, num_frames=samples)
+                    source, _ = torchaudio.load(paths[_target], frame_offset=start, num_frames=samples)
                     target.append(source.unsqueeze(dim=0))
                 target = torch.cat(target, dim=0)
                 mixture = mixture.unsqueeze(dim=0)
             else:
-                target, _ = torchaudio.load(wav_paths[self.target], frame_offset=start, num_frames=samples)
+                target, _ = torchaudio.load(paths[self.target], frame_offset=start, num_frames=samples)
 
             max_samples = max(max_samples, mixture.size(-1))
 
@@ -349,30 +347,48 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 class SpectrogramTestDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=5*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
-        
-        import musdb
-        
-        assert_sample_rate(sr)
-        self.sr = sr
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="test", is_wav=is_wav)
 
-        self.patch_samples = patch_samples
+        assert_sample_rate(sr)
+
+        test_txt_path = os.path.join(musdb18_root, 'test.txt')
+
+        names = []
+        with open(test_txt_path, 'r') as f:
+            for line in f:
+                name = line.strip()
+                names.append(name)
+
+        self.tracks = []
         self.json_data = []
 
-        for songID, track in enumerate(self.mus.tracks):
+        for songID, name in enumerate(names):
+            mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
+            wave, sr = torchaudio.load(mixture_path)
+            track_samples = wave.size(1)
+
+            track = {
+                'name': name,
+                'samples': track_samples,
+                'path': {
+                    'mixture': mixture_path
+                }
+            }
+
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
+
             song_data = {
                 'songID': songID,
                 'patches': []
             }
-            samples = track.audio.shape[0]
-            
-            for start in np.arange(0, samples, patch_samples):
-                if start + patch_samples > samples:
+
+            for start in range(0, track_samples, patch_samples):
+                if start + patch_samples > track_samples:
                     data = {
                         'start': start,
-                        'samples': samples - start,
+                        'samples': track_samples - start,
                         'padding_start': 0,
-                        'padding_end': start + patch_samples - samples
+                        'padding_end': start + patch_samples - track_samples
                     }
                 else:
                     data = {
@@ -382,6 +398,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
                         'padding_end': 0
                     }
                 song_data['patches'].append(data)
+            
+            self.tracks.append(track)
             self.json_data.append(song_data)
         
     def __getitem__(self, idx):
@@ -396,30 +414,31 @@ class SpectrogramTestDataset(SpectrogramDataset):
         patch_samples = self.patch_samples
 
         songID = song_data['songID']
-        track = self.mus.tracks[songID]
-        name = track.name
-        samples, _ = track.audio.shape
+        track = self.tracks[songID]
+        name = track['name']
+        paths = track['path']
+        samples = track['samples']
 
         if set(self.sources) == set(__sources__):
-            mixture = track.audio.transpose(1, 0) # (n_mics, T)
+            mixture, _ = torchaudio.load(paths['mixture']) # (n_mics, T)
         else:
             sources = []
             for _source in self.sources:
-                sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
-            sources = np.concatenate(sources, axis=0) # (n_mics, T)
-            mixture = sources.sum(axis=0) # (n_mics, T)
+                source, _ = torchaudio.load(paths[_source]) # (n_mics, T)
+                sources.append(source.unsqueeze(dim=0))
+            sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
+            mixture = sources.sum(dim=0) # (n_mics, T)
         
         if type(self.target) is list:
             target = []
             for _target in self.target:
-                target.append(track.targets[_target].audio.transpose(1, 0)[np.newaxis])
-            target = np.concatenate(target, axis=0) # (len(target), n_mics, T)
-            mixture = mixture[np.newaxis] # (1, n_mics, T)
+                source, _ = torchaudio.load(paths[_target]) # (n_mics, T)
+                target.append(source.unsqueeze(dim=0))
+            target = torch.cat(target, dim=0) # (len(target), n_mics, T)
+            mixture = mixture.unsqueeze(dim=0) # (1, n_mics, T)
         else:
             # mixture: (n_mics, T)
-            target = track.targets[self.target].audio.transpose(1, 0) # (n_mics, T)
-
-        mixture, target = torch.from_numpy(mixture).float(), torch.from_numpy(target).float()
+            target, _ = torchaudio.load(paths[self.target]) # (n_mics, T)
 
         padding = (patch_samples - samples % patch_samples) % patch_samples
 
