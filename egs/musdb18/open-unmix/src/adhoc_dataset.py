@@ -228,30 +228,14 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+            
+            max_samples = min(track_samples, self.max_samples)
 
             song_data = {
                 'songID': songID,
-                'patches': []
+                'start': 0,
+                'samples': max_samples
             }
-
-            max_samples = min(track_samples, self.max_samples)
-
-            for start in range(0, max_samples, samples):
-                if start + samples > max_samples:
-                    data = {
-                        'start': start,
-                        'samples': max_samples - start,
-                        'padding_start': 0,
-                        'padding_end': start + samples - max_samples
-                    }
-                else:
-                    data = {
-                        'start': start,
-                        'samples': samples,
-                        'padding_start': 0,
-                        'padding_end': 0
-                    }
-                song_data['patches'].append(data)
 
             self.json_data.append(song_data)
             self.tracks.append(track)
@@ -270,68 +254,45 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         name = track['name']
         paths = track['path']
 
-        batch_mixture, batch_target = [], []
-        max_samples = 0
+        start = song_data['start']
+        samples = song_data['samples']
 
-        for data in song_data['patches']:
-            start = data['start']
-            samples = data['samples']
-
-            if set(self.sources) == set(__sources__):
-                
-                mixture, _ = torchaudio.load(paths['mixture'], frame_offset=start, num_frames=samples)
-            else:
-                sources = []
-                for _source in self.sources:
-                    source, _ = torchaudio.load(paths[_source], frame_offset=start, num_frames=samples)
-                    sources.append(source.unsqueeze(dim=0))
-                sources = torch.cat(sources, dim=0)
-                mixture = sources.sum(dim=0)
+        if set(self.sources) == set(__sources__):
+            mixture, _ = torchaudio.load(paths['mixture'], frame_offset=start, num_frames=samples)
+        else:
+            sources = []
+            for _source in self.sources:
+                source, _ = torchaudio.load(paths[_source], frame_offset=start, num_frames=samples)
+                sources.append(source.unsqueeze(dim=0))
+            sources = torch.cat(sources, dim=0)
+            mixture = sources.sum(dim=0)
             
-            if type(self.target) is list:
-                target = []
-                for _target in self.target:
-                    source, _ = torchaudio.load(paths[_target], frame_offset=start, num_frames=samples)
-                    target.append(source.unsqueeze(dim=0))
-                target = torch.cat(target, dim=0)
-                mixture = mixture.unsqueeze(dim=0)
-            else:
-                target, _ = torchaudio.load(paths[self.target], frame_offset=start, num_frames=samples)
+        if type(self.target) is list:
+            target = []
+            for _target in self.target:
+                source, _ = torchaudio.load(paths[_target], frame_offset=start, num_frames=samples)
+                target.append(source.unsqueeze(dim=0))
+            target = torch.cat(target, dim=0)
+            mixture = mixture.unsqueeze(dim=0)
+        else:
+            target, _ = torchaudio.load(paths[self.target], frame_offset=start, num_frames=samples)
 
-            max_samples = max(max_samples, mixture.size(-1))
-
-            batch_mixture.append(mixture)
-            batch_target.append(target)
-        
-        batch_mixture_padded, batch_target_padded = [], []
-
-        for mixture, target in zip(batch_mixture, batch_target):
-            if mixture.size(-1) < max_samples:
-                padding = max_samples - mixture.size(-1)
-                mixture = F.pad(mixture, (0, padding))
-                target = F.pad(target, (0, padding))
-            batch_mixture_padded.append(mixture.unsqueeze(dim=0))
-            batch_target_padded.append(target.unsqueeze(dim=0))
-
-        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
-        batch_target = torch.cat(batch_target_padded, dim=0)
-
-        n_dims = batch_mixture.dim()
+        n_dims = mixture.dim()
 
         if n_dims > 2:
-            mixture_channels = batch_mixture.size()[:-1]
-            target_channels = batch_target.size()[:-1]
-            batch_mixture = batch_mixture.reshape(-1, batch_mixture.size(-1))
-            batch_target = batch_target.reshape(-1, batch_target.size(-1))
+            mixture_channels = mixture.size()[:-1]
+            target_channels = target.size()[:-1]
+            mixture = mixture.reshape(-1, mixture.size(-1))
+            target = target.reshape(-1, target.size(-1))
 
-        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         if n_dims > 2:
-            batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
-            batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
+            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
+            target = target.reshape(*target_channels, *target.size()[-2:])
         
-        return batch_mixture, batch_target, name
+        return mixture, target, name
 
 """
 Data loader

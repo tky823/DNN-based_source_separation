@@ -278,7 +278,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             samples = data['samples']
 
             if set(self.sources) == set(__sources__):
-                
                 mixture, _ = torchaudio.load(paths['mixture'], frame_offset=start, num_frames=samples)
             else:
                 sources = []
