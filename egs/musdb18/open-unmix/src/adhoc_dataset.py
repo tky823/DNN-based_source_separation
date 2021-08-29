@@ -23,21 +23,10 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
-        valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
-        with open(valid_txt_path, 'r') as f:
-            valid_lst = [line.strip() for line in f]
-
-        names = []
-
         with open(train_txt_path, 'r') as f:
-            for line in f:
-                name = line.strip()
-
-                if name in valid_lst:
-                    continue
-                names.append(name)
+            names = [line.strip() for line in f]
         
         self.patch_samples = patch_samples
 
@@ -214,12 +203,9 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         assert_sample_rate(sr)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
-
-        names = []
+        
         with open(valid_txt_path, 'r') as f:
-            for line in f:
-                name = line.strip()
-                names.append(name)
+            names = [line.strip() for line in f]
 
         self.patch_samples = patch_samples
         self.max_samples = max_samples
