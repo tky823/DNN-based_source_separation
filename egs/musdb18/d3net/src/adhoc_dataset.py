@@ -1,7 +1,6 @@
 import os
 import random
 
-import musdb
 import torch
 import torchaudio
 import torch.nn.functional as F
@@ -350,6 +349,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 class SpectrogramTestDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=5*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
+        
+        import musdb
         
         assert_sample_rate(sr)
         self.sr = sr
