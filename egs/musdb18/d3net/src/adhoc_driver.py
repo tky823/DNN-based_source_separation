@@ -2,6 +2,7 @@ import os
 import time
 import math
 
+import musdb
 import museval
 import torch
 import torchaudio
@@ -236,6 +237,8 @@ class AdhocTester(TesterBase):
         self.sr = args.sr
         self.sources = args.sources
 
+        self.musdb18_root = args.musdb18_root
+
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
@@ -361,7 +364,7 @@ class AdhocTester(TesterBase):
         print(s)
     
     def eval_all(self):
-        mus = self.loader.dataset.mus
+        mus = musdb.DB(root=self.musdb18_root, subsets='test')
         
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
 
