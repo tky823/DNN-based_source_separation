@@ -35,32 +35,32 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         self.tracks = []
 
         if augmentation:
-            if samples_per_epoch is None:
-                patch_duration = patch_samples / sr
-                total_duration = 0
+            duration = patch_samples / sr
+            total_duration = 0
 
-                for songID, name in enumerate(names):
-                    mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-                    wave, sr = torchaudio.load(mixture_path)
-                    track_samples = wave.size(1)
+            for songID, name in enumerate(names):
+                mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+                wave, sr = torchaudio.load(mixture_path)
+                track_samples = wave.size(1)
 
-                    track = {
-                        'name': name,
-                        'samples': track_samples,
-                        'path': {
-                            'mixture': mixture_path
-                        }
+                track = {
+                    'name': name,
+                    'samples': track_samples,
+                    'path': {
+                        'mixture': mixture_path
                     }
-                    
-                    for source in sources:
-                        track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                    
-                    self.tracks.append(track)
+                }
+                
+                for source in sources:
+                    track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+                
+                self.tracks.append(track)
 
-                    track_duration = track_samples / sr
-                    total_duration += track_duration
+                track_duration = track_samples / sr
+                total_duration += track_duration
 
-                samples_per_epoch = int(total_duration / patch_duration)
+            if samples_per_epoch is None:
+                samples_per_epoch = int(total_duration / duration)
 
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
