@@ -1,10 +1,11 @@
 import os
 
-import numpy as np
 import torch
 import torchaudio
 
-__sources__=['drums','bass','other','vocals']
+from utils.utils_audio import build_window
+
+__sources__ = ['drums', 'bass', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
@@ -266,25 +267,21 @@ class WaveTestDataset(WaveDataset):
             self.json_data.append(data)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, is_wav=False):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
         if hop_size is None:
-            hop_size = fft_size//2
+            hop_size = fft_size // 2
         
         self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size//2 + 1
+        self.n_bins = fft_size // 2 + 1
 
         if window_fn:
-            if window_fn == 'hann':
-                self.window = torch.hann_window(fft_size)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(fft_size, window_fn=window_fn)
         else:
             self.window = None
         
         self.normalize = normalize
-        self.is_wav = is_wav
 
     def _is_active(self, input, threshold=1e-5):
         n_dims = input.dim()
@@ -330,36 +327,59 @@ class SpectrogramDataset(WaveDataset):
         return mixture, target, T, name
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER, is_wav=False):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', sample_rate=sr, is_wav=is_wav)
-        
+        valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
+        train_txt_path = os.path.join(musdb18_root, 'train.txt')
+
+        with open(valid_txt_path, 'r') as f:
+            valid_lst = [line.strip() for line in f]
+
+        names = []
+
+        with open(train_txt_path, 'r') as f:
+            for line in f:
+                name = line.strip()
+
+                if name in valid_lst:
+                    continue
+                names.append(name)
+
         self.threshold = threshold
-        self.duration = duration
 
         if overlap is None:
-            overlap = self.duration / 2
+            overlap = samples // 2
 
+        self.tracks = []
         self.json_data = []
 
-        for songID, track in enumerate(self.mus.tracks):
-            for start in np.arange(0, track.duration, duration - overlap):
-                if start + duration >= track.duration:
-                    break
-                
-                track.chunk_start = start
-                track.chunk_duration = duration
-                target = track.targets[self.target].audio.transpose(1, 0)
-                target = torch.Tensor(target).float()
+        for songID, name in enumerate(names):
+            mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+            wave, sr = torchaudio.load(mixture_path)
+            track_samples = wave.size(1)
 
-                if self._is_active(target, threshold=self.threshold):
-                    data = {
-                        'songID': songID,
-                        'start': start,
-                        'duration': duration
-                    }
-                    self.json_data.append(data)
+            track = {
+                'name': name,
+                'path': {
+                    'mixture': mixture_path
+                }
+            }
+
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+            
+            self.tracks.append(track)
+
+            for start in range(0, track_samples, samples - overlap):
+                if start + samples >= track_samples:
+                    break
+                data = {
+                    'songID': songID,
+                    'start': start,
+                    'samples': samples,
+                }
+                self.json_data.append(data)
         
     def __getitem__(self, idx):
         """
@@ -372,29 +392,55 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None, is_wav=False):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target, is_wav=is_wav)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', sample_rate=sr, is_wav=is_wav)
+        assert_sample_rate(sr)
 
-        self.max_duration = max_duration
+        valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
 
+        names = []
+        with open(valid_txt_path, 'r') as f:
+            for line in f:
+                name = line.strip()
+                names.append(name)
+
+        self.max_samples = max_samples
+
+        self.tracks = []
         self.json_data = []
 
-        for songID, track in enumerate(self.mus.tracks):
-            if max_duration is None:
-                duration = track.duration
+        for songID, name in enumerate(names):
+            mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+            wave, sr = torchaudio.load(mixture_path)
+            track_samples = wave.size(1)
+
+            track = {
+                'name': name,
+                'path': {
+                    'mixture': mixture_path
+                }
+            }
+
+            if max_samples is None:
+                samples = track_samples
             else:
-                if track.duration < max_duration:
-                    duration = track.duration
+                if track_samples < max_samples:
+                    samples = track_samples
                 else:
-                    duration = max_duration
+                    samples = max_samples
+
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
             
+            self.tracks.append(track)
+
             data = {
                 'songID': songID,
                 'start': 0,
-                'duration': duration
+                'samples': samples
             }
+
             self.json_data.append(data)
         
     def __getitem__(self, idx):

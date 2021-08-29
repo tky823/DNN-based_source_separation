@@ -27,28 +27,28 @@ if [ ${is_hq} -eq 0 ]; then
             # Reference: https://github.com/sigsep/sigsep-mus-io/blob/master/scripts/decode.sh
             
             work_dir="$PWD"
-            cd "${musdb18_root}";
+            cd "${musdb18_root}"
 
-            for t in "${subsets[@]}"
-                do
-                for stem in *.stem.mp4;
-                    do
+            for t in "${subsets[@]}" ; do
+                cd $t
+                for stem in *.stem.mp4 ; do
                     name=`echo $stem | awk -F".stem.mp4" '{$0=$1}1'`;
-                    echo "$stem";
-                    mkdir "$name";
-                    cd "$name";
+                    echo "$stem"
+                    mkdir "$name"
+                    cd "$name"
                     ffmpeg -loglevel panic -i "../${stem}" -map 0:0 -vn mixture.wav
                     ffmpeg -loglevel panic -i "../${stem}" -map 0:1 -vn drums.wav
                     ffmpeg -loglevel panic -i "../${stem}" -map 0:2 -vn bass.wav
                     ffmpeg -loglevel panic -i "../${stem}" -map 0:3 -vn other.wav
                     ffmpeg -loglevel panic -i "../${stem}" -map 0:4 -vn vocals.wav
-                    cd ..;
-                    done
-                cd ..;
+                    cd ../
+                done
+                cd ../
             done
-
-            cd "${work_dir}";
+            cd "${work_dir}"
         fi
+    else
+        echo "Set --to_wav 1 to load audio in this project."
     fi
 else
     file=musdb18hq.zip
