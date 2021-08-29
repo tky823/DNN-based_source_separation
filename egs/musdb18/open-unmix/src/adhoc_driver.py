@@ -90,8 +90,6 @@ class AdhocTrainer(TrainerBase):
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
-
-            # TODO: Update learning rate
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
@@ -99,10 +97,13 @@ class AdhocTrainer(TrainerBase):
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
             else:
-                if valid_loss >= self.prev_loss:
-                    self.no_improvement += 1
-                else:
-                    self.no_improvement = 0
+                self.no_improvement += 1
+                if self.no_improvement >= 10:
+                    for param_group in self.optimizer.param_groups:
+                        prev_lr = param_group['lr']
+                        lr = 0.5 * prev_lr
+                        print("Learning rate: {} -> {}".format(prev_lr, lr))
+                        param_group['lr'] = lr
             
             self.prev_loss = valid_loss
             
