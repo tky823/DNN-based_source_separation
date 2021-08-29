@@ -63,3 +63,6 @@ Update network architecture of D3Net.
 
 ## v0.5.4
 Bug fixes of D3Net.
+
+## v0.5.5
+Load audio as wav for MUSDB18.
