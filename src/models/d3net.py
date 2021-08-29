@@ -137,7 +137,7 @@ class D3Net(nn.Module):
         sections = [sum(sections), n_bins - sum(sections)]
         x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x = (x_valid - self.in_bias.unsqueeze(dim=1)) / (self.in_scale.unsqueeze(dim=1) + eps)
+        x = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps)
         x = self.band_split(x)
 
         x_bands = []

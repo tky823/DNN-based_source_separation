@@ -2,6 +2,7 @@ import os
 import time
 import math
 
+import musdb
 import museval
 import torch
 import torchaudio
@@ -133,8 +134,8 @@ class AdhocTrainer(TrainerBase):
         
         for idx, (mixture, source) in enumerate(self.train_loader):
             if self.use_cuda:
-                mixture = mixture.cuda()
-                source = source.cuda()
+                mixture = mixture.cuda(non_blocking=True)
+                source = source.cuda(non_blocking=True)
             
             mixture_amplitude = torch.abs(mixture)
             source_amplitude = torch.abs(source)
@@ -154,7 +155,7 @@ class AdhocTrainer(TrainerBase):
             train_loss += loss.item()
             
             if (idx + 1) % 100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -178,8 +179,8 @@ class AdhocTrainer(TrainerBase):
                     name <list<str>>: Artist and title of song
                 """
                 if self.use_cuda:
-                    mixture = mixture.cuda()
-                    source = source.cuda()
+                    mixture = mixture.cuda(non_blocking=True)
+                    source = source.cuda(non_blocking=True)
                 
                 mixture_amplitude = torch.abs(mixture)
                 source_amplitude = torch.abs(source)
@@ -235,6 +236,8 @@ class AdhocTester(TesterBase):
     def _reset(self, args):
         self.sr = args.sr
         self.sources = args.sources
+
+        self.musdb18_root = args.musdb18_root
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.loader.dataset.window
@@ -361,7 +364,7 @@ class AdhocTester(TesterBase):
         print(s)
     
     def eval_all(self):
-        mus = self.loader.dataset.mus
+        mus = musdb.DB(root=self.musdb18_root, subsets='test')
         
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
 
