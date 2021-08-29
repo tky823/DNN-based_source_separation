@@ -132,6 +132,7 @@ class WaveTrainDataset(WaveDataset):
 
             track = {
                 'name': name,
+                'samples': track_samples,
                 'path': {
                     'mixture': mixture_path
                 }
@@ -188,6 +189,7 @@ class WaveEvalDataset(WaveDataset):
 
             track = {
                 'name': name,
+                'samples': track_samples,
                 'path': {
                     'mixture': mixture_path
                 }
@@ -227,9 +229,9 @@ class WaveEvalDataset(WaveDataset):
 class WaveTestDataset(WaveDataset):
     def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
-
-        assert_sample_rate(sr)
         
+        assert_sample_rate(sr)
+
         test_txt_path = os.path.join(musdb18_root, 'test.txt')
 
         names = []
@@ -248,6 +250,7 @@ class WaveTestDataset(WaveDataset):
 
             track = {
                 'name': name,
+                'samples': track_samples,
                 'path': {
                     'mixture': mixture_path
                 }
@@ -270,6 +273,8 @@ class SpectrogramDataset(WaveDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
         
+        assert_sample_rate(sr)
+
         if hop_size is None:
             hop_size = fft_size // 2
         
@@ -330,6 +335,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
+        assert_sample_rate(sr)
+
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
@@ -361,6 +368,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
             track = {
                 'name': name,
+                'samples': track_samples,
                 'path': {
                     'mixture': mixture_path
                 }
@@ -394,7 +402,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 class SpectrogramEvalDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
-        
+
         assert_sample_rate(sr)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
@@ -417,6 +425,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
             track = {
                 'name': name,
+                'samples': track_samples,
                 'path': {
                     'mixture': mixture_path
                 }
