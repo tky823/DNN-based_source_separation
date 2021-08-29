@@ -71,7 +71,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                     track_duration = track_samples / sr
                     total_duration += track_duration
 
-                samples_per_epoch = int(total_duration / patch_duration) # 3862 is expected.
+                samples_per_epoch = int(total_duration / patch_duration)
 
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
