@@ -20,7 +20,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     Training dataset that returns randomly selected mixture spectrograms.
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 songs.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
@@ -28,7 +28,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         with open(train_txt_path, 'r') as f:
             names = [line.strip() for line in f]
         
-        self.patch_samples = patch_samples
+        self.samples = samples
 
         self.augmentation = augmentation
 
@@ -36,7 +36,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         if augmentation:
             if samples_per_epoch is None:
-                patch_duration = patch_samples / sr
+                duration = samples / sr
                 total_duration = 0
 
                 for songID, name in enumerate(names):
@@ -60,13 +60,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                     track_duration = track_samples / sr
                     total_duration += track_duration
 
-                samples_per_epoch = int(total_duration / patch_duration)
+                samples_per_epoch = int(total_duration / duration)
 
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
             if overlap is None:
-                overlap = patch_samples // 2
+                overlap = samples // 2
             
             self.samples_per_epoch = None
 
@@ -88,13 +88,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 
                 self.tracks.append(track)
 
-                for start in range(0, track_samples, patch_samples - overlap):
-                    if start + patch_samples >= track_samples:
+                for start in range(0, track_samples, samples - overlap):
+                    if start + samples >= track_samples:
                         break
                     data = {
                         'songID': songID,
                         'start': start,
-                        'samples': patch_samples,
+                        'samples': samples,
                     }
                     self.json_data.append(data)
     
@@ -165,11 +165,11 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             source_path = track['path'][_source]
             track_samples = track['samples']
 
-            start = random.randint(0, track_samples - self.patch_samples - 1)
+            start = random.randint(0, track_samples - self.samples - 1)
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
-            source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.patch_samples)
+            source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.samples)
 
             if flip:
                 source = torch.flip(source, dims=(0,))
@@ -197,7 +197,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=10*SAMPLE_RATE_MUSDB18, max_samples=None, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, samples=10*SAMPLE_RATE_MUSDB18, max_samples=None, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -207,7 +207,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
-        self.patch_samples = patch_samples
+        self.samples = samples
         self.max_samples = max_samples
 
         self.tracks = []
@@ -236,18 +236,18 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
             max_samples = min(track_samples, self.max_samples)
 
-            for start in range(0, max_samples, patch_samples):
-                if start + patch_samples > max_samples:
+            for start in range(0, max_samples, samples):
+                if start + samples > max_samples:
                     data = {
                         'start': start,
                         'samples': max_samples - start,
                         'padding_start': 0,
-                        'padding_end': start + patch_samples - max_samples
+                        'padding_end': start + samples - max_samples
                     }
                 else:
                     data = {
                         'start': start,
-                        'samples': patch_samples,
+                        'samples': samples,
                         'padding_start': 0,
                         'padding_end': 0
                     }
