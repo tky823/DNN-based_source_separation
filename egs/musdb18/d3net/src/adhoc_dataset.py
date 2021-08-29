@@ -239,6 +239,9 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                     'mixture': mixture_path
                 }
             }
+            
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
 
             song_data = {
                 'songID': songID,
