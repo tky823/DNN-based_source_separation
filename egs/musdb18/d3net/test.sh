@@ -6,7 +6,6 @@ sources="[drums,bass,other,vocals]"
 patch=256
 
 musdb18_root="../../../dataset/musdb18"
-is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
 sr=44100
 
 window_fn='hann'
@@ -42,11 +41,8 @@ model_choice="last"
 log_dir="${save_dir}/log/test"
 json_dir="${save_dir}/json"
 
-if [ ${is_wav} -eq 0 ]; then
-    estimates_dir="${save_dir}/musdb18/test"
-else
-    estimates_dir="${save_dir}/musdb18hq/test"
-fi
+musdb=`basename "${musdb18_root}"`
+estimates_dir="${save_dir}/${musdb}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -58,7 +54,6 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 test.py \
 --musdb18_root ${musdb18_root} \
---is_wav ${is_wav} \
 --sr ${sr} \
 --patch_size ${patch} \
 --window_fn "${window_fn}" \
