@@ -127,8 +127,9 @@ class WaveTrainDataset(WaveDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
@@ -184,8 +185,9 @@ class WaveEvalDataset(WaveDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
@@ -245,8 +247,9 @@ class WaveTestDataset(WaveDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
@@ -363,8 +366,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
@@ -420,8 +424,9 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
@@ -485,8 +490,9 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
