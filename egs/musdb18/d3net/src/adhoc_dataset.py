@@ -239,7 +239,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                     'mixture': mixture_path
                 }
             }
-            
+
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
 
@@ -360,6 +360,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
             for line in f:
                 name = line.strip()
                 names.append(name)
+        
+        self.patch_samples = patch_samples
 
         self.tracks = []
         self.json_data = []
