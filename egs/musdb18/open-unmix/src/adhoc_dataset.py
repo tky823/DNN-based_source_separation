@@ -298,7 +298,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return mixture, target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
 
         assert_sample_rate(sr)
@@ -310,6 +310,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
             for line in f:
                 name = line.strip()
                 names.append(name)
+        
+        self.patch_size = patch_size
 
         self.tracks = []
         self.json_data = []
@@ -330,15 +332,15 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
-
+            
             song_data = {
                 'songID': songID,
                 'start': 0,
                 'samples': track_samples
             }
-
+            
             self.tracks.append(track)
-            self.json_data.append(song_data)
+            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
         
     def __getitem__(self, idx):
         """
@@ -349,6 +351,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             name <str>: Artist and title of song
         """
         song_data = self.json_data[idx]
+        patch_size = self.patch_size
 
         songID = song_data['songID']
         track = self.tracks[songID]
@@ -377,22 +380,30 @@ class SpectrogramTestDataset(SpectrogramDataset):
             # mixture: (n_mics, T)
             target, _ = torchaudio.load(paths[self.target]) # (n_mics, T)
 
-        n_dims = mixture.dim()
-
-        if n_dims > 2:
-            mixture_channels = mixture.size()[:-1]
-            target_channels = target.size()[:-1]
-            mixture = mixture.reshape(-1, mixture.size(-1))
-            target = target.reshape(-1, target.size(-1))
+        mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+        mixture = mixture.reshape(-1, mixture.size(-1))
+        target = target.reshape(-1, target.size(-1))
 
         mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
-        if n_dims > 2:
-            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            target = target.reshape(*target_channels, *target.size()[-2:])
+        n_frames = mixture.size(-1)
+        padding = (patch_size - (n_frames - patch_size) % patch_size) % patch_size
+
+        mixture = F.pad(mixture, (0, padding))
+        target = F.pad(target, (0, padding))
+
+        mixture = mixture.reshape(*mixture.size()[:-1], -1, patch_size)
+        target = target.reshape(*target.size()[:-1], -1, patch_size)
+
+        mixture = mixture.permute(2, 0, 1, 3) # (batch_size, n_mics, n_bins, n_frames)
+        target = target.permute(2, 0, 1, 3) # (batch_size, len(target) * n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
+
+        mixture = mixture.reshape(-1, *mixture_channels, *mixture.size()[-2:]) # (batch_size, 1, n_mics, n_bins, n_frames) or # (batch_size, n_mics, n_bins, n_frames)
+        target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
         
         return mixture, target, samples, name
+
 
 """
 Data loader

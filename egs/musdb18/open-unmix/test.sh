@@ -66,6 +66,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 test.py \
 --musdb18_root ${musdb18_root} \
 --sr ${sr} \
+--duration ${duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
