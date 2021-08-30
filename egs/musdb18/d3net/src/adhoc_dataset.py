@@ -426,7 +426,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         n_frames = mixture.size(-1)
-        padding = (patch_size - (patch_size - n_frames) % patch_size) % patch_size
+        padding = (patch_size - (n_frames - patch_size) % patch_size) % patch_size
 
         mixture = F.pad(mixture, (0, padding))
         target = F.pad(target, (0, padding))
