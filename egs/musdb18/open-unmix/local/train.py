@@ -49,12 +49,12 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    samples = int(args.duration * args.sr)
+    patch_samples = int(args.duration * args.sr)
     max_samples = int(args.valid_duration * args.sr)
     samples_per_epoch = 64 * 100 # As if 64 segments seems to be extracted in each track.
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, samples=samples, samples_per_epoch=samples_per_epoch, sources=args.sources, target=args.target, augmentation=True)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, max_samples=max_samples, sources=args.sources, target=args.target)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=samples_per_epoch, sources=args.sources, target=args.target, augmentation=True)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_samples=patch_samples, max_samples=max_samples, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
