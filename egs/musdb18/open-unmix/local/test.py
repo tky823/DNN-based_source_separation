@@ -38,6 +38,7 @@ def main(args):
     samples = int(args.duration * args.sr)
     padding = 2 * (args.fft_size // 2)
     patch_size = (samples + padding - args.fft_size) // args.hop_size + 1
+    
     test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=patch_size, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
