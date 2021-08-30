@@ -295,8 +295,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         mixture = mixture.reshape(*mixture.size()[:-1], -1, patch_size)
         target = target.reshape(*target.size()[:-1], -1, patch_size)
 
-        mixture = mixture.permute(2, 0, 1, 3) # (batch_size, n_mics, n_bins, n_frames)
-        target = target.permute(2, 0, 1, 3) # (batch_size, len(target) * n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
+        mixture = mixture.permute(2, 0, 1, 3).contiguous() # (batch_size, n_mics, n_bins, n_frames)
+        target = target.permute(2, 0, 1, 3).contiguous() # (batch_size, len(target) * n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
 
         mixture = mixture.reshape(-1, *mixture_channels, *mixture.size()[-2:]) # (batch_size, 1, n_mics, n_bins, n_frames) or # (batch_size, n_mics, n_bins, n_frames)
         target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
