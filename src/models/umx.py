@@ -148,7 +148,7 @@ class OpenUnmix(nn.Module):
         x = x.view(batch_size * n_frames, hidden_channels + out_channels)
         x_full = self.net(x) # (batch_size * n_frames, n_bins)
         x_full = x_full.view(batch_size, n_frames, in_channels, n_bins)
-        x_full = x_full.permute(0, 2, 3, 1) # (batch_size, in_channels, n_bins, n_frames)
+        x_full = x_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
 
         x_full = self.out_scale.unsqueeze(dim=1) * x_full + self.out_bias.unsqueeze(dim=1)
         x_full = self.relu2d(x_full)
