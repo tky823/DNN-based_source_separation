@@ -2,6 +2,7 @@
 
 exp_dir="./exp"
 continue_from=""
+tag=""
 
 n_sources='2+3'
 n_sources_finetune=3
@@ -59,7 +60,12 @@ seed_finetune=111
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed_train}/finetune/b${batch_size_finetune}_e${epochs_finetune}/seed${seed_finetune}"
+if [ -z "${tag}" ]; then
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed_train}"
+else
+    save_dir="${exp_dir}/${tag}"
+fi
+save_dir="${save_dir}/finetune/b${batch_size_finetune}_e${epochs_finetune}/seed${seed_finetune}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
