@@ -167,11 +167,11 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             source_path = track['path'][_source]
             track_samples = track['samples']
 
-            start = random.randint(0, track_samples - self.samples - 1)
+            start = random.randint(0, track_samples - self.patch_samples - 1)
             flip = random.choice([True, False])
             scale = random.uniform(MINSCALE, MAXSCALE)
 
-            source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.samples)
+            source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.patch_samples)
 
             if flip:
                 source = torch.flip(source, dims=(0,))
@@ -403,7 +403,6 @@ class SpectrogramTestDataset(SpectrogramDataset):
         target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
         
         return mixture, target, samples, name
-
 
 """
 Data loader
