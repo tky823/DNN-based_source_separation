@@ -66,3 +66,6 @@ Bug fixes of D3Net.
 
 ## v0.5.5
 Load audio as wav for MUSDB18.
+
+## v0.5.6
+Bug fixes.
