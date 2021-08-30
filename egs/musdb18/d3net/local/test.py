@@ -23,7 +23,7 @@ parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
-parser.add_argument('--save_dir', type=str, default=None, help='Directory which includes drums/, bass/, ..., vocals/')
+parser.add_argument('--model_dir', type=str, default=None, help='Directory which includes drums/<model_choice>.pth, ..., vocals/<model_choice>.pth')
 parser.add_argument('--estimates_dir', type=str, default=None, help='Estimated sources output directory')
 parser.add_argument('--json_dir', type=str, default=None, help='Json directory')
 parser.add_argument('--model_choice', type=str, default='last', choices=['best', 'last'], help='Model choice. Default: last')
@@ -43,7 +43,7 @@ def main(args):
     
     modules = {}
     for source in args.sources:
-        model_path = os.path.join(args.save_dir, "model", source, "{}.pth".format(args.model_choice))
+        model_path = os.path.join(args.model_dir, source, "{}.pth".format(args.model_choice))
         modules[source] = D3Net.build_model(model_path)
     
     model = ParallelD3Net(modules)

@@ -243,7 +243,7 @@ class AdhocTester(TesterBase):
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
         
-        self.save_dir = args.save_dir
+        self.model_dir = args.model_dir
         self.estimates_dir = args.estimates_dir
         self.json_dir = args.json_dir
         
@@ -261,7 +261,7 @@ class AdhocTester(TesterBase):
         is_data_parallel = isinstance(self.model, nn.DataParallel)
         
         for target in self.sources:
-            model_path = os.path.join(self.save_dir, "model", target, "{}.pth".format(args.model_choice))
+            model_path = os.path.join(self.model_dir, target, "{}.pth".format(args.model_choice))
             package = torch.load(model_path, map_location=lambda storage, loc: storage)
             if is_data_parallel:
                 self.model.module.net[target].load_state_dict(package['state_dict'])
