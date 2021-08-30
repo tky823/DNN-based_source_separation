@@ -286,7 +286,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
-        padding = (patch_size - (samples - patch_size) % patch_size) % patch_size
+        num_frames = mixture.size(-1)
+        padding = (patch_size - (num_frames - patch_size) % patch_size) % patch_size
 
         mixture = F.pad(mixture, (0, padding))
         target = F.pad(target, (0, padding))
