@@ -371,7 +371,14 @@ class SpectrogramTestDataset(SpectrogramDataset):
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
             
+            song_data = {
+                'songID': songID,
+                'start': 0,
+                'samples': track_samples
+            }
+            
             self.tracks.append(track)
+            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
         
     def __getitem__(self, idx):
         """
