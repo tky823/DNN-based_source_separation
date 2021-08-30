@@ -35,32 +35,33 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         self.tracks = []
 
         if augmentation:
-            if samples_per_epoch is None:
-                patch_duration = patch_samples / sr
-                total_duration = 0
+            duration = patch_samples / sr
+            total_duration = 0
 
-                for songID, name in enumerate(names):
-                    mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-                    wave, sr = torchaudio.load(mixture_path)
-                    track_samples = wave.size(1)
+            for songID, name in enumerate(names):
+                mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+                audio_info = torchaudio.info(mixture_path)
+                sr = audio_info.sample_rate
+                track_samples = audio_info.num_frames
 
-                    track = {
-                        'name': name,
-                        'samples': track_samples,
-                        'path': {
-                            'mixture': mixture_path
-                        }
+                track = {
+                    'name': name,
+                    'samples': track_samples,
+                    'path': {
+                        'mixture': mixture_path
                     }
-                    
-                    for source in sources:
-                        track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                    
-                    self.tracks.append(track)
+                }
+                
+                for source in sources:
+                    track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+                
+                self.tracks.append(track)
 
-                    track_duration = track_samples / sr
-                    total_duration += track_duration
+                track_duration = track_samples / sr
+                total_duration += track_duration
 
-                samples_per_epoch = int(total_duration / patch_duration)
+            if samples_per_epoch is None:
+                samples_per_epoch = int(total_duration / duration)
 
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
@@ -72,8 +73,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
             for songID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-                wave, sr = torchaudio.load(mixture_path)
-                track_samples = wave.size(1)
+                audio_info = torchaudio.info(mixture_path)
+                sr = audio_info.sample_rate
+                track_samples = audio_info.num_frames
 
                 track = {
                     'name': name,
@@ -197,7 +199,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=10*SAMPLE_RATE_MUSDB18, max_samples=None, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         assert_sample_rate(sr)
@@ -207,7 +209,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
-        self.patch_samples = patch_samples
+        self.patch_size = patch_size
         self.max_samples = max_samples
 
         self.tracks = []
@@ -215,8 +217,10 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
+            samples = min(self.max_samples, track_samples)
 
             track = {
                 'name': name,
@@ -228,33 +232,15 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-
+            
             song_data = {
                 'songID': songID,
-                'patches': []
+                'start': 0,
+                'samples': samples
             }
-
-            max_samples = min(track_samples, self.max_samples)
-
-            for start in range(0, max_samples, patch_samples):
-                if start + patch_samples > max_samples:
-                    data = {
-                        'start': start,
-                        'samples': max_samples - start,
-                        'padding_start': 0,
-                        'padding_end': start + patch_samples - max_samples
-                    }
-                else:
-                    data = {
-                        'start': start,
-                        'samples': patch_samples,
-                        'padding_start': 0,
-                        'padding_end': 0
-                    }
-                song_data['patches'].append(data)
-
-            self.json_data.append(song_data)
+            
             self.tracks.append(track)
+            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
 
     def __getitem__(self, idx):
         """
@@ -264,77 +250,61 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             name <str>: Artist and title of song
         """
         song_data = self.json_data[idx]
+        patch_size = self.patch_size
 
         songID = song_data['songID']
         track = self.tracks[songID]
         name = track['name']
         paths = track['path']
+        samples = song_data['samples']
 
-        batch_mixture, batch_target = [], []
-        max_samples = 0
-
-        for data in song_data['patches']:
-            start = data['start']
-            samples = data['samples']
-
-            if set(self.sources) == set(__sources__):
-                
-                mixture, _ = torchaudio.load(paths['mixture'], frame_offset=start, num_frames=samples)
-            else:
-                sources = []
-                for _source in self.sources:
-                    source, _ = torchaudio.load(paths[_source], frame_offset=start, num_frames=samples)
-                    sources.append(source.unsqueeze(dim=0))
-                sources = torch.cat(sources, dim=0)
-                mixture = sources.sum(dim=0)
-            
-            if type(self.target) is list:
-                target = []
-                for _target in self.target:
-                    source, _ = torchaudio.load(paths[_target], frame_offset=start, num_frames=samples)
-                    target.append(source.unsqueeze(dim=0))
-                target = torch.cat(target, dim=0)
-                mixture = mixture.unsqueeze(dim=0)
-            else:
-                target, _ = torchaudio.load(paths[self.target], frame_offset=start, num_frames=samples)
-
-            max_samples = max(max_samples, mixture.size(-1))
-
-            batch_mixture.append(mixture)
-            batch_target.append(target)
+        if set(self.sources) == set(__sources__):
+            mixture, _ = torchaudio.load(paths['mixture'], num_frames=samples) # (n_mics, T)
+        else:
+            sources = []
+            for _source in self.sources:
+                source, _ = torchaudio.load(paths[_source], num_frames=samples) # (n_mics, T)
+                sources.append(source.unsqueeze(dim=0))
+            sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
+            mixture = sources.sum(dim=0) # (n_mics, T)
         
-        batch_mixture_padded, batch_target_padded = [], []
+        if type(self.target) is list:
+            target = []
+            for _target in self.target:
+                source, _ = torchaudio.load(paths[_target], num_frames=samples) # (n_mics, T)
+                target.append(source.unsqueeze(dim=0))
+            target = torch.cat(target, dim=0) # (len(target), n_mics, T)
+            mixture = mixture.unsqueeze(dim=0) # (1, n_mics, T)
+        else:
+            # mixture: (n_mics, T)
+            target, _ = torchaudio.load(paths[self.target], num_frames=samples) # (n_mics, T)
 
-        for mixture, target in zip(batch_mixture, batch_target):
-            if mixture.size(-1) < max_samples:
-                padding = max_samples - mixture.size(-1)
-                mixture = F.pad(mixture, (0, padding))
-                target = F.pad(target, (0, padding))
-            batch_mixture_padded.append(mixture.unsqueeze(dim=0))
-            batch_target_padded.append(target.unsqueeze(dim=0))
+        mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+        mixture = mixture.reshape(-1, mixture.size(-1))
+        target = target.reshape(-1, target.size(-1))
 
-        batch_mixture = torch.cat(batch_mixture_padded, dim=0)
-        batch_target = torch.cat(batch_target_padded, dim=0)
-
-        n_dims = batch_mixture.dim()
-
-        if n_dims > 2:
-            mixture_channels = batch_mixture.size()[:-1]
-            target_channels = batch_target.size()[:-1]
-            batch_mixture = batch_mixture.reshape(-1, batch_mixture.size(-1))
-            batch_target = batch_target.reshape(-1, batch_target.size(-1))
-
-        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
-        if n_dims > 2:
-            batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
-            batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
+        n_frames = mixture.size(-1)
+        padding = (patch_size - n_frames % patch_size) % patch_size
+
+        mixture = F.pad(mixture, (0, padding))
+        target = F.pad(target, (0, padding))
+
+        mixture = mixture.reshape(*mixture.size()[:-1], -1, patch_size)
+        target = target.reshape(*target.size()[:-1], -1, patch_size)
+
+        mixture = mixture.permute(2, 0, 1, 3).contiguous() # (batch_size, n_mics, n_bins, n_frames)
+        target = target.permute(2, 0, 1, 3).contiguous() # (batch_size, len(target) * n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
+
+        mixture = mixture.reshape(-1, *mixture_channels, *mixture.size()[-2:]) # (batch_size, 1, n_mics, n_bins, n_frames) or # (batch_size, n_mics, n_bins, n_frames)
+        target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
         
-        return batch_mixture, batch_target, name
+        return mixture, target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=5*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
 
         assert_sample_rate(sr)
@@ -347,15 +317,16 @@ class SpectrogramTestDataset(SpectrogramDataset):
                 name = line.strip()
                 names.append(name)
         
-        self.patch_samples = patch_samples
+        self.patch_size = patch_size
 
         self.tracks = []
         self.json_data = []
 
         for songID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
-            wave, sr = torchaudio.load(mixture_path)
-            track_samples = wave.size(1)
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
 
             track = {
                 'name': name,
@@ -367,31 +338,15 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
-
+            
             song_data = {
                 'songID': songID,
-                'patches': []
+                'start': 0,
+                'samples': track_samples
             }
-
-            for start in range(0, track_samples, patch_samples):
-                if start + patch_samples > track_samples:
-                    data = {
-                        'start': start,
-                        'samples': track_samples - start,
-                        'padding_start': 0,
-                        'padding_end': start + patch_samples - track_samples
-                    }
-                else:
-                    data = {
-                        'start': start,
-                        'samples': patch_samples,
-                        'padding_start': 0,
-                        'padding_end': 0
-                    }
-                song_data['patches'].append(data)
             
             self.tracks.append(track)
-            self.json_data.append(song_data)
+            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
         
     def __getitem__(self, idx):
         """
@@ -402,7 +357,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             name <str>: Artist and title of song
         """
         song_data = self.json_data[idx]
-        patch_samples = self.patch_samples
+        patch_size = self.patch_size
 
         songID = song_data['songID']
         track = self.tracks[songID]
@@ -431,36 +386,29 @@ class SpectrogramTestDataset(SpectrogramDataset):
             # mixture: (n_mics, T)
             target, _ = torchaudio.load(paths[self.target]) # (n_mics, T)
 
-        padding = (patch_samples - samples % patch_samples) % patch_samples
+        mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+        mixture = mixture.reshape(-1, mixture.size(-1))
+        target = target.reshape(-1, target.size(-1))
 
-        mixture_padded, target_padded = F.pad(mixture, (0, padding)), F.pad(target, (0, padding))
-        mixture_padded, target_padded = mixture_padded.reshape(*mixture_padded.size()[:-1], -1, patch_samples), target_padded.reshape(*target_padded.size()[:-1], -1, patch_samples)
-
-        if type(self.target) is list:
-            # mixture_padded: (1, n_mics, batch_size, patch_samples), target_padded: (len(target), n_mics, batch_size, patch_samples)
-            # batch_mixture: (batch_size, 1, n_mics, patch_samples), batch_target: (batch_size, len(target), n_mics, patch_samples)
-            batch_mixture, batch_target = mixture_padded.permute(2, 0, 1, 3).contiguous(), target_padded.permute(2, 0, 1, 3).contiguous()
-        else:
-            # mixture_padded: (n_mics, batch_size, patch_samples), target_padded: (n_mics, batch_size, patch_samples)
-            # batch_mixture: (batch_size, n_mics, patch_samples), batch_target: (batch_size, n_mics, patch_samples)
-            batch_mixture, batch_target = mixture_padded.permute(1, 0, 2).contiguous(), target_padded.permute(1, 0, 2).contiguous()
-
-        n_dims = batch_mixture.dim()
-
-        if n_dims > 2:
-            mixture_channels = batch_mixture.size()[:-1]
-            target_channels = batch_target.size()[:-1]
-            batch_mixture = batch_mixture.reshape(-1, batch_mixture.size(-1))
-            batch_target = batch_target.reshape(-1, batch_target.size(-1))
-
-        batch_mixture = torch.stft(batch_mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        batch_target = torch.stft(batch_target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
-        if n_dims > 2:
-            batch_mixture = batch_mixture.reshape(*mixture_channels, *batch_mixture.size()[-2:])
-            batch_target = batch_target.reshape(*target_channels, *batch_target.size()[-2:])
+        n_frames = mixture.size(-1)
+        padding = (patch_size - n_frames % patch_size) % patch_size
+
+        mixture = F.pad(mixture, (0, padding))
+        target = F.pad(target, (0, padding))
+
+        mixture = mixture.reshape(*mixture.size()[:-1], -1, patch_size)
+        target = target.reshape(*target.size()[:-1], -1, patch_size)
+
+        mixture = mixture.permute(2, 0, 1, 3).contiguous() # (batch_size, n_mics, n_bins, n_frames)
+        target = target.permute(2, 0, 1, 3).contiguous() # (batch_size, len(target) * n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
+
+        mixture = mixture.reshape(-1, *mixture_channels, *mixture.size()[-2:]) # (batch_size, 1, n_mics, n_bins, n_frames) or # (batch_size, n_mics, n_bins, n_frames)
+        target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
         
-        return batch_mixture, batch_target, samples, name
+        return mixture, target, samples, name
 
 """
 Data loader

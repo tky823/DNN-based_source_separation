@@ -1,7 +1,7 @@
 #!/bin/bash
 
 exp_dir="./exp"
-continue_from=""
+tag=""
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
@@ -49,7 +49,11 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-${lr_end}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+if [ -z "${tag}" ]; then
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-${lr_end}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+else
+    save_dir="${exp_dir}/${tag}"
+fi
 
 model_choice="best"
 

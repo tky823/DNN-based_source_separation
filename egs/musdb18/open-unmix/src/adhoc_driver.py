@@ -1,12 +1,15 @@
 import os
 import time
 
+import musdb
+import museval
 import torch
 import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from driver import TrainerBase
+from driver import apply_multichannel_wiener_filter_norbert, apply_multichannel_wiener_filter_torch
+from driver import TrainerBase, TesterBase
 
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
@@ -90,8 +93,6 @@ class AdhocTrainer(TrainerBase):
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
-
-            # TODO: Update learning rate
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
@@ -99,10 +100,13 @@ class AdhocTrainer(TrainerBase):
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
             else:
-                if valid_loss >= self.prev_loss:
-                    self.no_improvement += 1
-                else:
-                    self.no_improvement = 0
+                self.no_improvement += 1
+                if self.no_improvement >= 10:
+                    for param_group in self.optimizer.param_groups:
+                        prev_lr = param_group['lr']
+                        lr = 0.5 * prev_lr
+                        print("Learning rate: {} -> {}".format(prev_lr, lr))
+                        param_group['lr'] = lr
             
             self.prev_loss = valid_loss
             
@@ -164,8 +168,8 @@ class AdhocTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, source, name) in enumerate(self.valid_loader):
                 """
-                    mixture: (1, n_mics, n_bins, n_frames)
-                    source: (1, n_mics, n_bins, n_frames)
+                    mixture: (batch_size, n_mics, n_bins, n_frames)
+                    sources: (batch_size, n_mics, n_bins, n_frames)
                     name <list<str>>: Artist and title of song
                 """
                 if self.use_cuda:
@@ -181,14 +185,28 @@ class AdhocTrainer(TrainerBase):
                 valid_loss += loss.item()
 
                 if idx < 5:
-                    mixture, source = mixture[0], source[0]
-                    estimated_source_amplitude = estimated_source_amplitude[0]
-                    name = name[0]
-                    estimated_source = estimated_source_amplitude * torch.exp(1j * torch.angle(mixture)) # -> (n_mics, n_bins, n_frames)
+                    ratio = estimated_source_amplitude / torch.clamp(mixture_amplitude, min=EPS)
+                    estimated_source = ratio * mixture # -> (batch_size, n_mics, n_bins, n_frames)
 
+                    mixture_channels = mixture.size()[:-2] # -> (batch_size, n_mics)
+                    estimated_source_channels = estimated_source.size()[:-2] # -> (batch_size, n_mics)
+                    mixture = mixture.view(-1, *mixture.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
+                    estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
+                    
                     mixture, estimated_source = mixture.cpu(), estimated_source.cpu()
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_padded)
-                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_padded)
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
+                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
+
+                    mixture = mixture.view(*mixture_channels, -1) # -> (batch_size, n_mics, T_segment)
+                    estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (batch_size, n_mics, T_segment)
+                    
+                    batch_size, n_mics, T_segment = mixture.size()
+                    
+                    mixture = mixture.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
+                    mixture = mixture.reshape(n_mics, batch_size * T_segment)
+
+                    estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
+                    estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)
                     
                     save_dir = os.path.join(self.sample_dir, name)
 
@@ -224,3 +242,174 @@ class AdhocTrainer(TrainerBase):
         package['epoch'] = epoch + 1
         
         torch.save(package, model_path)
+
+class AdhocTester(TesterBase):
+    def __init__(self, model, loader, criterion, args):
+        super().__init__(model, loader, criterion, args)
+
+    def _reset(self, args):
+        self.sr = args.sr
+        self.sources = args.sources
+
+        self.musdb18_root = args.musdb18_root
+
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.window = self.loader.dataset.window
+        self.normalize = self.loader.dataset.normalize
+        
+        self.model_dir = args.model_dir
+        self.estimates_dir = args.estimates_dir
+        self.json_dir = args.json_dir
+        
+        if self.estimates_dir is not None:
+            self.estimates_dir = os.path.abspath(args.estimates_dir)
+            os.makedirs(self.estimates_dir, exist_ok=True)
+        
+        if self.json_dir is not None:
+            self.json_dir = os.path.abspath(args.json_dir)
+            os.makedirs(self.json_dir, exist_ok=True)
+        
+        self.use_cuda = args.use_cuda
+        self.use_norbert = args.use_norbert
+
+        is_data_parallel = isinstance(self.model, nn.DataParallel)
+        
+        for target in self.sources:
+            model_path = os.path.join(self.model_dir, target, "{}.pth".format(args.model_choice))
+            package = torch.load(model_path, map_location=lambda storage, loc: storage)
+            if is_data_parallel:
+                self.model.module.net[target].load_state_dict(package['state_dict'])
+            else:
+                self.model.net[target].load_state_dict(package['state_dict'])
+        
+        if self.use_norbert:
+            try:
+                import norbert
+            except:
+                raise ImportError("Cannot import norbert.")
+    
+    def run(self):
+        self.estimate_all()
+        self.eval_all()
+
+    def estimate_all(self):
+        self.model.eval()
+        
+        test_loss = 0
+        test_loss_improvement = 0
+        n_test = len(self.loader.dataset)
+        
+        with torch.no_grad():
+            for idx, (mixture, sources, samples, name) in enumerate(self.loader):
+                """
+                    mixture: (batch_size, 1, n_mics, n_bins, n_frames)
+                    sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
+                    samples <int>: Length in time domain
+                    name <str>: Artist and title of song
+                """
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                
+                batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
+                
+                mixture_amplitude = torch.abs(mixture)
+                sources_amplitude = torch.abs(sources)
+                
+                estimated_sources_amplitude = {
+                    target: [] for target in self.sources
+                }
+
+                # Serial operation
+                for _mixture_amplitude in mixture_amplitude:
+                    # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
+                    for target in self.sources:
+                        _estimated_sources_amplitude = self.model(_mixture_amplitude, target=target)
+                        estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
+                
+                estimated_sources_amplitude = [
+                    torch.cat(estimated_sources_amplitude[target], dim=0).unsqueeze(dim=0) for target in self.sources
+                ]
+                estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
+                estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4)
+                estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
+
+                mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                sources_amplitude = sources_amplitude.permute(1, 2, 3, 0, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
+
+                loss_mixture = self.criterion(mixture_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
+                loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
+                loss_improvement = loss_mixture - loss # (n_sources,)
+
+                mixture = mixture.cpu()
+                estimated_sources_amplitude = estimated_sources_amplitude.cpu()
+
+                estimated_sources = self.apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
+                estimated_sources_channels = estimated_sources.size()[:-2]
+
+                estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
+                estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
+
+                track_dir = os.path.join(self.estimates_dir, name)
+                os.makedirs(track_dir, exist_ok=True)
+
+                for source_idx, target in enumerate(self.sources):
+                    estimated_path = os.path.join(track_dir, "{}.wav".format(target))
+                    estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
+                    signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                
+                test_loss += loss # (n_sources,)
+                test_loss_improvement += loss_improvement # (n_sources,)
+
+        test_loss /= n_test
+        test_loss_improvement /= n_test
+        
+        s = "Loss:"
+        for idx, target in enumerate(self.sources):
+            s += " ({}) {:.3f}".format(target, test_loss[idx].item())
+        
+        s += ", loss improvement:"
+        for idx, target in enumerate(self.sources):
+            s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
+
+        print(s, flush=True)
+    
+    def eval_all(self):
+        mus = musdb.DB(root=self.musdb18_root, subsets='test')
+        
+        results = museval.EvalStore(frames_agg='median', tracks_agg='median')
+
+        for track in mus.tracks:
+            name = track.name
+            
+            estimates = {}
+            estimated_accompaniment = 0
+
+            for target in self.sources:
+                estimated_path = os.path.join(self.estimates_dir, name, "{}.wav".format(target))
+                estimated, _ = torchaudio.load(estimated_path)
+                estimated = estimated.numpy().transpose(1, 0)
+                estimates[target] = estimated
+                estimated_accompaniment += estimated
+
+            estimates['accompaniment'] = estimated_accompaniment
+
+            # Evaluate using museval
+            scores = museval.eval_mus_track(track, estimates, output_dir=self.json_dir)
+            results.add_track(scores)
+
+            print(name)
+            print(scores, flush=True)
+
+        print(results)
+
+    def apply_multichannel_wiener_filter(self, mixture, estimated_sources_amplitude, channels_first=True, eps=EPS):
+        if self.use_norbert:
+            estimated_sources = apply_multichannel_wiener_filter_norbert(mixture, estimated_sources_amplitude, channels_first=channels_first, eps=eps)
+        else:
+            estimated_sources = apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude, channels_first=channels_first, eps=eps)
+
+        return estimated_sources
