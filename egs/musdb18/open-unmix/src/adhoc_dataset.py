@@ -297,6 +297,103 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         
         return mixture, target, name
 
+class SpectrogramTestDataset(SpectrogramDataset):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+
+        assert_sample_rate(sr)
+
+        test_txt_path = os.path.join(musdb18_root, 'test.txt')
+
+        names = []
+        with open(test_txt_path, 'r') as f:
+            for line in f:
+                name = line.strip()
+                names.append(name)
+
+        self.tracks = []
+        self.json_data = []
+
+        for songID, name in enumerate(names):
+            mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
+            audio_info = torchaudio.info(mixture_path)
+            sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
+
+            track = {
+                'name': name,
+                'samples': track_samples,
+                'path': {
+                    'mixture': mixture_path
+                }
+            }
+
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
+
+            song_data = {
+                'songID': songID,
+                'start': 0,
+                'samples': track_samples
+            }
+
+            self.tracks.append(track)
+            self.json_data.append(song_data)
+        
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
+            samples <int>: Number of samples in time domain.
+            name <str>: Artist and title of song
+        """
+        song_data = self.json_data[idx]
+
+        songID = song_data['songID']
+        track = self.tracks[songID]
+        name = track['name']
+        paths = track['path']
+        samples = track['samples']
+
+        if set(self.sources) == set(__sources__):
+            mixture, _ = torchaudio.load(paths['mixture']) # (n_mics, T)
+        else:
+            sources = []
+            for _source in self.sources:
+                source, _ = torchaudio.load(paths[_source]) # (n_mics, T)
+                sources.append(source.unsqueeze(dim=0))
+            sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
+            mixture = sources.sum(dim=0) # (n_mics, T)
+        
+        if type(self.target) is list:
+            target = []
+            for _target in self.target:
+                source, _ = torchaudio.load(paths[_target]) # (n_mics, T)
+                target.append(source.unsqueeze(dim=0))
+            target = torch.cat(target, dim=0) # (len(target), n_mics, T)
+            mixture = mixture.unsqueeze(dim=0) # (1, n_mics, T)
+        else:
+            # mixture: (n_mics, T)
+            target, _ = torchaudio.load(paths[self.target]) # (n_mics, T)
+
+        n_dims = mixture.dim()
+
+        if n_dims > 2:
+            mixture_channels = mixture.size()[:-1]
+            target_channels = target.size()[:-1]
+            mixture = mixture.reshape(-1, mixture.size(-1))
+            target = target.reshape(-1, target.size(-1))
+
+        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        
+        if n_dims > 2:
+            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
+            target = target.reshape(*target_channels, *target.size()[-2:])
+        
+        return mixture, target, samples, name
+
 """
 Data loader
 """
@@ -305,6 +402,19 @@ class EvalDataLoader(torch.utils.data.DataLoader):
         super().__init__(*args, **kwargs)
         
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
+class TestDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
+        self.collate_fn = test_collate_fn
+
+def test_collate_fn(batch):
+    mixture, sources, samples, name = batch[0]
+    
+    return mixture, sources, samples, name
 
 def assert_sample_rate(sr):
     assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
