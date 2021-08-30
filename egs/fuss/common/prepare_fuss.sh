@@ -31,7 +31,7 @@ fi
 
 if [ ! -d "${fuss_root}/rir_data" ]; then
     file="FUSS_rir_data.tar.gz"
-    wget "https://zenodo.org/record/3743844/files/${file}" -P "tmp"
+    wget "https://zenodo.org/record/3743844/files/${file}" -P "/tmp"
     tar -zxvf "/tmp/${file}" -C "${fuss_root}"
     rm "/tmp/${file}"
 fi
