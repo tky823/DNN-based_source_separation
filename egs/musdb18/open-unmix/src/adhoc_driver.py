@@ -168,8 +168,8 @@ class AdhocTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, source, name) in enumerate(self.valid_loader):
                 """
-                    mixture: (1, n_mics, n_bins, n_frames)
-                    source: (1, n_mics, n_bins, n_frames)
+                    mixture: (batch_size, n_mics, n_bins, n_frames)
+                    sources: (batch_size, n_mics, n_bins, n_frames)
                     name <list<str>>: Artist and title of song
                 """
                 if self.use_cuda:
@@ -185,14 +185,28 @@ class AdhocTrainer(TrainerBase):
                 valid_loss += loss.item()
 
                 if idx < 5:
-                    mixture, source = mixture[0], source[0]
-                    estimated_source_amplitude = estimated_source_amplitude[0]
-                    name = name[0]
-                    estimated_source = estimated_source_amplitude * torch.exp(1j * torch.angle(mixture)) # -> (n_mics, n_bins, n_frames)
+                    ratio = estimated_source_amplitude / torch.clamp(mixture_amplitude, min=EPS)
+                    estimated_source = ratio * mixture # -> (batch_size, n_mics, n_bins, n_frames)
 
+                    mixture_channels = mixture.size()[:-2] # -> (batch_size, n_mics)
+                    estimated_source_channels = estimated_source.size()[:-2] # -> (batch_size, n_mics)
+                    mixture = mixture.view(-1, *mixture.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
+                    estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
+                    
                     mixture, estimated_source = mixture.cpu(), estimated_source.cpu()
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_padded)
-                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_padded)
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
+                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
+
+                    mixture = mixture.view(*mixture_channels, -1) # -> (batch_size, n_mics, T_segment)
+                    estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (batch_size, n_mics, T_segment)
+                    
+                    batch_size, n_mics, T_segment = mixture.size()
+                    
+                    mixture = mixture.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
+                    mixture = mixture.reshape(n_mics, batch_size * T_segment)
+
+                    estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
+                    estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)
                     
                     save_dir = os.path.join(self.sample_dir, name)
 
