@@ -302,8 +302,8 @@ class AdhocTester(TesterBase):
         with torch.no_grad():
             for idx, (mixture, sources, samples, name) in enumerate(self.loader):
                 """
-                    mixture: (1, n_mics, n_bins, n_frames)
-                    sources: (n_sources, n_mics, n_bins, n_frames)
+                    mixture: (batch_size, 1, n_mics, n_bins, n_frames)
+                    sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
                     samples <int>: Length in time domain
                     name <str>: Artist and title of song
                 """
@@ -311,18 +311,33 @@ class AdhocTester(TesterBase):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
+                batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
+                
                 mixture_amplitude = torch.abs(mixture)
                 sources_amplitude = torch.abs(sources)
                 
-                estimated_sources_amplitude = []
+                estimated_sources_amplitude = {
+                    target: [] for target in self.sources
+                }
 
                 # Serial operation
-                for target in self.sources:
-                    _estimated_sources_amplitude = self.model(mixture_amplitude, target=target)
-                    estimated_sources_amplitude.append(_estimated_sources_amplitude)
+                for _mixture_amplitude in mixture_amplitude:
+                    # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
+                    for target in self.sources:
+                        _estimated_sources_amplitude = self.model(_mixture_amplitude, target=target)
+                        estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
                 
-                estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (n_sources, n_mics, n_bins, n_frames)
-                
+                estimated_sources_amplitude = [
+                    torch.cat(estimated_sources_amplitude[target], dim=0).unsqueeze(dim=0) for target in self.sources
+                ]
+                estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
+                estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4)
+                estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
+
+                mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                sources_amplitude = sources_amplitude.permute(1, 2, 3, 0, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, T_pad)
+
                 loss_mixture = self.criterion(mixture_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
                 loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
                 loss_improvement = loss_mixture - loss # (n_sources,)
