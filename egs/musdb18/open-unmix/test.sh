@@ -48,6 +48,7 @@ fi
 
 model_choice="best"
 
+model_dir="${save_dir}/model/"
 log_dir="${save_dir}/log/test"
 json_dir="${save_dir}/json"
 
