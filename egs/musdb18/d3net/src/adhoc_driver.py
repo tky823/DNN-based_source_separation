@@ -379,7 +379,8 @@ class AdhocTester(TesterBase):
                 estimated, _ = torchaudio.load(estimated_path)
                 estimated = estimated.numpy().transpose(1, 0)
                 estimates[target] = estimated
-                estimated_accompaniment += estimated
+                if target != 'vocals':
+                    estimated_accompaniment += estimated
 
             estimates['accompaniment'] = estimated_accompaniment
 
