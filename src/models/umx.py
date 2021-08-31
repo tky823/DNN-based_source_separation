@@ -198,7 +198,6 @@ class OpenUnmix(nn.Module):
         
         return model
     
-    
     @classmethod
     def build_model(cls, model_path):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
