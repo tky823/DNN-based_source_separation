@@ -1,3 +1,5 @@
+import math
+
 import torch
 
 EPS = 1e-12
@@ -36,7 +38,7 @@ def ideal_binary_mask(input):
         mask = flatten_mask.view(batch_size, n_bins, n_frames, n_sources)
         mask = mask.permute(0,3,1,2).contiguous()
     else:
-        raise ValueError("Not support {}-dimension".format(n_dim))
+        raise ValueError("Not support {}-dimension".format(n_dims))
     
     return mask
     
