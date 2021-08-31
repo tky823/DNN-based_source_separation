@@ -14,26 +14,37 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 conda env create -f environment-gpu.yaml
 ```
 
-MUSDB18データセットのダウンロード
+MUSDB18データセットのダウンロードと`.wav`への変換
 ```
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
-. ./prepare_musdb18.sh --musdb18_root <MUSDB18_ROOT>
+. ./prepare_musdb18.sh \
+--musdb18_root <MUSDB18_ROOT> \
+--to_wav 1
 ```
 MUSDB18-HQデータセットを用いる場合，
 ```
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
-. ./prepare_musdb18.sh --musdb18hq_root <MUSDB18HQ_ROOT> --is_hq 1
+. ./prepare_musdb18.sh \
+--musdb18hq_root <MUSDB18HQ_ROOT> \
+--is_hq 1
 ```
 
 ### 1. 学習
 ```
 cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
-. ./train.sh --exp_dir <OUTPUT_DIR> --target <TARGET> --config_path <CONFIG_PATH>
+. ./train.sh \
+--exp_dir <OUTPUT_DIR> \
+--target <TARGET> \
+--config_path <CONFIG_PATH>
 ```
 
 学習を途中から再開したい場合，
 ```
-. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH> --target <TARGET> --config_path <CONFIG_PATH>
+. ./train.sh \
+--exp_dir <OUTPUT_DIR> \
+--continue_from <MODEL_PATH> \
+--target <TARGET> \
+--config_path <CONFIG_PATH>
 ```
 
 ### 2. 評価
@@ -43,4 +54,9 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 ```
 
 ## 実験結果
-WIP
+SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
+| Model | Vocals | Drums | Bass | Other | Accompaniment | Average |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| D3Net w/o dilation |  |  |  |  |  |  |
+| D3Net standard dilation |  |  |  |  |  |  |
+| D3Net |  |  |  |  |  |  |
