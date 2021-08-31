@@ -7,7 +7,7 @@ from torch.nn.modules.utils import _pair
 from utils.utils_d3net import choose_layer_norm
 from models.transform import BandSplit
 from models.glu import GLU2d
-from models.d2net import D2Block
+from models.d2net import D2Block, D2BlockFixedDilation
 
 """
 Reference: D3Net: Densely connected multidilated DenseNet for music source separation
@@ -578,7 +578,7 @@ class D3Block(nn.Module):
             growth_rate <int> or <list<int>>: # of output channels, TODO: <list<list<int>>>
             kernel_size <int> or <tuple<int>>: Kernel size
             num_blocks <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `num_blocks`.
-            dilated <bool> or <list<bool>>: Applies dilated convolution.
+            dilated <str> or <bool> or <list<bool>>: Applies dilated convolution.
             norm <bool> or <list<bool>>: Applies batch normalization.
             nonlinear <str> or <list<str>>: Applies nonlinear function.
             depth <int>: 
@@ -595,15 +595,27 @@ class D3Block(nn.Module):
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
 
-        if type(dilated) is bool:
-            assert num_blocks is not None, "Specify `num_blocks`"
-            dilated = [dilated] * num_blocks
-        elif type(dilated) is list:
-            if num_blocks is not None:
-                assert num_blocks == len(dilated), "`num_blocks` is different from `len(dilated)`"
-            num_blocks = len(dilated)
-        else:
-            raise ValueError("Not support dilated={}".format(dilated))
+        naive_dilated = False
+        
+        if type(dilated) is str:
+            if dilated == 'multi':
+                pass # naive_dilated = False
+            elif dilated == 'naive':
+                naive_dilated = True
+            else:
+                raise ValueError("Not support dilated={}".format(dilated))
+        
+        if not naive_dilated:
+            # w/o dilation or multi dilation
+            if type(dilated) is bool:
+                assert num_blocks is not None, "Specify `num_blocks`"
+                dilated = [dilated] * num_blocks
+            elif type(dilated) is list:
+                if num_blocks is not None:
+                    assert num_blocks == len(dilated), "`num_blocks` is different from `len(dilated)`"
+                num_blocks = len(dilated)
+            else:
+                raise ValueError("Not support dilated={}".format(dilated))
 
         if type(norm) is bool:
             assert num_blocks is not None, "Specify `num_blocks`"
@@ -634,7 +646,11 @@ class D3Block(nn.Module):
 
         for idx in range(num_blocks):
             _out_channels = sum(growth_rate[idx:])
-            d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
+            if naive_dilated:
+                dilation = 2**idx
+                d2block = D2BlockFixedDilation(_in_channels, _out_channels, kernel_size=kernel_size, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
+            else:
+                d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
             net.append(d2block)
             _in_channels = growth_rate[idx]
 
@@ -844,8 +860,32 @@ def _test_d3net_backbone():
 
     print(input.size(), output.size())
 
+def _test_d3net_wo_dilation():
+    config_path = "./data/d3net/wo_dilation.yaml"
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
+
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = D3Net.build_from_config(config_path)
+    
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
+def _test_d3net_naive_dilation():
+    config_path = "./data/d3net/naive_dilation.yaml"
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
+
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = D3Net.build_from_config(config_path)
+    
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
 def _test_d3net():
-    config_path = "./data/d3net/vocals_toy.yaml"
+    config_path = "./data/d3net/toy.yaml"
     batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
@@ -873,6 +913,14 @@ if __name__ == '__main__':
 
     print('='*10, "D3Net backbone", '='*10)
     _test_d3net_backbone()
+    print()
+
+    print('='*10, "D3Net (w/o dilation)", '='*10)
+    _test_d3net_wo_dilation()
+    print()
+
+    print('='*10, "D3Net (naive dilation)", '='*10)
+    _test_d3net_naive_dilation()
     print()
 
     print('='*10, "D3Net", '='*10)
