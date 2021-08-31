@@ -1,17 +1,17 @@
 import torch
 
-EPS=1e-12
+EPS = 1e-12
 
 def ideal_binary_mask(input):
     """
     Args:
-        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
-    n_dim = input.dim()
+    n_dims = input.dim()
     
-    if n_dim == 3:
+    if n_dims == 3:
         n_sources, n_bins, n_frames = input.size()
         
         input = input.permute(1,2,0).contiguous()
@@ -23,7 +23,7 @@ def ideal_binary_mask(input):
         
         mask = flatten_mask.view(n_bins, n_frames, n_sources)
         mask = mask.permute(2,0,1).contiguous()
-    elif n_dim == 4:
+    elif n_dims == 4:
         batch_size, n_sources, n_bins, n_frames = input.size()
         
         input = input.permute(0,2,3,1).contiguous()
@@ -43,39 +43,40 @@ def ideal_binary_mask(input):
 def ideal_ratio_mask(input, eps=EPS):
     """
     Args:
-        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
-    n_dim = input.dim()
+    n_dims = input.dim()
     
-    if n_dim == 3:
+    if n_dims == 3:
         norm = input.sum(dim=0, keepdim=True) # (1, n_bins, n_frames)
-    elif n_dim == 4:
+    elif n_dims == 4:
         norm = input.sum(dim=1, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
-        raise ValueError("Not support {}-dimension".format(n_dim))
+        raise ValueError("Not support {}-dimension".format(n_dims))
     
     mask = input / (norm + eps) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     
     return mask
 
-def wiener_filter_mask(input, eps=EPS):
+def wiener_filter_mask(input, domain=1, eps=EPS):
     """
     Args:
-        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        domain <float>: 1: amplitude, 2: power
     Returns:
-        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
-    n_dim = input.dim()
-    power = input**2 # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+    n_dims = input.dim()
+    power = input**(2 / domain) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     
-    if n_dim == 3:
+    if n_dims == 3:
         norm = power.sum(dim=0, keepdim=True) # (1, n_bins, n_frames)
-    elif n_dim == 4:
+    elif n_dims == 4:
         norm = power.sum(dim=1, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
-        raise ValueError("Not support {}-dimension".format(n_dim))
+        raise ValueError("Not support {}-dimension".format(n_dims))
     
     mask = power / (norm + eps)
 
@@ -88,11 +89,160 @@ See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurr
 def phase_sensitive_mask(input, eps=EPS):
     """
     Args:
-        input (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
-        mask (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        mask <torch.Tensor>: Tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
     raise NotImplementedError("No implementation")
+
+def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):
+    """
+    Multichannel Wiener filter.
+    Implementation is based on norbert package.
+    Args:
+        mixture <torch.Tensor>: Complex tensor with shape of (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames) or (batch_size, 1, n_channels, n_bins, n_frames) or (batch_size, n_channels, n_bins, n_frames)
+        estimated_sources_amplitude <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_channels, n_bins, n_frames) or (batch_size, n_sources, n_channels, n_bins, n_frames)
+        iteration <int>: Iteration of EM algorithm updates
+        channels_first <bool>: Only supports True
+        eps <float>: small value for numerical stability
+    """
+    assert channels_first, "`channels_first` is expected True, but given {}".format(channels_first)
+
+    n_dims = estimated_sources_amplitude.dim()
+    n_dims_mixture = mixture.dim()
+
+    if n_dims == 4:
+        """
+        Shape of mixture is (1, n_channels, n_bins, n_frames) or (n_channels, n_bins, n_frames)
+        """
+        if n_dims_mixture == 4:
+            mixture = mixture.squeeze(dim=1) # (n_channels, n_bins, n_frames)
+        elif n_dims_mixture != 3:
+            raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
+        
+        # Use soft mask
+        ratio = estimated_sources_amplitude / (estimated_sources_amplitude.sum(dim=0) + eps)
+        estimated_sources = ratio * mixture
+
+        norm = max(1, torch.abs(mixture).max() / 10)
+        mixture, estimated_sources = mixture / norm, estimated_sources / norm
+
+        estimated_sources = update_em(mixture, estimated_sources, iteration, eps=eps)
+        estimated_sources = norm * estimated_sources
+    elif n_dims == 5:
+        """
+        Shape of mixture is (batch_size, 1, n_channels, n_bins, n_frames) or (batch_size, n_channels, n_bins, n_frames)
+        """
+        if n_dims_mixture == 5:
+            mixture = mixture.squeeze(dim=1) # (batch_size, n_channels, n_bins, n_frames)
+        elif n_dims_mixture != 4:
+            raise ValueError("mixture.dim() is expected 4 or 5, but given {}.".format(mixture.dim()))
+        
+        estimated_sources = []
+
+        for _mixture, _estimated_sources_amplitude in zip(mixture, estimated_sources_amplitude):
+            # Use soft mask
+            ratio = _estimated_sources_amplitude / (_estimated_sources_amplitude.sum(dim=0) + eps)
+            _estimated_sources = ratio * _mixture
+
+            norm = max(1, torch.abs(_mixture).max() / 10)
+            _mixture, _estimated_sources = _mixture / norm, _estimated_sources / norm
+
+            _estimated_sources = update_em(_mixture, _estimated_sources, iteration, eps=eps)
+            _estimated_sources = norm * _estimated_sources
+
+            estimated_sources.append(_estimated_sources.unsqueeze(dim=0))
+        
+        estimated_sources = torch.cat(estimated_sources, dim=0)
+    else:
+        raise ValueError("estimated_sources_amplitude.dim() is expected 4 or 5, but given {}.".format(estimated_sources_amplitude.dim()))
+
+    return estimated_sources
+
+"""
+For multichannel Wiener filter
+"""
+def update_em(mixture, estimated_sources, iterations=1, source_parallel=False, eps=EPS):
+    """
+    Args:
+        mixture: (n_channels, n_bins, n_frames)
+        estimated_sources: (n_sources, n_channels, n_bins, n_frames)
+    Returns
+        estiamted_sources: (n_sources, n_channels, n_bins, n_frames)
+    """
+    n_sources, n_channels, _, _ = estimated_sources.size()
+
+    for iteration_idx in range(iterations):
+        v, R = [], []
+        Cxx = 0
+
+        if source_parallel:
+            v, R = get_stats(estimated_sources, eps=eps) # (n_sources, n_bins, n_frames), (n_sources, n_bins, n_channels, n_channels)
+            Cxx = torch.sum(v.unsqueeze(dim=4) * R, dim=0) # (n_bins, n_frames, n_channels, n_channels)
+        else:
+            for source_idx in range(n_sources):
+                y_n = estimated_sources[source_idx] # (n_channels, n_bins, n_frames)
+                v_n, R_n = get_stats(y_n, eps=eps) # (n_bins, n_frames), (n_bins, n_channels, n_channels)
+                Cxx = Cxx + v_n.unsqueeze(dim=2).unsqueeze(dim=3) * R_n.unsqueeze(dim=1) # (n_bins, n_frames, n_channels, n_channels)
+                v.append(v_n.unsqueeze(dim=0))
+                R.append(R_n.unsqueeze(dim=0))
+        
+            v, R = torch.cat(v, dim=0), torch.cat(R, dim=0) # (n_sources, n_bins, n_frames), (n_sources, n_bins, n_channels, n_channels)
+       
+        v, R = v.unsqueeze(dim=3), R.unsqueeze(dim=2) # (n_sources, n_bins, n_frames, 1), (n_sources, n_bins, 1, n_channels, n_channels)
+
+        inv_Cxx = torch.linalg.inv(Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+
+        if source_parallel:
+            gain = v.unsqueeze(dim=4) * torch.sum(R.unsqueeze(dim=5) * inv_Cxx.unsqueeze(dim=2), dim=4) # (n_sources, n_bins, n_frames, n_channels, n_channels)
+            gain = gain.permute(0, 3, 4, 1, 2) # (n_sources, n_channels, n_channels, n_bins, n_frames)
+            estimated_sources = torch.sum(gain * mixture, dim=2) # (n_sources, n_channels, n_bins, n_frames)
+        else:
+            estimated_sources = []
+
+            for source_idx in range(n_sources):
+                v_n, R_n = v[source_idx], R[source_idx] # (n_bins, n_frames, 1), (n_bins, 1, n_channels, n_channels)
+
+                gain_n = v_n.unsqueeze(dim=3) * torch.sum(R_n.unsqueeze(dim=4) * inv_Cxx.unsqueeze(dim=2), dim=3) # (n_bins, n_frames, n_channels, n_channels)
+                gain_n = gain_n.permute(2, 3, 0, 1) # (n_channels, n_channels, n_bins, n_frames)
+                estimated_source = torch.sum(gain_n * mixture, dim=1) # (n_channels, n_bins, n_frames)
+                estimated_sources.append(estimated_source.unsqueeze(dim=0))
+            
+            estimated_sources = torch.cat(estimated_sources, dim=0) # (n_sources, n_channels, n_bins, n_frames)
+
+    return estimated_sources
+
+def get_stats(spectrogram, eps=EPS):
+    """
+    Compute empirical parameters of local gaussian model.
+    Args:
+        spectrogram <torch.Tensor>: (n_mics, n_bins, n_frames) or (n_sources, n_mics, n_bins, n_frames)
+    Returns:
+        psd <torch.Tensor>: (n_bins, n_frames) or (n_sources, n_bins, n_frames)
+        covariance <torch.Tensor>: (n_bins, n_frames, n_mics, n_mics) or (n_sources, n_bins, n_frames, n_mics, n_mics)
+    """
+    n_dims = spectrogram.dim()
+
+    if n_dims == 3:
+        psd = torch.mean(torch.abs(spectrogram)**2, dim=0) # (n_bins, n_frames)
+        covariance = spectrogram.unsqueeze(dim=1) * spectrogram.unsqueeze(dim=0).conj() # (n_mics, n_mics, n_bins, n_frames)
+        covariance = covariance.sum(dim=3) # (n_mics, n_mics, n_bins)
+        denominator = psd.sum(dim=1) + eps # (n_bins,)
+
+        covariance = covariance / denominator # (n_mics, n_mics, n_bins, n_frames)
+        covariance = covariance.permute(2, 0, 1) # (n_bins, n_mics, n_mics)
+    elif n_dims == 4:
+        psd = torch.mean(torch.abs(spectrogram)**2, dim=1) # (n_sources, n_bins, n_frames)
+        covariance = spectrogram.unsqueeze(dim=2) * spectrogram.unsqueeze(dim=1).conj() # (n_sources, n_mics, n_mics, n_bins, n_frames)
+        covariance = covariance.sum(dim=4) # (n_sources, n_mics, n_mics, n_bins)
+        denominator = psd.sum(dim=2) + eps # (n_sources, n_bins)
+        
+        covariance = covariance / denominator.unsqueeze(dim=1).unsqueeze(dim=2) # (n_sources, n_mics, n_mics, n_bins)
+        covariance = covariance.permute(0, 3, 1, 2) # (n_sources, n_bins, n_mics, n_mics)
+    else:
+        raise ValueError("Invalid dimension of tensor is given.")
+
+    return psd, covariance
 
 def _test(method='IBM'):
     if method == 'IBM':
