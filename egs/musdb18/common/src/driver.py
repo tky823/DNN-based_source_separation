@@ -1,6 +1,5 @@
 import os
 import time
-import math
 
 import musdb
 import museval
