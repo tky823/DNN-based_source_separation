@@ -57,6 +57,6 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
 | Model | Vocals | Drums | Bass | Other | Accompaniment | Average |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| D3Net w/o dilation |  |  |  |  |  |  |
-| D3Net standard dilation |  |  |  |  |  |  |
-| D3Net |  |  |  |  |  |  |
+| D3Net w/o dilation | - | - | - | - | - | - |
+| D3Net standard dilation | - | - | - | - | - | - |
+| D3Net | 6.82 | 6.29 | 4.77 | 4.51 | 13.06 | 5.60 |

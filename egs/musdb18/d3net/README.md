@@ -57,6 +57,6 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 SDR [dB] (median of median SDR of each song computed by `museval`)
 | Model | Vocals | Drums | Bass | Other | Accompaniment | Average |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| D3Net w/o dilation |  |  |  |  |  |  |
-| D3Net standard dilation |  |  |  |  |  |  |
-| D3Net |  |  |  |  |  |  |
+| D3Net w/o dilation | - | - | - | - | - | - |
+| D3Net standard dilation | - | - | - | - | - | - |
+| D3Net | 6.82 | 6.29 | 4.77 | 4.51 | 13.06 | 5.60 |
