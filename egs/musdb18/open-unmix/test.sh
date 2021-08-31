@@ -32,6 +32,9 @@ max_norm=0 # 0 is handled as no clipping
 batch_size=16
 epochs=1000
 
+estimate_all=1
+evaluate_all=1
+
 use_norbert=0
 use_cuda=1
 seed=111
@@ -76,6 +79,8 @@ test.py \
 --json_dir "${json_dir}" \
 --model_dir "${model_dir}" \
 --model_choice "${model_choice}" \
+--estimate_all ${estimate_all} \
+--evaluate_all ${evaluate_all} \
 --use_norbert ${use_norbert} \
 --use_cuda ${use_cuda} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"

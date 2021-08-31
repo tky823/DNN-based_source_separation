@@ -269,6 +269,8 @@ class AdhocTester(TesterBase):
             self.json_dir = os.path.abspath(args.json_dir)
             os.makedirs(self.json_dir, exist_ok=True)
         
+        self.use_estimate_all, self.use_evaluate_all = args.estimate_all, args.evaluate_all
+        
         self.use_cuda = args.use_cuda
         self.use_norbert = args.use_norbert
 
@@ -289,8 +291,10 @@ class AdhocTester(TesterBase):
                 raise ImportError("Cannot import norbert.")
     
     def run(self):
-        self.estimate_all()
-        self.eval_all()
+        if self.use_estimate_all:
+            self.estimate_all()
+        if self.use_evaluate_all:
+            self.evaluate_all()
 
     def estimate_all(self):
         self.model.eval()
@@ -377,7 +381,7 @@ class AdhocTester(TesterBase):
 
         print(s, flush=True)
     
-    def eval_all(self):
+    def evaluate_all(self):
         mus = musdb.DB(root=self.musdb18_root, subsets='test')
         
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
