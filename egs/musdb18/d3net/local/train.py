@@ -32,6 +32,7 @@ parser.add_argument('--anneal_lr', type=float, default=0.0001, help='Learning ra
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
+parser.add_argument('--samples_per_epoch', type=int, default=3863*2, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
 parser.add_argument('--anneal_epoch', type=int, default=40, help='Epoch when annealing')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
@@ -49,9 +50,8 @@ def main(args):
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     patch_samples = args.hop_size * (args.patch_size - 1) + args.fft_size - 2 * (args.fft_size // 2)
     max_samples = int(args.valid_duration * args.sr)
-    samples_per_epoch = None
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=samples_per_epoch, sources=args.sources, target=args.target, augmentation=True)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=True)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
