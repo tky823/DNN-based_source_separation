@@ -284,7 +284,7 @@ class AdhocTester(TesterBase):
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
         
-        self.model_dir = args.model_dir
+        self.model_path = args.model_path
         self.estimates_dir = args.estimates_dir
         self.json_dir = args.json_dir
         
@@ -301,15 +301,11 @@ class AdhocTester(TesterBase):
         self.use_cuda = args.use_cuda
         self.use_norbert = args.use_norbert
 
-        is_data_parallel = isinstance(self.model, nn.DataParallel)
-        
-        for target in self.sources:
-            model_path = os.path.join(self.model_dir, target, "{}.pth".format(args.model_choice))
-            package = torch.load(model_path, map_location=lambda storage, loc: storage)
-            if is_data_parallel:
-                self.model.module.net[target].load_state_dict(package['state_dict'])
-            else:
-                self.model.net[target].load_state_dict(package['state_dict'])
+        package = torch.load(self.model_path, map_location=lambda storage, loc: storage)
+        if isinstance(self.model, nn.DataParallel):
+            self.model.module.load_state_dict(package['state_dict'])
+        else:
+            self.model.load_state_dict(package['state_dict'])
         
         if self.use_norbert:
             try:
