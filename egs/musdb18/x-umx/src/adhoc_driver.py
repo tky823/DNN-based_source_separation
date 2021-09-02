@@ -46,8 +46,8 @@ class AdhocTrainer(TrainerBase):
         
         self.epochs = args.epochs
         
-        self.train_loss = torch.empty(self.epochs)
-        self.valid_loss = torch.empty(self.epochs)
+        self.train_loss = torch.empty(self.epochs, len(self.sources))
+        self.valid_loss = torch.empty(self.epochs, len(self.sources))
         
         self.use_cuda = args.use_cuda
         self.use_norbert = args.use_norbert
@@ -61,7 +61,7 @@ class AdhocTrainer(TrainerBase):
             self.valid_loss[:self.start_epoch] = package['valid_loss'][:self.start_epoch]
             
             self.best_loss = package['best_loss']
-            self.prev_loss = self.valid_loss[self.start_epoch - 1]
+            self.prev_loss = torch.mean(self.valid_loss[self.start_epoch - 1], dim=0)
             self.no_improvement = package['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
@@ -100,8 +100,8 @@ class AdhocTrainer(TrainerBase):
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
             
-            self.train_loss[epoch] = train_loss.mean(dim=0).item()
-            self.valid_loss[epoch] = valid_loss.mean(dim=0).item()
+            self.train_loss[epoch] = train_loss
+            self.valid_loss[epoch] = valid_loss
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss.mean(dim=0).item()
@@ -122,8 +122,9 @@ class AdhocTrainer(TrainerBase):
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
             
-            save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
+            for source_idx, target in enumerate(self.sources):
+                save_path = os.path.join(self.loss_dir, "{}.png".format(target))
+                draw_loss_curve(train_loss=self.train_loss[:epoch + 1, source_idx], valid_loss=self.valid_loss[:epoch + 1, source_idx], save_path=save_path)
     
     def run_one_epoch_train(self, epoch):
         # Override
