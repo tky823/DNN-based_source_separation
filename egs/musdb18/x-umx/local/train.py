@@ -99,7 +99,7 @@ def main(args):
     
     # Criterion
     if args.criterion == 'mse':
-        criterion = MeanSquaredError(dim=(1,2,3))
+        criterion = MeanSquaredError(dim=(2,3,4))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     

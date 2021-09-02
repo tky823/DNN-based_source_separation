@@ -134,8 +134,6 @@ class AdhocTrainer(TrainerBase):
             """
                 mixture: (batch_size, 1, n_mics, n_bins, n_frames)
                 sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
-                samples <int>: Length in time domain
-                name <str>: Artist and title of song
             """
             if self.use_cuda:
                 mixture = mixture.cuda()
