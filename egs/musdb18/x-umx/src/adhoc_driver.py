@@ -102,9 +102,11 @@ class AdhocTrainer(TrainerBase):
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
+
+            mean_valid_loss = valid_loss.mean(dim=0).item()
             
-            if valid_loss < self.best_loss:
-                self.best_loss = valid_loss.mean(dim=0).item()
+            if mean_valid_loss < self.best_loss:
+                self.best_loss = mean_valid_loss
                 self.no_improvement = 0
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
@@ -117,7 +119,7 @@ class AdhocTrainer(TrainerBase):
                         print("Learning rate: {} -> {}".format(prev_lr, lr))
                         param_group['lr'] = lr
             
-            self.prev_loss = valid_loss.mean(dim=0).item()
+            self.prev_loss = mean_valid_loss
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
