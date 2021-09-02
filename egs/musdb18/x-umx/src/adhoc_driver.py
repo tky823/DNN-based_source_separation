@@ -349,7 +349,7 @@ class AdhocTester(TesterBase):
                 for _mixture_amplitude in mixture_amplitude:
                     # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
                     _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=0)
-                    _estimated_sources_amplitude = self.model(_mixture_amplitude, target=target)
+                    _estimated_sources_amplitude = self.model(_mixture_amplitude)
                     estimated_sources_amplitude.append(_estimated_sources_amplitude)
                 
                 estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (batch_size, n_sources, n_mics, n_bins, n_frames)
