@@ -257,19 +257,25 @@ class CrossNetOpenUnmix(nn.Module):
             eps <float>: Small value for numerical stability
         """
         super().__init__()
-
-        self.n_bins, self.max_bin = n_bins, max_bin
-        self.in_channels, self.hidden_channels, self.out_channels = in_channels, hidden_channels, hidden_channels
-
-        self.sources = sources
-
-        self.eps = eps
-
+        
         net = {}
         for source in self.sources:
             net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, eps=eps)
 
         self.backbone = nn.ModuleDict(net)
+
+        # Hyperparameters
+        self.in_channels, self.n_bins = in_channels, n_bins
+        self.hidden_channels, self.out_channels = hidden_channels, hidden_channels
+        self.num_layers = num_layers
+        self.max_bin = max_bin
+
+        self.dropout = dropout
+        self.causal = causal
+
+        self.sources = sources
+
+        self.eps = eps
         
     def forward(self, input):
         """
@@ -322,6 +328,89 @@ class CrossNetOpenUnmix(nn.Module):
         output = torch.cat(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
 
         return output
+    
+    def get_config(self):
+        config = {
+            'in_channels': self.in_channels,
+            'hidden_channels': self.hidden_channels,
+            'num_layers': self.num_layers,
+            'n_bins': self.n_bins,
+            'max_bin': self.max_bin,
+            'dropout': self.dropout,
+            'causal': self.causal,
+            'sources': self.sources,
+            'eps': self.eps
+        }
+        
+        return config
+    
+    @classmethod
+    def build_from_config(cls, config_path):
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        in_channels = config['in_channels']
+
+        hidden_channels = config['hidden_channels']
+        num_layers = config['num_layers']
+        n_bins, max_bin = config['n_bins'], config['max_bin']
+        dropout = config['dropout']
+        causal = config['causal']
+
+        sources = config['sources']
+
+        eps = config.get('eps') or EPS
+
+        model = cls(
+            in_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            n_bins=n_bins, max_bin=max_bin,
+            dropout=dropout,
+            causal=causal,
+            sources=sources,
+            eps=eps
+        )
+        
+        return model
+    
+    @classmethod
+    def build_model(cls, model_path):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+    
+        in_channels = config['in_channels']
+        hidden_channels = config['hidden_channels']
+        num_layers = config['num_layers']
+        n_bins, max_bin = config['n_bins'], config['max_bin']
+        dropout = config['dropout']
+        causal = config['causal']
+
+        sources = config['sources']
+
+        eps = config.get('eps') or EPS
+        
+        model = cls(
+            in_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            n_bins=n_bins, max_bin=max_bin,
+            dropout=dropout,
+            causal=causal,
+            sources=sources,
+            eps=eps
+        )
+        
+        return model
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
 class TransformBlock1d(nn.Module):
     def __init__(self, in_channels, out_channels, bias=True, nonlinear=None, eps=EPS):
