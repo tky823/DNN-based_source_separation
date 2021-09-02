@@ -91,9 +91,12 @@ class AdhocTrainer(TrainerBase):
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            s = "[Epoch {}/{}] loss (train): {:.5f}, loss (valid):".format(epoch + 1, self.epochs, train_loss)
-            for target, loss_target in zip(self.sources, valid_loss):
-                s += " ({}) {:.5f}".format(target, loss_target.item())
+            s = "[Epoch {}/{}] loss (train):".format(epoch + 1, self.epochs)
+            for target, loss in zip(self.sources, train_loss):
+                s += " ({}) {:.5f}".format(target, loss.item())
+            s += ", loss (valid):"
+            for target, loss in zip(self.sources, valid_loss):
+                s += " ({}) {:.5f}".format(target, loss.item())
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
             
