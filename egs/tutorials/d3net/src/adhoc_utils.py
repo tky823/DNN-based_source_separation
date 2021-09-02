@@ -93,9 +93,9 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
 
             if n_mics == 1:
                 estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=1) # (n_sources, n_bins, batch_size * n_frames)
-                estimated_sources_amplitude = ideal_ratio_mask(estimated_sources_amplitude)
-                estimated_sources_amplitude = estimated_sources_amplitude.unsqueeze(dim=1) # (n_sources, n_mics, n_bins, batch_size * n_frames)
-                estimated_sources = estimated_sources_amplitude * torch.exp(1j * torch.angle(mixture)) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+                mask = ideal_ratio_mask(estimated_sources_amplitude)
+                mask = mask.unsqueeze(dim=1) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+                estimated_sources = mask * mixture # (n_sources, n_mics, n_bins, batch_size * n_frames)
             else:
                 estimated_sources = apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
             
