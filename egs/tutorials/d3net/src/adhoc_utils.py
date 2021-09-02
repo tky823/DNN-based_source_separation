@@ -69,7 +69,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
                 # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
                 for target in __sources__:
                     if n_mics == 1:
-                        _mixture_amplitude = torch.expand(_mixture_amplitude, (-1, model.in_channels, -1, -1))
+                        _mixture_amplitude = torch.tile(_mixture_amplitude, (1, model.in_channels, 1, 1))
                     
                     _estimated_sources_amplitude = model(_mixture_amplitude, target=target)
 
