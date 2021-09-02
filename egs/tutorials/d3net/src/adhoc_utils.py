@@ -9,6 +9,7 @@ from models.d3net import D3Net, ParallelD3Net
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
+NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
@@ -67,10 +68,10 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
             # Serial operation
             for _mixture_amplitude in mixture_amplitude:
                 # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
+                if n_mics == 1:
+                    _mixture_amplitude = torch.tile(_mixture_amplitude, (1, NUM_CHANNELS_MUSDB18, 1, 1))
+                
                 for target in __sources__:
-                    if n_mics == 1:
-                        _mixture_amplitude = torch.tile(_mixture_amplitude, (1, model.in_channels, 1, 1))
-                    
                     _estimated_sources_amplitude = model(_mixture_amplitude, target=target)
 
                     if n_mics == 1:
