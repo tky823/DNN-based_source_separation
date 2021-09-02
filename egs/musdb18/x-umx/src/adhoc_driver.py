@@ -199,12 +199,18 @@ class AdhocTrainer(TrainerBase):
 
                 mixture = mixture.permute(1, 2, 3, 0, 4) # (1, n_mics, n_bins, batch_size, n_frames)
                 estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4) # (n_sources, n_mics, n_bins, batch_size, n_frames)
-                mixture = mixture.reshape(1, n_mics, n_bins, batch_size * n_frames)
+                mixture = mixture.reshape(n_mics, n_bins, batch_size * n_frames)
                 estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames)
 
                 if idx < 5:
                     estimated_sources = self.apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
+                    
+                    mixture_channels = mixture.size()[:-2]
                     estimated_sources_channels = estimated_sources.size()[:-2]
+
+                    mixture = mixture.view(-1, *mixture.size()[-2:])
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                    mixture = mixture.view(*mixture_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                     estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
                     estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
