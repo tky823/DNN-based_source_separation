@@ -16,7 +16,7 @@ def ideal_binary_mask(input):
     if n_dims == 3:
         n_sources, n_bins, n_frames = input.size()
         
-        input = input.permute(1,2,0).contiguous()
+        input = input.permute(1, 2, 0).contiguous()
         flatten_input = input.view(n_bins*n_frames, n_sources)
         flatten_idx = torch.arange(0, n_bins*n_frames*n_sources, n_sources)
         flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
@@ -24,11 +24,11 @@ def ideal_binary_mask(input):
         flatten_mask[flatten_idx] = 1
         
         mask = flatten_mask.view(n_bins, n_frames, n_sources)
-        mask = mask.permute(2,0,1).contiguous()
+        mask = mask.permute(2, 0, 1).contiguous()
     elif n_dims == 4:
         batch_size, n_sources, n_bins, n_frames = input.size()
         
-        input = input.permute(0,2,3,1).contiguous()
+        input = input.permute(0, 2, 3, 1).contiguous()
         flatten_input = input.view(batch_size*n_bins*n_frames, n_sources)
         flatten_idx = torch.arange(0, batch_size*n_bins*n_frames*n_sources, n_sources)
         flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
@@ -36,7 +36,7 @@ def ideal_binary_mask(input):
         flatten_mask[flatten_idx] = 1
         
         mask = flatten_mask.view(batch_size, n_bins, n_frames, n_sources)
-        mask = mask.permute(0,3,1,2).contiguous()
+        mask = mask.permute(0, 3, 1, 2).contiguous()
     else:
         raise ValueError("Not support {}-dimension".format(n_dims))
     
