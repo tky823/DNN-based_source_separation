@@ -42,10 +42,7 @@ class AdhocTrainer(TrainerBase):
         
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.loss_dir, exist_ok=True)
-
-        for source in self.sources:
-            save_dir = os.path.join(self.sample_dir, source)
-            os.makedirs(save_dir, exist_ok=True)
+        os.makedirs(self.sample_dir, exist_ok=True)
         
         self.epochs = args.epochs
         
