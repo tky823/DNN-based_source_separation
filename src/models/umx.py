@@ -2,6 +2,7 @@ import yaml
 import torch
 import torch.nn as nn
 
+__sources__ = ['drums', 'bass', 'other', 'vocals']
 EPS = 1e-12
 
 """
@@ -241,6 +242,87 @@ class OpenUnmix(nn.Module):
                 
         return _num_parameters
 
+class CrossNetOpenUnmix(nn.Module):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, sources=__sources__, eps=EPS):
+        """
+        Args:
+            in_channels <int>: Input channels
+            hidden_channels <int>: Hidden channels in LSTM
+            num_layers <int>: # of LSTM layers
+            n_bins <int>: # of frequency bins
+            max_bin <int>: If none, max_bin = n_bins
+            dropout <float>: Dropout rate in LSTM
+            causal <bool>: Causality
+            sources <list<str>>: Target sources
+            eps <float>: Small value for numerical stability
+        """
+        super().__init__()
+
+        self.n_bins, self.max_bin = n_bins, max_bin
+        self.in_channels, self.hidden_channels, self.out_channels = in_channels, hidden_channels, hidden_channels
+
+        self.sources = sources
+
+        self.eps = eps
+
+        net = {}
+        for source in self.sources:
+            net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, eps=eps)
+
+        self.backbone = nn.ModuleDict(net)
+        
+    def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, 1, in_channels, n_bins, n_frames)
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, in_channels, n_bins, n_frames)
+        """
+        n_bins, max_bin = self.n_bins, self.max_bin
+        in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
+        eps = self.eps
+
+        input = input.squeeze(dim=1)
+        batch_size, _, _, n_frames = input.size()
+
+        if max_bin == n_bins:
+            x_valid = input
+        else:
+            sections = [max_bin, n_bins - max_bin]
+            x_valid, _ = torch.split(input, sections, dim=2)
+    
+        x_sum = 0
+        for source in self.sources:
+            x_source = (x_valid - self.backbone[source].in_bias.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].in_scale.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+            x_source = x_source.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
+            x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
+            x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
+            x_source = x_source.view(batch_size, n_frames, hidden_channels)
+            x_sum = x_sum + x_source
+        x = x_sum / len(self.sources)
+
+        x_sum = 0
+        for source in self.sources:
+            x_source_lstm, (_, _) = self.backbone[source].rnn(x) # (batch_size, n_frames, out_channels)
+            x_source = torch.cat([x, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
+            x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
+            x_sum = x_sum + x_source
+        x = x_sum / len(self.sources)
+
+        x_sum = 0
+        output = []
+        for source in self.sources:
+            x_source_full = self.backbone[source].net(x) # (batch_size * n_frames, n_bins)
+            x_source_full = x_source_full.view(batch_size, n_frames, in_channels, n_bins)
+            x_source_full = x_source_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
+            x_source_full = self.backbone[source].out_scale.unsqueeze(dim=1) * x_source_full + self.backbone[source].out_bias.unsqueeze(dim=1)
+            x_source_full = self.backbone[source].relu2d(x_source_full)
+            x_source = x_source_full * input
+            output.append(x_source.unsqueeze(dim=1))
+        output = torch.cat(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
+
+        return output
+
 class TransformBlock1d(nn.Module):
     def __init__(self, in_channels, out_channels, bias=True, nonlinear=None, eps=EPS):
         super().__init__()
@@ -296,7 +378,28 @@ def _test_openunmix():
     print(model)
     print(input.size(), output.size())
 
+def _test_crossnet_openunmix():
+    batch_size = 6
+    in_channels = 2
+    n_bins, max_bin = 2049, 1487
+    n_frames = 100
+    dropout = 0.4
+
+    input = torch.randn(batch_size, 1, in_channels, n_bins, n_frames)
+
+    print('='*10, "CrossNetOpenUnmix", '='*10)
+    print('-'*10, "Non causal", '-'*10)
+    causal = False
+    model = CrossNetOpenUnmix(in_channels=in_channels, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal)
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     torch.manual_seed(111)
 
     _test_openunmix()
+    print()
+
+    _test_crossnet_openunmix()
