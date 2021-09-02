@@ -259,7 +259,7 @@ class CrossNetOpenUnmix(nn.Module):
         super().__init__()
         
         net = {}
-        for source in self.sources:
+        for source in sources:
             net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, eps=eps)
 
         self.backbone = nn.ModuleDict(net)
