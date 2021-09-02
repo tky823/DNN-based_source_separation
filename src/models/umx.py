@@ -54,6 +54,11 @@ class ParallelOpenUnmix(nn.Module):
                 
         return _num_parameters
 
+"""
+Open-Unmix
+    Reference: "Open-unmix: a reference implementation for source separation"
+    See https://hal.inria.fr/hal-02293689/document
+"""
 class OpenUnmix(nn.Module):
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, eps=EPS):
         """
@@ -242,6 +247,11 @@ class OpenUnmix(nn.Module):
                 
         return _num_parameters
 
+"""
+CrossNet-Open-Unmix
+    Reference: "All for One and One for All: Improving Music Separation by Bridging Networks"
+    See https://arxiv.org/abs/2010.04228
+"""
 class CrossNetOpenUnmix(nn.Module):
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, sources=__sources__, eps=EPS):
         """
