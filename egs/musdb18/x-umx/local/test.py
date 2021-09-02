@@ -13,7 +13,7 @@ from adhoc_driver import AdhocTester
 from models.umx import CrossNetOpenUnmix
 from criterion.distance import MeanSquaredError
 
-parser = argparse.ArgumentParser(description="Evaluation of OpenUnmix")
+parser = argparse.ArgumentParser(description="Evaluation of CrossNet-Open-Unmix")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
