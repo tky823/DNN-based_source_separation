@@ -48,7 +48,7 @@ def main(args):
     model = CrossNetOpenUnmix.build_model(args.model_path)
     
     print(model)
-    print("# Parameters: {}".format(model.num_parameters))
+    print("# Parameters: {}".format(model.num_parameters), flush=True)
     
     if args.use_cuda:
         if torch.cuda.is_available():
