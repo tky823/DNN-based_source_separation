@@ -54,7 +54,7 @@ def main(args):
     model = ParallelOpenUnmix(modules)
     
     print(model)
-    print("# Parameters: {}".format(model.num_parameters))
+    print("# Parameters: {}".format(model.num_parameters), flush=True)
     
     if args.use_cuda:
         if torch.cuda.is_available():
