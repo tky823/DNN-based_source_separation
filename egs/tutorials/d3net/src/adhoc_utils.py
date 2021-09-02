@@ -12,7 +12,7 @@ SAMPLE_RATE_MUSDB18 = 44100
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(model_paths, filepaths, out_dirs):
+def separate_by_d3net(model_paths, file_paths, out_dirs):
     patch_size = 256
     fft_size, hop_size = 4096, 1024
     window = torch.hann_window(fft_size)
@@ -31,8 +31,8 @@ def separate_by_d3net(model_paths, filepaths, out_dirs):
 
     estimated_paths = []
 
-    for filepath, out_dir in zip(filepaths, out_dirs):
-        x, sample_rate = torchaudio.load(filepath)
+    for file_path, out_dir in zip(file_paths, out_dirs):
+        x, sample_rate = torchaudio.load(file_path)
         _, T_original = x.size()
 
         if sample_rate == SAMPLE_RATE_MUSDB18:
