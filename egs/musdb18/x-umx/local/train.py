@@ -11,7 +11,7 @@ from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.umx import CrossNetOpenUnmix
-from criterion.distance import MeanSquaredError
+from adhoc_criterion import MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Training of CrossNet-Open-Unmix")
 
@@ -28,7 +28,9 @@ parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LS
 parser.add_argument('--dropout', type=float, default=0, help='dropout')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='mdl', choices=['mdl'], help='Criterion')
+parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
+parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -99,8 +101,8 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'mse':
-        criterion = MeanSquaredError(dim=(2,3,4))
+    if args.criterion == 'mdl':
+        criterion = MultiDomainLoss(weight_time=args.weight_time, weight_frequency=args.weight_frequency)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
