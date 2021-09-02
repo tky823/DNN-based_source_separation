@@ -40,6 +40,7 @@ parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model 
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
 parser.add_argument('--sample_dir', type=str, default='./tmp/sample', help='Sample directory')
 parser.add_argument('--continue_from', type=str, default=None, help='Resume training')
+parser.add_argument('--use_norbert', type=int, default=0, help='Use norbert.wiener for multichannel wiener filetering. 0: Not use norbert, 1: Use norbert (you have to install norbert)')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
 parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 1: FORCE overwrite')
 parser.add_argument('--num_workers', type=int, default=0, help='# of workers given to data loader for training.')

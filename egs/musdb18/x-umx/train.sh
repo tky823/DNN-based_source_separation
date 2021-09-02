@@ -35,6 +35,7 @@ batch_size=16
 samples_per_epoch=6400
 epochs=1000
 
+use_norbert=0
 use_cuda=1
 overwrite=0
 num_workers=2
@@ -94,6 +95,7 @@ train.py \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \
 --continue_from "${continue_from}" \
+--use_norbert ${use_norbert} \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
 --num_workers ${num_workers} \

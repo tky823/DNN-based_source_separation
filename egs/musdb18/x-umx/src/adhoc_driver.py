@@ -53,6 +53,7 @@ class AdhocTrainer(TrainerBase):
         self.valid_loss = torch.empty(self.epochs)
         
         self.use_cuda = args.use_cuda
+        self.use_norbert = args.use_norbert
         
         if args.continue_from:
             package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
