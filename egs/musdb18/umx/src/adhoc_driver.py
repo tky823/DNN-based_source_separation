@@ -128,8 +128,8 @@ class AdhocTrainer(TrainerBase):
         
         for idx, (mixture, source) in enumerate(self.train_loader):
             if self.use_cuda:
-                mixture = mixture.cuda(non_blocking=True)
-                source = source.cuda(non_blocking=True)
+                mixture = mixture.cuda()
+                source = source.cuda()
             
             mixture_amplitude = torch.abs(mixture)
             source_amplitude = torch.abs(source)
@@ -173,8 +173,8 @@ class AdhocTrainer(TrainerBase):
                     name <list<str>>: Artist and title of song
                 """
                 if self.use_cuda:
-                    mixture = mixture.cuda(non_blocking=True)
-                    source = source.cuda(non_blocking=True)
+                    mixture = mixture.cuda()
+                    source = source.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
                 source_amplitude = torch.abs(source)

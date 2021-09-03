@@ -10,10 +10,10 @@ import torch.nn as nn
 from utils.utils import set_seed
 from adhoc_dataset import SpectrogramTestDataset, TestDataLoader
 from adhoc_driver import AdhocTester
-from models.umx import OpenUnmix, ParallelOpenUnmix
+from models.umx import CrossNetOpenUnmix
 from criterion.distance import MeanSquaredError
 
-parser = argparse.ArgumentParser(description="Evaluation of OpenUnmix")
+parser = argparse.ArgumentParser(description="Evaluation of CrossNet-Open-Unmix")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
@@ -23,10 +23,9 @@ parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
-parser.add_argument('--model_dir', type=str, default=None, help='Directory which includes drums/<model_choice>.pth, ..., vocals/<model_choice>.pth')
+parser.add_argument('--model_path', type=str, default=None, help='Path to pretrained model.')
 parser.add_argument('--estimates_dir', type=str, default=None, help='Estimated sources output directory')
 parser.add_argument('--json_dir', type=str, default=None, help='Json directory')
-parser.add_argument('--model_choice', type=str, default='last', choices=['best', 'last'], help='Model choice. Default: last')
 parser.add_argument('--estimate_all', type=int, default=1, help='Estimates all songs. GPU is required if use_cuda=1.')
 parser.add_argument('--evaluate_all', type=int, default=1, help='Evaluates all estimations. GPU is NOT required.')
 parser.add_argument('--use_norbert', type=int, default=0, help='Use norbert.wiener for multichannel wiener filetering. 0: Not use norbert, 1: Use norbert (you have to install norbert)')
@@ -46,15 +45,10 @@ def main(args):
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
-    modules = {}
-    for source in args.sources:
-        model_path = os.path.join(args.model_dir, source, "{}.pth".format(args.model_choice))
-        modules[source] = OpenUnmix.build_model(model_path)
-    
-    model = ParallelOpenUnmix(modules)
+    model = CrossNetOpenUnmix.build_model(args.model_path)
     
     print(model)
-    print("# Parameters: {}".format(model.num_parameters))
+    print("# Parameters: {}".format(model.num_parameters), flush=True)
     
     if args.use_cuda:
         if torch.cuda.is_available():

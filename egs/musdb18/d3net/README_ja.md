@@ -1,16 +1,16 @@
 # D3Net
-Reference: [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733)
+参考文献: [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733)
 
 ## 実行方法
 ### 0. データセットの準備
 pipによる環境構築
 ```
-cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
+cd <REPOSITORY_ROOT>/egs/musdb18/
 pip install -r requirements.txt
 ```
 or condaによる環境構築
 ```
-cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
+cd <REPOSITORY_ROOT>/egs/musdb18/
 conda env create -f environment-gpu.yaml
 ```
 
@@ -54,9 +54,15 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 ```
 
 ## 実験結果
-SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
-| Model | Vocals | Drums | Bass | Other | Accompaniment | Average |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| D3Net w/o dilation | - | - | - | - | - | - |
-| D3Net standard dilation | - | - | - | - | - | - |
-| D3Net | 6.82 | 6.29 | 4.77 | 4.51 | 13.06 | 5.60 |
+- SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
+- 実験結果の例を`exp/20210903`で確認可能．
+
+| Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| D3Net w/o dilation | - | - | - | - | - | - | - |
+| D3Net standard dilation | - | - | - | - | - | - | - |
+| D3Net | 7.02 | 6.58 | 4.88 | 4.77 | 13.38 | 5.81 | 検証損失によって選択されたエポックで学習を止めた場合 |
+| D3Net | 7.08 | 6.54 | 4.93 | 4.72 | 13.41 | 5.82 | 50エポック学習後 |
+| D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | 公式実装 |
+
+- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/d3net/separate_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_ja.ipynb)にとんでください．

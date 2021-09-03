@@ -1,6 +1,7 @@
 #!/bin/bash
 
 exp_dir="./exp"
+tag=""
 
 n_sources=2
 
@@ -43,7 +44,11 @@ seed=111
 
 prefix=""
 
-save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+if [ -z "${tag}" ]; then
+    save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+else
+    save_dir="${exp_dir}/${tag}"
+fi
 
 model_choice="best"
 

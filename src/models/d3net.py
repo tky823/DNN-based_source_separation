@@ -28,12 +28,21 @@ class ParallelD3Net(nn.Module):
         else:
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
     
+        in_channels = None
+
         for key in modules.keys():
             module = modules[key]
             if not isinstance(module, D3Net):
                 raise ValueError("All modules must be D3Net.")
+            
+            if in_channels is None:
+                in_channels = module.in_channels
+            else:
+                assert in_channels == module.in_channels, "`in_channels` are different among modules."
         
         self.net = modules
+
+        self.in_channels = in_channels
 
     def forward(self, input, target=None):
         if type(target) is not str:

@@ -5,7 +5,7 @@ import torchaudio
 import torch.nn.functional as F
 
 from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filter
-from models.d3net import D3Net, ParallelD3Net
+from models.umx import OpenUnmix, ParallelOpenUnmix
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
@@ -13,14 +13,14 @@ NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(model_paths, file_paths, out_dirs):
+def separate_by_openunmix(model_paths, file_paths, out_dirs):
     patch_size = 256
     fft_size, hop_size = 4096, 1024
     window = torch.hann_window(fft_size)
 
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_d3net(model_paths)
+    model = load_pretrained_openunmix(model_paths)
     
     if use_cuda:
         model.cuda()
@@ -124,16 +124,16 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
             
     return estimated_paths
 
-def load_pretrained_d3net(model_paths):
+def load_pretrained_openunmix(model_paths):
     modules = {}
 
     for source in __sources__:
         model_path = model_paths[source]
-        modules[source] = D3Net.build_model(model_path)
+        modules[source] = OpenUnmix.build_model(model_path)
         package = torch.load(model_path, map_location=lambda storage, loc: storage)
         modules[source].load_state_dict(package['state_dict'])
 
-    model = ParallelD3Net(modules)
+    model = ParallelOpenUnmix(modules)
     
     return model
 
