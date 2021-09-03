@@ -5,12 +5,12 @@ Reference: [D3Net: Densely connected multidilated DenseNet for music source sepa
 ### 0. Preparation
 Build environment by pip
 ```
-cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
+cd <REPOSITORY_ROOT>/egs/musdb18/
 pip install -r requirements.txt
 ```
 or by conda.
 ```
-cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
+cd <REPOSITORY_ROOT>/egs/musdb18/
 conda env create -f environment-gpu.yaml
 ```
 
@@ -54,7 +54,9 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 ```
 
 ## Results
-SDR [dB] (median of median SDR of each song computed by `museval`)
+- SDR [dB] (median of median SDR of each song computed by `museval`)
+- You can check example in `exp/20210903`.
+
 | Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | D3Net w/o dilation | - | - | - | - | - | - | - |
@@ -62,3 +64,5 @@ SDR [dB] (median of median SDR of each song computed by `museval`)
 | D3Net | 7.02 | 6.58 | 4.88 | 4.77 | 13.38 | 5.81 | Epoch is chosen by validation loss. |
 | D3Net | 7.08 | 6.54 | 4.93 | 4.72 | 13.41 | 5.82 | After 50 epochs. |
 | D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | Official report. |
+
+- You can separate your audio using these pretrained models. See `egs/tutorials/d3net/separate.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate.ipynb).
