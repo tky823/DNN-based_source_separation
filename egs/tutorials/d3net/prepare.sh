@@ -1,6 +1,6 @@
 #!/bin/bash
 
-model_id="1YGKnWpqgviLuTHG1OwtzIFuMU_o-aJ0H"
+model_id="1hdgtTvLmHXDbYRxAaGuBJATtG9hcVGOK"
 
 . ./path.sh
 . parse_options.sh || exit 1

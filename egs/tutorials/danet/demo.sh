@@ -1,6 +1,7 @@
 #!/bin/bash
 
 exp_dir="./exp"
+tag=""
 
 n_sources=2
 
@@ -37,11 +38,11 @@ seed=111
 . ./path.sh
 . parse_options.sh || exit 1
 
-if [ -z "${exp_dir}" ]; then
-    exp_dir="./exp"
+if [ -z "${tag}" ]; then
+    save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+else
+    save_dir="${exp_dir}/${tag}"
 fi
-
-save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
 model_choice="last"
 model_path="${save_dir}/model/${model_choice}.pth"

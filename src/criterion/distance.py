@@ -14,8 +14,6 @@ class L1Loss(nn.Module):
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
         
-        self.maximize = False
-        
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -43,6 +41,10 @@ class L1Loss(nn.Module):
         
         return loss
 
+    @property
+    def maximize(self):
+        return False
+
 class L2Loss(nn.Module):
     def __init__(self, dim=1, reduction='mean'):
         """
@@ -56,8 +58,6 @@ class L2Loss(nn.Module):
         
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-        
-        self.maximize = False
         
     def forward(self, input, target, batch_mean=True):
         """
@@ -86,6 +86,10 @@ class L2Loss(nn.Module):
             loss = loss.mean(dim=0)
         
         return loss
+    
+    @property
+    def maximize(self):
+        return False
 
 class L12Loss(nn.Module):
     def __init__(self, dim1=1, dim2=2, reduction='mean'):
@@ -100,9 +104,6 @@ class L12Loss(nn.Module):
         
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-        
-        self.maximize = False
-        self.maximize = False
     
     def forward(self, input, target, batch_mean=False):
         loss = torch.abs(input - target) # (batch_size, *)
@@ -125,6 +126,10 @@ class L12Loss(nn.Module):
             loss = loss.mean(dim=0)
         
         return loss
+    
+    @property
+    def maximize(self):
+        return False
 
 class L21Loss(nn.Module):
     def __init__(self, dim1=1, dim2=2, reduction='mean'):
@@ -139,9 +144,6 @@ class L21Loss(nn.Module):
         
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-        
-        self.maximize = False
-        self.maximize = False
     
     def forward(self, input, target, batch_mean=False):
         loss = torch.abs(input - target) # (batch_size, *)
@@ -165,8 +167,41 @@ class L21Loss(nn.Module):
         
         return loss
 
+    @property
+    def maximize(self):
+        return False
+
+class SquaredError(nn.Module):
+    def __init__(self, reduction=None):
+        super().__init__()
+
+        self.reduction = reduction
+        
+    def forward(self, input, target, batch_mean=True):
+        loss = (input - target)**2
+
+        n_dims = loss.dim()
+
+        if self.reduction:
+            dim = tuple(range(1, n_dims))
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise NotImplementedError("Not support self.reduction={}.".format(self.reduction))
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+    
+    @property
+    def maximize(self):
+        return False
+
 class MeanSquaredError(nn.Module):
-    def __init__(self, dim=1):
+    def __init__(self, dim=1, reduction=None):
         """
         Args:
             dim <int> or <tuple<int>>
@@ -174,8 +209,7 @@ class MeanSquaredError(nn.Module):
         super().__init__()
         
         self.dim = dim
-        
-        self.maximize = False
+        self.reduction = reduction
     
     def forward(self, input, target, batch_mean=True):
         """
@@ -186,10 +220,25 @@ class MeanSquaredError(nn.Module):
         loss = (input - target)**2 # (batch_size, *)
         loss = torch.mean(loss, dim=self.dim)
         
+        n_dims = loss.dim()
+
+        if self.reduction:
+            dim = tuple(range(1, n_dims))
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise NotImplementedError("Not support self.reduction={}.".format(self.reduction))
+        
         if batch_mean:
             loss = loss.mean(dim=0)
         
         return loss
+
+    @property
+    def maximize(self):
+        return False
 
 class CosineSimilarityLoss(nn.Module):
     def __init__(self, dim=1, maximize=False, eps=EPS):

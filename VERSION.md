@@ -1,71 +1,71 @@
 # Version information
 ## v0.0.0
-Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
+- Initial version. LibriSpeech Conv-TasNet & DPRNN-TasNet examples are included.
+
 ## v0.0.1
-Dataset is renamed.
+- Dataset is renamed.
 
 ## v0.1.0
-Dataset structure is changed.
+- Dataset structure is changed.
 
 ## v0.1.1
-DANet is included.
+- DANet is included.
 
 ## v0.1.2
-Layer name is changed. Input feature for DANet is replaced by log-magnitude.
+- Layer name is changed. Input feature for DANet is replaced by log-magnitude.
 
 ## v0.1.3
-Add scripts for Wall Street Journal 0 (WSJ0) dataset.
+- Add scripts for Wall Street Journal 0 (WSJ0) dataset.
 
 ## v0.1.4
-Add non-nagative matrix factorization (NMF).
+- Add non-nagative matrix factorization (NMF).
 
 ## v0.2.0
-Change the representation of short time Fourier transform (STFT).
+- Change the representation of short time Fourier transform (STFT).
 
 ## v0.2.1
-`conv_tasnet` directory is renamed to `conv-tasnet`. Add one-and-rest PIT (ORPIT).
+- `conv_tasnet` directory is renamed to `conv-tasnet`. Add one-and-rest PIT (ORPIT).
 
 ## v0.3.0
-`wsj0` is renamed to `wsj0-mix`. The result is updated.
+- `wsj0` is renamed to `wsj0-mix`. The result is updated.
 
 ## v0.3.1
-Implement Linear encoder for TasNet.
+- Implement Linear encoder for TasNet.
 
 ## v0.3.2
-Change the definition of `hidden_channels` in dual-path RNN.
+- Change the definition of `hidden_channels` in dual-path RNN.
 
 ## v0.3.3
-Fix trained models due to the update v0.3.2.
+- Fix trained models due to the update v0.3.2.
 
 ## v0.4.0
-Fix the network architecture of DPRNN-TasNet.
+- Fix the network architecture of DPRNN-TasNet.
 
 ## v0.4.1
-Add DPTNet and GALRNet. Re-fix DPRNN-TasNet.
+- Add DPTNet and GALRNet. Re-fix DPRNN-TasNet.
 
 ## v0.4.2
-Add training script for GALRNet.
+- Add training script for GALRNet.
 
 ## v0.4.3
-Re-fix DPRNN-TasNet.
+- Re-fix DPRNN-TasNet.
 
 ## v0.5.0
-Add `parse_options.sh`.
+- Add `parse_options.sh`.
 
 ## v0.5.1
-Multichannel support.
+- Multichannel support.
 
 ## v0.5.2
-Add metric learning tutorials.
+- Add metric learning tutorials.
 
 ## v0.5.3
-Update network architecture of D3Net.
+- Update network architecture of D3Net.
 
 ## v0.5.4
-Bug fixes of D3Net.
+- Bug fixes of D3Net.
 
 ## v0.5.5
-Load audio as wav for MUSDB18.
-
-## v0.5.6
-Bug fixes.
+- Load audio as wav for MUSDB18.
+- Add training, estimation, and evaluation scripts for D3Net.
+- Add results of D3Net using MUSDB18 dataset.
