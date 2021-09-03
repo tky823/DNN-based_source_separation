@@ -58,8 +58,8 @@ else
 fi
 
 model_dir="${save_dir}/model"
-log_dir="${save_dir}/log/test"
-json_dir="${save_dir}/json"
+log_dir="${save_dir}/log/test/${model_choice}"
+json_dir="${save_dir}/json/${model_choice}"
 
 musdb=`basename "${musdb18_root}"` # 'musdb18' or 'musdb18hq'
 estimates_dir="${save_dir}/${musdb}/${model_choice}/test"

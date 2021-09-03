@@ -58,8 +58,8 @@ else
 fi
 
 model_dir="${save_dir}/model"
-log_dir="${save_dir}/log/test"
-json_dir="${save_dir}/json"
+log_dir="${save_dir}/log/test/${model_choice}"
+json_dir="${save_dir}/json/${model_choice}"
 model_path="${model_dir}/${model_choice}.pth"
 
 musdb=`basename "${musdb18_root}"`
