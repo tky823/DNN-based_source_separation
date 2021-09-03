@@ -55,8 +55,10 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 
 ## Results
 SDR [dB] (median of median SDR of each song computed by `museval`)
-| Model | Vocals | Drums | Bass | Other | Accompaniment | Average |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| D3Net w/o dilation | - | - | - | - | - | - |
-| D3Net standard dilation | - | - | - | - | - | - |
-| D3Net | - | - | - | - | - | - |
+| Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| D3Net w/o dilation | - | - | - | - | - | - | - |
+| D3Net standard dilation | - | - | - | - | - | - | - |
+| D3Net | 7.02 | 6.58 | 4.88 | 4.77 | 13.38 | 5.81 | Epoch is chosen by validation loss. |
+| D3Net | 7.08 | 6.54 | 4.93 | 4.72 | 13.41 | 5.82 | After 50 epochs. |
+| D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | Official report. |
