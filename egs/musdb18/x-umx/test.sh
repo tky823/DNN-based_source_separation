@@ -41,6 +41,8 @@ use_cuda=1
 seed=111
 gpu_id="0"
 
+model_choice="best" # 'last' or 'best'
+
 . ./path.sh
 . parse_options.sh || exit 1
 
@@ -55,15 +57,13 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_choice="best"
-
 model_dir="${save_dir}/model"
 log_dir="${save_dir}/log/test"
 json_dir="${save_dir}/json"
 model_path="${model_dir}/${model_choice}.pth"
 
 musdb=`basename "${musdb18_root}"`
-estimates_dir="${save_dir}/${musdb}/test"
+estimates_dir="${save_dir}/${musdb}/${model_choice}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
