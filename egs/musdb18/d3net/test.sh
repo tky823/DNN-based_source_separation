@@ -36,7 +36,7 @@ use_cuda=1
 seed=111
 gpu_id="0"
 
-model_choice="last" # 'last' or 'best'
+model_choice="best" # 'last' or 'best'
 
 . ./path.sh
 . parse_options.sh || exit 1
