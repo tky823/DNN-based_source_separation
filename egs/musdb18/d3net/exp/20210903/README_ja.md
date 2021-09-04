@@ -1,6 +1,6 @@
 # Example of outputs
 D3Netを学習させた結果を共有します．ネットワークは全てデフォルトの設定で学習済み．
-- `json.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
+- `config.zip`，`json.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
 - 学習済みモデルは[https://drive.google.com/file/d/1hdgtTvLmHXDbYRxAaGuBJATtG9hcVGOK/view?usp=sharing](https://drive.google.com/file/d/1hdgtTvLmHXDbYRxAaGuBJATtG9hcVGOK/view?usp=sharing)からダウンロードできます．これらは，`drums/last.pth`，`drums/best.pth`，`bass/last.pth`，...，`vocals/best.pth`を含んでいます．
 - 学習済みモデルを使って分離を試すことができます．`egs/tutorials/d3net/separate.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_ja.ipynb)にとんでください．
 
