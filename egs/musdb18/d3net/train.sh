@@ -58,7 +58,7 @@ model_dir="${save_dir}/model/${target}"
 loss_dir="${save_dir}/loss/${target}"
 sample_dir="${save_dir}/sample/${target}"
 log_dir="${save_dir}/log/${target}"
-config_dir="${save_dir}/config/${target}"
+config_dir="${save_dir}/config"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
