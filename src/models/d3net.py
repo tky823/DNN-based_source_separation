@@ -143,8 +143,11 @@ class D3Net(nn.Module):
         n_bins = input.size(2)
         eps = self.eps
 
-        sections = [sum(sections), n_bins - sum(sections)]
-        x_valid, x_invalid = torch.split(input, sections, dim=2)
+        if sum(sections) == n_bins:
+            x_valid, x_invalid = input, None
+        else:
+            sections = [sum(sections), n_bins - sum(sections)]
+            x_valid, x_invalid = torch.split(input, sections, dim=2)
 
         x = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps)
         x = self.band_split(x)
@@ -165,13 +168,17 @@ class D3Net(nn.Module):
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
-        _, _, _, n_frames_valid = x_invalid.size()
-        padding_width = n_frames - n_frames_valid
+        _, _, _, n_frames_in = input.size()
+        padding_width = n_frames - n_frames_in
         padding_left = padding_width // 2
         padding_right = padding_width - padding_left
 
         x = F.pad(x, (-padding_left, -padding_right))
-        output = torch.cat([x, x_invalid], dim=2)
+
+        if x_invalid is None:
+            output = x
+        else:
+            output = torch.cat([x, x_invalid], dim=2)
 
         return output
     
