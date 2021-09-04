@@ -35,7 +35,7 @@ full:
 final:
   growth_rate: 12
   kernel_size: 3
-  dilated: naive
+  dilated: False
   depth: 3
   norm: True
   nonlinear: relu
