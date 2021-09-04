@@ -57,12 +57,8 @@ fi
 model_dir="${save_dir}/model/${target}"
 loss_dir="${save_dir}/loss/${target}"
 sample_dir="${save_dir}/sample/${target}"
-log_dir="${save_dir}/log/${target}"
 config_dir="${save_dir}/config"
-
-if [ ! -e "${log_dir}" ]; then
-    mkdir -p "${log_dir}"
-fi
+log_dir="${save_dir}/log/${target}"
 
 if [ ! -e "${config_dir}" ]; then
     mkdir -p "${config_dir}"
@@ -72,6 +68,10 @@ config_name=`basename ${config_path}`
 
 if [ ! -e "${config_dir}/${config_name}" ]; then
     cp "${config_path}" "${config_dir}/${config_name}"
+fi
+
+if [ ! -e "${log_dir}" ]; then
+    mkdir -p "${log_dir}"
 fi
 
 time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
