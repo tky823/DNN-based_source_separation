@@ -17,7 +17,7 @@ fft_size=4096
 hop_size=1024
 
 # model
-config_path="./config/${target}.yaml"
+config_path="./configs/paper/${target}.yaml"
 
 # Criterion
 criterion='mse'
