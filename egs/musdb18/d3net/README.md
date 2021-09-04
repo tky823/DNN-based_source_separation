@@ -19,13 +19,14 @@ Download MUSDB18 dataset and convert to `.wav`.
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
 . ./prepare_musdb18.sh \
 --musdb18_root <MUSDB18_ROOT> \
+--is_hq 0 \
 --to_wav 1
 ```
 If you want to download MUSDB18-HQ dataset, 
 ```
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
 . ./prepare_musdb18.sh \
---musdb18hq_root <MUSDB18HQ_ROOT> \
+--musdb18_root <MUSDB18HQ_ROOT> \
 --is_hq 1
 ```
 

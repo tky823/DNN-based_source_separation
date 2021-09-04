@@ -1,7 +1,6 @@
 #!/bin/bash
 
 musdb18_root="../../../dataset/musdb18"
-musdb18hq_root="../../../dataset/musdb18hq"
 is_hq=0
 to_wav=0
 
@@ -11,6 +10,10 @@ subsets=( "train" "test" )
 
 if [ ${is_hq} -eq 0 ]; then
     file=musdb18.zip
+    if [ -z "${musdb18_root}" ]; then
+        musdb18_root="../../../dataset/musdb18"
+    fi
+    
     if [ -e "${musdb18_root}/train/A Classic Education - NightOwl.stem.mp4" ]; then
         echo "Already downloaded dataset ${musdb18_root}"
     else
@@ -52,12 +55,16 @@ if [ ${is_hq} -eq 0 ]; then
     fi
 else
     file=musdb18hq.zip
-    if [ -e "${musdb18hq_root}/train/A Classic Education - NightOwl.wav" ]; then
-        echo "Already downloaded dataset ${musdb18hq_root}"
+    if [ -z "${musdb18_root}" ]; then
+        musdb18_root="../../../dataset/musdb18hq"
+    fi
+
+    if [ -e "${musdb18_root}/train/A Classic Education - NightOwl.wav" ]; then
+        echo "Already downloaded dataset ${musdb18_root}"
     else
-        mkdir -p "${musdb18hq_root}"
+        mkdir -p "${musdb18_root}"
         wget "https://zenodo.org/record/3338373/files/${file}" -P "/tmp"
-        unzip "/tmp/${file}" -d "${musdb18hq_root}"
+        unzip "/tmp/${file}" -d "${musdb18_root}"
         rm "/tmp/${file}"
     fi
 fi

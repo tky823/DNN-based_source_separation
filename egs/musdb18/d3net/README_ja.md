@@ -19,13 +19,14 @@ MUSDB18データセットのダウンロードと`.wav`への変換
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
 . ./prepare_musdb18.sh \
 --musdb18_root <MUSDB18_ROOT> \
+--is_hq 0 \
 --to_wav 1
 ```
 MUSDB18-HQデータセットを用いる場合，
 ```
 cd <REPOSITORY_ROOT>/egs/musdb18/common/
 . ./prepare_musdb18.sh \
---musdb18hq_root <MUSDB18HQ_ROOT> \
+--musdb18_root <MUSDB18HQ_ROOT> \
 --is_hq 1
 ```
 
