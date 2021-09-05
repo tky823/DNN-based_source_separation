@@ -1,6 +1,6 @@
 #!/bin/bash
 
-musdb18_root="../../../dataset/musdb18"
+musdb18_root="" # By default musdb18_root="../../../dataset/musdb18" if is_hq=0, musdb18_root="../../../dataset/musdb18hq" otherwise.
 is_hq=0
 to_wav=0
 
