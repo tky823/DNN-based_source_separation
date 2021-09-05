@@ -164,7 +164,7 @@ def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1
 """
 For multichannel Wiener filter
 """
-def update_em(mixture, estimated_sources, iterations=1, source_parallel=False, eps=EPS):
+def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, eps=EPS):
     """
     Args:
         mixture: (n_channels, n_bins, n_frames)
@@ -174,7 +174,7 @@ def update_em(mixture, estimated_sources, iterations=1, source_parallel=False, e
     """
     n_sources, n_channels, _, _ = estimated_sources.size()
 
-    for iteration_idx in range(iterations):
+    for iteration_idx in range(iteration):
         v, R = [], []
         Cxx = 0
 
