@@ -59,7 +59,7 @@ else
         musdb18_root="../../../dataset/musdb18hq"
     fi
 
-    if [ -e "${musdb18_root}/train/A Classic Education - NightOwl.wav" ]; then
+    if [ -e "${musdb18_root}/train/A Classic Education - NightOwl/vocals.wav" ]; then
         echo "Already downloaded dataset ${musdb18_root}"
     else
         mkdir -p "${musdb18_root}"
