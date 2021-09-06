@@ -146,7 +146,6 @@ class D3Net(nn.Module):
         else:
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
-            print(x_invalid.size())
 
         x_valid = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps)
 
