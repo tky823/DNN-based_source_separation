@@ -83,12 +83,12 @@ class D3Net(nn.Module):
         super().__init__()
 
         self.bands, self.sections = bands, sections
+
         self.band_split = BandSplit(sections=sections, dim=2)
 
         out_channels = 0
         for band in bands:
-            if out_channels < growth_rate[band][-1]:
-                out_channels = growth_rate[band][-1]
+            out_channels = max(out_channels, growth_rate[band][-1])
 
         net = {}
         for band in bands:
@@ -96,9 +96,7 @@ class D3Net(nn.Module):
                 _out_channels = out_channels
             else:
                 _out_channels = None
-            
             net[band] = D3NetBackbone(in_channels, num_features[band], growth_rate[band], kernel_size[band], scale=scale[band], num_d2blocks=num_d2blocks[band], dilated=dilated[band], norm=norm[band], nonlinear=nonlinear[band], depth=depth[band], out_channels=_out_channels, eps=eps)
-        
         net[FULL] = D3NetBackbone(in_channels, num_features[FULL], growth_rate[FULL], kernel_size[FULL], scale=scale[FULL], num_d2blocks=num_d2blocks[FULL], dilated=dilated[FULL], norm=norm[FULL], nonlinear=nonlinear[FULL], depth=depth[FULL], eps=eps)
 
         self.net = nn.ModuleDict(net)
@@ -148,17 +146,21 @@ class D3Net(nn.Module):
         else:
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
+            print(x_invalid.size())
+            exit()
 
-        x = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps)
-        x = self.band_split(x)
+        x_valid = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps)
+
+        x = self.band_split(x_valid)
 
         x_bands = []
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
-        
         x_bands = torch.cat(x_bands, dim=2)
+    
         x_full = self.net[FULL](x_valid)
+
         x = torch.cat([x_bands, x_full], dim=1)
 
         x = self.d2block(x)
@@ -901,7 +903,7 @@ def _test_d3net_naive_dilation():
     print(input.size(), output.size())
 
 def _test_d3net():
-    config_path = "./data/d3net/toy.yaml"
+    config_path = "./data/d3net/paper.yaml"
     batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
