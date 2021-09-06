@@ -84,6 +84,26 @@ def wiener_filter_mask(input, domain=1, eps=EPS):
 
     return mask
 
+def ideal_amplitude_mask(input, eps=EPS):
+    """
+    Args:
+        input <torch.Tensor>: Complex tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+    Returns:
+        mask <torch.Tensor>: Tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+    """
+    n_dims = input.dim()
+
+    if n_dims == 3:
+        mixture = input.sum(dim=0, keepdim=True)
+    elif n_dims == 4:
+        mixture = input.sum(dim=1, keepdim=True)
+    else:
+        raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
+    
+    mask = torch.abs(input) / (torch.abs(mixture) + eps)
+
+    return mask
+
 """
 Phase sensitive mask
 See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurrent Neural Networks"
@@ -91,11 +111,47 @@ See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurr
 def phase_sensitive_mask(input, eps=EPS):
     """
     Args:
-        input <torch.Tensor>: Tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Complex tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
         mask <torch.Tensor>: Tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
-    raise NotImplementedError("No implementation")
+    n_dims = input.dim()
+
+    if n_dims == 3:
+        mixture = input.sum(dim=0, keepdim=True)
+    elif n_dims == 4:
+        mixture = input.sum(dim=1, keepdim=True)
+    else:
+        raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
+    
+    angle_mixture, angle_input = torch.angle(mixture), torch.angle(input)
+    angle = angle_mixture - angle_input
+
+    mask = (torch.abs(input) / (torch.abs(mixture) + eps)) * torch.cos(angle)
+    
+    return mask
+
+def ideal_complex_mask(input, eps=EPS):
+    """
+    Args:
+        input <torch.Tensor>: Complex tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+    Returns:
+        mask <torch.Tensor>: Tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+    """
+    n_dims = input.dim()
+
+    if n_dims == 3:
+        mixture = input.sum(dim=0, keepdim=True)
+    elif n_dims == 4:
+        mixture = input.sum(dim=1, keepdim=True)
+    else:
+        raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
+    
+    angle = torch.angle(mixture)
+    denominator = (torch.abs(mixture) + eps) * torch.exp(1j * angle)
+    mask = input / denominator
+
+    return mask
 
 def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):
     """
@@ -246,7 +302,7 @@ def get_stats(spectrogram, eps=EPS):
 
     return psd, covariance
 
-def _test(method='IBM'):
+def _test_amplitude(amplitude, method='IBM'):
     if method == 'IBM':
         mask = ideal_binary_mask(amplitude)
     elif method == 'IRM':
@@ -257,8 +313,25 @@ def _test(method='IBM'):
         raise NotImplementedError("Not support {}".format(method))
     
     estimated_amplitude = amplitude * mask
+    estimated_spectrgram = estimated_amplitude * torch.exp(1j * torch.angle(spectrogram_mixture))
+    estimated_signal = torch.istft(estimated_spectrgram, n_fft=fft_size, hop_length=hop_size, length=T)
+    estimated_signal = estimated_signal.detach().cpu()
+    
+    for signal, tag in zip(estimated_signal, ['man', 'woman']):
+        torchaudio.save("data/frequency_mask/{}-estimated_{}.wav".format(tag, method), signal.unsqueeze(dim=0), sample_rate=16000, bits_per_sample=16)
 
-    estimated_spectrgram = estimated_amplitude / amplitude_mixture * spectrogram_mixture
+def _test_spectrogram(spectrogram, method='PSM'):
+    if method == 'IAM':
+        mask = ideal_amplitude_mask(spectrogram)
+    elif method == 'PSM':
+        mask = phase_sensitive_mask(spectrogram)
+    elif method == 'ICM':
+        mask = ideal_complex_mask(spectrogram)
+    else:
+        raise NotImplementedError("Not support {}".format(method))
+    
+    estimated_amplitude = amplitude * mask
+    estimated_spectrgram = estimated_amplitude * torch.exp(1j * torch.angle(spectrogram_mixture))
     estimated_signal = torch.istft(estimated_spectrgram, n_fft=fft_size, hop_length=hop_size, length=T)
     estimated_signal = estimated_signal.detach().cpu()
     
@@ -267,10 +340,8 @@ def _test(method='IBM'):
 
 if __name__ == '__main__':
     import os
-    from scipy.signal import resample_poly
+
     import torchaudio
-    
-    from utils.utils_audio import read_wav, write_wav
     
     os.makedirs("data/frequency_mask", exist_ok=True)
     
@@ -306,8 +377,13 @@ if __name__ == '__main__':
     spectrogram_source2 = torch.stft(source2, n_fft=fft_size, hop_length=hop_size, return_complex=True)
     amplitude_source2 = torch.abs(spectrogram_source2)
 
+    spectrogram = torch.cat([spectrogram_source1, spectrogram_source2], dim=0)
     amplitude = torch.cat([amplitude_source1, amplitude_source2], dim=0)
 
-    _test('IBM')
-    _test('IRM')
-    _test('WFM')
+    _test_amplitude(amplitude, method='IBM')
+    _test_amplitude(amplitude, method='IRM')
+    _test_amplitude(amplitude, method='WFM')
+
+    _test_spectrogram(spectrogram, method='IAM')
+    _test_spectrogram(spectrogram, method='PSM')
+    _test_spectrogram(spectrogram, method='ICM')
