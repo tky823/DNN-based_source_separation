@@ -12,7 +12,7 @@ __sources__ = ['drums', 'bass', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
-MINSCALE = 0.75
+MINSCALE = 0.25
 MAXSCALE = 1.25
 
 class SpectrogramTrainDataset(SpectrogramDataset):
