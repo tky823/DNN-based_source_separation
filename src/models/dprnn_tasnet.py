@@ -209,7 +209,8 @@ class Separator(nn.Module):
         self.chunk_size, self.hop_size = chunk_size, hop_size
         self.norm = norm
         
-        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
+        norm_name = 'cLN' if causal else 'gLM'
+        self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)

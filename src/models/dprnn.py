@@ -14,7 +14,7 @@ class DPRNN(nn.Module):
         
         for _ in range(num_blocks):
             net.append(DPRNNBlock(num_features, hidden_channels, norm=norm, causal=causal, eps=eps))
-            
+        
         self.net = nn.Sequential(*net)
 
     def forward(self, input):

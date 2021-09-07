@@ -1,5 +1,3 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -188,7 +186,8 @@ class Separator(nn.Module):
         
         self.num_features, self.n_sources = num_features, n_sources
         
-        self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
+        norm_name = 'cLN' if causal else 'gLM'
+        self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         self.tcn = TemporalConvNet(bottleneck_channels, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm)
         self.prelu = nn.PReLU()

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_layer_norm
 
@@ -154,8 +153,9 @@ class MultiheadAttentionBlock(nn.Module):
 
         if self.dropout:
             self.dropout1d = nn.Dropout(p=dropout)
-        if self.norm:    
-            self.norm1d = choose_layer_norm(embed_dim, causal=causal, eps=eps)
+        if self.norm:
+            norm_name = 'cLN' if causal else 'gLM'
+            self.norm1d = choose_layer_norm(norm_name, embed_dim, causal=causal, eps=eps)
     
     def forward(self, input):
         """
@@ -203,7 +203,8 @@ class FeedForwardBlock(nn.Module):
         self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
         if self.norm:
-            self.norm1d = choose_layer_norm(num_features, causal=causal, eps=eps)
+            norm_name = 'cLN' if causal else 'gLM'
+            self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
     
     def forward(self, input):
         """

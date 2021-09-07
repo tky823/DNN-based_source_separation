@@ -169,7 +169,9 @@ class Separator(nn.Module):
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.norm2d = choose_layer_norm(num_features, causal=causal, eps=eps)
+        norm_name = 'cLN' if causal else 'gLM'
+        self.norm2d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
+
         if low_dimension:
             # If low-dimension representation, latent_dim and chunk_size are required
             if down_chunk_size is None:

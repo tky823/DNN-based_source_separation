@@ -1,15 +1,13 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-EPS=1e-12
+EPS = 1e-12
 
 """
     Global layer normalization
     See "Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation"
     https://arxiv.org/abs/1809.07454
 """
-
 class GlobalLayerNorm(nn.Module):
     def __init__(self, num_features, eps=EPS):
         super().__init__()
@@ -41,7 +39,6 @@ class GlobalLayerNorm(nn.Module):
     See "Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation"
     https://arxiv.org/abs/1809.07454
 """
-
 class CumulativeLayerNorm1d(nn.Module):
     def __init__(self, num_features, eps=EPS):
         super().__init__()
