@@ -4,8 +4,8 @@ import torch.nn.functional as F
 
 """
 Gated Tanh Units
-See "Language Modeling with Gated Convolutional Network"
-https://arxiv.org/abs/1612.08083
+Reference: "Language Modeling with Gated Convolutional Network"
+See https://arxiv.org/abs/1612.08083
 """
 
 class GTU1d(nn.Module):
