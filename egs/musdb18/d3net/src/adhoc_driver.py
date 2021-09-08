@@ -276,6 +276,16 @@ class AdhocTester(TesterBase):
         test_loss = 0
         test_loss_improvement = 0
         n_test = len(self.loader.dataset)
+
+        s = "Title, Loss:"
+        for target in self.sources:
+            s += " ({})".format(target)
+        
+        s += ", loss improvement:"
+        for target in self.sources:
+            s += " ({})".format(target)
+        
+        print(s, flush=True)
         
         with torch.no_grad():
             for idx, (mixture, sources, samples, name) in enumerate(self.loader):
@@ -338,6 +348,16 @@ class AdhocTester(TesterBase):
                     estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                
+                s = "{},".format(name)
+                for idx, target in enumerate(self.sources):
+                    s += " {:.3f}".format(test_loss[idx].item())
+                
+                s += ", loss improvement:"
+                for idx, target in enumerate(self.sources):
+                    s += " {:.3f}".format(test_loss_improvement[idx].item())
+
+                print(s, flush=True)
                 
                 test_loss += loss # (n_sources,)
                 test_loss_improvement += loss_improvement # (n_sources,)
