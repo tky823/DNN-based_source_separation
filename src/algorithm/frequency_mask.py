@@ -7,10 +7,13 @@ EPS = 1e-12
 def ideal_binary_mask(input):
     """
     Args:
-        input <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
         mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
+    if torch.is_complex(input):
+        input = torch.abs(input)
+
     n_dims = input.dim()
     
     if n_dims == 3:
@@ -45,10 +48,13 @@ def ideal_binary_mask(input):
 def ideal_ratio_mask(input, eps=EPS):
     """
     Args:
-        input <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     Returns:
         mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
+    if torch.is_complex(input):
+        input = torch.abs(input)
+    
     n_dims = input.dim()
     
     if n_dims == 3:
@@ -65,11 +71,14 @@ def ideal_ratio_mask(input, eps=EPS):
 def wiener_filter_mask(input, domain=1, eps=EPS):
     """
     Args:
-        input <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
         domain <float>: 1: amplitude, 2: power
     Returns:
         mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     """
+    if torch.is_complex(input):
+        input = torch.abs(input)
+    
     n_dims = input.dim()
     power = input**(2 / domain) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     
