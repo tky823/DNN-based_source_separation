@@ -351,11 +351,11 @@ class AdhocTester(TesterBase):
                 
                 s = "{},".format(name)
                 for idx, target in enumerate(self.sources):
-                    s += " {:.3f}".format(test_loss[idx].item())
+                    s += " {:.3f}".format(loss[idx].item())
                 
                 s += ", loss improvement:"
                 for idx, target in enumerate(self.sources):
-                    s += " {:.3f}".format(test_loss_improvement[idx].item())
+                    s += " {:.3f}".format(loss_improvement[idx].item())
 
                 print(s, flush=True)
                 
