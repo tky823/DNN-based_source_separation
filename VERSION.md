@@ -69,3 +69,6 @@
 - Load audio as wav for MUSDB18.
 - Add training, estimation, and evaluation scripts for D3Net.
 - Add results of D3Net using MUSDB18 dataset.
+
+## v0.6.0
+- Bug fixes of D3Net.
