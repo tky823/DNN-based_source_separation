@@ -19,6 +19,9 @@ hop_size=1024
 # model
 config_path="./config/paper/${target}.yaml"
 
+# Augmentation
+augmentaion_path="./config/paper/augmentation.yaml"
+
 # Criterion
 criterion='mse'
 
@@ -87,6 +90,7 @@ train.py \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+--augmentaion_path "${augmentaion_path}" \
 --sources ${sources} \
 --target ${target} \
 --criterion ${criterion} \

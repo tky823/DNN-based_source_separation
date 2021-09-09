@@ -3,6 +3,7 @@
 
 import argparse
 
+import yaml
 import torch
 import torch.nn as nn
 
@@ -23,6 +24,7 @@ parser.add_argument('--valid_duration', type=float, default=30, help='Max durati
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
+parser.add_argument('--augmentaion_path', type=str, default=None, help='Path to augmentation.yaml')
 parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
 parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
@@ -54,7 +56,10 @@ def main(args):
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=True)
+    with open(args.augmentaion_path) as f:
+        augmentation = yaml.safe_load(f)
+    
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))

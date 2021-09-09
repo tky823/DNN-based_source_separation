@@ -6,6 +6,7 @@ import torchaudio
 import torch.nn.functional as F
 
 from dataset import SpectrogramDataset
+from dataset import apply_random_flip, apply_random_scaling
 
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 
@@ -20,7 +21,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     Training dataset that returns randomly selected mixture spectrograms.
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 songs.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
@@ -168,15 +169,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             track_samples = track['samples']
 
             start = random.randint(0, track_samples - self.patch_samples - 1)
-            flip = random.choice([True, False])
-            scale = random.uniform(MINSCALE, MAXSCALE)
 
             source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.patch_samples)
 
-            if flip:
-                source = torch.flip(source, dims=(0,))
+            source = apply_random_flip(source, dim=0, **self.augmentation['random_flip'])
+            source = apply_random_scaling(source, **self.augmentation['random_scaling'])
 
-            sources.append(scale * source.unsqueeze(dim=0))
+            sources.append(source.unsqueeze(dim=0))
         
         if type(self.target) is list:
             target = []
