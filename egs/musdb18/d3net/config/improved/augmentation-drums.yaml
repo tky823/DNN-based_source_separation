@@ -4,3 +4,5 @@ random_scaling:
   max: 1.25
 random_flip:
   flip_rate: 0.5
+comment:
+  "minimum random scaling (0.75) is different from original paper."
