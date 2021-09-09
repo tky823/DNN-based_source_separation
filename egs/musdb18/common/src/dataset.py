@@ -594,6 +594,8 @@ def apply_random_flip(input, flip_rate=0.5, dim=0):
 
     if flip:
         output = torch.flip(input, dims=dim)
+    else:
+        output = input
 
     return output
 
