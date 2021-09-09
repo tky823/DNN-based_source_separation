@@ -182,6 +182,8 @@ class AdhocTrainer(TrainerBase):
                     mixture = mixture.cuda()
                     source = source.cuda()
                 
+                batch_size, n_mics, n_bins, n_frames = mixture.size()
+
                 mixture_amplitude = torch.abs(mixture)
                 source_amplitude = torch.abs(source)
                 
@@ -189,30 +191,16 @@ class AdhocTrainer(TrainerBase):
                 loss = self.criterion(estimated_source_amplitude, source_amplitude, batch_mean=False)
                 loss = loss.mean(dim=0)
                 valid_loss += loss.item()
-
+                
                 if idx < 5:
-                    ratio = estimated_source_amplitude / torch.clamp(mixture_amplitude, min=EPS)
-                    estimated_source = ratio * mixture # -> (batch_size, n_mics, n_bins, n_frames)
+                    estimated_source = estimated_source_amplitude * torch.exp(1j * torch.angle(mixture)) # (batch_size, n_mics, n_bins, n_frames)
 
-                    mixture_channels = mixture.size()[:-2] # -> (batch_size, n_mics)
-                    estimated_source_channels = estimated_source.size()[:-2] # -> (batch_size, n_mics)
-                    mixture = mixture.view(-1, *mixture.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
-                    estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:]) # -> (batch_size * n_mics, n_bins, n_frames)
-                    
+                    mixture = mixture.permute(1, 2, 0, 3).reshape(n_mics, n_bins, batch_size * n_frames)
+                    estimated_source = estimated_source.permute(1, 2, 0, 3).reshape(n_mics, n_bins, batch_size * n_frames)
+
                     mixture, estimated_source = mixture.cpu(), estimated_source.cpu()
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
-                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # -> (n_mics, T_segment)
-
-                    mixture = mixture.view(*mixture_channels, -1) # -> (batch_size, n_mics, T_segment)
-                    estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (batch_size, n_mics, T_segment)
-                    
-                    batch_size, n_mics, T_segment = mixture.size()
-                    
-                    mixture = mixture.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
-                    mixture = mixture.reshape(n_mics, batch_size * T_segment)
-
-                    estimated_source = estimated_source.permute(1, 0, 2) # -> (n_mics, batch_size, T_segment)
-                    estimated_source = estimated_source.reshape(n_mics, batch_size * T_segment)
+                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # (n_mics, T)
+                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # (n_mics, T)
                     
                     save_dir = os.path.join(self.sample_dir, name)
 
@@ -288,6 +276,16 @@ class AdhocTester(TesterBase):
         test_loss = 0
         test_loss_improvement = 0
         n_test = len(self.loader.dataset)
+
+        s = "Title, Loss:"
+        for target in self.sources:
+            s += " ({})".format(target)
+        
+        s += ", loss improvement:"
+        for target in self.sources:
+            s += " ({})".format(target)
+        
+        print(s, flush=True)
         
         with torch.no_grad():
             for idx, (mixture, sources, samples, name) in enumerate(self.loader):
@@ -350,6 +348,16 @@ class AdhocTester(TesterBase):
                     estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                
+                s = "{},".format(name)
+                for idx, target in enumerate(self.sources):
+                    s += " {:.3f}".format(loss[idx].item())
+                
+                s += ", loss improvement:"
+                for idx, target in enumerate(self.sources):
+                    s += " {:.3f}".format(loss_improvement[idx].item())
+
+                print(s, flush=True)
                 
                 test_loss += loss # (n_sources,)
                 test_loss_improvement += loss_improvement # (n_sources,)

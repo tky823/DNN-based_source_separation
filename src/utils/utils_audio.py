@@ -53,7 +53,7 @@ def build_window(fft_size, window_fn='hann'):
         window = torch.hamming_window(fft_size, periodic=True)
     else:
         raise ValueError("Not support {} window.".format(window_fn))
-        
+    
     return window
     
 def build_optimal_window(window, hop_size=None):
@@ -64,10 +64,10 @@ def build_optimal_window(window, hop_size=None):
     window_length = len(window)
 
     if hop_size is None:
-        hop_size = window_length//2
+        hop_size = window_length // 2
 
     windows = torch.cat([
-        torch.roll(window.unsqueeze(dim=0), hop_size*idx) for idx in range(window_length//hop_size)
+        torch.roll(window.unsqueeze(dim=0), hop_size*idx) for idx in range(window_length // hop_size)
     ], dim=0)
     
     power = windows**2

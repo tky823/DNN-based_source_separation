@@ -14,3 +14,11 @@ def choose_layer_norm(name, num_features, n_dims=2, eps=EPS, **kwargs):
         raise NotImplementedError("Not support {} layer normalization.".format(name))
     
     return layer_norm
+
+def choose_nonlinear(name, **kwargs):
+    if name == 'relu':
+        nonlinear = nn.ReLU()
+    else:
+        raise NotImplementedError("Invalid nonlinear function is specified. Choose 'relu' instead of {}.".format(name))
+    
+    return nonlinear

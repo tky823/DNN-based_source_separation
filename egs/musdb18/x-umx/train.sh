@@ -16,11 +16,14 @@ fft_size=4096
 hop_size=1024
 max_bin=1487
 
-# model
+# Model
 hidden_channels=512
 num_layers=3
 dropout=4e-1
 causal=0
+
+# Augmentation
+augmentation_path="./config/paper/augmentation.yaml"
 
 # Criterion
 criterion='mdl' # multi-domain loss
@@ -79,6 +82,7 @@ train.py \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+--augmentation_path "${augmentation_path}" \
 --max_bin ${max_bin} \
 --hidden_channels ${hidden_channels} \
 --num_layers ${num_layers} \

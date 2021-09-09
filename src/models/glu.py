@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 """
 Gated Linear Units
-See "Language Modeling with Gated Convolutional Networks"
-https://arxiv.org/abs/1612.08083
+Reference: "Language Modeling with Gated Convolutional Networks"
+See https://arxiv.org/abs/1612.08083
 """
 
 # TODO: Kernel size

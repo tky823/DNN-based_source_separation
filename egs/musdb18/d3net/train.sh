@@ -16,8 +16,11 @@ window_fn='hann'
 fft_size=4096
 hop_size=1024
 
-# model
-config_path="./config/${target}.yaml"
+# Model
+config_path="./config/paper/${target}.yaml"
+
+# Augmentation
+augmentation_path="./config/paper/augmentation-${target}.yaml"
 
 # Criterion
 criterion='mse'
@@ -57,7 +60,25 @@ fi
 model_dir="${save_dir}/model/${target}"
 loss_dir="${save_dir}/loss/${target}"
 sample_dir="${save_dir}/sample/${target}"
+config_dir="${save_dir}/config"
 log_dir="${save_dir}/log/${target}"
+
+if [ ! -e "${config_dir}" ]; then
+    mkdir -p "${config_dir}"
+fi
+
+config_name=`basename ${config_path}`
+
+if [ ! -e "${config_dir}/${config_name}" ]; then
+    cp "${config_path}" "${config_dir}/${config_name}"
+fi
+
+augmentation_dir=`dirname ${augmentation_path}`
+augmentation_name=`basename ${augmentation_path}`
+
+if [ ! -e "${config_dir}/${augmentation_name}" ]; then
+    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
+fi
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -76,6 +97,7 @@ train.py \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+--augmentation_path "${augmentation_path}" \
 --sources ${sources} \
 --target ${target} \
 --criterion ${criterion} \

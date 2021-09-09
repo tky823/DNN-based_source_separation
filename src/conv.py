@@ -1,4 +1,5 @@
 import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -50,11 +51,9 @@ class DepthwiseSeparableConv2d(nn.Module):
         
         return output
 
-        
 """
     Depthwise Separable Transposed Convolution
 """
-        
 class DepthwiseSeparableConvTranspose1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, bias=True):
         super().__init__()
@@ -70,7 +69,7 @@ class DepthwiseSeparableConvTranspose1d(nn.Module):
 
     def forward(self, input):
         x = self.pointwise_conv1d(input)
-        output = self.depthwise_conv1d(input)
+        output = self.depthwise_conv1d(x)
         
         return output
         
@@ -97,13 +96,11 @@ class DepthwiseSeparableConvTranspose2d(nn.Module):
         
         return output
 
-
 """
     Complex convolution
     See "Deep Complex Networks"
     https://arxiv.org/abs/1705.09792
 """
-
 class ComplexConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1):
         super().__init__()
@@ -317,7 +314,6 @@ class MultiDilatedConv2d(nn.Module):
         if not self.bias:
             s += ", bias=False"
         return s
-
 
 def _test_multidilated_conv1d():
     torch.manual_seed(111)

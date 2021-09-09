@@ -2,12 +2,12 @@ name: DNN-based_source_separation_wsj0-gpu
 
 channels:
   - pytorch
+  - defaults
   - conda-forge
 
 dependencies:
   - python>=3.6,<=3.8
   - numpy>=1.19
-  - scipy>=1.6.1
   - matplotlib>=3.3.2
   - mir_eval==0.6
   - pytorch>=1.8.0

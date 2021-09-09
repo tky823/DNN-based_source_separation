@@ -1,3 +1,5 @@
+import torch.nn as nn
+
 from models.tasnet import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvEncoder
 from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
@@ -42,10 +44,22 @@ def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable
         
     return encoder, decoder
 
-def choose_layer_norm(num_features, causal=False, eps=EPS):
-    if causal:
-        norm = CumulativeLayerNorm1d(num_features, eps=eps)
+def choose_layer_norm(name, num_features, causal=False, eps=EPS, **kwargs):
+    if name == 'cLM':
+        layer_norm = CumulativeLayerNorm1d(num_features, eps=eps)
+    elif name == 'gLM':
+        if causal:
+            raise ValueError("Global Layer Normalization is NOT causal.")
+        layer_norm = GlobalLayerNorm(num_features, eps=eps)
+    elif name in ['BN', 'batch', 'batch_norm']:
+        n_dims = kwargs.get('n_dims') or 1
+        if n_dims == 1:
+            layer_norm = nn.BatchNorm1d(num_features, eps=eps)
+        elif n_dims == 2:
+            layer_norm = nn.BatchNorm2d(num_features, eps=eps)
+        else:
+            raise NotImplementedError("n_dims is expected 1 or 2, but give {}.".format(n_dims))
     else:
-        norm = GlobalLayerNorm(num_features, eps=eps)
+        raise NotImplementedError("Not support {} layer normalization.".format(name))
     
-    return norm
+    return layer_norm

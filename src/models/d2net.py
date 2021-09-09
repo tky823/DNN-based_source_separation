@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_d3net import choose_layer_norm
+from utils.utils_d3net import choose_layer_norm, choose_nonlinear
 
 EPS = 1e-12
 
@@ -211,10 +211,7 @@ class ConvBlock2d(nn.Module):
             self.norm2d = choose_layer_norm(name, in_channels, n_dims=2, eps=eps)
         
         if self.nonlinear is not None:
-            if self.nonlinear == 'relu':
-                self.nonlinear2d = nn.ReLU()
-            else:
-                raise NotImplementedError("Invalid nonlinear function is specified. Choose 'relu' instead of {}.".format(self.nonlinear))
+            self.nonlinear2d = choose_nonlinear(self.nonlinear)
         
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
 
