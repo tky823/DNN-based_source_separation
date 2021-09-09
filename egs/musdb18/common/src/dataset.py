@@ -588,7 +588,7 @@ def apply_random_flip(input, flip_rate=0.5, dim=0):
         output <torch.Tensot>: (*)
     """
     if type(dim) is int:
-        dim = tuple(dim)
+        dim = (dim,)
     
     flip = random.random() < flip_rate
 
