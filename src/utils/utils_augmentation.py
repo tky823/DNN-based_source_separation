@@ -4,7 +4,7 @@ class SequentialAugmentation:
     def __init__(self, *args):
         super().__init__()
 
-        self.processes = args
+        self.processes = list(args)
 
     def __call__(self, input):
         x = input
