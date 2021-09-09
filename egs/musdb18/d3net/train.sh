@@ -20,7 +20,7 @@ hop_size=1024
 config_path="./config/paper/${target}.yaml"
 
 # Augmentation
-augmentation_path="./config/paper/augmentation.yaml"
+augmentation_path="./config/paper/augmentation-${target}.yaml"
 
 # Criterion
 criterion='mse'
@@ -71,6 +71,13 @@ config_name=`basename ${config_path}`
 
 if [ ! -e "${config_dir}/${config_name}" ]; then
     cp "${config_path}" "${config_dir}/${config_name}"
+fi
+
+augmentation_dir=`dirname ${augmentation_path}`
+augmentation_name=`basename ${augmentation_path}`
+
+if [ ! -e "${config_dir}/${augmentation_name}" ]; then
+    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
 fi
 
 if [ ! -e "${log_dir}" ]; then
