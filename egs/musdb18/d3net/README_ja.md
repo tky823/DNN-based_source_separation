@@ -62,8 +62,8 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | D3Net w/o dilation | - | - | - | - | - | - | - |
 | D3Net standard dilation | - | - | - | - | - | - | - |
-| D3Net | 7.02 | 6.58 | 4.88 | 4.77 | 13.38 | 5.81 | 検証損失によって選択されたエポックで学習を止めた場合 |
-| D3Net | 7.08 | 6.54 | 4.93 | 4.72 | 13.41 | 5.82 | 50エポック学習後 |
+| D3Net | 6.58 | 6.46 | 5.12 | 4.54 | 13.06 | 5.68 | 検証ロスが最小となるエポックで学習を止めた場合． |
+| D3Net | 6.63 | 6.40 | 5.24 | 4.58 | 13.24 | 5.71 | 50エポック学習後 |
 | D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | 公式実装 |
 
 - 学習済みモデルを使って分離を試すことができます．`egs/tutorials/d3net/separate_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_ja.ipynb)にとんでください．
