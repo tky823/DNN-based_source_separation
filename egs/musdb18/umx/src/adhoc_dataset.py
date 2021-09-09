@@ -6,6 +6,7 @@ import torchaudio
 import torch.nn.functional as F
 
 from dataset import SpectrogramDataset
+from dataset import apply_random_flip, apply_random_scaling
 
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 
@@ -168,15 +169,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             track_samples = track['samples']
 
             start = random.randint(0, track_samples - self.patch_samples - 1)
-            flip = random.choice([True, False])
-            scale = random.uniform(MINSCALE, MAXSCALE)
 
             source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.patch_samples)
 
-            if flip:
-                source = torch.flip(source, dims=(0,))
+            source = apply_random_flip(source, dim=0, **self.augmentation['random_flip'])
+            source = apply_random_scaling(source, **self.augmentation['random_scaling'])
 
-            sources.append(scale * source.unsqueeze(dim=0))
+            sources.append(source.unsqueeze(dim=0))
         
         if type(self.target) is list:
             target = []

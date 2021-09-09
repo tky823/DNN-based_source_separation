@@ -3,6 +3,7 @@
 
 import argparse
 
+import yaml
 import torch
 import torch.nn as nn
 
@@ -23,6 +24,7 @@ parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--max_bin', type=int, default=1487, help='Max frequency bin')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
+parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
 parser.add_argument('--hidden_channels', type=int, default=512, help='# of hidden channels')
 parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LSTM')
 parser.add_argument('--dropout', type=float, default=0, help='dropout')
@@ -60,7 +62,10 @@ def main(args):
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.sources, augmentation=True)
+    with open(args.augmentation_path) as f:
+        augmentation = yaml.safe_load(f)
+    
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.sources, augmentation=augmentation)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=patch_size, max_samples=max_samples, sources=args.sources, target=args.sources)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))

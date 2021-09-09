@@ -16,7 +16,7 @@ window_fn='hann'
 fft_size=4096
 hop_size=1024
 
-# model
+# Model
 config_path="./config/paper/${target}.yaml"
 
 # Augmentation

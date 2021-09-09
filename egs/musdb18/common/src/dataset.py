@@ -541,7 +541,6 @@ class SpectrogramTestDataset(SpectrogramDataset):
 """
     Data loader
 """
-
 class TrainDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -578,7 +577,6 @@ def test_collate_fn(batch):
         batched_segment_ID.append(segmend_ID)
     
     return batched_mixture, batched_sources, batched_segment_ID
-
 
 def apply_random_flip(input, flip_rate=0.5, dim=0):
     """
