@@ -3,7 +3,7 @@
 exp_dir="./exp"
 tag=""
 
-sources="[drums,bass,other,vocals]"
+sources="[bass,drums,other,vocals]"
 duration=6
 
 musdb18_root="../../../dataset/musdb18"

@@ -6,7 +6,7 @@ import torch
 
 from dataset import WaveDataset
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 
 SAMPLE_RATE_MUSDB18 = 44100

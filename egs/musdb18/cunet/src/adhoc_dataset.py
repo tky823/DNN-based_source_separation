@@ -8,7 +8,7 @@ import torchaudio
 from utils.utils_audio import build_window
 from dataset import MUSDB18Dataset
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12

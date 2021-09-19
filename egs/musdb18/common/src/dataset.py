@@ -6,7 +6,7 @@ import torchaudio
 
 from utils.utils_audio import build_window
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 MINSCALE = 0.25
@@ -20,7 +20,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         Args:
             musdb18_root <str>: Path to MUSDB18 root.
             sr <int>: Sampling rate.
-            sources <list<str>>: Sources for mixture. Default: ['drums','bass','other','vocals']
+            sources <list<str>>: Sources for mixture. Default: ['bass', 'drums', 'other', 'vocals']
             target <str> or <list<str>>: Target source(s). If None is given, `sources` is used by default.
         """
         super().__init__()

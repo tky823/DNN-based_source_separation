@@ -254,7 +254,7 @@ class EvaluaterBase:
     
     def _reset(self, args):
         self.target = [
-            'drums', 'bass', 'other', 'vocals', 'accompaniment'
+            'bass', 'drums', 'other', 'vocals', 'accompaniment'
         ]
         self.mus = musdb.DB(root=args.musdb18_root, subsets="test", is_wav=args.is_wav)
         self.estimated_mus = musdb.DB(root=args.estimated_musdb18_root, subsets="test", is_wav=True)

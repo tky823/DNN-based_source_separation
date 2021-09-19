@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from dataset import SpectrogramDataset
 from dataset import apply_random_flip, apply_random_scaling
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12

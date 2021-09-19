@@ -3,7 +3,7 @@
 exp_dir="./exp"
 continue_from=""
 
-sources="[drums,bass,other,vocals]"
+sources="[bass,drums,other,vocals]"
 duration=8
 valid_duration=10
 
