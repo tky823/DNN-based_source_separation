@@ -22,13 +22,19 @@ class WaveTrainDataset(WaveDataset):
             sources <list<str>>: Sources included in mixture
             target <str> or <list<str>>: Target source(s)
         """
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+        super().__init__(
+            musdb18_root,
+            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sources=sources,
+            target=target
+        )
 
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
         with open(train_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
+        self.sr = sr
         self.samples = int(duration * sr)
         self.augmentation = augmentation
 
@@ -40,12 +46,12 @@ class WaveTrainDataset(WaveDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                sr = audio_info.sample_rate
+                track_sr = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
                     'name': name,
-                    'samples': track_samples,
+                    'samples_original': track_samples,
                     'path': {
                         'mixture': mixture_path
                     }
@@ -56,7 +62,7 @@ class WaveTrainDataset(WaveDataset):
                 
                 self.tracks.append(track)
 
-                track_duration = track_samples / sr
+                track_duration = track_samples / track_sr
                 total_duration += track_duration
 
             if samples_per_epoch is None:
@@ -65,19 +71,21 @@ class WaveTrainDataset(WaveDataset):
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
+            samples_original = int(self.samples * SAMPLE_RATE_MUSDB18 / sr)
+
             if overlap is None:
-                overlap = duration / 2
+                overlap = samples_original // 2
             self.samples_per_epoch = None
 
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                sr = audio_info.sample_rate
+                track_sr = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
                     'name': name,
-                    'samples': track_samples,
+                    'samples_original': track_samples,
                     'path': {
                         'mixture': mixture_path
                     }
@@ -93,9 +101,14 @@ class WaveTrainDataset(WaveDataset):
                     data = {
                         'trackID': trackID,
                         'start': start,
-                        'samples': self.samples,
+                        'samples_original': samples_original,
                     }
                     self.json_data.append(data)
+
+        if sr != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        else:
+            self.pre_resampler = None
 
     def __getitem__(self, idx):
         """
@@ -107,6 +120,15 @@ class WaveTrainDataset(WaveDataset):
             mixture, target = self._getitem_augmentation()
         else:
             raise NotImplementedError("Implement _getitem()")
+        
+        if self.pre_resampler is not None:
+            mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+            mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
+
+            mixture = self.pre_resampler(mixture)
+            target = self.pre_resampler(target)
+
+            mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
 
         return mixture, target
 
@@ -162,7 +184,12 @@ class WaveTrainDataset(WaveDataset):
 
 class WaveEvalDataset(WaveDataset):
     def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=60, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+        super().__init__(
+            musdb18_root,
+            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sources=sources,
+            target=target
+        )
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         
@@ -177,13 +204,13 @@ class WaveEvalDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            track_sr = audio_info.sample_rate
             track_samples = audio_info.num_frames
-            samples = min(self.max_samples, track_samples)
+            samples_original = min(int(self.max_samples * track_sr / sr), track_samples)
 
             track = {
                 'name': name,
-                'samples': track_samples,
+                'samples_original': track_samples,
                 'path': {
                     'mixture': mixture_path
                 }
@@ -195,11 +222,16 @@ class WaveEvalDataset(WaveDataset):
             track_data = {
                 'trackID': trackID,
                 'start': 0,
-                'samples': samples
+                'samples_original': samples_original
             }
             
             self.tracks.append(track)
             self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
+        
+        if sr != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        else:
+            self.pre_resampler = None
 
     def __getitem__(self, idx):
         """
@@ -214,14 +246,14 @@ class WaveEvalDataset(WaveDataset):
         track = self.tracks[trackID]
         name = track['name']
         paths = track['path']
-        samples = track_data['samples']
+        samples_original = track_data['samples_original']
 
         if set(self.sources) == set(__sources__):
-            mixture, _ = torchaudio.load(paths['mixture'], num_frames=samples) # (n_mics, T)
+            mixture, _ = torchaudio.load(paths['mixture'], num_frames=samples_original) # (n_mics, T)
         else:
             sources = []
             for _source in self.sources:
-                source, _ = torchaudio.load(paths[_source], num_frames=samples) # (n_mics, T)
+                source, _ = torchaudio.load(paths[_source], num_frames=samples_original) # (n_mics, T)
                 sources.append(source.unsqueeze(dim=0))
             sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
             mixture = sources.sum(dim=0) # (n_mics, T)
@@ -229,13 +261,22 @@ class WaveEvalDataset(WaveDataset):
         if type(self.target) is list:
             target = []
             for _target in self.target:
-                source, _ = torchaudio.load(paths[_target], num_frames=samples) # (n_mics, T)
+                source, _ = torchaudio.load(paths[_target], num_frames=samples_original) # (n_mics, T)
                 target.append(source.unsqueeze(dim=0))
             target = torch.cat(target, dim=0) # (len(target), n_mics, T)
             mixture = mixture.unsqueeze(dim=0) # (1, n_mics, T)
         else:
             # mixture: (n_mics, T)
-            target, _ = torchaudio.load(paths[self.target], num_frames=samples) # (n_mics, T)
+            target, _ = torchaudio.load(paths[self.target], num_frames=samples_original) # (n_mics, T)
+        
+        if self.pre_resampler is not None:
+            mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+            mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
+
+            mixture = self.pre_resampler(mixture)
+            target = self.pre_resampler(target)
+
+            mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
 
         return mixture, target, name
 
