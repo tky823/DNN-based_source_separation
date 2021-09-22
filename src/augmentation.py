@@ -54,3 +54,28 @@ class RandomScaling:
         output = apply_random_scaling(input, min=self.min, max=self.max)
         
         return output
+
+def apply_random_sign(input, rate=0.5):
+    """
+    Args:
+        input <torch.Tensot>: (*)
+    Returns:
+        output <torch.Tensot>: (*)
+    """
+    if random.random() < rate:
+        sign = -1
+    else:
+        sign = 1
+    
+    output = sign * input
+
+    return output
+
+class RandomSign:
+    def __init__(self, rate=0.5):
+        self.rate = rate
+    
+    def __call__(self, input):
+        output = apply_random_sign(input, rate=self.rate)
+        
+        return output
