@@ -26,7 +26,7 @@ parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trai
 parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--n_bases', '-N', type=int, default=512, help='# bases')
+parser.add_argument('--n_bases', '-N', type=int, default=256, help='# bases')
 parser.add_argument('--kernel_size', '-L', type=int, default=16, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
 parser.add_argument('--sep_bottleneck_channels', '-B', type=int, default=128, help='Bottleneck channels of separator')

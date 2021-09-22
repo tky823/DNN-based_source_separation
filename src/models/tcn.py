@@ -42,7 +42,6 @@ class TemporalConvNet(nn.Module):
         
         return output
 
-
 class ConvBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
@@ -76,7 +75,6 @@ class ConvBlock1d(nn.Module):
             skip_connection = skip_connection + skip
 
         return x, skip_connection
-
         
 class ResidualBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
@@ -148,8 +146,7 @@ class ResidualBlock1d(nn.Module):
             output = output + residual
             
         return output, skip
-        
-        
+
 class DepthwiseSeparableConv1d(nn.Module):
     def __init__(self, in_channels, out_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
