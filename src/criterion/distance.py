@@ -25,10 +25,10 @@ class L1Loss(nn.Module):
         loss = torch.abs(input - target) # (batch_size, *)
         loss = torch.sum(loss, dim=self.dim)
 
-        n_dim = loss.dim()
-        dim = tuple(range(1, n_dim))
+        n_dims = loss.dim()
+        dim = tuple(range(1, n_dims))
         
-        if n_dim > 1:
+        if n_dims > 1:
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
             elif self.reduction == 'sum':
@@ -71,9 +71,9 @@ class L2Loss(nn.Module):
         loss = torch.sum(loss**2, dim=self.dim)
         loss = torch.sqrt(loss)
         
-        n_dim = loss.dim()
-        if n_dim > 1:
-            dim = tuple(range(1, n_dim))
+        n_dims = loss.dim()
+        if n_dims > 1:
+            dim = tuple(range(1, n_dims))
             
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
@@ -111,9 +111,9 @@ class L12Loss(nn.Module):
         loss = torch.sum(loss**2, dim=self.dim2, keepdim=True)
         loss = torch.sqrt(loss)
         
-        n_dim = loss.dim()
-        if n_dim > 1:
-            dim = tuple(range(1, n_dim))
+        n_dims = loss.dim()
+        if n_dims > 1:
+            dim = tuple(range(1, n_dims))
             
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
@@ -151,9 +151,9 @@ class L21Loss(nn.Module):
         loss = torch.sqrt(loss)
         loss = torch.sum(loss, dim=self.dim1, keepdim=True)
         
-        n_dim = loss.dim()
-        if n_dim > 1:
-            dim = tuple(range(1, n_dim))
+        n_dims = loss.dim()
+        if n_dims > 1:
+            dim = tuple(range(1, n_dims))
             
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
