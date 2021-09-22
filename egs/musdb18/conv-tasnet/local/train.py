@@ -12,13 +12,13 @@ from dataset import TrainDataLoader, EvalDataLoader
 from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
+from criterion.distance import MeanSquaredError, L1Loss
 from criterion.sdr import NegSISDR
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
@@ -27,14 +27,14 @@ parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trai
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--n_bases', '-N', type=int, default=256, help='# bases')
-parser.add_argument('--kernel_size', '-L', type=int, default=16, help='Kernel size')
+parser.add_argument('--kernel_size', '-L', type=int, default=20, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
-parser.add_argument('--sep_bottleneck_channels', '-B', type=int, default=128, help='Bottleneck channels of separator')
-parser.add_argument('--sep_hidden_channels', '-H', type=int, default=128, help='Hidden channels of separator')
+parser.add_argument('--sep_bottleneck_channels', '-B', type=int, default=256, help='Bottleneck channels of separator')
+parser.add_argument('--sep_hidden_channels', '-H', type=int, default=512, help='Hidden channels of separator')
 parser.add_argument('--sep_skip_channels', '-Sc', type=int, default=128, help='Skip connection channels of separator')
 parser.add_argument('--sep_kernel_size', '-P', type=int, default=3, help='Skip connection channels of separator')
-parser.add_argument('--sep_num_layers', '-X', type=int, default=8, help='# layers of separator')
-parser.add_argument('--sep_num_blocks', '-R', type=int, default=3, help='# blocks of separator. Each block has R layers')
+parser.add_argument('--sep_num_layers', '-X', type=int, default=10, help='# layers of separator')
+parser.add_argument('--sep_num_blocks', '-R', type=int, default=4, help='# blocks of separator. Each block has R layers')
 parser.add_argument('--dilated', type=int, default=1, help='Dilated convolution')
 parser.add_argument('--separable', type=int, default=1, help='Depthwise-separable convolution')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
@@ -42,13 +42,13 @@ parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear 
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--sources', type=str, default='[bass,drums,others,vocals]', help='Source names')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='mse', choices=['mse', 'l1loss', 'sisdr', 'sdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
-parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
+parser.add_argument('--lr', type=float, default=3e-4, help='Learning rate. Default: 3e-4')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
-parser.add_argument('--samples_per_epoch', type=int, default=3863*2, help='Training samples in one epoch')
+parser.add_argument('--samples_per_epoch', type=int, default=-1, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -115,8 +115,14 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'sisdr':
+    if args.criterion == 'mse':
+        criterion = MeanSquaredError(dim=-1, reduction='mean')
+    elif args.criterion == 'l1loss':
+        criterion = L1Loss(dim=-1, reduction='mean')
+    elif args.criterion == 'sisdr':
         criterion = NegSISDR()
+    elif args.criterion == 'sdr':
+        raise ValueError("Not support criterion {}".format(args.criterion))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     

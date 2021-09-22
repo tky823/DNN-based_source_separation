@@ -37,11 +37,11 @@ mask_nonlinear='sigmoid'
 augmentation_path="./config/paper/augmentation.yaml"
 
 # Criterion
-criterion='sisdr'
+criterion='mse'
 
 # Optimizer
 optimizer='adam'
-lr=1e-3
+lr=3e-4
 weight_decay=0
 max_norm=5
 
