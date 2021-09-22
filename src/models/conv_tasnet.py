@@ -80,20 +80,20 @@ class ConvTasNet(nn.Module):
         n_bases = self.n_bases
         kernel_size, stride = self.kernel_size, self.stride
         
-        n_dim = input.dim()
+        n_dims = input.dim()
 
-        if n_dim == 3:
+        if n_dims == 3:
             batch_size, C_in, T = input.size()
-            assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
-        elif n_dim == 4:
+            assert C_in == 1, "input.size() is expected (?, 1, ?), but given {}".format(input.size())
+        elif n_dims == 4:
             batch_size, C_in, n_mics, T = input.size()
-            assert C_in == 1, "input.size() is expected (?,1,?,?), but given {}".format(input.size())
+            assert C_in == 1, "input.size() is expected (?, 1, ?, ?), but given {}".format(input.size())
             input = input.view(batch_size, n_mics, T)
         else:
-            raise ValueError("Not support {} dimension input".format(n_dim))
+            raise ValueError("Not support {} dimension input".format(n_dims))
         
-        padding = (stride - (T-kernel_size)%stride)%stride
-        padding_left = padding//2
+        padding = (stride - (T - kernel_size) % stride) % stride
+        padding_left = padding // 2
         padding_right = padding - padding_left
 
         input = F.pad(input, (padding_left, padding_right))
@@ -104,9 +104,9 @@ class ConvTasNet(nn.Module):
         latent = w_hat
         w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
         x_hat = self.decoder(w_hat)
-        if n_dim == 3:
+        if n_dims == 3:
             x_hat = x_hat.view(batch_size, n_sources, -1)
-        else: # n_dim == 4
+        else: # n_dims == 4
             x_hat = x_hat.view(batch_size, n_sources, n_mics, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
