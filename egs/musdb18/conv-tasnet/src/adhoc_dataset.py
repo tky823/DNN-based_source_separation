@@ -148,7 +148,7 @@ class WaveTrainDataset(WaveDataset):
         for _source, trackID in zip(self.sources, track_indices):
             track = self.tracks[trackID]
             source_path = track['path'][_source]
-            track_samples = track['samples']
+            track_samples = track['samples_original']
 
             start = random.randint(0, track_samples - self.samples - 1)
 
