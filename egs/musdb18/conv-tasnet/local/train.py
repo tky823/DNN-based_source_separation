@@ -13,7 +13,7 @@ from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.distance import MeanSquaredError, L1Loss
-from criterion.sdr import NegSISDR
+from criterion.sdr import NegSDR, NegSISDR
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
@@ -122,7 +122,7 @@ def main(args):
     elif args.criterion == 'sisdr':
         criterion = NegSISDR()
     elif args.criterion == 'sdr':
-        raise ValueError("Not support criterion {}".format(args.criterion))
+        criterion = NegSDR()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
