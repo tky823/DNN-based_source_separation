@@ -161,7 +161,7 @@ class WaveTrainDataset(WaveDataset):
         return self.samples_per_epoch
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_samples=None, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=60, sources=__sources__, target=None):
         super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
@@ -169,7 +169,7 @@ class WaveEvalDataset(WaveDataset):
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
-        self.max_samples = max_samples
+        self.max_samples = int(sr * max_duration)
 
         self.tracks = []
         self.json_data = []
