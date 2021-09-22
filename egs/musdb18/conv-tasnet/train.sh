@@ -5,8 +5,8 @@ continue_from=""
 tag=""
 
 sources="[bass,drums,other,vocals]"
-duration=4
-valid_duration=10
+duration=8
+valid_duration=100
 
 musdb18_root="../../../dataset/musdb18"
 sr=44100
