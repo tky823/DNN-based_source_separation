@@ -79,6 +79,10 @@ sample_dir="${save_dir}/sample"
 config_dir="${save_dir}/config"
 log_dir="${save_dir}/log"
 
+if [ ! -e "${config_dir}" ]; then
+    mkdir -p "${config_dir}"
+fi
+
 augmentation_dir=`dirname ${augmentation_path}`
 augmentation_name=`basename ${augmentation_path}`
 
