@@ -3,7 +3,7 @@ import torch.nn as nn
 from models.tasnet import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvEncoder
 from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
-EPS=1e-12
+EPS = 1e-12
 
 def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable', dec_bases='trainable', **kwargs):
     if 'in_channels' in kwargs:

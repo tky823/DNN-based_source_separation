@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from utils.utils_audio import build_Fourier_bases, build_window, build_optimal_window
 
-EPS=1e-12
+EPS = 1e-12
 
 class TasNetBase(nn.Module):
     def __init__(self, in_channels, hidden_channels, kernel_size, stride=None, window_fn='hann', trainable_enc=False, trainable_dec=False):
@@ -16,7 +16,7 @@ class TasNetBase(nn.Module):
         
         self.encoder = FourierEncoder(in_channels, hidden_channels, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable_enc)
         self.decoder = FourierDecoder(hidden_channels, in_channels, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable_dec)
-        
+    
     def forward(self, input):
         """
         Args:
@@ -27,7 +27,7 @@ class TasNetBase(nn.Module):
         output, _ = self.extract_latent(input)
         
         return output
-        
+    
     def extract_latent(self, input):
         """
         Args:
@@ -90,7 +90,7 @@ class TasNet(nn.Module):
         self.encoder = GatedEncoder(self.in_channels, n_bases, kernel_size=kernel_size, stride=stride, eps=eps)
         self.separator = Separator(n_bases, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels, causal=causal, n_sources=n_sources)
         self.decoder = Decoder(n_bases, self.in_channels, kernel_size=kernel_size, stride=stride)
-        
+    
     def forward(self, input):
         """
         Args:
@@ -101,7 +101,7 @@ class TasNet(nn.Module):
         output, _ = self.extract_latent(input)
         
         return output
-        
+    
     def extract_latent(self, input):
         """
         Args:
@@ -146,7 +146,7 @@ class TasNet(nn.Module):
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
-        
+    
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -156,7 +156,7 @@ class TasNet(nn.Module):
                 _num_parameters += p.numel()
                 
         return _num_parameters
-        
+    
     def get_package(self):
         package = {
             'in_channels': self.in_channels,
@@ -213,7 +213,7 @@ class FourierEncoder(nn.Module):
             s += ", repeat={repeat}"
         
         return s.format(**self.__dict__)
-        
+    
     def get_bases(self):
         return self.bases.squeeze(dim=1).detach().cpu().numpy()
 
@@ -246,7 +246,7 @@ class FourierDecoder(nn.Module):
                 bases = torch.cat([bases, rolled_cos_bases, rolled_sin_bases], dim=0)
         
         self.bases = nn.Parameter(bases.unsqueeze(dim=1), requires_grad=trainable)
-        
+    
     def forward(self, input):
         output = F.conv_transpose1d(input, self.bases, stride=self.stride)
         
@@ -259,7 +259,7 @@ class FourierDecoder(nn.Module):
             s += ", repeat={repeat}"
         
         return s.format(**self.__dict__)
-        
+    
     def get_bases(self):
         return self.bases.squeeze(dim=1).detach().cpu().numpy()
 
@@ -267,13 +267,10 @@ class Encoder(nn.Module):
     def __init__(self, in_channels, n_bases, kernel_size=16, stride=8, nonlinear=None):
         super().__init__()
         
-        # For multichannel support
-        # assert in_channels == 1, "in_channels is expected 1, given {}".format(in_channels)
-        
         self.kernel_size, self.stride = kernel_size, stride
         self.nonlinear = nonlinear
         
-        self.conv1d = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False)
+        self.conv1d = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False, groups=in_channels)
         if nonlinear is not None:
             if nonlinear == 'relu':
                 self.nonlinear1d = nn.ReLU()
@@ -302,18 +299,15 @@ class Decoder(nn.Module):
     def __init__(self, n_bases, out_channels, kernel_size=16, stride=8):
         super().__init__()
         
-        # For multichannel support
-        # assert out_channels == 1, "out_channels is expected 1, given {}".format(out_channels)
-        
         self.kernel_size, self.stride = kernel_size, stride
         
-        self.conv_transpose1d = nn.ConvTranspose1d(n_bases, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
-        
+        self.conv_transpose1d = nn.ConvTranspose1d(n_bases, out_channels, kernel_size=kernel_size, stride=stride, bias=False, groups=out_channels)
+    
     def forward(self, input):
         output = self.conv_transpose1d(input)
         
         return output
-        
+    
     def get_bases(self):
         bases = self.conv_transpose1d.weight.squeeze(dim=1).detach().cpu().numpy()
         
@@ -376,7 +370,7 @@ class GatedEncoder(nn.Module):
         self.conv1d_V = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-        
+    
     def forward(self, input):
         eps = self.eps
         
@@ -415,11 +409,11 @@ class Separator(nn.Module):
         self.net = nn.Sequential(*net)
             
         self._reset_parameters()
-                
+
     def _reset_parameters(self):
         self.gamma.data.fill_(1)
         self.beta.data.zero_()
-        
+    
     def forward(self, input):
         num_blocks = self.num_blocks
         n_bases, n_sources = self.n_bases, self.n_sources
@@ -463,7 +457,7 @@ class LSTMBlock(nn.Module):
                 net.append(LSTMLayer(hidden_channels, hidden_channels, causal=causal))
             
         self.net = nn.Sequential(*net)
-            
+    
     def forward(self, input):
         """
         Args:
@@ -474,7 +468,7 @@ class LSTMBlock(nn.Module):
         output = self.net(input)
         
         return output
-                  
+
 class LSTMLayer(nn.Module):
     def __init__(self, in_channels, out_channels, causal=False):
         super().__init__()
@@ -488,7 +482,7 @@ class LSTMLayer(nn.Module):
         
         self.rnn = nn.LSTM(in_channels, out_channels//num_directions, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(out_channels, out_channels)
-        
+    
     def forward(self, input):
         """
         Args:
@@ -500,7 +494,7 @@ class LSTMLayer(nn.Module):
         x, (_, _) = self.rnn(x) # -> (batch_size, T, out_channels//num_directions)
         x = self.fc(x) # -> (batch_size, T, out_channels)
         output = x.permute(0,2,1) # -> (batch_size, out_channels, T)
-          
+        
         return output
 
 def _test_tasnet_base():
