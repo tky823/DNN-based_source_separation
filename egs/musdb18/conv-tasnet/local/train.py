@@ -3,6 +3,7 @@
 
 import argparse
 
+import yaml
 import torch
 import torch.nn as nn
 
@@ -19,6 +20,7 @@ parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
+parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
 parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
 parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
@@ -45,6 +47,7 @@ parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Defa
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
+parser.add_argument('--samples_per_epoch', type=int, default=3863*2, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -57,12 +60,16 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = args.duration
-    overlap = samples / 2
     args.sources = args.sources.replace('[','').replace(']','').split(',')
     args.n_sources = len(args.sources)
+
+    if args.samples_per_epoch <= 0:
+        args.samples_per_epoch = None
     
-    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, overlap=overlap, sources=args.sources)
+    with open(args.augmentation_path) as f:
+        augmentation = yaml.safe_load(f)
+    
+    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.sources, augmentation=augmentation)
     valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

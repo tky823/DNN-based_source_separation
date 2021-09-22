@@ -33,6 +33,9 @@ sep_nonlinear='prelu'
 sep_norm=1
 mask_nonlinear='sigmoid'
 
+# Augmentation
+augmentation_path="./config/paper/augmentation.yaml"
+
 # Criterion
 criterion='sisdr'
 
@@ -43,6 +46,7 @@ weight_decay=0
 max_norm=5
 
 batch_size=4
+samples_per_epoch=-1
 epochs=100
 
 use_cuda=1
@@ -72,7 +76,15 @@ fi
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
+config_dir="${save_dir}/config"
 log_dir="${save_dir}/log"
+
+augmentation_dir=`dirname ${augmentation_path}`
+augmentation_name=`basename ${augmentation_path}`
+
+if [ ! -e "${config_dir}/${augmentation_name}" ]; then
+    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
+fi
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -87,6 +99,7 @@ train.py \
 --sr ${sr} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
+--augmentation_path "${augmentation_path}" \
 --enc_bases ${enc_bases} \
 --dec_bases ${dec_bases} \
 --enc_nonlinear "${enc_nonlinear}" \
@@ -112,6 +125,7 @@ train.py \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
+--samples_per_epoch ${samples_per_epoch} \
 --epochs ${epochs} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
