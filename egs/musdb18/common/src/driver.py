@@ -187,9 +187,11 @@ class TrainerBase:
                     save_path = os.path.join(save_dir, "mixture.wav")
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
+                    save_dir = os.path.join(self.sample_dir, titles[0], "epoch{}".format(epoch + 1))
+                    os.makedirs(save_dir, exist_ok=True)
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         target = self.valid_loader.dataset.target[source_idx]
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
+                        save_path = os.path.join(save_dir, "{}.wav".format(target))
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
