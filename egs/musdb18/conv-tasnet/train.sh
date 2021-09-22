@@ -14,7 +14,7 @@ sr=44100
 # Encoder & decoder
 enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
-enc_nonlinear='' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
+enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
 window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
 N=256
 L=20
