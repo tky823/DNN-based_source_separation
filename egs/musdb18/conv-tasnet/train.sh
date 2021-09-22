@@ -51,6 +51,7 @@ epochs=100
 
 use_cuda=1
 overwrite=0
+num_workers=2
 seed=111
 gpu_id="0"
 
@@ -137,4 +138,5 @@ train.py \
 --continue_from "${continue_from}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
+--num_workers ${num_workers} \
 --seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"
