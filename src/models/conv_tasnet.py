@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from utils.utils_tasnet import choose_bases, choose_layer_norm
 from models.tcn import TemporalConvNet
 
-EPS=1e-12
+EPS = 1e-12
 
 class ConvTasNet(nn.Module):
     def __init__(self,
@@ -21,9 +21,9 @@ class ConvTasNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
-        assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
+        assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
         if 'in_channels' in kwargs:
@@ -62,12 +62,12 @@ class ConvTasNet(nn.Module):
         self.encoder = encoder
         self.separator = Separator(n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels, skip_channels=sep_skip_channels, kernel_size=sep_kernel_size, num_blocks=sep_num_blocks, num_layers=sep_num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=sep_nonlinear, norm=sep_norm, mask_nonlinear=mask_nonlinear, n_sources=n_sources, eps=eps)
         self.decoder = decoder
-        
+    
     def forward(self, input):
-        output, latent = self.extract_latent(input)
+        output, _ = self.extract_latent(input)
         
         return output
-        
+    
     def extract_latent(self, input):
         """
         Args:
@@ -177,7 +177,7 @@ class ConvTasNet(nn.Module):
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+        
         return _num_parameters
 
 class Separator(nn.Module):
@@ -199,7 +199,7 @@ class Separator(nn.Module):
             self.mask_nonlinear = nn.Softmax(dim=1)
         else:
             raise ValueError("Cannot support {}".format(mask_nonlinear))
-        
+    
     def forward(self, input):
         """
         Args:

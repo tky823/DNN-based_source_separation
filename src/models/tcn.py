@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_layer_norm
 
-EPS=1e-12
+EPS = 1e-12
 
 """
     Temporal Convolutional Network
