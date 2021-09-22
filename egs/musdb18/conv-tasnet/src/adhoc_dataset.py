@@ -237,9 +237,6 @@ class WaveEvalDataset(WaveDataset):
             # mixture: (n_mics, T)
             target, _ = torchaudio.load(paths[self.target], num_frames=samples) # (n_mics, T)
 
-        mixture = mixture.reshape(-1, mixture.size(-1))
-        target = target.reshape(-1, target.size(-1))
-
         return mixture, target, name
 
 def assert_sample_rate(sr):
