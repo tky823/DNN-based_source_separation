@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from dataset import TrainDataLoader, EvalDataLoader
+from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
