@@ -12,7 +12,7 @@ from dataset import TrainDataLoader, EvalDataLoader
 from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
-from criterion.distance import MeanSquaredError, L1Loss
+from criterion.distance import MeanAbsoluteError, MeanSquaredError
 from criterion.sdr import NegSDR, NegSISDR
 
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
@@ -42,7 +42,7 @@ parser.add_argument('--sep_nonlinear', type=str, default=None, help='Non-linear 
 parser.add_argument('--sep_norm', type=int, default=1, help='Normalization')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--sources', type=str, default='[bass,drums,others,vocals]', help='Source names')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse', 'l1loss', 'sisdr', 'sdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='mse', choices=['mae', 'mse', 'sisdr', 'sdr'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=3e-4, help='Learning rate. Default: 3e-4')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -117,10 +117,10 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'mse':
+    if args.criterion == 'mae':
+        criterion = MeanAbsoluteError(dim=-1, reduction='mean')
+    elif args.criterion == 'mse':
         criterion = MeanSquaredError(dim=-1, reduction='mean')
-    elif args.criterion == 'l1loss':
-        criterion = L1Loss(dim=-1, reduction='mean')
     elif args.criterion == 'sisdr':
         criterion = NegSISDR()
     elif args.criterion == 'sdr':

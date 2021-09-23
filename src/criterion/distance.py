@@ -200,6 +200,46 @@ class SquaredError(nn.Module):
     def maximize(self):
         return False
 
+class MeanAbsoluteError(nn.Module):
+    def __init__(self, dim=1, reduction=None):
+        """
+        Args:
+            dim <int> or <tuple<int>>
+        """
+        super().__init__()
+        
+        self.dim = dim
+        self.reduction = reduction
+    
+    def forward(self, input, target, batch_mean=True):
+        """
+        Args:
+            input (batch_size, *):
+            target (batch_size, *):
+        """
+        loss = torch.abs(input - target) # (batch_size, *)
+        loss = torch.mean(loss, dim=self.dim)
+        
+        n_dims = loss.dim()
+
+        if self.reduction:
+            dim = tuple(range(1, n_dims))
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=dim)
+            else:
+                raise NotImplementedError("Not support self.reduction={}.".format(self.reduction))
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss
+
+    @property
+    def maximize(self):
+        return False
+
 class MeanSquaredError(nn.Module):
     def __init__(self, dim=1, reduction=None):
         """
@@ -301,7 +341,6 @@ def _test_l21loss():
     criterion = L21Loss(dim1=2, dim2=3)
     loss = criterion(input, target)
     print(loss)
-
 
 if __name__ == '__main__':
     torch.manual_seed(111)
