@@ -28,7 +28,7 @@ parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear 
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--n_bases', '-N', type=int, default=256, help='# bases')
 parser.add_argument('--kernel_size', '-L', type=int, default=20, help='Kernel size')
-parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
+parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//4')
 parser.add_argument('--sep_bottleneck_channels', '-B', type=int, default=256, help='Bottleneck channels of separator')
 parser.add_argument('--sep_hidden_channels', '-H', type=int, default=512, help='Hidden channels of separator')
 parser.add_argument('--sep_skip_channels', '-Sc', type=int, default=128, help='Skip connection channels of separator')
@@ -80,6 +80,8 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
+    if not args.stride:
+        args.stride = args.kernel_size // 4
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
     if args.max_norm is not None and args.max_norm == 0:
