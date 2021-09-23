@@ -158,26 +158,26 @@ class ConvTasNet(nn.Module):
     
     @classmethod
     def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        in_channels = package.get('in_channels') or 1
-        n_basis = package.get('n_bases') or package['n_basis']
-        kernel_size, stride = package['kernel_size'], package['stride']
-        enc_basis, dec_basis = package.get('enc_bases') or package['enc_basis'], package.get('dec_bases') or package['dec_basis']
-        enc_nonlinear = package['enc_nonlinear']
-        window_fn = package['window_fn']
+        in_channels = config.get('in_channels') or 1
+        n_basis = config.get('n_bases') or config['n_basis']
+        kernel_size, stride = config['kernel_size'], config['stride']
+        enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
+        enc_nonlinear = config['enc_nonlinear']
+        window_fn = config['window_fn']
         
-        sep_hidden_channels, sep_bottleneck_channels, sep_skip_channels = package['sep_hidden_channels'], package['sep_bottleneck_channels'], package['sep_skip_channels']
-        sep_kernel_size = package['sep_kernel_size']
-        sep_num_blocks, sep_num_layers = package['sep_num_blocks'], package['sep_num_layers']
+        sep_hidden_channels, sep_bottleneck_channels, sep_skip_channels = config['sep_hidden_channels'], config['sep_bottleneck_channels'], config['sep_skip_channels']
+        sep_kernel_size = config['sep_kernel_size']
+        sep_num_blocks, sep_num_layers = config['sep_num_blocks'], config['sep_num_layers']
         
-        dilated, separable, causal = package['dilated'], package['separable'], package['causal']
-        sep_nonlinear, sep_norm = package['sep_nonlinear'], package['sep_norm']
-        mask_nonlinear = package['mask_nonlinear']
+        dilated, separable, causal = config['dilated'], config['separable'], config['causal']
+        sep_nonlinear, sep_norm = config['sep_nonlinear'], config['sep_norm']
+        mask_nonlinear = config['mask_nonlinear']
         
-        n_sources = package['n_sources']
+        n_sources = config['n_sources']
         
-        eps = package['eps']
+        eps = config['eps']
         
         model = cls(
             n_basis, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear, window_fn=window_fn,
