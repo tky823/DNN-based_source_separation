@@ -19,7 +19,7 @@ class AdhocTrainer(TrainerBase):
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
 
-            if (epoch + 1)%2 == 0:
+            if (epoch + 1) % 2 == 0:
                 for param_group in self.optimizer.param_groups:
                     prev_lr = param_group['lr']
                     lr = 0.98 * prev_lr

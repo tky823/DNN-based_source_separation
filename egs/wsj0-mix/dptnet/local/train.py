@@ -21,11 +21,11 @@ parser.add_argument('--valid_list_path', type=str, default=None, help='Path for 
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
-parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
-parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
+parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
+parser.add_argument('--dec_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--n_bases', '-N', type=int, default=64, help='# bases')
+parser.add_argument('--n_basis', '-N', type=int, default=64, help='# basis')
 parser.add_argument('--kernel_size', '-L', type=int, default=2, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
 parser.add_argument('--sep_bottleneck_channels', '-F', type=int, default=64, help='Bottleneck channels of separator')
@@ -78,8 +78,8 @@ def main(args):
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
     model = DPTNet(
-        args.n_bases, args.kernel_size, stride=args.stride,
-        enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
+        args.n_basis, args.kernel_size, stride=args.stride,
+        enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels,
         sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks,
         sep_num_heads=args.sep_num_heads, sep_norm=args.sep_norm, sep_nonlinear=args.sep_nonlinear, sep_dropout=args.sep_dropout,
