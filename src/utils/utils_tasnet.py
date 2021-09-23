@@ -1,53 +1,52 @@
 import torch.nn as nn
 
-from models.tasnet import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvEncoder
+from models.filterbank import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvEncoder
 from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
 EPS = 1e-12
 
-def choose_bases(hidden_channels, kernel_size, stride=None, enc_bases='trainable', dec_bases='trainable', **kwargs):
-    if 'in_channels' in kwargs:
-        in_channels = kwargs['in_channels']
-    else:
-        in_channels = 1
+def choose_basis(hidden_channels, kernel_size, stride=None, enc_basis='trainable', dec_basis='trainable', **kwargs):
+    in_channels = kwargs.get('in_channels') or 1
     
-    if enc_bases == 'trainable':
-        if dec_bases == 'pinv':
+    if enc_basis == 'trainable':
+        if dec_basis == 'pinv':
             encoder = Encoder(in_channels, hidden_channels, kernel_size, stride=stride)
         else:
             encoder = Encoder(in_channels, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
-    elif enc_bases == 'Fourier':
-        assert in_channels == 1 # TODO
-        encoder = FourierEncoder(in_channels, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
-    elif enc_bases == 'trainableFourier':
-        assert in_channels == 1 # TODO
-        encoder = FourierEncoder(in_channels, hidden_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
+    elif enc_basis in ['Fourier', 'trainableFourier']:
+        assert_monoral(in_channels)
+        trainable = False if 'Fourier' else True
+        onesided, return_complex = kwargs['onesided'], kwargs['return_complex']
+        window_fn = kwargs['window_fn']
+        assert_hidden_channels(hidden_channels, kernel_size, onesided=onesided, return_complex=return_complex)
+        encoder = FourierEncoder(kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided, return_complex=return_complex)
     else:
-        raise NotImplementedError("Not support {} for encoder".format(enc_bases))
+        raise NotImplementedError("Not support {} for encoder".format(enc_basis))
         
-    if dec_bases == 'trainable':
+    if dec_basis == 'trainable':
         decoder = Decoder(hidden_channels, in_channels, kernel_size, stride=stride)
-    elif dec_bases == 'Fourier':
-        assert in_channels == 1 # TODO
-        decoder = FourierDecoder(hidden_channels, in_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=False)
-    elif dec_bases == 'trainableFourier':
-        assert in_channels == 1 # TODO
-        decoder = FourierDecoder(hidden_channels, in_channels, kernel_size, stride=stride, window_fn=kwargs['window_fn'], trainable=True)
-    elif dec_bases == 'pinv':
-        if enc_bases == 'trainable':
-            assert in_channels == 1 # TODO
+    elif dec_basis in ['Fourier', 'trainableFourier']:
+        assert_monoral(in_channels)
+        trainable = False if 'Fourier' else True
+        onesided, return_complex = kwargs['onesided'], kwargs['return_complex']
+        window_fn = kwargs['window_fn']
+        assert_hidden_channels(hidden_channels, kernel_size, onesided=onesided, return_complex=return_complex)
+        decoder = FourierDecoder(kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided)
+    elif dec_basis == 'pinv':
+        if enc_basis in ['trainable', 'trainableFourier']:
+            assert_monoral(in_channels)
             decoder = PinvEncoder(encoder)
         else:
-            raise NotImplementedError("Not support {} for decoder".format(dec_bases))
+            raise NotImplementedError("Not support {} for decoder".format(dec_basis))
     else:
-        raise NotImplementedError("Not support {} for decoder".format(dec_bases))
+        raise NotImplementedError("Not support {} for decoder".format(dec_basis))
         
     return encoder, decoder
 
 def choose_layer_norm(name, num_features, causal=False, eps=EPS, **kwargs):
-    if name == 'cLM':
+    if name == 'cLN':
         layer_norm = CumulativeLayerNorm1d(num_features, eps=eps)
-    elif name == 'gLM':
+    elif name == 'gLN':
         if causal:
             raise ValueError("Global Layer Normalization is NOT causal.")
         layer_norm = GlobalLayerNorm(num_features, eps=eps)
@@ -63,3 +62,19 @@ def choose_layer_norm(name, num_features, causal=False, eps=EPS, **kwargs):
         raise NotImplementedError("Not support {} layer normalization.".format(name))
     
     return layer_norm
+
+def assert_monoral(in_channels):
+    # TODO: stereo input
+    assert in_channels == 1, "`in_channels` is expected 1, but given {}.".format(in_channels)
+
+def assert_hidden_channels(hidden_channels, kernel_size, onesided=True, return_complex=True):
+    if onesided:
+        if return_complex:
+            assert hidden_channels == kernel_size // 2 + 1, "`hidden_channels` is expected equal to `kernel_size // 2 + 1`."
+        else:
+            assert hidden_channels == 2 * (kernel_size // 2 + 1), "`hidden_channels` is expected equal to `2 * (kernel_size // 2 + 1)`."
+    else:
+        if return_complex:
+            assert hidden_channels == kernel_size, "`hidden_channels` is expected equal to `kernel_size`."
+        else:
+            assert hidden_channels == 2 * kernel_size, "`hidden_channels` is expected equal to `2 * kernel_size`."
