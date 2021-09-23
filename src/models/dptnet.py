@@ -226,7 +226,7 @@ class Separator(nn.Module):
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         self.segment1d = Segment1d(chunk_size, hop_size)
         
-        norm_name = 'cLN' if causal else 'gLM'
+        norm_name = 'cLN' if causal else 'gLN'
         self.norm2d = choose_layer_norm(norm_name, bottleneck_channels, causal=causal, eps=eps)
 
         self.dptransformer = DualPathTransformer(
