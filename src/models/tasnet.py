@@ -270,7 +270,7 @@ class Encoder(nn.Module):
         self.kernel_size, self.stride = kernel_size, stride
         self.nonlinear = nonlinear
         
-        self.conv1d = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False, groups=in_channels)
+        self.conv1d = nn.Conv1d(in_channels, n_bases, kernel_size=kernel_size, stride=stride, bias=False)
         if nonlinear is not None:
             if nonlinear == 'relu':
                 self.nonlinear1d = nn.ReLU()
@@ -301,7 +301,7 @@ class Decoder(nn.Module):
         
         self.kernel_size, self.stride = kernel_size, stride
         
-        self.conv_transpose1d = nn.ConvTranspose1d(n_bases, out_channels, kernel_size=kernel_size, stride=stride, bias=False, groups=out_channels)
+        self.conv_transpose1d = nn.ConvTranspose1d(n_bases, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
     
     def forward(self, input):
         output = self.conv_transpose1d(input)
