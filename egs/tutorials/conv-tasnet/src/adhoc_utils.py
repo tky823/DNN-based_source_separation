@@ -39,14 +39,12 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
 
         if pre_resampler is not None:
             x = pre_resampler(x)
-        
-        mixture = x
 
         if use_cuda:
-            mixture = mixture.cuda()
+            x = x.cuda()
 
         with torch.no_grad():
-            mixture = mixture.unsqueeze(dim=1)
+            mixture = x.view(1, 1, *x.size())
 
             estimated_sources = model(mixture)
 
@@ -60,7 +58,7 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
                 y = post_resampler(y)
             
             y = y.view(*estimated_sources_channels, -1) # -> (n_mics, n_sources, T_pad)
-            y = y.permute(1, 0, 2) # -> (n_sources, n_mics, T_pad)
+            y = y.squeeze(dim=0) # -> (n_sources, n_mics, T_pad)
             T_pad = y.size(-1)
             y = F.pad(y, (0, T_original - T_pad)) # -> (n_sources, n_mics, T_original)
 
