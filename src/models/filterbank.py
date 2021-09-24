@@ -72,10 +72,12 @@ class FourierEncoder(nn.Module):
         window = self.window
 
         basis_real, basis_imag = torch.cos(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
-
-        _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
-        _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
-        basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
+        
+        if not self.onesided:
+            _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+            _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
+            basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
+        
         basis_real, basis_imag = window * basis_real, window * basis_imag
         basis = torch.cat([basis_real, basis_imag], dim=0)
     
@@ -151,9 +153,11 @@ class FourierDecoder(nn.Module):
 
         basis_real, basis_imag = torch.cos(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
 
-        _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
-        _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
-        basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
+        if not self.onesided:
+            _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+            _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
+            basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
+        
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
         basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
         basis = torch.cat([basis_real, basis_imag], dim=0)
