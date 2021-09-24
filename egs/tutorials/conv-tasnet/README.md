@@ -1,7 +1,7 @@
 # LibriSpeech separation using Conv-TasNet
 
 ## Google Colaboratory
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/librispeech/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/librispeech/conv-tasnet/train_conv-tasnet.ipynb)
 
 You can use Google Colaboratory environment. Please see `train_conv-tasnet.ipynb`
 
