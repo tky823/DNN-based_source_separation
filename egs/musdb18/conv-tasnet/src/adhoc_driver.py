@@ -12,6 +12,86 @@ EPS = 1e-12
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
         super().__init__(model, loader, criterion, optimizer, args)
+    
+    def run_one_epoch_train(self, epoch):
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+        
+        for idx, (mixture, sources) in enumerate(self.train_loader):
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+            mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
+            standardized_mixture = (mixture - mean) / (std + EPS)
+            standardized_sources = (sources - mean) / (std + EPS)
+            standardized_estimated_sources = self.model(standardized_mixture)
+            loss = self.criterion(standardized_estimated_sources, standardized_sources)
+            
+            self.optimizer.zero_grad()
+            loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            train_loss += loss.item()
+            
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
+    
+    def run_one_epoch_eval(self, epoch):
+        """
+        Validation
+        """
+        self.model.eval()
+        
+        valid_loss = 0
+        n_valid = len(self.valid_loader.dataset)
+        
+        with torch.no_grad():
+            for idx, (mixture, sources, titles) in enumerate(self.valid_loader):
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
+                standardized_mixture = (mixture - mean) / (std + EPS)
+                standardized_sources = (sources - mean) / (std + EPS)
+                standardized_estimated_sources = self.model(standardized_mixture)
+                loss = self.criterion(standardized_estimated_sources, standardized_sources, batch_mean=False)
+                loss = loss.sum(dim=0)
+                valid_loss += loss.item()
+                
+                if idx < 5:
+                    estimated_sources = std * standardized_estimated_sources + mean
+                    
+                    mixture = mixture[0].squeeze(dim=0).detach().cpu()
+                    estimated_sources = estimated_sources[0].detach().cpu()
+                    
+                    save_dir = os.path.join(self.sample_dir, titles[0])
+                    os.makedirs(save_dir, exist_ok=True)
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    
+                    save_dir = os.path.join(self.sample_dir, titles[0], "epoch{}".format(epoch + 1))
+                    os.makedirs(save_dir, exist_ok=True)
+                    for source_idx, estimated_source in enumerate(estimated_sources):
+                        target = self.valid_loader.dataset.target[source_idx]
+                        save_path = os.path.join(save_dir, "{}.wav".format(target))
+                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+        
+        valid_loss /= n_valid
+        
+        return valid_loss
 
 class Tester(TesterBase):
     def __init__(self, model, loader, criterion, args):

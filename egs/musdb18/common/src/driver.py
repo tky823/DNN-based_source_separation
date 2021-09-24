@@ -173,14 +173,14 @@ class TrainerBase:
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                output = self.model(mixture)
-                loss = self.criterion(output, sources, batch_mean=False)
+                estimated_sources = self.model(mixture)
+                loss = self.criterion(estimated_sources, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu()
-                    estimated_sources = output[0].detach().cpu()
+                    estimated_sources = estimated_sources[0].detach().cpu()
                     
                     save_dir = os.path.join(self.sample_dir, titles[0])
                     os.makedirs(save_dir, exist_ok=True)
