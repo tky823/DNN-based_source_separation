@@ -20,7 +20,7 @@ hop_size=1024
 config_path="./config/paper/${target}.yaml"
 
 # Augmentation
-augmentation_path="./config/paper/augmentation-${target}.yaml"
+augmentation_path="./config/paper/augmentation.yaml"
 
 # Criterion
 criterion='mse'
@@ -84,7 +84,7 @@ if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
 fi
 
-time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
+time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 

@@ -29,7 +29,7 @@ parser.add_argument('--hidden_channels', type=int, default=512, help='# of hidde
 parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LSTM')
 parser.add_argument('--dropout', type=float, default=0, help='dropout')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
-parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
+parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mdl', choices=['mdl'], help='Criterion')
 parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
 parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')

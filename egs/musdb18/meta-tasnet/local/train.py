@@ -53,7 +53,7 @@ parser.add_argument('--enc_compression_rate', type=int, default=4, help='Compres
 parser.add_argument('--num_filters', type=int, default=6, help='# of filters')
 parser.add_argument('--n_mels', type=int, default=256, help='# of mel bins')
 parser.add_argument('--dropout', type=float, default=0.0, help='Dropout rate')
-parser.add_argument('--sources', type=str, default='[drums,bass,others,vocals]', help='Source names')
+parser.add_argument('--sources', type=str, default='[bass,drums,others,vocals]', help='Source names')
 parser.add_argument('--criterion_reconstruction', type=str, default='sisdr', help='Reconstruction criterion')
 parser.add_argument('--criterion_similarity', type=str, default='cos', help='Simirarity criterion')
 parser.add_argument('--reconstruction', type=float, default=5e-2, help='Weight for reconstrunction loss')

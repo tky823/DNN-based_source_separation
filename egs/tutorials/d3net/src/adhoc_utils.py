@@ -8,6 +8,7 @@ from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filte
 from models.d3net import D3Net, ParallelD3Net
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
+
 SAMPLE_RATE_MUSDB18 = 44100
 NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16

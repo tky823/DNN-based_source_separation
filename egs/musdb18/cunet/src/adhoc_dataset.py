@@ -1,6 +1,5 @@
 import os
 import random
-import json
 
 import numpy as np
 import torch
@@ -9,11 +8,11 @@ import torchaudio
 from utils.utils_audio import build_window
 from dataset import MUSDB18Dataset
 
-__sources__=['drums','bass','other','vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
-EPS=1e-12
-THRESHOLD_POWER=1e-5
+EPS = 1e-12
+THRESHOLD_POWER = 1e-5
 
 class WaveDataset(MUSDB18Dataset):
     def __init__(self, musdb18_root, sr=44100, sources=__sources__, target=None):
@@ -29,14 +28,14 @@ class WaveDataset(MUSDB18Dataset):
             mixture <torch.Tensor>: (n_mics, T)
             target <torch.Tensor>: (n_mics, T)
             latent <torch.Tensor>: (len(target),)
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
             sources <torch.Tensor>: (len(target),n_mics, T)
             scale <float>: ()
         """
         data = self.json_data[idx]
 
-        songID = data['songID']
-        track = self.tracks[songID]
+        trackID = data['trackID']
+        track = self.tracks[trackID]
         name = track['name']
         paths = track['path']
         start = data['start']
@@ -109,7 +108,7 @@ class SpectrogramDataset(WaveDataset):
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
             latent
             T (), <int>: Number of samples in time-domain
-            title <str>: Title of song
+            title <str>: Title of track
         """
         mixture, target, latent, title, source, scale = super().__getitem__(idx)
         
@@ -145,7 +144,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         
         self.samples_per_epoch = None
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -168,7 +167,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 if start + patch_samples >= track_samples:
                     break
                 data = {
-                    'songID': songID,
+                    'trackID': trackID,
                     'start': start,
                     'samples': patch_samples,
                 }
@@ -199,7 +198,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -217,14 +216,14 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
             
-            song_data = {
-                'songID': songID,
+            track_data = {
+                'trackID': trackID,
                 'start': 0,
                 'samples': samples
             }
             
             self.tracks.append(track)
-            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
+            self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
     
     def __getitem__(self, idx):
         """
@@ -234,8 +233,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         """
         data = self.json_data[idx]
 
-        songID = data['songID']
-        track = self.mus.tracks[songID]
+        trackID = data['trackID']
+        track = self.mus.tracks[trackID]
         track.chunk_start = data['start']
         track.chunk_duration = data['duration']
 

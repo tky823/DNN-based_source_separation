@@ -6,9 +6,10 @@ EPS = 1e-12
 def kl_divergence(input, target, eps=EPS):
     """
     Args:
-        input (C, *)
+        input <torch.Tensor>: (*)
+        target <torch.Tensor>: (*)
     Returns:
-        loss (*)
+        loss <torch.Tensor>: (*)
     """
     ratio = (target + eps) / (input + eps)
     loss = target * torch.log(ratio)
@@ -19,7 +20,10 @@ def kl_divergence(input, target, eps=EPS):
 def is_divergence(input, target, eps=EPS):
     """
     Args:
-        input (*)
+        input <torch.Tensor>: (*)
+        target <torch.Tensor>: (*)
+    Returns:
+        loss <torch.Tensor>: (*)
     """
     ratio = (target + eps) / (input + eps)
     loss = ratio - torch.log(ratio) - 1
@@ -29,7 +33,10 @@ def is_divergence(input, target, eps=EPS):
 def generalized_kl_divergence(input, target, eps=EPS):
     """
     Args:
-        input (*)
+        input <torch.Tensor>: (*)
+        target <torch.Tensor>: (*)
+    Returns:
+        loss <torch.Tensor>: (*)
     """
     ratio = (target + eps) / (input + eps)
     loss = target * torch.log(ratio) + input - target
@@ -39,9 +46,11 @@ def generalized_kl_divergence(input, target, eps=EPS):
 def beta_divergence(input, target, beta=2):
     """
     Beta divergence
-
     Args:
-        input (batch_size, *)
+        input <torch.Tensor>: (*)
+        target <torch.Tensor>: (*)
+    Returns:
+        loss <torch.Tensor>: (*)
     """
     beta_minus1 = beta - 1
 
@@ -51,7 +60,6 @@ def beta_divergence(input, target, beta=2):
     loss = target * (target**beta_minus1 - input**beta_minus1) / beta_minus1 - (target**beta - input**beta) / beta
     
     return loss
-
 
 class KLdivergence(nn.Module):
     def __init__(self, reduction='sum', eps=EPS):
@@ -70,13 +78,13 @@ class KLdivergence(nn.Module):
             loss () or (batch_size, )
         """
         reduction = self.reduction
-        n_dim = input.dim()
+        n_dims = input.dim()
 
-        permuted_dims = [1, 0] + list(range(2, n_dim))
+        permuted_dims = [1, 0] + list(range(2, n_dims))
         input, target = input.permute(*permuted_dims), target.permute(*permuted_dims)
         loss = kl_divergence(input, target, eps=self.eps)
 
-        dims = tuple(range(1, n_dim - 1))
+        dims = tuple(range(1, n_dims - 1))
 
         if reduction == 'sum':
             loss = loss.sum(dim=dims)
@@ -107,11 +115,11 @@ class ISdivergence(nn.Module):
             loss () or (batch_size, )
         """
         reduction = self.reduction
-        n_dim = input.dim()
+        n_dims = input.dim()
 
         loss = is_divergence(input, target, eps=self.eps)
 
-        dims = tuple(range(1, n_dim))
+        dims = tuple(range(1, n_dims))
 
         if reduction == 'sum':
             loss = loss.sum(dim=dims)
@@ -142,11 +150,11 @@ class GeneralizedKLdivergence(nn.Module):
             loss () or (batch_size, )
         """
         reduction = self.reduction
-        n_dim = input.dim()
+        n_dims = input.dim()
 
         loss = generalized_kl_divergence(input, target, eps=self.eps)
 
-        dims = tuple(range(1, n_dim))
+        dims = tuple(range(1, n_dims))
 
         if reduction == 'sum':
             loss = loss.sum(dim=dims)

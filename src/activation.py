@@ -2,7 +2,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-EPS=1e-12
+EPS = 1e-12
+
+class ConcatenatedReLU(nn.Module):
+    def __init__(self, feature_dim=1):
+        super().__init__()
+
+        self.feature_dim = feature_dim
+    
+    def forward(self, input):
+        positive, negative = F.relu(input), F.relu(- input)
+        output = torch.cat([positive, negative], dim=self.feature_dim)
+
+        return output
 
 class ModReLU1d(nn.Module):
     def __init__(self, n_units, eps=EPS):
@@ -11,15 +23,14 @@ class ModReLU1d(nn.Module):
         self.n_units = n_units
         self.eps = eps
         
-        self.bias = nn.Parameter(torch.Tensor((1,n_units,1)))
+        self.bias = nn.Parameter(torch.Tensor((1, n_units, 1)))
         
         self._reset_parameters()
-        
-    
+
     def forward(self, input):
         n_units = self.n_units
         
-        real, imag = input[:,:n_units//2], input[:,n_units//2:]
+        real, imag = torch.split(input, [n_units // 2, n_units // 2], dim=1)
         magnitude = torch.sqrt(real**2 + imag**2)
         output_magnitude = magnitude + self.bias
         ratio = output_magnitude / (magnitude + self.eps)
@@ -31,7 +42,6 @@ class ModReLU1d(nn.Module):
     
     def _reset_parameters(self):
         self.bias.data.zero_()
-        
 
 """
     See "Deep Complex Networks"
@@ -61,13 +71,15 @@ class ComplexReLU(nn.Module):
     https://arxiv.org/abs/1602.09046
     https://arxiv.org/abs/1705.09792
 """
+
 class ZReLU1d(nn.Module):
     def __init__(self):
         super().__init__()
     
     def forward(self, input):
         n_units = input.size(1)
-        real, imag = input[:,:n_units//2], input[:,n_units//2:]
+        
+        real, imag = torch.split(input, [n_units // 2, n_units // 2], dim=1)
         
         condition = torch.logical_and(real > 0, imag > 0)
         output_real = torch.where(condition, real, torch.zeros_like(real))

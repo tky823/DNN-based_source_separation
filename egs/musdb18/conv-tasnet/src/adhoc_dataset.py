@@ -1,135 +1,177 @@
+import os
 import random
 
-import numpy as np
-import musdb
 import torch
+import torchaudio
 
 from dataset import WaveDataset
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
-
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-THRESHOLD_POWER = 1e-5
-MINSCALE = 0.75
-MAXSCALE = 1.25
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, samples_per_epoch=None, sources=__sources__, target=None, is_wav=False):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
-        
-        assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='train', is_wav=is_wav)
-        
-        self.duration = duration
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
+        """
+        Args:
+            musdb18_root <int>: Path to MUSDB or MUSDB-HQ
+            sr: Sampling frequency. Default: 44100
+            sources <list<str>>: Sources included in mixture
+            target <str> or <list<str>>: Target source(s)
+        """
+        super().__init__(
+            musdb18_root,
+            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sources=sources,
+            target=target
+        )
 
-        self.std = {}
-        self.json_data = None
+        train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
-        for songID, track in enumerate(self.mus.tracks):
-            if set(self.sources) == set(__sources__):
-                mixture = track.audio.transpose(1, 0)
-            else:
-                sources = []
-                for _source in self.sources:
-                    sources.append(track.targets[_source].audio.transpose(1, 0)[np.newaxis])
-                sources = np.concatenate(sources, axis=0)
-                mixture = sources.sum(axis=0)
-            
-            self.std[songID] = np.std(mixture.mean(axis=0))
-        
-        self.samples_per_epoch = samples_per_epoch
+        with open(train_txt_path, 'r') as f:
+            names = [line.strip() for line in f]
+
+        self.sr = sr
+        self.samples = int(duration * sr)
+        self.augmentation = augmentation
+
+        self.tracks = []
+
+        if augmentation:
+            total_duration = 0
+
+            for trackID, name in enumerate(names):
+                mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+                audio_info = torchaudio.info(mixture_path)
+                track_sr = audio_info.sample_rate
+                track_samples = audio_info.num_frames
+
+                track = {
+                    'name': name,
+                    'samples_original': track_samples,
+                    'path': {
+                        'mixture': mixture_path
+                    }
+                }
+                
+                for source in sources:
+                    track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+                
+                self.tracks.append(track)
+
+                track_duration = track_samples / track_sr
+                total_duration += track_duration
+
+            if samples_per_epoch is None:
+                samples_per_epoch = int(total_duration / duration)
+
+            self.samples_per_epoch = samples_per_epoch
+            self.json_data = None
+        else:
+            samples_original = int(self.samples * SAMPLE_RATE_MUSDB18 / sr)
+
+            if overlap is None:
+                overlap = samples_original // 2
+            self.samples_per_epoch = None
+
+            for trackID, name in enumerate(names):
+                mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+                audio_info = torchaudio.info(mixture_path)
+                track_sr = audio_info.sample_rate
+                track_samples = audio_info.num_frames
+
+                track = {
+                    'name': name,
+                    'samples_original': track_samples,
+                    'path': {
+                        'mixture': mixture_path
+                    }
+                }
+
+                for source in sources:
+                    track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+                self.tracks.append(track)
+
+                for start in range(0, track_samples, self.samples - overlap):
+                    if start + self.samples >= track_samples:
+                        break
+                    data = {
+                        'trackID': trackID,
+                        'start': start,
+                        'samples_original': samples_original,
+                    }
+                    self.json_data.append(data)
+
+        if sr != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        else:
+            self.pre_resampler = None
 
     def __getitem__(self, idx):
         """
-        Args:
-            idx <int>: index
+        Returns:
+            mixture <torch.Tensor>: Tensor with shape (1, n_mics, T)  if `target` is list, otherwise (n_mics, T) 
+            target <torch.Tensor>: Tensor with shape (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+        """
+        if self.augmentation:
+            mixture, target = self._getitem_augmentation()
+        else:
+            raise NotImplementedError("Implement _getitem()")
+        
+        if self.pre_resampler is not None:
+            mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+            mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
+
+            mixture = self.pre_resampler(mixture)
+            target = self.pre_resampler(target)
+
+            mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
+
+        return mixture, target
+
+    def _getitem_augmentation(self):
+        """
+        Returns time domain signals
         Returns:
             mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+            name <str>: Artist and title of track
         """
-        n_songs = len(self.mus.tracks)
-        song_indices = random.choices(range(n_songs), k=len(self.sources))
+        n_tracks = len(self.tracks)
+        track_indices = random.choices(range(n_tracks), k=len(self.sources))
 
         sources = []
-        songIDs = []
-        starts = []
-        flips = []
-        scales = []
 
-        for _source, songID in zip(self.sources, song_indices):
-            track = self.mus.tracks[songID]
-            std = self.std[songID]
+        for _source, trackID in zip(self.sources, track_indices):
+            track = self.tracks[trackID]
+            source_path = track['path'][_source]
+            track_samples = track['samples_original']
 
-            start = random.uniform(0, track.duration - self.duration)
-            flip = random.choice([True, False])
-            scale = random.uniform(MINSCALE, MAXSCALE)
+            start = random.randint(0, track_samples - self.samples - 1)
+            source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.samples)
 
-            track.chunk_start = start
-            track.chunk_duration = self.duration
-
-            source = track.targets[_source].audio.transpose(1, 0) / std
-
-            if flip:
-                source = source[::-1]
-
-            sources.append(scale * source[np.newaxis])
-            songIDs.append(songID)
-            starts.append(start)
-            flips.append(flip)
-            scales.append(scale)
-        
-        sources = np.concatenate(sources, axis=0)
-        mixture = sources.sum(axis=0)
+            # Apply augmentation
+            source = self.augmentation(source)
+            sources.append(source.unsqueeze(dim=0))
         
         if type(self.target) is list:
             target = []
             for _target in self.target:
-                idx = self.sources.index(_target)
-                songID = songIDs[idx]
-                start = starts[idx]
-                flip = flips[idx]
-                scale = scales[idx]
-                std = self.std[songID]
-                
-                track = self.mus.tracks[songID]
+                source_idx = self.sources.index(_target)
+                _target = sources[source_idx]
+                target.append(_target)
+            target = torch.cat(target, dim=0)
 
-                track.chunk_start = start
-                track.chunk_duration = self.duration
-
-                _target = track.targets[_target].audio.transpose(1, 0) / std
-                
-                if flip:
-                    _target = _target[::-1]
-
-                target.append(scale * _target[np.newaxis])
-            
-            target = np.concatenate(target, axis=0)
-            mixture = mixture[np.newaxis]
+            sources = torch.cat(sources, dim=0)
+            mixture = sources.sum(dim=0, keepdim=True)
         else:
-            _target = self.target
-            idx = self.sources.index(_target)
-            songID = songIDs[idx]
-            start = starts[idx]
-            flip = flips[idx]
-            scale = scales[idx]
-            std = self.std[songID]
-            
-            track = self.mus.tracks[songID]
-            
-            track.chunk_start = start
-            track.chunk_duration = self.duration
+            source_idx = self.sources.index(self.target)
+            target = sources[source_idx]
+            target = target.squeeze(dim=0)
 
-            _target = track.targets[_target].audio.transpose(1, 0) / std
-                
-            if flip:
-                _target = _target[::-1]
-            
-            target = scale * _target
-
-        mixture = torch.Tensor(mixture).float()
-        target = torch.Tensor(target).float()
+            sources = torch.cat(sources, dim=0)
+            mixture = sources.sum(dim=0)
 
         return mixture, target
 
@@ -137,52 +179,102 @@ class WaveTrainDataset(WaveDataset):
         return self.samples_per_epoch
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=10, sources=__sources__, target=None, is_wav=False):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target, is_wav=is_wav)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=60, sources=__sources__, target=None):
+        super().__init__(
+            musdb18_root,
+            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sources=sources,
+            target=target
+        )
 
-        assert_sample_rate(sr)
-        self.mus = musdb.DB(root=self.musdb18_root, subsets="train", split='valid', is_wav=is_wav)
+        valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
+        
+        with open(valid_txt_path, 'r') as f:
+            names = [line.strip() for line in f]
 
-        self.max_duration = max_duration
+        self.max_samples = int(sr * max_duration)
 
+        self.tracks = []
         self.json_data = []
 
-        for songID, track in enumerate(self.mus.tracks):
-            if max_duration is None:
-                duration = track.duration
-            else:
-                if track.duration < max_duration:
-                    duration = track.duration
-                else:
-                    duration = max_duration
-            
-            data = {
-                'songID': songID,
-                'start': 0,
-                'duration': duration
+        for trackID, name in enumerate(names):
+            mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
+            audio_info = torchaudio.info(mixture_path)
+            track_sr = audio_info.sample_rate
+            track_samples = audio_info.num_frames
+            samples_original = min(int(self.max_samples * track_sr / sr), track_samples)
+
+            track = {
+                'name': name,
+                'samples_original': track_samples,
+                'path': {
+                    'mixture': mixture_path
+                }
             }
-            self.json_data.append(data)
+
+            for source in sources:
+                track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+            
+            track_data = {
+                'trackID': trackID,
+                'start': 0,
+                'samples_original': samples_original
+            }
+            
+            self.tracks.append(track)
+            self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
+        
+        if sr != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        else:
+            self.pre_resampler = None
+
+    def __getitem__(self, idx):
+        """
+        Returns:
+            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, T)  if `target` is list, otherwise (n_mics, T) 
+            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+            name <str>: Artist and title of track
+        """
+        track_data = self.json_data[idx]
+
+        trackID = track_data['trackID']
+        track = self.tracks[trackID]
+        name = track['name']
+        paths = track['path']
+        samples_original = track_data['samples_original']
+
+        if set(self.sources) == set(__sources__):
+            mixture, _ = torchaudio.load(paths['mixture'], num_frames=samples_original) # (n_mics, T)
+        else:
+            sources = []
+            for _source in self.sources:
+                source, _ = torchaudio.load(paths[_source], num_frames=samples_original) # (n_mics, T)
+                sources.append(source.unsqueeze(dim=0))
+            sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
+            mixture = sources.sum(dim=0) # (n_mics, T)
+        
+        if type(self.target) is list:
+            target = []
+            for _target in self.target:
+                source, _ = torchaudio.load(paths[_target], num_frames=samples_original) # (n_mics, T)
+                target.append(source.unsqueeze(dim=0))
+            target = torch.cat(target, dim=0) # (len(target), n_mics, T)
+            mixture = mixture.unsqueeze(dim=0) # (1, n_mics, T)
+        else:
+            # mixture: (n_mics, T)
+            target, _ = torchaudio.load(paths[self.target], num_frames=samples_original) # (n_mics, T)
+        
+        if self.pre_resampler is not None:
+            mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+            mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
+
+            mixture = self.pre_resampler(mixture)
+            target = self.pre_resampler(target)
+
+            mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
+
+        return mixture, target, name
 
 def assert_sample_rate(sr):
     assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
-
-def _test_train_dataset():
-    torch.manual_seed(111)
-    
-    musdb18_root = "../../../../../db/musdb18"
-
-    dataset = WaveTrainDataset(musdb18_root, sr=8000, duration=4, target='vocals')
-    
-    for mixture, sources in dataset:
-        print(mixture.size(), sources.size())
-        break
-
-    dataset.save_as_json('data/tmp.json')
-
-    WaveTrainDataset.from_json(musdb18_root, 'data/tmp.json', sr=SAMPLE_RATE_MUSDB18, target='vocals')
-    for mixture, sources in dataset:
-        print(mixture.size(), sources.size())
-        break
-
-if __name__ == '__main__':
-    _test_train_dataset()

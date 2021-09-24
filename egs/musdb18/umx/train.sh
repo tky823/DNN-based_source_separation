@@ -4,7 +4,7 @@ exp_dir="./exp"
 continue_from=""
 tag=""
 
-sources="[drums,bass,other,vocals]"
+sources="[bass,drums,other,vocals]"
 target='vocals'
 duration=6
 valid_duration=100
@@ -68,7 +68,7 @@ if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
 fi
 
-time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
+time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 

@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_bases, choose_layer_norm
+from utils.utils_filterbank import choose_filterbank
+from utils.utils_tasnet import choose_layer_norm
 from models.gtu import GTU1d
 from models.transform import Segment1d, OverlapAdd1d
 from models.galr import GALR
@@ -12,7 +13,7 @@ EPS=1e-12
 class GALRNet(nn.Module):
     def __init__(
         self,
-        n_bases, kernel_size, stride=None, enc_bases=None, dec_bases=None,
+        n_basis, kernel_size, stride=None, enc_basis=None, dec_basis=None,
         sep_hidden_channels=128,
         sep_chunk_size=100, sep_hop_size=50, sep_down_chunk_size=None, sep_num_blocks=6,
         sep_num_heads=8, sep_norm=True, sep_dropout=0.1,
@@ -26,24 +27,26 @@ class GALRNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
-        assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
+        assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
-        self.n_bases = n_bases
+        self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
-        self.enc_bases, self.dec_bases = enc_bases, dec_bases
+        self.enc_basis, self.dec_basis = enc_basis, dec_basis
         
-        if enc_bases == 'trainable' and not dec_bases == 'pinv':    
+        if enc_basis == 'trainable' and not dec_basis == 'pinv':    
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
         
-        if enc_bases in ['Fourier', 'trainableFourier'] or dec_bases in ['Fourier', 'trainableFourier']:
+        if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']:
             self.window_fn = kwargs['window_fn']
+            self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
+            self.enc_onesided, self.enc_return_complex = None, None
         
         # Separator configuration
         self.sep_hidden_channels = sep_hidden_channels
@@ -62,25 +65,24 @@ class GALRNet(nn.Module):
         self.eps = eps
         
         # Network configuration
-        encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
+        encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
         
         self.encoder = encoder
         self.separator = Separator(
-            n_bases, hidden_channels=sep_hidden_channels,
+            n_basis, hidden_channels=sep_hidden_channels,
             chunk_size=sep_chunk_size, hop_size=sep_hop_size, down_chunk_size=sep_down_chunk_size, num_blocks=sep_num_blocks,
             num_heads=sep_num_heads, norm=sep_norm, dropout=sep_dropout, mask_nonlinear=mask_nonlinear,
             low_dimension=low_dimension,
             causal=causal,
             n_sources=n_sources,
             eps=eps
-            
         )
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
-        output, latent = self.extract_latent(input)
+        output, _ = self.extract_latent(input)
         
         return output
         
@@ -90,42 +92,52 @@ class GALRNet(nn.Module):
             input (batch_size, 1, T)
         Returns:
             output (batch_size, n_sources, T)
-            latent (batch_size, n_sources, n_bases, T'), where T' = (T-K)//S+1
+            latent (batch_size, n_sources, n_basis, T'), where T' = (T-K)//S+1
         """
         n_sources = self.n_sources
-        n_bases = self.n_bases
+        n_basis = self.n_basis
         kernel_size, stride = self.kernel_size, self.stride
         
         batch_size, C_in, T = input.size()
         
-        assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+        assert C_in == 1, "input.size() is expected (?, 1, ?), but given {}".format(input.size())
         
-        padding = (stride - (T-kernel_size)%stride)%stride
-        padding_left = padding//2
+        padding = (stride - (T - kernel_size) % stride) % stride
+        padding_left = padding // 2
         padding_right = padding - padding_left
 
         input = F.pad(input, (padding_left, padding_right))
         w = self.encoder(input)
-        mask = self.separator(w)
-        w = w.unsqueeze(dim=1)
-        w_hat = w * mask
+        
+        if torch.is_complex(w):
+            amplitude, phase = torch.abs(w), torch.angle(w)
+            mask = self.separator(amplitude)
+            amplitude, phase = amplitude.unsqueeze(dim=1), phase.unsqueeze(dim=1)
+            w_hat = amplitude * mask * torch.exp(1j * phase)
+        else:
+            mask = self.separator(w)
+            w = w.unsqueeze(dim=1)
+            w_hat = w * mask
+
         latent = w_hat
-        w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
+        w_hat = w_hat.view(batch_size*n_sources, n_basis, -1)
         x_hat = self.decoder(w_hat)
         x_hat = x_hat.view(batch_size, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
     
-    def get_package(self):
-        package = {
-            'n_bases': self.n_bases,
+    def get_config(self):
+        config = {
+            'n_basis': self.n_basis,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
-            'enc_bases': self.enc_bases,
-            'dec_bases': self.dec_bases,
+            'enc_basis': self.enc_basis,
+            'dec_basis': self.dec_basis,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
+            'enc_onesided': self.enc_onesided,
+            'enc_return_complex': self.enc_return_complex,
             'sep_hidden_channels': self.sep_hidden_channels,
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,
@@ -141,7 +153,7 @@ class GALRNet(nn.Module):
             'eps': self.eps
         }
     
-        return package
+        return config
     
     def _get_num_parameters(self):
         num_parameters = 0
@@ -169,7 +181,7 @@ class Separator(nn.Module):
         self.chunk_size, self.hop_size = chunk_size, hop_size
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        norm_name = 'cLN' if causal else 'gLM'
+        norm_name = 'cLN' if causal else 'gLN'
         self.norm2d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
 
         if low_dimension:
@@ -284,8 +296,8 @@ def _test_galrnet():
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
     
-    print("-"*10, "Trainable Bases & Non causal", "-"*10)
-    enc_bases, dec_bases = 'trainable', 'trainable'
+    print("-"*10, "Trainable Basis & Non causal", "-"*10)
+    enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = 'relu'
     
     causal = False
@@ -293,7 +305,7 @@ def _test_galrnet():
     n_sources = 2
     
     model = GALRNet(
-        D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
@@ -309,8 +321,8 @@ def _test_galrnet():
     print(input.size(), output.size())
     print()
     
-    print("-"*10, "Fourier Bases & Causal", "-"*10)
-    enc_bases, dec_bases = 'Fourier', 'Fourier'
+    print("-"*10, "Fourier Basis & Causal", "-"*10)
+    enc_basis, dec_basis = 'Fourier', 'Fourier'
     window_fn = 'hamming'
     
     causal = True
@@ -318,7 +330,7 @@ def _test_galrnet():
     n_sources = 3
     
     model = GALRNet(
-        D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, window_fn=window_fn,
+        D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, window_fn=window_fn,
         sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
@@ -350,7 +362,7 @@ def _test_galrnet_paper():
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
     
-    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = None
     
     causal = False
@@ -358,7 +370,7 @@ def _test_galrnet_paper():
     n_sources = 2
     
     model = GALRNet(
-        D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,
@@ -391,7 +403,7 @@ def _test_big_galrnet_paper():
     
     input = torch.randn((batch_size, C, T), dtype=torch.float)
     
-    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = None
     
     causal = False
@@ -399,7 +411,7 @@ def _test_big_galrnet_paper():
     n_sources = 2
     
     model = GALRNet(
-        D, kernel_size=M, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_hidden_channels=H,
         sep_chunk_size=K, sep_hop_size=P, sep_down_chunk_size=Q,
         sep_num_blocks=N, sep_num_heads=J,

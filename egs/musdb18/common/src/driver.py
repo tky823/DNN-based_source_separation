@@ -173,23 +173,25 @@ class TrainerBase:
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                output = self.model(mixture)
-                loss = self.criterion(output, sources, batch_mean=False)
+                estimated_sources = self.model(mixture)
+                loss = self.criterion(estimated_sources, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu()
-                    estimated_sources = output[0].detach().cpu()
+                    estimated_sources = estimated_sources[0].detach().cpu()
                     
                     save_dir = os.path.join(self.sample_dir, titles[0])
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
+                    save_dir = os.path.join(self.sample_dir, titles[0], "epoch{}".format(epoch + 1))
+                    os.makedirs(save_dir, exist_ok=True)
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         target = self.valid_loader.dataset.target[source_idx]
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, target))
+                        save_path = os.path.join(save_dir, "{}.wav".format(target))
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
@@ -254,7 +256,7 @@ class EvaluaterBase:
     
     def _reset(self, args):
         self.target = [
-            'drums', 'bass', 'other', 'vocals', 'accompaniment'
+            'bass', 'drums', 'other', 'vocals', 'accompaniment'
         ]
         self.mus = musdb.DB(root=args.musdb18_root, subsets="test", is_wav=args.is_wav)
         self.estimated_mus = musdb.DB(root=args.estimated_musdb18_root, subsets="test", is_wav=True)

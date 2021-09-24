@@ -1,4 +1,4 @@
-augmentation: [random_scale, random_flip]
+augmentation: [random_scaling, random_flip]
 random_scaling:
   min: 0.25
   max: 1.25
