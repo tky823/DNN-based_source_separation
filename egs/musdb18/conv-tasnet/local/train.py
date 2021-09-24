@@ -31,7 +31,7 @@ parser.add_argument('--enc_onesided', type=int, default=None, choices=[0, 1, Non
 parser.add_argument('--enc_return_complex', type=int, default=None, choices=[0, 1, None], help='If true, encoder returns complex tensor, otherwise real tensor concatenated real and imaginary part in feature dimension.')
 parser.add_argument('--n_basis', '-N', type=int, default=256, help='# basis')
 parser.add_argument('--kernel_size', '-L', type=int, default=20, help='Kernel size')
-parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//4')
+parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
 parser.add_argument('--sep_bottleneck_channels', '-B', type=int, default=256, help='Bottleneck channels of separator')
 parser.add_argument('--sep_hidden_channels', '-H', type=int, default=512, help='Hidden channels of separator')
 parser.add_argument('--sep_skip_channels', '-Sc', type=int, default=128, help='Skip connection channels of separator')
@@ -88,7 +88,7 @@ def main(args):
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if not args.stride:
-        args.stride = args.kernel_size // 4
+        args.stride = args.kernel_size // 2
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
     if args.max_norm is not None and args.max_norm == 0:
