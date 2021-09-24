@@ -111,6 +111,8 @@ train.py \
 --dec_basis ${dec_basis} \
 --enc_nonlinear "${enc_nonlinear}" \
 --window_fn "${window_fn}" \
+--enc_onesided "${enc_onesided}" \
+--enc_return_complex "${enc_return_complex}" \
 -N ${N} \
 -L ${L} \
 -B ${B} \

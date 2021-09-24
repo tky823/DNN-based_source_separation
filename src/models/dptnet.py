@@ -29,10 +29,10 @@ class DPTNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
         if sep_hop_size is None:
-            sep_hop_size = sep_chunk_size//2
+            sep_hop_size = sep_chunk_size // 2
         
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         assert n_basis % sep_num_heads == 0, "n_basis must be divisible by sep_num_heads"
@@ -49,10 +49,10 @@ class DPTNet(nn.Module):
         
         if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']:
             self.window_fn = kwargs['window_fn']
-            self.onesided, self.return_complex = kwargs['onesided'], kwargs['return_complex']
+            self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
-            self.onesided, self.return_complex = None, None
+            self.enc_onesided, self.enc_return_complex = None, None
         
         # Separator configuration
         self.sep_bottleneck_channels, self.sep_hidden_channels = sep_bottleneck_channels, sep_hidden_channels
@@ -139,8 +139,8 @@ class DPTNet(nn.Module):
             'dec_basis': self.dec_basis,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
-            'onesided': self.onesided,
-            'return_complex': self.return_complex,
+            'enc_onesided': self.enc_onesided,
+            'enc_return_complex': self.enc_return_complex,
             'sep_hidden_channels': self.sep_hidden_channels,
             'sep_bottleneck_channels': self.sep_bottleneck_channels,
             'sep_chunk_size': self.sep_chunk_size,
@@ -166,7 +166,7 @@ class DPTNet(nn.Module):
         kernel_size, stride = config['kernel_size'], config['stride']
         enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
         enc_nonlinear = config['enc_nonlinear']
-        onesided, return_complex = config.get('enc_nonlinear') or None, config.get('return_complex') or None
+        enc_onesided, enc_return_complex = config.get('enc_onesided') or None, config.get('enc_return_complex') or None
         window_fn = config['window_fn']
         
         sep_hidden_channels, sep_bottleneck_channels = config['sep_hidden_channels'], config['sep_bottleneck_channels']
@@ -186,7 +186,7 @@ class DPTNet(nn.Module):
         model = cls(
             n_basis, kernel_size, stride=stride,
             enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
-            window_fn=window_fn, onesied=onesided, return_complex=return_complex,
+            window_fn=window_fn, enc_onesided=enc_onesided, enc_return_complex=enc_return_complex,
             sep_bottleneck_channels=sep_bottleneck_channels, sep_hidden_channels=sep_hidden_channels,
             sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks,
             sep_num_heads=sep_num_heads,

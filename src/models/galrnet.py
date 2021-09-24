@@ -26,9 +26,9 @@ class GALRNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
-        assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
+        assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
         self.n_basis = n_basis
@@ -42,10 +42,10 @@ class GALRNet(nn.Module):
         
         if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']:
             self.window_fn = kwargs['window_fn']
-            self.onesided, self.return_complex = kwargs['onesided'], kwargs['return_complex']
+            self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
-            self.onesided, self.return_complex = None, None
+            self.enc_onesided, self.enc_return_complex = None, None
         
         # Separator configuration
         self.sep_hidden_channels = sep_hidden_channels
@@ -135,8 +135,8 @@ class GALRNet(nn.Module):
             'dec_basis': self.dec_basis,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
-            'onesided': self.onesided,
-            'return_complex': self.return_complex,
+            'enc_onesided': self.enc_onesided,
+            'enc_return_complex': self.enc_return_complex,
             'sep_hidden_channels': self.sep_hidden_channels,
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,

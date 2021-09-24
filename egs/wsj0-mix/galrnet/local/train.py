@@ -78,7 +78,7 @@ def main(args):
         args.max_norm = None
     model = GALRNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
-        window_fn=args.window_fn, onesided=args.enc_onesided, return_complex=args.enc_return_complex,
+        window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,
         sep_hidden_channels=args.sep_hidden_channels, 
         sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_down_chunk_size=args.sep_down_chunk_size, sep_num_blocks=args.sep_num_blocks,
         sep_num_heads=args.sep_num_heads, sep_norm=args.sep_norm, sep_dropout=args.sep_dropout,

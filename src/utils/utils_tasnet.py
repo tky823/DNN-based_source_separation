@@ -16,7 +16,7 @@ def choose_basis(hidden_channels, kernel_size, stride=None, enc_basis='trainable
     elif enc_basis in ['Fourier', 'trainableFourier']:
         assert_monoral(in_channels)
         trainable = False if 'Fourier' else True
-        onesided, return_complex = kwargs['onesided'], kwargs['return_complex']
+        onesided, return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         window_fn = kwargs['window_fn']
         assert_hidden_channels(hidden_channels, kernel_size, onesided=onesided, return_complex=return_complex)
         encoder = FourierEncoder(kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided, return_complex=return_complex)
@@ -28,7 +28,7 @@ def choose_basis(hidden_channels, kernel_size, stride=None, enc_basis='trainable
     elif dec_basis in ['Fourier', 'trainableFourier']:
         assert_monoral(in_channels)
         trainable = False if 'Fourier' else True
-        onesided, return_complex = kwargs['onesided'], kwargs['return_complex']
+        onesided, return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         window_fn = kwargs['window_fn']
         assert_hidden_channels(hidden_channels, kernel_size, onesided=onesided, return_complex=return_complex)
         decoder = FourierDecoder(kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided)
