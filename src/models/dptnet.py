@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_basis, choose_layer_norm
+from utils.utils_filterbank import choose_filterbank
+from utils.utils_tasnet import choose_layer_norm
 from models.gtu import GTU1d
 from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 from models.dptransformer import DualPathTransformer
@@ -70,7 +71,7 @@ class DPTNet(nn.Module):
         self.eps = eps
         
         # Network configuration
-        encoder, decoder = choose_basis(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
+        encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
         
         self.encoder = encoder
         self.separator = Separator(

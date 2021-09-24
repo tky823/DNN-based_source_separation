@@ -10,41 +10,43 @@ from utils.utils_audio import build_window, build_optimal_window
 EPS = 1e-12
 
 class FourierEncoder(nn.Module):
-    def __init__(self, kernel_size, stride=None, window_fn='hann', trainable=False, onesided=True, return_complex=True):
+    def __init__(self, n_basis, kernel_size, stride=None, window_fn='hann', trainable=False, onesided=True, return_complex=True):
         super().__init__()
 
+        self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.trainable = trainable
         self.onesided, self.return_complex = onesided, return_complex
 
-        omega = 2 * math.pi * torch.arange(kernel_size // 2 + 1) / kernel_size
+        omega = 2 * math.pi * torch.arange(n_basis // 2 + 1) / n_basis
         time_seq = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
         
         self.omega, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(time_seq, requires_grad=False)
         self.window = nn.Parameter(window)
-        
+    
     def forward(self, input):
         """
         Args:
             input <torch.Tensor>: (batch_size, 1, T)
         Returns:
             output <torch.Tensor>:
-                Complex tensor with shape of (batch_size, kernel_size // 2 + 1, n_frames) if onesided=True and return_complex=True
-                Complex tensor with shape of (batch_size, kernel_size, n_frames) if onesided=False and return_complex=True
-                Tensor with shape of (batch_size, 2 * (kernel_size // 2 + 1), n_frames) if onesided=True and return_complex=False
-                Tensor with shape of (batch_size, 2 * kernel_size, n_frames) if onesided=False and return_complex=False
+                Complex tensor with shape of (batch_size, n_basis // 2 + 1, n_frames) if onesided=True and return_complex=True
+                Complex tensor with shape of (batch_size, n_basis, n_frames) if onesided=False and return_complex=True
+                Tensor with shape of (batch_size, 2 * (n_basis // 2 + 1), n_frames) if onesided=True and return_complex=False
+                Tensor with shape of (batch_size, 2 * n_basis, n_frames) if onesided=False and return_complex=False
         """
-        kernel_size, stride = self.kernel_size, self.stride
+        n_basis = self.n_basis
+        stride = self.stride
         omega, time_seq = self.omega, self.time_seq
         window = self.window
 
         basis_real, basis_imag = torch.cos(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
         basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
         if not self.onesided:
-            _, basis_real_conj, _ = torch.split(basis_real, [1, kernel_size // 2 - 1, 1], dim=0)
-            _, basis_imag_conj, _ = torch.split(basis_imag, [1, kernel_size // 2 - 1, 1], dim=0)
+            _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+            _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         basis_real, basis_imag = window * basis_real, window * basis_imag
         output_real, output_imag = F.conv1d(input, basis_real, stride=stride), F.conv1d(input, basis_imag, stride=stride)
@@ -58,21 +60,21 @@ class FourierEncoder(nn.Module):
             output = output.view(batch_size, 2*n_bins, n_frames)
 
         return output
-    
+
     def extra_repr(self):
         s = "kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
         
         return s.format(**self.__dict__)
 
     def get_basis(self):
-        kernel_size = self.kernel_size
+        n_basis = self.n_basis
         omega, time_seq = self.omega, self.time_seq
         window = self.window
 
         basis_real, basis_imag = torch.cos(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
 
-        _, basis_real_conj, _ = torch.split(basis_real, [1, kernel_size // 2 - 1, 1], dim=0)
-        _, basis_imag_conj, _ = torch.split(basis_imag, [1, kernel_size // 2 - 1, 1], dim=0)
+        _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+        _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
         basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         basis_real, basis_imag = window * basis_real, window * basis_imag
         basis = torch.cat([basis_real, basis_imag], dim=0)
@@ -80,14 +82,15 @@ class FourierEncoder(nn.Module):
         return basis
 
 class FourierDecoder(nn.Module):
-    def __init__(self, kernel_size, stride=None, window_fn='hann', trainable=False, onesided=True):
+    def __init__(self, n_basis, kernel_size, stride=None, window_fn='hann', trainable=False, onesided=True):
         super().__init__()
 
+        self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.trainable = trainable
         self.onesided = onesided
 
-        omega = 2 * math.pi * torch.arange(kernel_size // 2 + 1) / kernel_size
+        omega = 2 * math.pi * torch.arange(n_basis // 2 + 1) / n_basis
         time_seq = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
@@ -95,7 +98,7 @@ class FourierDecoder(nn.Module):
         
         self.omega, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(time_seq, requires_grad=False)
         self.optimal_window = nn.Parameter(optimal_window)
-        
+
     def forward(self, input):
         """
         Args:
@@ -107,7 +110,8 @@ class FourierDecoder(nn.Module):
         Returns:
             output <torch.Tensor>: (batch_size, 1, T)
         """
-        kernel_size, stride = self.kernel_size, self.stride
+        n_basis = self.n_basis
+        stride = self.stride
         omega, time_seq = self.omega, self.time_seq
         optimal_window = self.optimal_window
 
@@ -120,38 +124,38 @@ class FourierDecoder(nn.Module):
         basis_real, basis_imag = torch.cos(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
         basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
 
-        _, basis_real_conj, _ = torch.split(basis_real, [1, kernel_size // 2 - 1, 1], dim=0)
-        _, basis_imag_conj, _ = torch.split(basis_imag, [1, kernel_size // 2 - 1, 1], dim=0)
+        _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+        _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
         basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
-        basis_real, basis_imag = basis_real / kernel_size, basis_imag / kernel_size
+        basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
 
         if self.onesided:
-            _, input_real_conj, _ = torch.split(input_real, [1, kernel_size // 2 - 1, 1], dim=1)
-            _, input_imag_conj, _ = torch.split(input_imag, [1, kernel_size // 2 - 1, 1], dim=1)
+            _, input_real_conj, _ = torch.split(input_real, [1, n_basis // 2 - 1, 1], dim=1)
+            _, input_imag_conj, _ = torch.split(input_imag, [1, n_basis // 2 - 1, 1], dim=1)
             input_real, input_imag = torch.cat([input_real, input_real_conj], dim=1), torch.cat([input_imag, - input_imag_conj], dim=1)
 
         output = F.conv_transpose1d(input_real, basis_real, stride=stride) - F.conv_transpose1d(input_imag, basis_imag, stride=stride)
 
         return output
-    
+
     def extra_repr(self):
         s = "kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
         
         return s.format(**self.__dict__)
 
     def get_basis(self):
-        kernel_size = self.kernel_size
+        n_basis = self.n_basis
         omega, time_seq = self.omega, self.time_seq
         optimal_window = self.optimal_window
 
         basis_real, basis_imag = torch.cos(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
 
-        _, basis_real_conj, _ = torch.split(basis_real, [1, kernel_size // 2 - 1, 1], dim=0)
-        _, basis_imag_conj, _ = torch.split(basis_imag, [1, kernel_size // 2 - 1, 1], dim=0)
+        _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+        _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
         basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
-        basis_real, basis_imag = basis_real / kernel_size, basis_imag / kernel_size
+        basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
         basis = torch.cat([basis_real, basis_imag], dim=0)
 
         return basis
@@ -324,8 +328,9 @@ def _test_filterbank():
     print()
 
     print("-"*10, "Fourier Encoder (onesided=True, return_complex=True)", "-"*10)
-    encoder = FourierEncoder(kernel_size, stride=stride, onesided=True, return_complex=True)
-    decoder = FourierDecoder(kernel_size, stride=stride, onesided=True)
+    n_basis = kernel_size
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, onesided=True, return_complex=True)
+    decoder = FourierDecoder(n_basis, kernel_size, stride=stride, onesided=True)
 
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
     
@@ -352,8 +357,8 @@ def _test_filterbank():
     plt.close()
 
     print("-"*10, "Fourier Encoder (onesided=False, return_complex=True)", "-"*10)
-    encoder = FourierEncoder(kernel_size, stride=stride, onesided=False, return_complex=True)
-    decoder = FourierDecoder(kernel_size, stride=stride, onesided=False)
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, onesided=False, return_complex=True)
+    decoder = FourierDecoder(n_basis, kernel_size, stride=stride, onesided=False)
 
     spectrogram = encoder(input)
     output = decoder(spectrogram)
@@ -361,8 +366,8 @@ def _test_filterbank():
     print()
 
     print("-"*10, "Fourier Encoder (onesided=False, return_complex=False)", "-"*10)
-    encoder = FourierEncoder(kernel_size, stride=stride, onesided=False, return_complex=False)
-    decoder = FourierDecoder(kernel_size, stride=stride, onesided=False)
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, onesided=False, return_complex=False)
+    decoder = FourierDecoder(n_basis, kernel_size, stride=stride, onesided=False)
 
     spectrogram = encoder(input)
     output = decoder(spectrogram)
@@ -392,7 +397,8 @@ def _test_fourier():
     input = torch.randn((batch_size, C, T), dtype=torch.float)
 
     print("-"*10, "Fourier Encoder", "-"*10)
-    encoder = FourierEncoder(kernel_size, stride=stride, window_fn='hann', onesided=onesided, return_complex=return_complex)
+    n_basis = kernel_size
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided, return_complex=return_complex)
 
     spectrogram = encoder(input)
     amplitude = torch.clip(torch.abs(spectrogram), min=EPS)
@@ -414,6 +420,42 @@ def _test_fourier():
     plt.pcolormesh(magnitude_stft[0, 0].detach().cpu().numpy(), cmap='bwr')
     plt.colorbar()
     plt.savefig('data/filterbank/spectrogram-stft.png', bbox_inches='tight')
+    plt.close()
+
+    n_basis = kernel_size
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided, return_complex=return_complex)
+    decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
+    spectrogram = encoder(input)
+    output = decoder(spectrogram)
+    
+    plt.figure()
+    plt.plot(input[0, 0].detach().numpy())
+    plt.plot(output[0, 0].detach().numpy())
+    plt.savefig('data/filterbank/reconstruction_N{}_K{}.png'.format(n_basis, kernel_size), bbox_inches='tight')
+    plt.close()
+
+    n_basis = kernel_size // 2
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided, return_complex=return_complex)
+    decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
+    spectrogram = encoder(input)
+    output = decoder(spectrogram)
+    
+    plt.figure()
+    plt.plot(input[0, 0].detach().numpy())
+    plt.plot(output[0, 0].detach().numpy())
+    plt.savefig('data/filterbank/reconstruction_N{}_K{}.png'.format(n_basis, kernel_size), bbox_inches='tight')
+    plt.close()
+
+    n_basis = kernel_size * 2
+    encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided, return_complex=return_complex)
+    decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
+    spectrogram = encoder(input)
+    output = decoder(spectrogram)
+    
+    plt.figure()
+    plt.plot(input[0, 0].detach().numpy())
+    plt.plot(output[0, 0].detach().numpy())
+    plt.savefig('data/filterbank/reconstruction_N{}_K{}.png'.format(n_basis, kernel_size), bbox_inches='tight')
     plt.close()
 
 if __name__ == '__main__':
