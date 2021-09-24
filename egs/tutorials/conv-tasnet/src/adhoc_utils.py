@@ -44,9 +44,14 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
             x = x.cuda()
 
         with torch.no_grad():
-            mixture = x.view(1, 1, *x.size())
+            n_mics = x.size(0)
+            mixture = x.view(1, 1, n_mics, -1)
 
+            if n_mics == 1:
+                mixture = torch.tile(mixture, (1, 1, NUM_CHANNELS_MUSDB18, 1))
             estimated_sources = model(mixture)
+            if n_mics == 1:
+                mixture = mixture.mean(dim=2, keepdim=True)
 
             mixture = mixture.cpu()
             estimated_sources = estimated_sources.cpu()
