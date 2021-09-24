@@ -49,9 +49,12 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
 
             if n_mics == 1:
                 mixture = torch.tile(mixture, (1, 1, NUM_CHANNELS_MUSDB18, 1))
-            estimated_sources = model(mixture)
+            mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
+            standardized_mixture = (mixture - mean) / (std + EPS)
+            standardized_estimated_sources = model(standardized_mixture)
+            estimated_sources = std * standardized_estimated_sources + mean
             if n_mics == 1:
-                mixture = mixture.mean(dim=2, keepdim=True)
+                estimated_sources = estimated_sources.mean(dim=2, keepdim=True)
 
             mixture = mixture.cpu()
             estimated_sources = estimated_sources.cpu()
