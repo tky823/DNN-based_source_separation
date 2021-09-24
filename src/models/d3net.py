@@ -188,7 +188,7 @@ class D3Net(nn.Module):
         self.out_scale.data.fill_(1)
         self.out_bias.data.zero_()
     
-    def get_package(self):
+    def get_config(self):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
             'growth_rate': self.growth_rate,
