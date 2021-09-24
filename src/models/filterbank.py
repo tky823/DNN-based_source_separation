@@ -59,7 +59,7 @@ class FourierEncoder(nn.Module):
         return output
     
     def extra_repr(self):
-        s = "kernel_size={kernel_size}, stride={stride}"
+        s = "kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
         
         return s.format(**self.__dict__)
 
@@ -95,6 +95,16 @@ class FourierDecoder(nn.Module):
         self.optimal_window = nn.Parameter(optimal_window)
         
     def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>:
+                Complex tensor with shape of (batch_size, kernel_size // 2 + 1, n_frames) if onesided=True
+                Complex tensor with shape of (batch_size, kernel_size, n_frames) if onesided=False
+                Tensor with shape of (batch_size, 2 * (kernel_size // 2 + 1), n_frames) if onesided=True
+                Tensor with shape of (batch_size, 2 * kernel_size, n_frames) if onesided=False
+        Returns:
+            output <torch.Tensor>: (batch_size, 1, T)
+        """
         kernel_size, stride = self.kernel_size, self.stride
         omega, time_seq = self.omega, self.time_seq
         optimal_window = self.optimal_window
@@ -124,7 +134,7 @@ class FourierDecoder(nn.Module):
         return output
     
     def extra_repr(self):
-        s = "kernel_size={kernel_size}, stride={stride}"
+        s = "kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
         
         return s.format(**self.__dict__)
 
@@ -172,7 +182,7 @@ class Encoder(nn.Module):
         return output
     
     def get_basis(self):
-        basis = self.conv1d.weight.squeeze(dim=1)
+        basis = self.conv1d.weight
     
         return basis
 
@@ -190,7 +200,7 @@ class Decoder(nn.Module):
         return output
     
     def get_basis(self):
-        basis = self.conv_transpose1d.weight.squeeze(dim=1)
+        basis = self.conv_transpose1d.weight
         
         return basis
 
@@ -252,7 +262,7 @@ class PinvEncoder(nn.Module):
         weight = self.weight.permute(1, 0, 2).contiguous()
         weight_pinverse = torch.pinverse(weight).permute(2, 0, 1).contiguous() / duplicate
 
-        basis = weight_pinverse.squeeze(dim=1)
+        basis = weight_pinverse
 
         return basis
 
@@ -295,13 +305,13 @@ def _test_filterbank():
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
     
     plt.figure()
-    plt.pcolormesh(enc_basis.detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.pcolormesh(enc_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
     plt.savefig('data/filterbank/basis_enc-trainable.png', bbox_inches='tight')
     plt.close()
 
     plt.figure()
-    plt.pcolormesh(dec_basis.detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.pcolormesh(dec_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
     plt.savefig('data/filterbank/basis_dec-trainable.png', bbox_inches='tight')
     plt.close()
@@ -318,13 +328,13 @@ def _test_filterbank():
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
     
     plt.figure()
-    plt.pcolormesh(enc_basis.detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.pcolormesh(enc_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
     plt.savefig('data/filterbank/basis_enc-Fourier.png', bbox_inches='tight')
     plt.close()
 
     plt.figure()
-    plt.pcolormesh(dec_basis.detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.pcolormesh(dec_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
     plt.savefig('data/filterbank/basis_dec-Fourier.png', bbox_inches='tight')
     plt.close()
@@ -370,9 +380,47 @@ def _test_filterbank():
     plt.savefig('data/filterbank/pinv.png', bbox_inches='tight')
     plt.close()
 
+def _test_fourier():
+    batch_size = 2
+    C = 1
+    T = 64
+    kernel_size, stride = 8, 2
+    onesided, return_complex = True, True
+    
+    input = torch.randn((batch_size, C, T), dtype=torch.float)
+
+    print("-"*10, "Fourier Encoder", "-"*10)
+    encoder = FourierEncoder(kernel_size, stride=stride, window_fn='hann', onesided=onesided, return_complex=return_complex)
+
+    spectrogram = encoder(input)
+    amplitude = torch.clip(torch.abs(spectrogram), min=EPS)
+    magnitude = 20 * torch.log10(amplitude)
+
+    plt.figure()
+    plt.pcolormesh(magnitude[0].detach().cpu().numpy(), cmap='bwr')
+    plt.colorbar()
+    plt.savefig('data/filterbank/spectrogram-enc.png', bbox_inches='tight')
+    plt.close()
+
+    window = build_window(kernel_size, window_fn='hann')
+    spectrogram_stft = torch.stft(input.view(batch_size * C, T), kernel_size, hop_length=stride, window=window, center=False, onesided=onesided, return_complex=return_complex)
+    amplitude_stft = torch.clip(torch.abs(spectrogram_stft), min=EPS)
+    magnitude_stft = 20 * torch.log10(amplitude_stft)
+    magnitude_stft = magnitude_stft.view(batch_size, C, *magnitude_stft.size()[1:])
+
+    plt.figure()
+    plt.pcolormesh(magnitude_stft[0, 0].detach().cpu().numpy(), cmap='bwr')
+    plt.colorbar()
+    plt.savefig('data/filterbank/spectrogram-stft.png', bbox_inches='tight')
+    plt.close()
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from matplotlib.colors import Normalize
     
     print("="*10, "Filterbank", "="*10)
     _test_filterbank()
+    print()
+
+    print("="*10, "Fourier basis", "="*10)
+    _test_fourier()
