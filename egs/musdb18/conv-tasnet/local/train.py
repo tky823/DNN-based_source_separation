@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
+from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
 from dataset import TrainDataLoader, EvalDataLoader
 from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
 from adhoc_driver import AdhocTrainer
@@ -71,7 +72,11 @@ def main(args):
         args.samples_per_epoch = None
     
     with open(args.augmentation_path) as f:
-        augmentation = yaml.safe_load(f)
+        config_augmentation = yaml.safe_load(f)
+    
+    augmentation = SequentialAugmentation()
+    for name in config_augmentation['augmentation']:
+        augmentation.append(choose_augmentation(name, **config_augmentation[name]))
     
     train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.sources, augmentation=augmentation)
     valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)

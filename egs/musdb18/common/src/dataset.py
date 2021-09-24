@@ -1,5 +1,4 @@
 import os
-import random
 
 import torch
 import torchaudio
@@ -9,8 +8,6 @@ from utils.utils_audio import build_window
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
-MINSCALE = 0.25
-MAXSCALE = 1.25
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
@@ -577,37 +574,6 @@ def test_collate_fn(batch):
         batched_segment_ID.append(segmend_ID)
     
     return batched_mixture, batched_sources, batched_segment_ID
-
-def apply_random_flip(input, flip_rate=0.5, dim=0):
-    """
-    Args:
-        input <torch.Tensot>: (*)
-    Returns:
-        output <torch.Tensot>: (*)
-    """
-    if type(dim) is int:
-        dim = (dim,)
-    
-    flip = random.random() < flip_rate
-
-    if flip:
-        output = torch.flip(input, dims=dim)
-    else:
-        output = input
-
-    return output
-
-def apply_random_scaling(input, min=MINSCALE, max=MAXSCALE):
-    """
-    Args:
-        input <torch.Tensot>: (*)
-    Returns:
-        output <torch.Tensot>: (*)
-    """
-    scale = random.uniform(min, max)
-    output = scale * input
-
-    return output
 
 def assert_sample_rate(sr):
     assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)

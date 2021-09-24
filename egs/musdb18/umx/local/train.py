@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
+from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
 from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
@@ -61,7 +62,11 @@ def main(args):
         args.samples_per_epoch = None
     
     with open(args.augmentation_path) as f:
-        augmentation = yaml.safe_load(f)
+        config_augmentation = yaml.safe_load(f)
+    
+    augmentation = SequentialAugmentation()
+    for name in config_augmentation['augmentation']:
+        augmentation.append(choose_augmentation(name, **config_augmentation[name]))
     
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=patch_size, max_samples=max_samples, sources=args.sources, target=args.target)

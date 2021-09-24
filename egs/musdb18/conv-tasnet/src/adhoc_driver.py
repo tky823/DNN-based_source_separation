@@ -93,11 +93,14 @@ class SingleTargetTrainer(TrainerBase):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
-            
-            mixture = mixture.unsqueeze(dim=1)
-            estimated_sources = self.model(mixture)
-            estimated_sources = estimated_sources.squeeze(dim=1)
-            loss = self.criterion(estimated_sources, sources)
+            mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
+            standardized_mixture = (mixture - mean) / (std + EPS)
+            standardized_sources = (sources - mean) / (std + EPS)
+
+            standardized_mixture = standardized_mixture.unsqueeze(dim=1)
+            standardized_estimated_sources = self.model(standardized_mixture)
+            standardized_estimated_sources = standardized_estimated_sources.squeeze(dim=1)
+            loss = self.criterion(standardized_estimated_sources, standardized_sources)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -130,14 +133,19 @@ class SingleTargetTrainer(TrainerBase):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                output = self.model(mixture)
-                loss = self.criterion(output, sources, batch_mean=False)
+                mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
+                standardized_mixture = (mixture - mean) / (std + EPS)
+                standardized_sources = (sources - mean) / (std + EPS)
+                standardized_estimated_sources = self.model(standardized_mixture)
+                loss = self.criterion(standardized_estimated_sources, standardized_sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
+                    estimated_sources = std * standardized_estimated_sources + mean
+
                     mixture = mixture[0].detach().cpu().numpy()
-                    estimated_source = output[0].detach().cpu().numpy()
+                    estimated_source = estimated_sources[0].detach().cpu().numpy()
                     
                     save_dir = os.path.join(self.sample_dir, titles[0])
 

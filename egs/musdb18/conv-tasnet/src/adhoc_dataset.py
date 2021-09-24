@@ -1,12 +1,10 @@
 import os
 import random
 
-import musdb
 import torch
 import torchaudio
 
 from dataset import WaveDataset
-from dataset import apply_random_flip, apply_random_scaling
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
@@ -113,8 +111,8 @@ class WaveTrainDataset(WaveDataset):
     def __getitem__(self, idx):
         """
         Returns:
-            mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, T)  if `target` is list, otherwise (n_mics, T) 
-            target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
+            mixture <torch.Tensor>: Tensor with shape (1, n_mics, T)  if `target` is list, otherwise (n_mics, T) 
+            target <torch.Tensor>: Tensor with shape (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
         """
         if self.augmentation:
             mixture, target = self._getitem_augmentation()
@@ -151,12 +149,10 @@ class WaveTrainDataset(WaveDataset):
             track_samples = track['samples_original']
 
             start = random.randint(0, track_samples - self.samples - 1)
-
             source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.samples)
 
-            source = apply_random_flip(source, dim=0, **self.augmentation['random_flip'])
-            source = apply_random_scaling(source, **self.augmentation['random_scaling'])
-
+            # Apply augmentation
+            source = self.augmentation(source)
             sources.append(source.unsqueeze(dim=0))
         
         if type(self.target) is list:
