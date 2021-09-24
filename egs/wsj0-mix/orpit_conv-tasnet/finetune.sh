@@ -22,6 +22,8 @@ enc_basis='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
 dec_basis='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
 enc_nonlinear='' # enc_nonlinear is activated if enc_basis='trainable' and dec_basis!='pinv'
 window_fn='' # window_fn is activated if enc_basis='Fourier' or dec_basis='Fourier'
+enc_onesided=0 # enc_onesided is activated if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']
+enc_return_complex=0 # enc_return_complex is activated if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']
 N=512
 L=16
 
@@ -60,8 +62,18 @@ seed_finetune=111
 . ./path.sh
 . parse_options.sh || exit 1
 
+prefix=""
+
+if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pinv' ]; then
+    prefix="${preffix}enc-${enc_nonlinear}_"
+fi
+
+if [ ${enc_basis} = 'Fourier' -o ${enc_basis} = 'trainableFourier' -o ${dec_basis} = 'Fourier' -o ${dec_basis} = 'trainableFourier' ]; then
+    prefix="${preffix}${window_fn}-window_enc-onesided${enc_onesided}_enc-complex${enc_return_complex}/"
+fi
+
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed_train}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
