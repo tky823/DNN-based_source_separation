@@ -62,7 +62,7 @@ class FourierEncoder(nn.Module):
         return output
 
     def extra_repr(self):
-        s = "kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
+        s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
         
         return s.format(**self.__dict__)
 
@@ -140,7 +140,7 @@ class FourierDecoder(nn.Module):
         return output
 
     def extra_repr(self):
-        s = "kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
+        s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
         
         return s.format(**self.__dict__)
 
