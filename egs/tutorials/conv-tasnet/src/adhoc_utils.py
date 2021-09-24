@@ -13,10 +13,10 @@ NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(model_path, file_paths, out_dirs):
+def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_model(model_path)
+    model = load_pretrained_conv_tasnet(model_path)
     
     if use_cuda:
         model.cuda()
@@ -79,7 +79,7 @@ def separate_by_d3net(model_path, file_paths, out_dirs):
             
     return estimated_paths
 
-def load_pretrained_model(model_path):
+def load_pretrained_conv_tasnet(model_path):
     package = torch.load(model_path, map_location=lambda storage, loc: storage)
     model = ConvTasNet.build_model(model_path)
     model.load_state_dict(package['state_dict'])
