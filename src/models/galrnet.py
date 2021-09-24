@@ -42,8 +42,10 @@ class GALRNet(nn.Module):
         
         if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']:
             self.window_fn = kwargs['window_fn']
+            self.onesided, self.return_complex = kwargs['onesided'], kwargs['return_complex']
         else:
             self.window_fn = None
+            self.onesided, self.return_complex = None, None
         
         # Separator configuration
         self.sep_hidden_channels = sep_hidden_channels
@@ -73,14 +75,13 @@ class GALRNet(nn.Module):
             causal=causal,
             n_sources=n_sources,
             eps=eps
-            
         )
         self.decoder = decoder
         
         self.num_parameters = self._get_num_parameters()
         
     def forward(self, input):
-        output, latent = self.extract_latent(input)
+        output, _ = self.extract_latent(input)
         
         return output
         
@@ -134,6 +135,8 @@ class GALRNet(nn.Module):
             'dec_basis': self.dec_basis,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
+            'onesided': self.onesided,
+            'return_complex': self.return_complex,
             'sep_hidden_channels': self.sep_hidden_channels,
             'sep_chunk_size': self.sep_chunk_size,
             'sep_hop_size': self.sep_hop_size,
