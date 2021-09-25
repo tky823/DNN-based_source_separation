@@ -11,7 +11,7 @@ def choose_filterbank(hidden_channels, kernel_size, stride=None, enc_basis='trai
     elif enc_basis in ['Fourier', 'trainableFourier']:
         assert_monoral(in_channels)
         trainable = False if enc_basis == 'Fourier' else True
-        onesided, return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
+        onesided, return_complex = bool(kwargs['enc_onesided']), bool(kwargs['enc_return_complex'])
         window_fn = kwargs['window_fn']
         n_basis = return_valid_basis(hidden_channels, onesided=onesided, return_complex=return_complex)
         encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided, return_complex=return_complex)
@@ -23,7 +23,7 @@ def choose_filterbank(hidden_channels, kernel_size, stride=None, enc_basis='trai
     elif dec_basis in ['Fourier', 'trainableFourier']:
         assert_monoral(in_channels)
         trainable = False if dec_basis == 'Fourier' else True
-        onesided, return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
+        onesided, return_complex = bool(kwargs['enc_onesided']), bool(kwargs['enc_return_complex'])
         window_fn = kwargs['window_fn']
         n_basis = return_valid_basis(hidden_channels, onesided=onesided, return_complex=return_complex)
         decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided)

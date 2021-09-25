@@ -16,7 +16,7 @@ class FourierEncoder(nn.Module):
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.trainable = trainable
-        self.onesided, self.return_complex = bool(onesided), bool(return_complex)
+        self.onesided, self.return_complex = onesided, return_complex
 
         omega = 2 * math.pi * torch.arange(n_basis // 2 + 1) / n_basis
         time_seq = torch.arange(kernel_size)
@@ -90,7 +90,7 @@ class FourierDecoder(nn.Module):
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.trainable = trainable
-        self.onesided = bool(onesided)
+        self.onesided = onesided
 
         omega = 2 * math.pi * torch.arange(n_basis // 2 + 1) / n_basis
         time_seq = torch.arange(kernel_size)
