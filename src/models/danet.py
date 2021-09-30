@@ -120,7 +120,7 @@ class DANet(nn.Module):
         return config
     
     @classmethod
-    def build_model(cls, model_path):
+    def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
         n_bins = config['n_bins']
@@ -135,6 +135,9 @@ class DANet(nn.Module):
         eps = config['eps']
         
         model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
     

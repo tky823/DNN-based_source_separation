@@ -160,7 +160,7 @@ class DPTNet(nn.Module):
         return config
     
     @classmethod
-    def build_model(cls, model_path):
+    def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
         n_basis = config.get('n_bases') or config['n_basis']
@@ -197,6 +197,9 @@ class DPTNet(nn.Module):
             n_sources=n_sources,
             eps=eps
         )
+        
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
     

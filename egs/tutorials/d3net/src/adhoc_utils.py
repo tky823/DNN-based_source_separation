@@ -131,9 +131,7 @@ def load_pretrained_d3net(model_paths):
 
     for source in __sources__:
         model_path = model_paths[source]
-        modules[source] = D3Net.build_model(model_path)
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
-        modules[source].load_state_dict(package['state_dict'])
+        modules[source] = D3Net.build_model(model_path, load_state_dict=True)
 
     model = ParallelD3Net(modules)
     
