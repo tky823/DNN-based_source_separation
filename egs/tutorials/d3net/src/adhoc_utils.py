@@ -22,6 +22,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
     use_cuda = torch.cuda.is_available()
 
     model = load_pretrained_d3net(model_paths)
+    config = load_experiment_config(model_paths)
     
     if use_cuda:
         model.cuda()
@@ -37,10 +38,10 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
         x, sample_rate = torchaudio.load(file_path)
         _, T_original = x.size()
 
-        if sample_rate == SAMPLE_RATE_MUSDB18:
+        if sample_rate == config['sr']:
             pre_resampler, post_resampler = None, None
         else:
-            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, SAMPLE_RATE_MUSDB18), torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
+            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sr']), torchaudio.transforms.Resample(config['sr'], sample_rate)
 
         if pre_resampler is not None:
             x = pre_resampler(x)
@@ -137,6 +138,24 @@ def load_pretrained_d3net(model_paths):
     model = ParallelD3Net(modules)
     
     return model
+
+def load_experiment_config(config_paths):
+    sample_rate = None
+    for source in __sources__:
+        config_path = config_paths[source]
+        config = torch.load(config_path, map_location=lambda storage, loc: storage)
+
+        if sample_rate is None:
+            sample_rate = config.get('sr')
+        elif config.get('sr') is not None:
+            if sample_rate is not None:
+                assert sample_rate == config['sr'], "Invalid sampling rate."
+            sample_rate = config['sr']
+    config = {
+        'sr': sample_rate or SAMPLE_RATE_MUSDB18
+    }
+
+    return config
 
 def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):
     """
