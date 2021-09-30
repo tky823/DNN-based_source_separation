@@ -9,12 +9,13 @@ duration=4
 max_or_min='min'
 
 # Encoder & decoder
-enc_basis='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
-dec_basis='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
+enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+dec_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase', 'pinv']
 enc_nonlinear='' # enc_nonlinear is activated if enc_basis='trainable' and dec_basis!='pinv'
-window_fn='' # window_fn is activated if enc_basis='Fourier' or dec_basis='Fourier'
-enc_onesided=0 # enc_onesided is activated if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']
-enc_return_complex=0 # enc_return_complex is activated if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']
+window_fn='' # window_fn is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+enc_onesided=0 # enc_onesided is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+enc_return_complex=0 # enc_return_complex is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+
 N=512
 L=16
 

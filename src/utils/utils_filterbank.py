@@ -8,25 +8,27 @@ def choose_filterbank(hidden_channels, kernel_size, stride=None, enc_basis='trai
             encoder = Encoder(in_channels, hidden_channels, kernel_size, stride=stride)
         else:
             encoder = Encoder(in_channels, hidden_channels, kernel_size, stride=stride, nonlinear=kwargs['enc_nonlinear'])
-    elif enc_basis in ['Fourier', 'trainableFourier']:
+    elif enc_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
         assert_monoral(in_channels)
         trainable = False if enc_basis == 'Fourier' else True
+        trainable_phase = True if enc_basis == 'trainableFourierTrainablePhase' else False
         onesided, return_complex = bool(kwargs['enc_onesided']), bool(kwargs['enc_return_complex'])
         window_fn = kwargs['window_fn']
         n_basis = return_valid_basis(hidden_channels, onesided=onesided, return_complex=return_complex)
-        encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided, return_complex=return_complex)
+        encoder = FourierEncoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, trainable_phase=trainable_phase, onesided=onesided, return_complex=return_complex)
     else:
         raise NotImplementedError("Not support {} for encoder".format(enc_basis))
         
     if dec_basis == 'trainable':
         decoder = Decoder(hidden_channels, in_channels, kernel_size, stride=stride)
-    elif dec_basis in ['Fourier', 'trainableFourier']:
+    elif dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
         assert_monoral(in_channels)
         trainable = False if dec_basis == 'Fourier' else True
+        trainable_phase = True if dec_basis == 'trainableFourierTrainablePhase' else False
         onesided, return_complex = bool(kwargs['enc_onesided']), bool(kwargs['enc_return_complex'])
         window_fn = kwargs['window_fn']
         n_basis = return_valid_basis(hidden_channels, onesided=onesided, return_complex=return_complex)
-        decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, onesided=onesided)
+        decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, trainable_phase=trainable_phase, onesided=onesided)
     elif dec_basis == 'pinv':
         if enc_basis in ['trainable', 'trainableFourier']:
             assert_monoral(in_channels)
