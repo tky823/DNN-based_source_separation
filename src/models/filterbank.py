@@ -279,7 +279,7 @@ class PinvDecoder(nn.Module):
         duplicate = kernel_size // stride
 
         if isinstance(encoder, Encoder):
-            weight = self.weight
+            weight = self.weight.permute(1, 0, 2).contiguous()
             weight_pinverse = torch.pinverse(weight).permute(2, 0, 1).contiguous() / duplicate
 
             output = F.conv_transpose1d(input, weight_pinverse, stride=stride)
