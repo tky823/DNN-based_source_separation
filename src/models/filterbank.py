@@ -316,21 +316,6 @@ class PinvDecoder(nn.Module):
 
         return output
     
-    def extra_repr(self):
-        if isinstance(self.encoder, Encoder):
-            in_channels, out_channels, _ = self.weight.size()
-            
-            s = "{}, {}".format(in_channels, out_channels)
-            s += ", kernel_size={kernel_size}, stride={stride}"
-        elif isinstance(self.encoder, FourierEncoder):
-            in_channels, out_channels = self.encoder.n_basis, 1
-            s = "{}, {}".format(in_channels, out_channels)
-            s += ", kernel_size={kernel_size}, stride={stride}"
-        else:
-            raise TypeError("Not support encoder {}.".format(type(self.encoder)))
-        
-        return s.format(**self.__dict__)
-    
     def get_basis(self):
         kernel_size, stride = self.kernel_size, self.stride
         duplicate = kernel_size // stride
