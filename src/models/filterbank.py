@@ -252,7 +252,7 @@ class Decoder(nn.Module):
         
         return basis
 
-class PinvEncoder(nn.Module):
+class PinvDecoder(nn.Module):
     def __init__(self, encoder: Union[Encoder, FourierEncoder]):
         super().__init__()
 

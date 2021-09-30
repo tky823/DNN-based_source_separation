@@ -1,4 +1,4 @@
-from models.filterbank import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvEncoder
+from models.filterbank import FourierEncoder, FourierDecoder, Encoder, Decoder, PinvDecoder
 
 def choose_filterbank(hidden_channels, kernel_size, stride=None, enc_basis='trainable', dec_basis='trainable', **kwargs):
     in_channels = kwargs.get('in_channels') or 1
@@ -30,9 +30,9 @@ def choose_filterbank(hidden_channels, kernel_size, stride=None, enc_basis='trai
         n_basis = return_valid_basis(hidden_channels, onesided=onesided, return_complex=return_complex)
         decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn=window_fn, trainable=trainable, trainable_phase=trainable_phase, onesided=onesided)
     elif dec_basis == 'pinv':
-        if enc_basis in ['trainable', 'trainableFourier']:
+        if enc_basis in ['trainable', 'trainableFourier', 'trainableFourierTrainablePhase']:
             assert_monoral(in_channels)
-            decoder = PinvEncoder(encoder)
+            decoder = PinvDecoder(encoder)
         else:
             raise NotImplementedError("Not support {} for decoder".format(dec_basis))
     else:
