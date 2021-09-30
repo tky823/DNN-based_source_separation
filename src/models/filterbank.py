@@ -323,7 +323,7 @@ class PinvDecoder(nn.Module):
             s = "{}, {}".format(in_channels, out_channels)
             s += ", kernel_size={kernel_size}, stride={stride}"
         elif isinstance(self.encoder, FourierEncoder):
-            in_channels, out_channels = self.n_basis, 1
+            in_channels, out_channels = self.encoder.n_basis, 1
             s = "{}, {}".format(in_channels, out_channels)
             s += ", kernel_size={kernel_size}, stride={stride}"
         else:
