@@ -302,8 +302,8 @@ class PinvDecoder(nn.Module):
                 basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
             basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
             
-            _, basis_real_conj, _ = torch.split(basis_real, [1, kernel_size // 2 - 1, 1], dim=0)
-            _, basis_imag_conj, _ = torch.split(basis_imag, [1, kernel_size // 2 - 1, 1], dim=0)
+            _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
+            _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
             basis_real, basis_imag = window * basis_real, window * basis_imag
