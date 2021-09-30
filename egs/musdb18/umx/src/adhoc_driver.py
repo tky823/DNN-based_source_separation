@@ -51,23 +51,23 @@ class AdhocTrainer(TrainerBase):
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
-            package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
+            config = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
             
-            self.start_epoch = package['epoch']
+            self.start_epoch = config['epoch']
             
-            self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
-            self.valid_loss[:self.start_epoch] = package['valid_loss'][:self.start_epoch]
+            self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
+            self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
             
-            self.best_loss = package['best_loss']
+            self.best_loss = config['best_loss']
             self.prev_loss = self.valid_loss[self.start_epoch-1]
-            self.no_improvement = package['no_improvement']
+            self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
-                self.model.module.load_state_dict(package['state_dict'])
+                self.model.module.load_state_dict(config['state_dict'])
             else:
-                self.model.load_state_dict(package['state_dict'])
+                self.model.load_state_dict(config['state_dict'])
             
-            self.optimizer.load_state_dict(package['optim_dict'])
+            self.optimizer.load_state_dict(config['optim_dict'])
         else:
             model_path = os.path.join(self.model_dir, "best.pth")
             
@@ -225,23 +225,23 @@ class AdhocTrainer(TrainerBase):
     
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
-            package = self.model.module.get_config()
-            package['state_dict'] = self.model.module.state_dict()
+            config = self.model.module.get_config()
+            config['state_dict'] = self.model.module.state_dict()
         else:
-            package = self.model.get_config()
-            package['state_dict'] = self.model.state_dict()
+            config = self.model.get_config()
+            config['state_dict'] = self.model.state_dict()
             
-        package['optim_dict'] = self.optimizer.state_dict()
+        config['optim_dict'] = self.optimizer.state_dict()
         
-        package['best_loss'] = self.best_loss
-        package['no_improvement'] = self.no_improvement
+        config['best_loss'] = self.best_loss
+        config['no_improvement'] = self.no_improvement
         
-        package['train_loss'] = self.train_loss
-        package['valid_loss'] = self.valid_loss
+        config['train_loss'] = self.train_loss
+        config['valid_loss'] = self.valid_loss
         
-        package['epoch'] = epoch + 1
+        config['epoch'] = epoch + 1
         
-        torch.save(package, model_path)
+        torch.save(config, model_path)
 
 class AdhocTester(TesterBase):
     def __init__(self, model, loader, criterion, args):
@@ -278,11 +278,11 @@ class AdhocTester(TesterBase):
         
         for target in self.sources:
             model_path = os.path.join(self.model_dir, target, "{}.pth".format(args.model_choice))
-            package = torch.load(model_path, map_location=lambda storage, loc: storage)
+            config = torch.load(model_path, map_location=lambda storage, loc: storage)
             if is_data_parallel:
-                self.model.module.net[target].load_state_dict(package['state_dict'])
+                self.model.module.net[target].load_state_dict(config['state_dict'])
             else:
-                self.model.net[target].load_state_dict(package['state_dict'])
+                self.model.net[target].load_state_dict(config['state_dict'])
         
         if self.use_norbert:
             try:

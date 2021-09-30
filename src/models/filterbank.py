@@ -10,21 +10,25 @@ from utils.utils_audio import build_window, build_optimal_window
 EPS = 1e-12
 
 class FourierEncoder(nn.Module):
-    def __init__(self, n_basis, kernel_size, stride=None, window_fn='hann', trainable=False, onesided=True, return_complex=True):
+    def __init__(self, n_basis, kernel_size, stride=None, window_fn='hann', trainable=False, trainable_phase=False, onesided=True, return_complex=True):
         super().__init__()
 
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
-        self.trainable = trainable
-        self.onesided, self.return_complex = bool(onesided), bool(return_complex)
+        self.trainable, self.trainable_phase = trainable, trainable_phase
+        self.onesided, self.return_complex = onesided, return_complex
 
         omega = 2 * math.pi * torch.arange(n_basis // 2 + 1) / n_basis
-        time_seq = torch.arange(kernel_size)
+        n = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
         
-        self.omega, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(time_seq, requires_grad=False)
+        self.frequency, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(n, requires_grad=False)
         self.window = nn.Parameter(window)
+
+        if self.trainable_phase:
+            phi = torch.zeros(n_basis // 2 + 1)
+            self.phase = nn.Parameter(phi, requires_grad=True)
     
     def forward(self, input):
         """
@@ -39,11 +43,17 @@ class FourierEncoder(nn.Module):
         """
         n_basis = self.n_basis
         stride = self.stride
-        omega, time_seq = self.omega, self.time_seq
+        omega, n = self.frequency, self.time_seq
         window = self.window
 
-        basis_real, basis_imag = torch.cos(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
+        omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+        if self.trainable_phase:
+            phi = self.phase
+            basis_real, basis_imag = torch.cos(-(omega_n + phi.unsqueeze(dim=1))), torch.sin(-(omega_n + phi.unsqueeze(dim=1)))
+        else:
+            basis_real, basis_imag = torch.cos(-omega_n), torch.sin(-omega_n)
         basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
+
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
@@ -63,15 +73,22 @@ class FourierEncoder(nn.Module):
 
     def extra_repr(self):
         s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
+        if self.trainable_phase:
+            s += ", trainable_phase={trainable_phase}"
         
         return s.format(**self.__dict__)
 
     def get_basis(self):
         n_basis = self.n_basis
-        omega, time_seq = self.omega, self.time_seq
+        omega, n = self.frequency, self.time_seq
         window = self.window
 
-        basis_real, basis_imag = torch.cos(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
+        omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+        if self.trainable_phase:
+            phi = self.phase
+            basis_real, basis_imag = torch.cos(-(omega_n + phi.unsqueeze(dim=1))), torch.sin(-(omega_n + phi.unsqueeze(dim=1)))
+        else:
+            basis_real, basis_imag = torch.cos(-omega_n), torch.sin(-omega_n)
         
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
@@ -84,22 +101,26 @@ class FourierEncoder(nn.Module):
         return basis
 
 class FourierDecoder(nn.Module):
-    def __init__(self, n_basis, kernel_size, stride=None, window_fn='hann', trainable=False, onesided=True):
+    def __init__(self, n_basis, kernel_size, stride=None, window_fn='hann', trainable=False, trainable_phase=False, onesided=True):
         super().__init__()
 
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
-        self.trainable = trainable
-        self.onesided = bool(onesided)
+        self.trainable, self.trainable_phase = trainable, trainable_phase
+        self.onesided = onesided
 
         omega = 2 * math.pi * torch.arange(n_basis // 2 + 1) / n_basis
-        time_seq = torch.arange(kernel_size)
+        n = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
         optimal_window = build_optimal_window(window, hop_size=stride)
         
-        self.omega, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(time_seq, requires_grad=False)
+        self.frequency, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(n, requires_grad=False)
         self.optimal_window = nn.Parameter(optimal_window)
+
+        if self.trainable_phase:
+            phi = torch.zeros(n_basis // 2 + 1)
+            self.phase = nn.Parameter(phi, requires_grad=True)
 
     def forward(self, input):
         """
@@ -114,7 +135,7 @@ class FourierDecoder(nn.Module):
         """
         n_basis = self.n_basis
         stride = self.stride
-        omega, time_seq = self.omega, self.time_seq
+        omega, n = self.frequency, self.time_seq
         optimal_window = self.optimal_window
 
         if torch.is_complex(input):
@@ -123,7 +144,12 @@ class FourierDecoder(nn.Module):
             n_bins = input.size(1)
             input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
         
-        basis_real, basis_imag = torch.cos(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
+        omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+        if self.trainable_phase:
+            phi = self.phase
+            basis_real, basis_imag = torch.cos(omega_n + phi.unsqueeze(dim=1)), torch.sin(omega_n + phi.unsqueeze(dim=1))
+        else:
+            basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
         basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
 
         _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
@@ -143,15 +169,22 @@ class FourierDecoder(nn.Module):
 
     def extra_repr(self):
         s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
+        if self.trainable_phase:
+            s += ", trainable_phase={trainable_phase}"
         
         return s.format(**self.__dict__)
 
     def get_basis(self):
         n_basis = self.n_basis
-        omega, time_seq = self.omega, self.time_seq
+        omega, n = self.frequency, self.time_seq
         optimal_window = self.optimal_window
 
-        basis_real, basis_imag = torch.cos(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
+        omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+        if self.trainable_phase:
+            phi = self.phase
+            basis_real, basis_imag = torch.cos(omega_n + phi.unsqueeze(dim=1)), torch.sin(omega_n + phi.unsqueeze(dim=1))
+        else:
+            basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
 
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)

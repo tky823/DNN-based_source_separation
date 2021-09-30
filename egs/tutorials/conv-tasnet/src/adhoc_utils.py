@@ -17,6 +17,7 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
     use_cuda = torch.cuda.is_available()
 
     model = load_pretrained_conv_tasnet(model_path)
+    config = load_experiment_config(model_path)
     
     if use_cuda:
         model.cuda()
@@ -32,10 +33,10 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
         x, sample_rate = torchaudio.load(file_path)
         _, T_original = x.size()
 
-        if sample_rate == SAMPLE_RATE_MUSDB18:
+        if sample_rate == config['sr']:
             pre_resampler, post_resampler = None, None
         else:
-            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, SAMPLE_RATE_MUSDB18), torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
+            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sr']), torchaudio.transforms.Resample(config['sr'], sample_rate)
 
         if pre_resampler is not None:
             x = pre_resampler(x)
@@ -86,8 +87,16 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
     return estimated_paths
 
 def load_pretrained_conv_tasnet(model_path):
-    package = torch.load(model_path, map_location=lambda storage, loc: storage)
+    config = torch.load(model_path, map_location=lambda storage, loc: storage)
     model = ConvTasNet.build_model(model_path)
-    model.load_state_dict(package['state_dict'])
+    model.load_state_dict(config['state_dict'])
     
     return model
+
+def load_experiment_config(config_path):
+    config = torch.load(config_path, map_location=lambda storage, loc: storage)
+    config = {
+        'sr': config.get('sr') or SAMPLE_RATE_MUSDB18
+    }
+
+    return config

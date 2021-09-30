@@ -43,7 +43,7 @@ class DPRNNTasNet(nn.Module):
         else:
             self.enc_nonlinear = None
         
-        if enc_basis in ['Fourier', 'trainableFourier'] or dec_basis in ['Fourier', 'trainableFourier']:
+        if enc_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase'] or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
             self.window_fn = kwargs['window_fn']
             self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:

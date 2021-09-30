@@ -5,7 +5,7 @@ model_id="1SyaxrRHrboabKttN7Kqh29RU2YiRAZ8L"
 . ./path.sh
 . parse_options.sh || exit 1
 
-echo "Download Conv-TasNet. (Dataset: MUSDB18, sampling frequency 16kHz)"
+echo "Download Conv-TasNet. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 file='archive'
 
