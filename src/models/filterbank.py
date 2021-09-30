@@ -296,7 +296,7 @@ class PinvDecoder(nn.Module):
 
             omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
             if encoder.trainable_phase:
-                phi = self.phase
+                phi = self.encoder.phase
                 basis_real, basis_imag = torch.cos(omega_n + phi.unsqueeze(dim=1)), torch.sin(omega_n + phi.unsqueeze(dim=1))
             else:
                 basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
