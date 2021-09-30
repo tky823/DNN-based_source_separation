@@ -268,7 +268,7 @@ class PinvDecoder(nn.Module):
             if n_rows < n_columns:
                 raise ValueError("Cannot compute the left inverse of encoder's weight. In encoder, `out_channels` must be equal to or greater than `kernel_size`.")
         elif isinstance(encoder, FourierEncoder):
-            if not encoder.onesided and not encoder.return_complex:
+            if encoder.onesided or encoder.return_complex:
                 raise ValueError("Both encoder.onesided and encoder.return_complex are expected to be False.")
         else:
             raise TypeError("Invalid encoder is given.")
