@@ -28,7 +28,7 @@ class FourierEncoder(nn.Module):
 
         if self.trainable_phase:
             phi = torch.zeros(n_basis // 2 + 1)
-            self.phase = nn.Parameter(phi, requires_grad=False)
+            self.phase = nn.Parameter(phi, requires_grad=True)
     
     def forward(self, input):
         """
@@ -120,7 +120,7 @@ class FourierDecoder(nn.Module):
 
         if self.trainable_phase:
             phi = torch.zeros(n_basis // 2 + 1)
-            self.phase = nn.Parameter(phi, requires_grad=False)
+            self.phase = nn.Parameter(phi, requires_grad=True)
 
     def forward(self, input):
         """
