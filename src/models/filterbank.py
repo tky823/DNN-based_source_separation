@@ -57,6 +57,7 @@ class FourierEncoder(nn.Module):
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
+            basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         basis_real, basis_imag = window * basis_real, window * basis_imag
         output_real, output_imag = F.conv1d(input, basis_real, stride=stride), F.conv1d(input, basis_imag, stride=stride)
@@ -93,6 +94,7 @@ class FourierEncoder(nn.Module):
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
+            basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         
         basis_real, basis_imag = window * basis_real, window * basis_imag
@@ -154,6 +156,7 @@ class FourierDecoder(nn.Module):
 
         _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
         _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
+        basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
         basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
         basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
@@ -161,6 +164,7 @@ class FourierDecoder(nn.Module):
         if self.onesided:
             _, input_real_conj, _ = torch.split(input_real, [1, n_basis // 2 - 1, 1], dim=1)
             _, input_imag_conj, _ = torch.split(input_imag, [1, n_basis // 2 - 1, 1], dim=1)
+            input_real_conj, input_imag_conj = torch.flip(input_real_conj, dims=(1,)), torch.flip(input_imag_conj, dims=(1,))
             input_real, input_imag = torch.cat([input_real, input_real_conj], dim=1), torch.cat([input_imag, - input_imag_conj], dim=1)
 
         output = F.conv_transpose1d(input_real, basis_real, stride=stride) - F.conv_transpose1d(input_imag, basis_imag, stride=stride)
@@ -189,6 +193,7 @@ class FourierDecoder(nn.Module):
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
+            basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
         
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
@@ -251,51 +256,78 @@ class PinvEncoder(nn.Module):
     def __init__(self, encoder: Union[Encoder, FourierEncoder]):
         super().__init__()
 
+        self.encoder = encoder
+        self.kernel_size, self.stride = encoder.kernel_size, encoder.stride
+
         if isinstance(encoder, Encoder):
             if encoder.nonlinear:
                 raise ValueError("Not support pseudo inverse of 'Conv1d + nonlinear'.")
             self.weight = encoder.conv1d.weight
-        elif isinstance(encoder, FourierEncoder):
-            kernel_size = encoder.kernel_size
-            omega, time_seq = encoder.omega, encoder.time_seq
-            window = encoder.window
 
+            n_rows, _, n_columns = self.weight.size()
+            if n_rows < n_columns:
+                raise ValueError("Cannot compute the left inverse of encoder's weight. In encoder, `out_channels` must be equal to or greater than `kernel_size`.")
+        elif isinstance(encoder, FourierEncoder):
             if not encoder.onesided and not encoder.return_complex:
                 raise ValueError("Both encoder.onesided and encoder.return_complex are expected to be False.")
+        else:
+            raise TypeError("Invalid encoder is given.")
+
+    def forward(self, input):
+        encoder = self.encoder
+        kernel_size, stride = self.kernel_size, self.stride
+        duplicate = kernel_size // stride
+
+        if isinstance(encoder, Encoder):
+            weight = self.weight
+            weight_pinverse = torch.pinverse(weight).permute(2, 0, 1).contiguous() / duplicate
+
+            output = F.conv_transpose1d(input, weight_pinverse, stride=stride)
+        elif isinstance(encoder, FourierEncoder):
+            if torch.is_complex(input):
+                input_real, input_imag = input.real, input.imag
+            else:    
+                n_bins = input.size(1)
+                input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
             
-            basis_real, basis_imag = torch.cos(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0)), torch.sin(- omega.unsqueeze(dim=1) * time_seq.unsqueeze(dim=0))
+            n_basis = encoder.n_basis
+            omega, n = encoder.frequency, encoder.time_seq
+            window = encoder.window
+
+            omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+            if encoder.trainable_phase:
+                phi = self.phase
+                basis_real, basis_imag = torch.cos(omega_n + phi.unsqueeze(dim=1)), torch.sin(omega_n + phi.unsqueeze(dim=1))
+            else:
+                basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
             basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
             
             _, basis_real_conj, _ = torch.split(basis_real, [1, kernel_size // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, kernel_size // 2 - 1, 1], dim=0)
+            basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
             basis_real, basis_imag = window * basis_real, window * basis_imag
-            self.weight = torch.cat([basis_real, basis_imag], dim=0)
+
+            basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
+
+            output = F.conv_transpose1d(input_real, basis_real, stride=stride) - F.conv_transpose1d(input_imag, basis_imag, stride=stride)
         else:
-            raise TypeError("Invalid encoder is given.")
-
-        self.kernel_size, self.stride = encoder.kernel_size, encoder.stride
-
-        n_rows, _, n_columns = self.weight.size()
-
-        if n_rows < n_columns:
-            raise ValueError("Cannot compute the left inverse of encoder's weight. In encoder, `out_channels` must be equal to or greater than `kernel_size`.")
-
-    def forward(self, input):
-        kernel_size, stride = self.kernel_size, self.stride
-        duplicate = kernel_size // stride
-        weight = self.weight.permute(1, 0, 2).contiguous()
-        weight_pinverse = torch.pinverse(weight).permute(2, 0, 1).contiguous() / duplicate
-
-        output = F.conv_transpose1d(input, weight_pinverse, stride=stride)
+            raise TypeError("Not support encoder {}.".format(type(encoder)))
 
         return output
     
     def extra_repr(self):
-        in_channels, out_channels, _ = self.weight.size()
-        
-        s = "{}, {}".format(in_channels, out_channels)
-        s += ", kernel_size={kernel_size}, stride={stride}"
+        if isinstance(self.encoder, Encoder):
+            in_channels, out_channels, _ = self.weight.size()
+            
+            s = "{}, {}".format(in_channels, out_channels)
+            s += ", kernel_size={kernel_size}, stride={stride}"
+        elif isinstance(self.encoder, FourierEncoder):
+            in_channels, out_channels = self.n_basis, 1
+            s = "{}, {}".format(in_channels, out_channels)
+            s += ", kernel_size={kernel_size}, stride={stride}"
+        else:
+            raise TypeError("Not support encoder {}.".format(type(self.encoder)))
         
         return s.format(**self.__dict__)
     
