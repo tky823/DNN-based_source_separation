@@ -12,19 +12,8 @@ wsjmix_16k="../../../dataset/wsj0-mix/2speakers/wav16k"
 . ./parse_options.sh || exit 1
 
 # Prepare wham noise
-file="wham_noise.zip"
-
-if [ -e "${wham_noise_root}/tr/40na010x_1.9857_01xo031a_-1.9857.wav" ] ; then
-    echo "Already downloaded dataset ${wham_noise_root}"
-else
-    if [ ! -d "${wham_noise_root}" ] ; then
-        mkdir -p "${wham_noise_root}"
-    fi
-    wget "https://storage.googleapis.com/whisper-public/${file}" -P "/tmp"
-    unzip "/tmp/${file}" -d "/tmp/"
-    mv "/tmp/wham_noise"* "${wham_noise_root}"
-    rm "/tmp/${file}"
-fi
+. ./prepare_wham_noise.sh \
+--wham_noise_root "${wham_noise_root}"
 
 # Prepare wham mixture
 file="wham_scripts.tar.gz"
