@@ -1,6 +1,6 @@
 #!/bin/bash
 
-whamr_root="../../../dataset/WHAM!"
+whamr_root="../../../dataset/WHAMR!"
 wham_noise_root="../../../dataset/WHAM!_noise"
 create_from="wsjmix" # or "scratch"
 
