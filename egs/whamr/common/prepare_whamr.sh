@@ -1,7 +1,7 @@
 #!/bin/bash
 
 whamr_root="../../../dataset/WHAMR!"
-wham_noise_root="../../../dataset/WHAM!_noise"
+wham_noise_root="../../../dataset/wham_noise"
 
 # WSJ0
 wsj0_root="../../../dataset/wsj0_wav"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wham_noise_root="../../../dataset/WHAM!_noise"
+wham_noise_root="../../../dataset/wham_noise"
 
 . ./parse_options.sh || exit 1
 

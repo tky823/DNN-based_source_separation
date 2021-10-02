@@ -1,7 +1,7 @@
 #!/bin/bash
 
 wham_root="../../../dataset/WHAM!"
-wham_noise_root="../../../dataset/WHAM!_noise"
+wham_noise_root="../../../dataset/wham_noise"
 create_from="wsjmix" # or "scratch"
 
 # WSJ0
