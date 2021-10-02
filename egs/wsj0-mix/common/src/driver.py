@@ -155,7 +155,7 @@ class TrainerBase:
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
+            if (idx + 1) % 100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
@@ -194,7 +194,7 @@ class TrainerBase:
                     torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
@@ -457,8 +457,8 @@ class AttractorTrainer(TrainerBase):
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -511,7 +511,7 @@ class AttractorTrainer(TrainerBase):
                     mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (1, T)
                     mixture = mixture.squeeze(dim=0) # -> (T,)
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
@@ -520,7 +520,7 @@ class AttractorTrainer(TrainerBase):
                     torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1,source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
@@ -741,8 +741,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
