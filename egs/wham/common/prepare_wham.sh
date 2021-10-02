@@ -22,7 +22,7 @@ else
     fi
     wget "https://storage.googleapis.com/whisper-public/${file}" -P "/tmp"
     unzip "/tmp/${file}" -d "/tmp/"
-    mv "/tmp/wham_noise/" "${wham_noise_root}"
+    mv "/tmp/wham_noise/*" "${wham_noise_root}"
     rm "/tmp/${file}"
 fi
 
