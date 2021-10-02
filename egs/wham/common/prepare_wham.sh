@@ -14,7 +14,7 @@ wsjmix_16k="../../../dataset/wsj0-mix/2speakers/wav16k"
 # Prepare wham noise
 file="wham_noise.zip"
 
-if [ -e "${wham_noise_root}/wham_noise/tr/40na010x_1.9857_01xo031a_-1.9857.wav" ] ; then
+if [ -e "${wham_noise_root}/tr/40na010x_1.9857_01xo031a_-1.9857.wav" ] ; then
     echo "Already downloaded dataset ${wham_noise_root}"
 else
     if [ ! -d "${wham_noise_root}" ] ; then
