@@ -1,6 +1,6 @@
 #!/bin/bash
 
-wham_root="../../../dataset/wham"
+wham_root="../../../dataset/WHAM!"
 wham_noise_root="../../../dataset/wham_noise"
 create_from="wsjmix" # or "scratch"
 
@@ -45,7 +45,7 @@ if [ "${create_from}" = "scratch" ] ; then
     --wsj0-root "${wsj0_root}" \
     --wham-noise-root "${wham_noise_root}" \
     --output-dir "${wham_root}"
-else if [ "${create_from}" = "wsjmix" ] ; then
+elif [ "${create_from}" = "wsjmix" ] ; then
     python "${wham_root}/wham_scripts/"create_wham_from_wsjmix.py \
     --wsjmix-dir-8k "${wsjmix_8k}" \
     --wsjmix-dir-16k "${wsjmix_16k}" \
