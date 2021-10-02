@@ -16,5 +16,5 @@ else
     unzip "/tmp/${file}" -d "/tmp/"
     rm "/tmp/${file}"
 
-    mv "/tmp/wham_noise"* "${wham_noise_root}"
+    mv "/tmp/wham_noise/"* "${wham_noise_root}"
 fi
