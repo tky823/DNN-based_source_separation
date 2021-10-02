@@ -2,12 +2,9 @@
 
 whamr_root="../../../dataset/WHAMR!"
 wham_noise_root="../../../dataset/WHAM!_noise"
-create_from="wsjmix" # or "scratch"
 
 # WSJ0
 wsj0_root="../../../dataset/wsj0_wav"
-wsjmix_8k="../../../dataset/wsj0-mix/2speakers/wav8k"
-wsjmix_16k="../../../dataset/wsj0-mix/2speakers/wav16k"
 
 . ./parse_options.sh || exit 1
 
