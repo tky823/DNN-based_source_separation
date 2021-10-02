@@ -40,13 +40,17 @@ else
     rm "/tmp/${file}"
 fi
 
+work_dir="$PWD"
+
+cd "${wham_root}/wham_scripts/"
+
 if [ "${create_from}" = "scratch" ] ; then
-    python "${wham_root}/wham_scripts/"create_wham_from_scratch.py \
+    python create_wham_from_scratch.py \
     --wsj0-root "${wsj0_root}" \
     --wham-noise-root "${wham_noise_root}" \
     --output-dir "${wham_root}"
 elif [ "${create_from}" = "wsjmix" ] ; then
-    python "${wham_root}/wham_scripts/"create_wham_from_wsjmix.py \
+    python create_wham_from_wsjmix.py \
     --wsjmix-dir-8k "${wsjmix_8k}" \
     --wsjmix-dir-16k "${wsjmix_16k}" \
     --wham-noise-root "${wham_noise_root}" \
@@ -54,3 +58,5 @@ elif [ "${create_from}" = "wsjmix" ] ; then
 else
     echo "'create_from' is expected scratch or wsjmix."
 fi
+
+cd "${work_dir}"
