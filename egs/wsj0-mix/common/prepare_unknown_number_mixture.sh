@@ -15,9 +15,10 @@ if [ ! -d "${to_dir}" ] ; then
 fi
 
 n_sources_set=`echo ${mixed_n_sources} | tr '+' '\n'`
+subsets=( "tr" "cv" "tt" )
 
 for n_sources in ${n_sources_set} ; do
-    for data_type in 'tr' 'cv' 'tt' ; do
+    for data_type in "${subsets[@]}" ; do
         from="${wsj0mix_root}/${n_sources}speakers/wav${sr_k}k/${minmax}/${data_type}"
         cp -r "${from}" "${to_dir}"
         
