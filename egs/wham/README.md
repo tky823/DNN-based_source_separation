@@ -7,17 +7,17 @@ Download WSJ0 dataset and create wsj0-2mix manually.
 ```
 cd <REPOSITORY_ROOT>/egs/wham/common/
 . ./prepare_wham.sh \
---wham_root <WHAM_ROOT> \
+--wham_2speakers_root <WHAM_2speakers_ROOT> \
 --wham_noise_root <WHAM_NOISE_ROOT> \
---wsjmix_8k <WSJ0-MIX_8k_ROOT> \
---wsjmix_16k <WSJ0-MIX_16k_ROOT> \
+--wsjmix_2speakers_8k <WSJ0-MIX_2speakers_8k_ROOT> \
+--wsjmix_2speakers_16k <WSJ0-MIX_2speakers_16k_ROOT> \
 --create_from "wsjmix"
 ```
 If you want to create from scratch, 
 ```
 cd <REPOSITORY_ROOT>/egs/wham/common/
 . ./prepare_wham.sh \
---wham_root <WHAM_ROOT> \
+--wham_2speakers_root <WHAM_2speakers_ROOT> \
 --wham_noise_root <WHAM_NOISE_ROOT> \
 --wsj0_root <WSJ0_ROOT> \
 --create_from "scratch"
