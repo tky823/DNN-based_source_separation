@@ -64,7 +64,7 @@ class ConvBlock1d(nn.Module):
             
         self.net = nn.Sequential(*net)
 
-    def forward(self, input, enc_h=None):
+    def forward(self, input):
         num_layers = self.num_layers
         
         x = input
@@ -75,7 +75,7 @@ class ConvBlock1d(nn.Module):
             skip_connection = skip_connection + skip
 
         return x, skip_connection
-        
+
 class ResidualBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()

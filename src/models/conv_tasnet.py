@@ -162,7 +162,7 @@ class ConvTasNet(nn.Module):
         return self.get_config()
     
     @classmethod
-    def build_model(cls, model_path):
+    def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
         in_channels = config.get('in_channels') or 1
@@ -194,6 +194,9 @@ class ConvTasNet(nn.Module):
             n_sources=n_sources,
             eps=eps
         )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
     

@@ -9,12 +9,16 @@ mixed_n_sources='2+3'
 . ./parse_options.sh || exit 1
 
 to_dir="${wsj0mix_root}/${mixed_n_sources}speakers/wav${sr_k}k/${minmax}"
-mkdir -p "${to_dir}"
+
+if [ ! -d "${to_dir}" ] ; then
+    mkdir -p "${to_dir}"
+fi
 
 n_sources_set=`echo ${mixed_n_sources} | tr '+' '\n'`
+subsets=( "tr" "cv" "tt" )
 
 for n_sources in ${n_sources_set} ; do
-    for data_type in 'tr' 'cv' 'tt' ; do
+    for data_type in "${subsets[@]}" ; do
         from="${wsj0mix_root}/${n_sources}speakers/wav${sr_k}k/${minmax}/${data_type}"
         cp -r "${from}" "${to_dir}"
         

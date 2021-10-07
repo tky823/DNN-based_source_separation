@@ -53,10 +53,13 @@ class WaveNet(nn.Module):
         return output
 
     @classmethod
-    def build_model(cls, model_path):
+    def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
         model = cls(in_channels=config['in_channels'], out_channels=config['out_channels'], hidden_channels=config['hidden_channels'], skip_channels=config['skip_channels'], kernel_size=config['kernel_size'], num_blocks=config['num_blocks'], num_layers=config['num_layers'], dilated=config['dilated'], separable=config['separable'], causal=config['causal'], nonlinear=config['nonlinear'], norm=config['norm'], output_nonlinear=config['output_nonlinear'], conditioning=config['conditioning'], enc_dim=config['enc_dim'], enc_kernel_size=config['enc_kernel_size'], enc_stride=config['enc_stride'])
+        
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
         

@@ -87,9 +87,7 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
     return estimated_paths
 
 def load_pretrained_conv_tasnet(model_path):
-    config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    model = ConvTasNet.build_model(model_path)
-    model.load_state_dict(config['state_dict'])
+    model = ConvTasNet.build_model(model_path, load_state_dict=True)
     
     return model
 

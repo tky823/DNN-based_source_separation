@@ -33,7 +33,6 @@ class WaveDataset(WSJ0Dataset):
                 wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
                 
                 wave, _ = torchaudio.load(wav_path)
-                
                 _, T_total = wave.size()
                 
                 for start_idx in range(0, T_total, samples - overlap):
@@ -77,8 +76,7 @@ class WaveDataset(WSJ0Dataset):
             source_data = data['sources'][key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
-            wave = wave[:, start: end]
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             sources.append(wave)
         
         sources = torch.cat(sources, dim=0)
@@ -86,8 +84,7 @@ class WaveDataset(WSJ0Dataset):
         mixture_data = data['mixture']
         start, end = mixture_data['start'], mixture_data['end']
         wav_path = os.path.join(self.wav_root, mixture_data['path'])
-        wave, _ = torchaudio.load(wav_path)
-        mixture = wave[:, start: end]
+        mixture, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             
         segment_ID = self.json_data[idx]['ID'] + '_{}-{}'.format(start, end)
         
@@ -509,7 +506,7 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
             source_data = data['sources'][key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             sources.append(wave)
         
         sources = torch.cat(sources, dim=0)
@@ -517,12 +514,9 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
         mixture_data = data['mixture']
         start, end = mixture_data['start'], mixture_data['end']
         wav_path = os.path.join(self.wav_root, mixture_data['path'])
-        mixture, _ = torchaudio.load(wav_path)
+        mixture, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             
         segment_ID = self.json_data[idx]['ID'] + '_{}-{}'.format(start, end)
-        
-        mixture = torch.Tensor(mixture).float()
-        sources = torch.Tensor(sources).float()
         
         return mixture, sources, segment_ID
         
