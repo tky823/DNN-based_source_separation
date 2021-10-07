@@ -142,12 +142,14 @@ class WaveEvalDataset(WaveDataset):
         wav_root = os.path.abspath(wav_root)
         list_path = os.path.abspath(list_path)
 
+        mix_type = self.mix_type
+
         self.json_data = []
         
         with open(list_path) as f:
             for line in f:
                 ID = line.strip()
-                wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
+                wav_path = os.path.join(wav_root, 'mix_{}'.format(mix_type), '{}.wav'.format(ID))
 
                 wave, _ = torchaudio.load(wav_path)
                 
@@ -183,7 +185,7 @@ class WaveEvalDataset(WaveDataset):
                 data['noise'] = noise_data
                 
                 mixture_data = {
-                    'path': os.path.join('mix', '{}.wav'.format(ID)),
+                    'path': os.path.join('mix_{}'.format(mix_type), '{}.wav'.format(ID)),
                     'start': 0,
                     'end': samples
                 }
