@@ -18,7 +18,7 @@ parser.add_argument('--train_wav_root', type=str, default=None, help='Path for t
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
 parser.add_argument('--train_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tr_mix')
 parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier','trainableFourierTrainablePhase'], help='Encoder type')
@@ -61,12 +61,13 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
+    task = 'separate-noisy'
     samples = int(args.sr * args.duration)
     overlap = samples // 2
     max_samples = int(args.sr * args.valid_duration)
     
-    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, task='separate-noisy', samples=samples, overlap=overlap, n_sources=args.n_sources)
-    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, task='separate-noisy', max_samples=max_samples, n_sources=args.n_sources)
+    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, task=task, samples=samples, overlap=overlap, n_sources=args.n_sources)
+    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, task=task, max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
@@ -84,7 +85,8 @@ def main(args):
         window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels,
         sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
-        dilated=args.dilated, separable=args.separable, causal=args.causal, sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear,
+        dilated=args.dilated, separable=args.separable, causal=args.causal,
+        sep_nonlinear=args.sep_nonlinear, sep_norm=args.sep_norm, mask_nonlinear=args.mask_nonlinear,
         n_sources=args.n_sources
     )
     print(model)

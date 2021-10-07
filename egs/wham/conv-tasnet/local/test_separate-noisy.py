@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sdr', 'sisdr'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -27,8 +27,10 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
+
+    task = 'separate-noisy'
     
-    test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, task='separate-noisy', n_sources=args.n_sources)
+    test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, task=task, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
