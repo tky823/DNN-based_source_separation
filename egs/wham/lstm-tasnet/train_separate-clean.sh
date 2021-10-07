@@ -14,8 +14,8 @@ max_or_min='min'
 train_wav_root="../../../dataset/WHAM/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
 valid_wav_root="../../../dataset/WHAM/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
 
-train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
-valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
+train_list_path="../../../dataset/WHAM/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
+valid_list_path="../../../dataset/WHAM/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable', 'trainableGated']
@@ -27,8 +27,8 @@ L=80
 
 # Separator
 H=600
-X=2
-R=2 # X x R is actual # of layers in LSTM
+X=4
+sep_dropout=0.3
 causal=0
 mask_nonlinear='softmax'
 
@@ -60,7 +60,7 @@ if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" ]; then
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${task}/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}dilated${dilated}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${task}/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_H${H}_X${X}/${prefix}dropout${sep_dropout}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -93,7 +93,7 @@ train_separate-clean.py \
 -L ${L} \
 -H ${H} \
 -X ${X} \
--R ${R} \
+--sep_dropout ${sep_dropout} \
 --causal ${causal} \
 --mask_nonlinear ${mask_nonlinear} \
 --n_sources ${n_sources} \

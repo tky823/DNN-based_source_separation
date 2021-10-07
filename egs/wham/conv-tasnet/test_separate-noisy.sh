@@ -10,7 +10,7 @@ duration=4
 max_or_min='min'
 
 wav_root="../../../dataset/WHAM/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
-test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tt_mix"
+test_list_path="../../../dataset/WHAM/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tt_mix"
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']

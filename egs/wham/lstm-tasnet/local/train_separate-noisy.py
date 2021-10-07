@@ -8,7 +8,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import AdhocTrainer
-from models.tasnet import TasNet as LSTMTasNet
+from adhoc_model import LSTMTasNet
 from criterion.sdr import NegSDR, NegSISDR
 from criterion.pit import PIT1d
 
@@ -28,8 +28,8 @@ parser.add_argument('--n_basis', '-N', type=int, default=500, help='# of basis')
 parser.add_argument('--kernel_size', '-L', type=int, default=80, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
 parser.add_argument('--sep_hidden_channels', '-H', type=int, default=600, help='Hidden channels of LSTM')
-parser.add_argument('--sep_num_layers', '-X', type=int, default=2, help='# layers of LSTM')
-parser.add_argument('--sep_num_blocks', '-R', type=int, default=2, help='# blocks of separator. Each block has R layers')
+parser.add_argument('--sep_num_layers', '-X', type=int, default=4, help='# layers of LSTM')
+parser.add_argument('--sep_dropout', type=float, default=0.3, help='Dropout rate')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
@@ -72,8 +72,8 @@ def main(args):
     
     model = LSTMTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
-        window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,
-        sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, sep_hidden_channels=args.sep_hidden_channels,
+        sep_num_layers=args.sep_num_layers, sep_hidden_channels=args.sep_hidden_channels,
+        sep_dropout=args.sep_dropout,
         mask_nonlinear=args.mask_nonlinear,
         causal=args.causal,
         n_sources=args.n_sources
