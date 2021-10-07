@@ -65,8 +65,8 @@ def main(args):
     overlap = samples // 2
     max_samples = int(args.sr * args.valid_duration)
     
-    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, task='separate-noisy', samples=samples, overlap=overlap, n_sources=args.n_sources)
-    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, task='separate-noisy', max_samples=max_samples, n_sources=args.n_sources)
+    train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, task='enhance', samples=samples, overlap=overlap, n_sources=args.n_sources)
+    valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, task='enhance', max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     

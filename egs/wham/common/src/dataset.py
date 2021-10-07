@@ -6,24 +6,43 @@ import torchaudio
 EPS = 1e-12
 
 class WSJ0Dataset(torch.utils.data.Dataset):
-    def __init__(self, wav_root, list_path, mix_type='both'):
+    def __init__(self, wav_root, list_path, task='separate-noisy'):
         super().__init__()
         
         self.wav_root = os.path.abspath(wav_root)
         self.list_path = os.path.abspath(list_path)
-        self.mix_type = mix_type
-
-        assert mix_type in ['single', 'both', 'clean'], "`mix_type` is expected 'single', 'both', or 'clean', but given {}.".format(mix_type)
+        
+        if not task in ['enhance', 'separate-noisy']:
+            raise ValueError("`task` is expected 'enhance' or 'separate-noisy', but given {}.".format(task))
+        
+        self.task = task
 
 class WaveDataset(WSJ0Dataset):
-    def __init__(self, wav_root, list_path, mix_type='both', samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, mix_type=mix_type)
+    def __init__(self, wav_root, list_path, task='separate-noisy', samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, task=task)
 
         wav_root = os.path.abspath(wav_root)
         list_path = os.path.abspath(list_path)
         
         if overlap is None:
-            overlap = samples//2
+            overlap = samples // 2
+        
+        if task == 'enhance':
+            if n_sources == 1:
+                mix_type = 'single'
+            elif n_sources == 2:
+                mix_type = 'both'
+            else:
+                raise ValueError("n_sources is expected 1 or 2 in enhancement task, but given {}.".format(n_sources))
+        elif task == 'separate-noisy':
+            if n_sources == 2:
+                mix_type = 'both'
+            else:
+                raise ValueError("n_sources is expected 2 in separation task, but given {}.".format(n_sources))
+        else:
+            raise ValueError("`task` is expected 'enhance' or 'separate-noisy', but given {}.".format(task))
+        
+        self.mix_type = mix_type
         
         self.json_data = []
         
@@ -108,8 +127,8 @@ class WaveDataset(WSJ0Dataset):
         return len(self.json_data)
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, wav_root, list_path, mix_type='both', samples=32000, overlap=None, n_sources=2):
-        super().__init__(wav_root, list_path, mix_type=mix_type, samples=samples, overlap=overlap, n_sources=n_sources)
+    def __init__(self, wav_root, list_path, task='separate-noisy', samples=32000, overlap=None, n_sources=2):
+        super().__init__(wav_root, list_path, task=task, samples=samples, overlap=overlap, n_sources=n_sources)
     
     def __getitem__(self, idx):
         mixture, sources, _, _ = super().__getitem__(idx)
@@ -117,8 +136,8 @@ class WaveTrainDataset(WaveDataset):
         return mixture, sources
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, wav_root, list_path, mix_type='both', max_samples=None, n_sources=2):
-        super().__init__(wav_root, list_path, mix_type=mix_type, n_sources=n_sources)
+    def __init__(self, wav_root, list_path, task='separate-noisy', max_samples=None, n_sources=2):
+        super().__init__(wav_root, list_path, task=task, n_sources=n_sources)
 
         wav_root = os.path.abspath(wav_root)
         list_path = os.path.abspath(list_path)
@@ -180,8 +199,8 @@ class WaveEvalDataset(WaveDataset):
         return mixture, sources, segment_ID
 
 class WaveTestDataset(WaveEvalDataset):
-    def __init__(self, wav_root, list_path, mix_type='both', max_samples=None, n_sources=2):
-        super().__init__(wav_root, list_path, mix_type=mix_type, max_samples=max_samples, n_sources=n_sources)
+    def __init__(self, wav_root, list_path, task='separate-noisy', max_samples=None, n_sources=2):
+        super().__init__(wav_root, list_path, task=task, max_samples=max_samples, n_sources=n_sources)
         
     def __getitem__(self, idx):
         """
