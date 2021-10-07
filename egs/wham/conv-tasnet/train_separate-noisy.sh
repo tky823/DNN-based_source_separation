@@ -14,8 +14,8 @@ max_or_min='min'
 train_wav_root="../../../dataset/WHAM/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
 valid_wav_root="../../../dataset/WHAM/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
 
-train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
-valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
+train_list_path="../../../dataset/WHAM/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
+valid_list_path="../../../dataset/WHAM/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
