@@ -14,8 +14,8 @@ test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_
 
 # STFT and masking
 window_fn='hann'
-fft_size=4096
-hop_size=1024
+fft_size=256
+hop_size=64
 ideal_mask='ibm'
 
 # Criterion
@@ -28,7 +28,7 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${ideal_mask}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${criterion}"
+    save_dir="${exp_dir}/${ideal_mask}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window"
 else
     save_dir="${exp_dir}/${tag}"
 fi
