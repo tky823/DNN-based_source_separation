@@ -187,7 +187,7 @@ class TasNet(nn.Module):
         enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
         enc_nonlinear = config.get('enc_nonlinear')
         
-        sep_num_layers = config['sep_num_layers']
+        sep_num_blocks, sep_num_layers = config['sep_num_blocks'], config['sep_num_layers']
         sep_hidden_channels = config['sep_hidden_channels']
         
         causal = config['causal']
@@ -199,7 +199,7 @@ class TasNet(nn.Module):
         
         model = cls(
             n_basis, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
-            sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
+            sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
             mask_nonlinear=mask_nonlinear,
             causal=causal,
             n_sources=n_sources,
