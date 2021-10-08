@@ -230,8 +230,7 @@ class Separator(nn.Module):
         x, (_, _) = self.rnn(x)
         x = self.fc(x) # (batch_size, n_frames, n_sources * n_basis)
         x = x.view(batch_size, n_frames, n_sources, n_basis)
-        x = x.permute(0, 2, 3, 1).contiguous()
-        x = x.view(batch_size, n_sources, n_basis, n_frames)
+        x = x.permute(0, 2, 3, 1).contiguous() # (batch_size, n_sources, n_basis, n_frames)
         output = self.mask_nonlinear(x)
 
         return output
