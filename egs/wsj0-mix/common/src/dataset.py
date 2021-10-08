@@ -177,10 +177,10 @@ class SpectrogramDataset(WaveDataset):
         super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
         
         if hop_size is None:
-            hop_size = fft_size//2
+            hop_size = fft_size // 2
         
         self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size//2 + 1
+        self.n_bins = fft_size // 2 + 1
 
         if window_fn:
             if window_fn == 'hann':

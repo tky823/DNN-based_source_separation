@@ -1,11 +1,11 @@
 #!/bin/bash
 
-model_id="1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo"
+model_id="1yQTdGu2jigAHotJJ7JAQcfqedACCP40t"
 
 . ./path.sh
 . parse_options.sh || exit 1
 
-echo "Download Conv-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
+echo "Download Conv-TasNet. (Dataset: LibriSpeech, sampling frequency 44.1kHz)"
 
 file='archive'
 
