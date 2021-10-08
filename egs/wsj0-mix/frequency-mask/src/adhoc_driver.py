@@ -11,7 +11,7 @@ import torchaudio
 BITS_PER_SAMPLE_WSJ0 = 16
 MIN_PESQ = -0.5
 
-class TesterBase:
+class AdhocTester:
     def __init__(self, method, loader, criterion, args):
         self.loader = loader
         
