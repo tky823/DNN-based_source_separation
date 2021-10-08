@@ -71,7 +71,7 @@ class TasNet(nn.Module):
     def __init__(
         self,
         n_basis, kernel_size=40, stride=None, enc_basis=None, dec_basis=None,
-        sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=1000,
+        sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=500,
         mask_nonlinear='softmax',
         causal=False,
         n_sources=2,
@@ -90,6 +90,7 @@ class TasNet(nn.Module):
             self.in_channels = kwargs['in_channels']
         else:
             self.in_channels = 1
+        
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
@@ -173,6 +174,40 @@ class TasNet(nn.Module):
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
+    
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        in_channels = config.get('in_channels') or 1
+        n_basis = config.get('n_bases') or config['n_basis']
+        kernel_size, stride = config['kernel_size'], config['stride']
+        enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
+        enc_nonlinear = config.get('enc_nonlinear')
+        
+        sep_num_layers = config['sep_num_layers']
+        sep_hidden_channels = config['sep_hidden_channels']
+        
+        causal = config['causal']
+        mask_nonlinear = config['mask_nonlinear']
+        
+        n_sources = config['n_sources']
+        
+        eps = config.get('eps') or EPS
+        
+        model = cls(
+            n_basis, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
+            sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
+            mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        
+        return model
     
     @property
     def num_parameters(self):
