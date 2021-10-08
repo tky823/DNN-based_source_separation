@@ -11,7 +11,7 @@ class FrequencyMasking(nn.Module):
             hop_size = fft_size // 2
         
         self.fft_size, self.hop_size = fft_size, hop_size
-        window = build_window(window_fn, fft_size=fft_size)
+        window = build_window(fft_size, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
         assert domain in ['time'], "domain is expected time."
