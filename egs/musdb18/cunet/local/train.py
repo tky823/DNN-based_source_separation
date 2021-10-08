@@ -14,7 +14,7 @@ from adhoc_driver import AdhocTrainer
 from models.cunet import ConditionedUNet2d, ControlDenseNet, UNet2d
 from criterion.distance import L1Loss
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Training of Conditioned UNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
@@ -27,7 +27,7 @@ parser.add_argument('--window_fn', type=str, default='hamming', help='Window fun
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='l1loss', choices=['l1loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
-parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
+parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
