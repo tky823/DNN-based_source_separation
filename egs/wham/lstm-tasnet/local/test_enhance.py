@@ -28,7 +28,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
 
-    task = 'separate-noisy'
+    task = 'enhance'
     
     test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, task=task, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))

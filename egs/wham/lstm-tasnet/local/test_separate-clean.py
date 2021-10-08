@@ -8,11 +8,11 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import WaveTestDataset, TestDataLoader
 from adhoc_driver import Tester
-from models.conv_tasnet import ConvTasNet
+from adhoc_model import LSTMTasNet
 from criterion.sdr import NegSDR, NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Evaluation of LSTM-TasNet")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
@@ -28,14 +28,14 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
 
-    task = 'enhance'
+    task = 'separate-clean'
     
     test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, task=task, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
-    model = ConvTasNet.build_model(args.model_path)
+    model = LSTMTasNet.build_model(args.model_path)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
