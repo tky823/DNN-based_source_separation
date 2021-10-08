@@ -33,10 +33,6 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_choice="best"
-
-model_dir="${save_dir}/model"
-model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
 out_dir="${save_dir}/test"
 
