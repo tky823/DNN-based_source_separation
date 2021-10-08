@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.utils_audio import build_window
-from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, phase_sensitive_mask
+from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_phase_sensitive_mask
 
 class FrequencyMasking(nn.Module):
     def __init__(self, fft_size, hop_size=None, window_fn='hann', domain='time'):
@@ -75,7 +75,7 @@ class IdealBinaryMasking(FrequencyMasking):
         super().__init__(fft_size, hop_size=hop_size, window_fn=window_fn, domain=domain)
     
     def compute_mask(self, input):
-        mask = ideal_binary_mask(input)
+        mask = compute_ideal_binary_mask(input)
         return mask
 
 class IdealRatioMasking(FrequencyMasking):
@@ -83,7 +83,7 @@ class IdealRatioMasking(FrequencyMasking):
         super().__init__(fft_size, hop_size=hop_size, window_fn=window_fn, domain=domain)
     
     def compute_mask(self, input):
-        mask = ideal_ratio_mask(input)
+        mask = compute_ideal_ratio_mask(input)
         return mask
 
 class PhaseSensitiveMasking(FrequencyMasking):
@@ -91,5 +91,5 @@ class PhaseSensitiveMasking(FrequencyMasking):
         super().__init__(fft_size, hop_size=hop_size, window_fn=window_fn, domain=domain)
     
     def compute_mask(self, input):
-        mask = phase_sensitive_mask(input)
+        mask = compute_phase_sensitive_mask(input)
         return mask
