@@ -32,6 +32,9 @@ class LSTMTasNet(nn.Module):
             self.in_channels = 1
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
+        self.enc_basis, self.dec_basis = enc_basis, dec_basis
+
+        # Separator configuration
         self.sep_num_layers = sep_num_layers
         self.sep_hidden_channels = sep_hidden_channels
         self.sep_dropout = sep_dropout
@@ -172,6 +175,8 @@ class LSTMTasNet(nn.Module):
             'n_basis': self.n_basis,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
+            'enc_basis': self.enc_basis,
+            'dec_basis': self.dec_basis,
             'sep_num_layers': self.sep_num_layers,
             'sep_dropout': self.sep_hidden_channels,
             'sep_dropout': self.sep_dropout,
