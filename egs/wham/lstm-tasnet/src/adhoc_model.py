@@ -130,7 +130,7 @@ class LSTMTasNet(nn.Module):
         enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
         enc_nonlinear = config.get('enc_nonlinear')
         enc_onesided, enc_return_complex = config.get('enc_onesided') or None, config.get('enc_return_complex') or None
-        window_fn = config['window_fn']
+        window_fn = config.get('window_fn') or None
         
         sep_num_layers = config['sep_num_layers']
         sep_hidden_channels = config['sep_hidden_channels']
