@@ -7,6 +7,8 @@ from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, phase_
 
 class FrequencyMasking(nn.Module):
     def __init__(self, fft_size, hop_size=None, window_fn='hann', domain='time'):
+        super().__init__()
+        
         if hop_size is None:
             hop_size = fft_size // 2
         
