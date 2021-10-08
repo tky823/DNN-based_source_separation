@@ -15,7 +15,7 @@ class AdhocTester:
     def __init__(self, method, loader, criterion, args):
         self.loader = loader
         
-        self.methos = method
+        self.method = method
 
         self.criterion = criterion
         
