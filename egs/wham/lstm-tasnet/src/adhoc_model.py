@@ -129,8 +129,6 @@ class LSTMTasNet(nn.Module):
         kernel_size, stride = config['kernel_size'], config['stride']
         enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
         enc_nonlinear = config.get('enc_nonlinear')
-        enc_onesided, enc_return_complex = config.get('enc_onesided') or None, config.get('enc_return_complex') or None
-        window_fn = config.get('window_fn') or None
         
         sep_num_layers = config['sep_num_layers']
         sep_hidden_channels = config['sep_hidden_channels']
@@ -145,7 +143,6 @@ class LSTMTasNet(nn.Module):
         
         model = cls(
             n_basis, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
-            window_fn=window_fn, enc_onesided=enc_onesided, enc_return_complex=enc_return_complex,
             sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
             sep_dropout=sep_dropout,
             mask_nonlinear=mask_nonlinear,
@@ -178,7 +175,7 @@ class LSTMTasNet(nn.Module):
             'enc_basis': self.enc_basis,
             'dec_basis': self.dec_basis,
             'sep_num_layers': self.sep_num_layers,
-            'sep_dropout': self.sep_hidden_channels,
+            'sep_hidden_channels': self.sep_hidden_channels,
             'sep_dropout': self.sep_dropout,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
