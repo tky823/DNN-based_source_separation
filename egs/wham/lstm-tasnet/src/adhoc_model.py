@@ -33,6 +33,8 @@ class LSTMTasNet(nn.Module):
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.sep_num_layers = sep_num_layers
+        self.sep_hidden_channels = sep_hidden_channels
+        self.sep_dropout = sep_dropout
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         self.n_sources = n_sources
@@ -115,6 +117,45 @@ class LSTMTasNet(nn.Module):
         
         return output, latent
     
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        in_channels = config.get('in_channels') or 1
+        n_basis = config.get('n_bases') or config['n_basis']
+        kernel_size, stride = config['kernel_size'], config['stride']
+        enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
+        enc_nonlinear = config.get('enc_nonlinear')
+        enc_onesided, enc_return_complex = config.get('enc_onesided') or None, config.get('enc_return_complex') or None
+        window_fn = config['window_fn']
+        
+        sep_num_layers = config['sep_num_layers']
+        sep_hidden_channels = config['sep_hidden_channels']
+        sep_dropout = config['sep_dropout']
+        
+        causal = config['causal']
+        mask_nonlinear = config['mask_nonlinear']
+        
+        n_sources = config['n_sources']
+        
+        eps = config.get('eps') or EPS
+        
+        model = cls(
+            n_basis, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
+            window_fn=window_fn, enc_onesided=enc_onesided, enc_return_complex=enc_return_complex,
+            sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
+            sep_dropout=sep_dropout,
+            mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        
+        return model
+    
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -132,6 +173,8 @@ class LSTMTasNet(nn.Module):
             'kernel_size': self.kernel_size,
             'stride': self.stride,
             'sep_num_layers': self.sep_num_layers,
+            'sep_dropout': self.sep_hidden_channels,
+            'sep_dropout': self.sep_dropout,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
             'n_sources': self.n_sources,
