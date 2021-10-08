@@ -180,7 +180,7 @@ class Separator(nn.Module):
         batch_size, _, n_frames = input.size()
         
         x = input.permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_basis)
-        x = self.rnn(x)
+        x, (_, _) = self.rnn(x)
         x = self.fc(x) # (batch_size, n_frames, n_sources * n_basis)
         x = x.view(batch_size, n_frames, n_sources, n_basis)
         x = x.permute(0, 2, 3, 1).contiguous()
