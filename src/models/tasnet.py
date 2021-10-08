@@ -184,8 +184,8 @@ class TasNet(nn.Module):
                 
         return _num_parameters
     
-    def get_package(self):
-        package = {
+    def get_config(self):
+        config = {
             'in_channels': self.in_channels,
             'n_basis': self.n_basis,
             'kernel_size': self.kernel_size,
@@ -198,7 +198,7 @@ class TasNet(nn.Module):
             'eps': self.eps
         }
         
-        return package
+        return config
 
 """
     Modules for LSTM-TasNet
