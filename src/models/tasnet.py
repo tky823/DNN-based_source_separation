@@ -93,7 +93,9 @@ class TasNet(nn.Module):
         
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
+        self.enc_basis, self.dec_basis = enc_basis, dec_basis
         self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
+        self.sep_hidden_channels = sep_hidden_channels
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         self.n_sources = n_sources
@@ -225,8 +227,11 @@ class TasNet(nn.Module):
             'n_basis': self.n_basis,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
+            'enc_basis': self.enc_basis,
+            'dec_basis': self.dec_basis,
             'sep_num_blocks': self.sep_num_blocks,
             'sep_num_layers': self.sep_num_layers,
+            'sep_hidden_channels': self.sep_hidden_channels,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
             'n_sources': self.n_sources,
