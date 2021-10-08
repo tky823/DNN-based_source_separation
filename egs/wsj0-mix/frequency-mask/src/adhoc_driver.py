@@ -50,18 +50,17 @@ class AdhocTester:
         
         with torch.no_grad():
             for idx, (mixture, sources, segment_IDs) in enumerate(self.loader):
-                loss_mixture, _ = self.criterion(mixture, sources, batch_mean=False)
+                loss_mixture = self.criterion(mixture, sources, batch_mean=False)
                 loss_mixture = loss_mixture.sum(dim=0)
                 
                 output = self.method(mixture, sources)
-                loss, perm_idx = self.criterion(output, sources, batch_mean=False)
+                loss = self.criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 loss_improvement = loss_mixture.item() - loss.item()
                 
                 mixture = mixture[0].squeeze(dim=0) # -> (T,)
                 sources = sources[0] # -> (n_sources, T)
                 estimated_sources = output[0] # -> (n_sources, T)
-                perm_idx = perm_idx[0] # -> (n_sources,)
                 segment_IDs = segment_IDs[0] # -> <str>
 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
