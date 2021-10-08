@@ -224,6 +224,8 @@ class Separator(nn.Module):
         
         batch_size, _, n_frames = input.size()
         
+        self.rnn.flatten_parameters()
+        
         x = input.permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_basis)
         x, (_, _) = self.rnn(x)
         x = self.fc(x) # (batch_size, n_frames, n_sources * n_basis)
