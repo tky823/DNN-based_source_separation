@@ -22,38 +22,13 @@ class FrequencyMasking(nn.Module):
 
     def forward(self, mixture, sources):
         T = mixture.size(-1)
+
         mixture, sources = self.stft(mixture), self.stft(sources)
-
-        n_dims = sources.dim()
-        mixture_dims = mixture.dim()
-        
-        if n_dims == 3:
-            if mixture_dims == 2:
-                mixture = mixture.unsqueeze(dim=0)
-                squeeze_dim = 0
-            else:
-                squeeze_dim = None
-            input = sources
-        elif n_dims == 4:
-            if mixture_dims == 3:
-                mixture = mixture.unsqueeze(dim=1)
-                squeeze_dim = 1
-            else:
-                squeeze_dim = None
-            input = sources
-        else:
-            raise ValueError("Only supports 3D or 4D input.")
-
-        mask = self.compute_mask(input)
-        
+        mask = self.compute_mask(sources)
         output = mask * mixture
-
-        if squeeze_dim is not None:
-            output = output.squeeze(dim=squeeze_dim)
-        
         output = self.istft(output)
-        T_pad = output.size(-1)
 
+        T_pad = output.size(-1)
         output = F.pad(output, (0, T - T_pad))
 
         return output
@@ -64,14 +39,34 @@ class FrequencyMasking(nn.Module):
     def stft(self, input):
         fft_size, hop_size = self.fft_size, self.hop_size
         window = self.window
+
+        n_dims = input.dim()
+
+        if n_dims > 2:
+            channels = input.size()[:-1]
+            input = input.view(-1, input.size(-1))
+        
         output = torch.stft(input, fft_size, hop_length=hop_size, window=window, return_complex=True)
+
+        if n_dims > 2:
+            output = output.view(*channels, *output.size()[-2:])
 
         return output
 
     def istft(self, input):
         fft_size, hop_size = self.fft_size, self.hop_size
         window = self.window
+
+        n_dims = input.dim()
+
+        if n_dims > 2:
+            channels = input.size()[:-2]
+            input = input.view(-1, *input.size()[-2:])
+        
         output = torch.istft(input, fft_size, hop_length=hop_size, window=window, return_complex=False)
+
+        if n_dims > 2:
+            output = output.view(*channels, output.size(-1))
 
         return output
 
