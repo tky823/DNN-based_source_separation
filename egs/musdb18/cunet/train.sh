@@ -9,7 +9,7 @@ patch=128
 valid_duration=30
 
 musdb18_root="../../../dataset/musdb18"
-sr=8192
+sr=44100
 
 window_fn='hann'
 fft_size=1024
