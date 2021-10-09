@@ -454,6 +454,20 @@ class ControlDenseNet(nn.Module):
             output_biases.append(x_biases)
 
         return output_weights, output_biases
+
+    @classmethod
+    def build_from_config(cls, config):
+        channels, out_channels = config['channels'], config['out_channels']
+        nonlinear = config['nonlinear']
+        dropout = config['dropout']
+        norm = config['norm']
+        
+        model = cls(
+            channels, out_channels,
+            nonlinear=nonlinear, dropout=dropout, norm=norm
+        )
+    
+        return model
     
     def get_config(self):
         config = {

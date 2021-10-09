@@ -62,9 +62,13 @@ def main(args):
     
     with open(args.config_path) as f:
         config = yaml.safe_load(f)
+    
     config_control, config_unet = config['control'], config['unet']
+
     if config_control['backbone'] == 'dense':
-        control_net = ControlDenseNet(config_control['channels'], config_unet['channels'][1:], nonlinear=config_control['nonlinear'], dropout=config_control['dropout'], norm=config_control['norm'])
+        if not 'out_channels' in config_control.keys():
+            config_control['out_channels'] = config_unet['channels'][1:]
+        control_net = ControlDenseNet.build_from_config(config_control)
     else:
         raise ValueError("Invalid control net")
     unet = UNet2d.build_from_config(config_unet)
