@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
+from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
 from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
@@ -25,8 +26,8 @@ parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
-parser.add_argument('--sources', type=str, default="[drums,bass,other,vocals]", help='Source names')
-parser.add_argument('--target', type=str, default=None, choices=['drums', 'bass', 'other', 'vocals'], help='Target source name')
+parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
+parser.add_argument('--target', type=str, default=None, choices=['bass', 'drums', 'other', 'vocals'], help='Target source name')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
@@ -57,7 +58,11 @@ def main(args):
         args.samples_per_epoch = None
     
     with open(args.augmentation_path) as f:
-        augmentation = yaml.safe_load(f)
+        config_augmentation = yaml.safe_load(f)
+    
+    augmentation = SequentialAugmentation()
+    for name in config_augmentation['augmentation']:
+        augmentation.append(choose_augmentation(name, **config_augmentation[name]))
     
     train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)

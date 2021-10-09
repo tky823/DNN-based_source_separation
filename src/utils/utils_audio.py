@@ -1,11 +1,11 @@
 import math
 import warnings
 
-from scipy.io import wavfile
 import numpy as np
 import torch
 
 def read_wav(path):
+    from scipy.io import wavfile
     warnings.warn("Use torchaudio.load instead.", DeprecationWarning)
 
     sr, signal = wavfile.read(path)
@@ -14,6 +14,7 @@ def read_wav(path):
     return signal, sr
 
 def write_wav(path, signal, sr):
+    from scipy.io import wavfile
     warnings.warn("Use torchaudio.save instead.", DeprecationWarning)
 
     signal = signal * 32768
@@ -46,11 +47,18 @@ def build_Fourier_bases(fft_size, normalize=False):
     
     return cos_bases, sin_bases
     
-def build_window(fft_size, window_fn='hann'):
+def build_window(fft_size, window_fn='hann', **kwargs):
     if window_fn=='hann':
+        assert set(kwargs) == set(), "kwargs is expected empty but given kwargs={}.".format(kwargs)
         window = torch.hann_window(fft_size, periodic=True)
     elif window_fn=='hamming':
+        assert set(kwargs) == set(), "kwargs is expected empty but given kwargs={}.".format(kwargs)
         window = torch.hamming_window(fft_size, periodic=True)
+    elif window_fn == 'blackman':
+        window = torch.blackman_window(fft_size, periodic=True)
+    elif window_fn=='kaiser':
+        assert set(kwargs) == {'beta'}, "kwargs is expected to include key `beta` but given kwargs={}.".format(kwargs)
+        window = torch.kaiser_window(fft_size, beta=kwargs['beta'], periodic=True)
     else:
         raise ValueError("Not support {} window.".format(window_fn))
     

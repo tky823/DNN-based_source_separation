@@ -40,17 +40,17 @@ class ORPITTrainer(TrainerBase):
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
-            package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
+            config = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
 
-            self.start_epoch = package['epoch']
-            self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
+            self.start_epoch = config['epoch']
+            self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
             
             if isinstance(self.model, nn.DataParallel):
-                self.model.module.load_state_dict(package['state_dict'])
+                self.model.module.load_state_dict(config['state_dict'])
             else:
-                self.model.load_state_dict(package['state_dict'])
+                self.model.load_state_dict(config['state_dict'])
             
-            self.optimizer.load_state_dict(package['optim_dict'])
+            self.optimizer.load_state_dict(config['optim_dict'])
         else:
             # TODO: redundant? last.pth never exists
             model_path = os.path.join(self.model_dir, "last.pth")
@@ -144,18 +144,18 @@ class ORPITTrainer(TrainerBase):
      
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
-            package = self.model.module.get_package()
-            package['state_dict'] = self.model.module.state_dict()
+            config = self.model.module.get_config()
+            config['state_dict'] = self.model.module.state_dict()
         else:
-            package = self.model.get_package()
-            package['state_dict'] = self.model.state_dict()
+            config = self.model.get_config()
+            config['state_dict'] = self.model.state_dict()
             
-        package['optim_dict'] = self.optimizer.state_dict()
+        config['optim_dict'] = self.optimizer.state_dict()
         
-        package['epoch'] = epoch + 1
-        package['train_loss'] = self.train_loss
+        config['epoch'] = epoch + 1
+        config['train_loss'] = self.train_loss
         
-        torch.save(package, model_path)
+        torch.save(config, model_path)
 
 class Tester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):
@@ -333,16 +333,16 @@ class FinetuneTrainer(TrainerBase):
         self.use_cuda = args.use_cuda
         
         # Continue from
-        package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
+        config = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
 
-        continue_from_finetune = package.get('is_finetune') or False
+        continue_from_finetune = config.get('is_finetune') or False
 
         if continue_from_finetune:
-            self.start_epoch = package['epoch']
-            self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
-            self.valid_loss[:self.start_epoch] = package['valid_loss'][:self.start_epoch]
+            self.start_epoch = config['epoch']
+            self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
+            self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
 
-            self.best_loss = package['best_loss']
+            self.best_loss = config['best_loss']
         else:
             model_path = os.path.join(self.model_dir, "best.pth")
             
@@ -357,11 +357,11 @@ class FinetuneTrainer(TrainerBase):
             self.best_loss = float('infinity')
         
         if isinstance(self.model, nn.DataParallel):
-            self.model.module.load_state_dict(package['state_dict'])
+            self.model.module.load_state_dict(config['state_dict'])
         else:
-            self.model.load_state_dict(package['state_dict'])
+            self.model.load_state_dict(config['state_dict'])
         
-        self.optimizer.load_state_dict(package['optim_dict'])
+        self.optimizer.load_state_dict(config['optim_dict'])
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -495,23 +495,23 @@ class FinetuneTrainer(TrainerBase):
     
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
-            package = self.model.module.get_package()
-            package['state_dict'] = self.model.module.state_dict()
+            config = self.model.module.get_config()
+            config['state_dict'] = self.model.module.state_dict()
         else:
-            package = self.model.get_package()
-            package['state_dict'] = self.model.state_dict()
+            config = self.model.get_config()
+            config['state_dict'] = self.model.state_dict()
             
-        package['optim_dict'] = self.optimizer.state_dict()
+        config['optim_dict'] = self.optimizer.state_dict()
         
-        package['best_loss'] = self.best_loss
+        config['best_loss'] = self.best_loss
         
-        package['train_loss'] = self.train_loss
-        package['valid_loss'] = self.valid_loss
+        config['train_loss'] = self.train_loss
+        config['valid_loss'] = self.valid_loss
         
-        package['epoch'] = epoch + 1
-        package['is_finetune'] = True # For finetuner
+        config['epoch'] = epoch + 1
+        config['is_finetune'] = True # For finetuner
         
-        torch.save(package, model_path)
+        torch.save(config, model_path)
 
 class AdhocFinetuneTrainer(FinetuneTrainer):
     def __init__(self, model, loader, pit_criterion, optimizer, args):

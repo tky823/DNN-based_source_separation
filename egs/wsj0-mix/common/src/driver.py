@@ -48,23 +48,23 @@ class TrainerBase:
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
-            package = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
+            config = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
             
-            self.start_epoch = package['epoch']
+            self.start_epoch = config['epoch']
             
-            self.train_loss[:self.start_epoch] = package['train_loss'][:self.start_epoch]
-            self.valid_loss[:self.start_epoch] = package['valid_loss'][:self.start_epoch]
+            self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
+            self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
             
-            self.best_loss = package['best_loss']
+            self.best_loss = config['best_loss']
             self.prev_loss = self.valid_loss[self.start_epoch-1]
-            self.no_improvement = package['no_improvement']
+            self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
-                self.model.module.load_state_dict(package['state_dict'])
+                self.model.module.load_state_dict(config['state_dict'])
             else:
-                self.model.load_state_dict(package['state_dict'])
+                self.model.load_state_dict(config['state_dict'])
             
-            self.optimizer.load_state_dict(package['optim_dict'])
+            self.optimizer.load_state_dict(config['optim_dict'])
         else:
             model_path = os.path.join(self.model_dir, "best.pth")
             
@@ -155,7 +155,7 @@ class TrainerBase:
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
+            if (idx + 1) % 100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
@@ -194,7 +194,7 @@ class TrainerBase:
                     torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1, source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
@@ -206,23 +206,23 @@ class TrainerBase:
     
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
-            package = self.model.module.get_package()
-            package['state_dict'] = self.model.module.state_dict()
+            config = self.model.module.get_config()
+            config['state_dict'] = self.model.module.state_dict()
         else:
-            package = self.model.get_package()
-            package['state_dict'] = self.model.state_dict()
+            config = self.model.get_config()
+            config['state_dict'] = self.model.state_dict()
             
-        package['optim_dict'] = self.optimizer.state_dict()
+        config['optim_dict'] = self.optimizer.state_dict()
         
-        package['best_loss'] = self.best_loss
-        package['no_improvement'] = self.no_improvement
+        config['best_loss'] = self.best_loss
+        config['no_improvement'] = self.no_improvement
         
-        package['train_loss'] = self.train_loss
-        package['valid_loss'] = self.valid_loss
+        config['train_loss'] = self.train_loss
+        config['valid_loss'] = self.valid_loss
         
-        package['epoch'] = epoch + 1
+        config['epoch'] = epoch + 1
         
-        torch.save(package, model_path)
+        torch.save(config, model_path)
 
 class TesterBase:
     def __init__(self, model, loader, pit_criterion, args):
@@ -246,12 +246,12 @@ class TesterBase:
         
         self.use_cuda = args.use_cuda
         
-        package = torch.load(args.model_path, map_location=lambda storage, loc: storage)
+        config = torch.load(args.model_path, map_location=lambda storage, loc: storage)
         
         if isinstance(self.model, nn.DataParallel):
-            self.model.module.load_state_dict(package['state_dict'])
+            self.model.module.load_state_dict(config['state_dict'])
         else:
-            self.model.load_state_dict(package['state_dict'])
+            self.model.load_state_dict(config['state_dict'])
     
     def run(self):
         self.model.eval()
@@ -457,8 +457,8 @@ class AttractorTrainer(TrainerBase):
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -511,7 +511,7 @@ class AttractorTrainer(TrainerBase):
                     mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (1, T)
                     mixture = mixture.squeeze(dim=0) # -> (T,)
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
@@ -520,7 +520,7 @@ class AttractorTrainer(TrainerBase):
                     torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1,source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
@@ -741,8 +741,8 @@ class AnchoredAttractorTrainer(AttractorTrainer):
         
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         

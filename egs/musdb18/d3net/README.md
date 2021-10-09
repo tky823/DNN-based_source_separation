@@ -56,7 +56,7 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
-- You can check example in `exp/20210903`.
+- You can check example in `exp/paper`.
 
 | Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |

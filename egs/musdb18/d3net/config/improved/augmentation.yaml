@@ -1,0 +1,8 @@
+augmentation: [random_scaling, random_flip]
+random_scaling:
+  min: 0.75
+  max: 1.25
+random_flip:
+  flip_rate: 0.5
+comment:
+  "minimum random scaling (0.75) is different from original paper."

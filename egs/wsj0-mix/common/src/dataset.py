@@ -4,7 +4,7 @@ import torch
 import torchaudio
 import torch.nn as nn
 
-from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
+from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_wiener_filter_mask
 
 EPS = 1e-12
 
@@ -33,7 +33,6 @@ class WaveDataset(WSJ0Dataset):
                 wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
                 
                 wave, _ = torchaudio.load(wav_path)
-                
                 _, T_total = wave.size()
                 
                 for start_idx in range(0, T_total, samples - overlap):
@@ -77,8 +76,7 @@ class WaveDataset(WSJ0Dataset):
             source_data = data['sources'][key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
-            wave = wave[:, start: end]
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             sources.append(wave)
         
         sources = torch.cat(sources, dim=0)
@@ -86,8 +84,7 @@ class WaveDataset(WSJ0Dataset):
         mixture_data = data['mixture']
         start, end = mixture_data['start'], mixture_data['end']
         wav_path = os.path.join(self.wav_root, mixture_data['path'])
-        wave, _ = torchaudio.load(wav_path)
-        mixture = wave[:, start: end]
+        mixture, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             
         segment_ID = self.json_data[idx]['ID'] + '_{}-{}'.format(start, end)
         
@@ -180,10 +177,10 @@ class SpectrogramDataset(WaveDataset):
         super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
         
         if hop_size is None:
-            hop_size = fft_size//2
+            hop_size = fft_size // 2
         
         self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size//2 + 1
+        self.n_bins = fft_size // 2 + 1
 
         if window_fn:
             if window_fn == 'hann':
@@ -230,11 +227,11 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, samples=samples, overlap=overlap, n_sources=n_sources)
         
         if mask_type == 'ibm':
-            self.generate_mask = ideal_binary_mask
+            self.generate_mask = compute_ideal_binary_mask
         elif mask_type == 'irm':
-            self.generate_mask = ideal_ratio_mask
+            self.generate_mask = compute_ideal_ratio_mask
         elif mask_type == 'wfm':
-            self.generate_mask = wiener_filter_mask
+            self.generate_mask = compute_wiener_filter_mask
         else:
             raise NotImplementedError("Not support mask {}".format(mask_type))
         
@@ -262,7 +259,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
         max_log_amplitude = torch.max(log_amplitude)
         threshold = 10**((max_log_amplitude - threshold) / 20)
-        threshold_weight = torch.where(mixture_amplitude > 0, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
         
         return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
@@ -509,7 +506,7 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
             source_data = data['sources'][key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             sources.append(wave)
         
         sources = torch.cat(sources, dim=0)
@@ -517,12 +514,9 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
         mixture_data = data['mixture']
         start, end = mixture_data['start'], mixture_data['end']
         wav_path = os.path.join(self.wav_root, mixture_data['path'])
-        mixture, _ = torchaudio.load(wav_path)
+        mixture, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
             
         segment_ID = self.json_data[idx]['ID'] + '_{}-{}'.format(start, end)
-        
-        mixture = torch.Tensor(mixture).float()
-        sources = torch.Tensor(sources).float()
         
         return mixture, sources, segment_ID
         

@@ -53,15 +53,18 @@ class WaveNet(nn.Module):
         return output
 
     @classmethod
-    def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        model = cls(in_channels=package['in_channels'], out_channels=package['out_channels'], hidden_channels=package['hidden_channels'], skip_channels=package['skip_channels'], kernel_size=package['kernel_size'], num_blocks=package['num_blocks'], num_layers=package['num_layers'], dilated=package['dilated'], separable=package['separable'], causal=package['causal'], nonlinear=package['nonlinear'], norm=package['norm'], output_nonlinear=package['output_nonlinear'], conditioning=package['conditioning'], enc_dim=package['enc_dim'], enc_kernel_size=package['enc_kernel_size'], enc_stride=package['enc_stride'])
+        model = cls(in_channels=config['in_channels'], out_channels=config['out_channels'], hidden_channels=config['hidden_channels'], skip_channels=config['skip_channels'], kernel_size=config['kernel_size'], num_blocks=config['num_blocks'], num_layers=config['num_layers'], dilated=config['dilated'], separable=config['separable'], causal=config['causal'], nonlinear=config['nonlinear'], norm=config['norm'], output_nonlinear=config['output_nonlinear'], conditioning=config['conditioning'], enc_dim=config['enc_dim'], enc_kernel_size=config['enc_kernel_size'], enc_stride=config['enc_stride'])
+        
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
         
-    def get_package(self):
-        package = {
+    def get_config(self):
+        config = {
             'in_channels': self.in_channels,
             'out_channels': self.out_channels,
             'hidden_channels': self.hidden_channels,
@@ -81,7 +84,7 @@ class WaveNet(nn.Module):
             'enc_stride': self.enc_stride
         }
         
-        return package
+        return config
         
     @property
     def num_parameters(self):

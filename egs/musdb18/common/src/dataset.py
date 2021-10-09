@@ -1,16 +1,13 @@
 import os
-import random
 
 import torch
 import torchaudio
 
 from utils.utils_audio import build_window
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
-MINSCALE = 0.25
-MAXSCALE = 1.25
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
@@ -20,7 +17,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         Args:
             musdb18_root <str>: Path to MUSDB18 root.
             sr <int>: Sampling rate.
-            sources <list<str>>: Sources for mixture. Default: ['drums','bass','other','vocals']
+            sources <list<str>>: Sources for mixture. Default: ['bass', 'drums', 'other', 'vocals']
             target <str> or <list<str>>: Target source(s). If None is given, `sources` is used by default.
         """
         super().__init__()
@@ -62,12 +59,12 @@ class WaveDataset(MUSDB18Dataset):
         Returns:
             mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
         data = self.json_data[idx]
 
-        songID = data['songID']
-        track = self.tracks[songID]
+        trackID = data['trackID']
+        track = self.tracks[trackID]
         name = track['name']
         paths = track['path']
         start = data['start']
@@ -128,7 +125,7 @@ class WaveTrainDataset(WaveDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -151,7 +148,7 @@ class WaveTrainDataset(WaveDataset):
                 if start + samples >= track_samples:
                     break
                 data = {
-                    'songID': songID,
+                    'trackID': trackID,
                     'start': start,
                     'samples': samples,
                 }
@@ -186,7 +183,7 @@ class WaveEvalDataset(WaveDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -214,7 +211,7 @@ class WaveEvalDataset(WaveDataset):
             self.tracks.append(track)
 
             data = {
-                'songID': songID,
+                'trackID': trackID,
                 'start': 0,
                 'samples': samples
             }
@@ -248,7 +245,7 @@ class WaveTestDataset(WaveDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -268,7 +265,7 @@ class WaveTestDataset(WaveDataset):
             self.tracks.append(track)
 
             data = {
-                'songID': songID,
+                'trackID': trackID,
                 'start': 0,
                 'samples': track_samples
             }
@@ -315,7 +312,7 @@ class SpectrogramDataset(WaveDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T (), <int>: Number of samples in time-domain
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
         mixture, target, name = super().__getitem__(idx)
         
@@ -367,7 +364,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -390,7 +387,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                 if start + samples >= track_samples:
                     break
                 data = {
-                    'songID': songID,
+                    'trackID': trackID,
                     'start': start,
                     'samples': samples,
                 }
@@ -425,7 +422,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -453,7 +450,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             self.tracks.append(track)
 
             data = {
-                'songID': songID,
+                'trackID': trackID,
                 'start': 0,
                 'samples': samples
             }
@@ -466,7 +463,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T (), <int>: Number of samples in time-domain
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
         mixture, sources, T, name = super().__getitem__(idx)
         
@@ -491,7 +488,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -519,7 +516,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             self.tracks.append(track)
 
             data = {
-                'songID': songID,
+                'trackID': trackID,
                 'start': 0,
                 'samples': samples
             }
@@ -532,7 +529,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             T (), <int>: Number of samples in time-domain
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
         mixture, sources, T, name = super().__getitem__(idx)
         
@@ -577,37 +574,6 @@ def test_collate_fn(batch):
         batched_segment_ID.append(segmend_ID)
     
     return batched_mixture, batched_sources, batched_segment_ID
-
-def apply_random_flip(input, flip_rate=0.5, dim=0):
-    """
-    Args:
-        input <torch.Tensot>: (*)
-    Returns:
-        output <torch.Tensot>: (*)
-    """
-    if type(dim) is int:
-        dim = (dim,)
-    
-    flip = random.random() < flip_rate
-
-    if flip:
-        output = torch.flip(input, dims=dim)
-    else:
-        output = input
-
-    return output
-
-def apply_random_scaling(input, min=MINSCALE, max=MAXSCALE):
-    """
-    Args:
-        input <torch.Tensot>: (*)
-    Returns:
-        output <torch.Tensot>: (*)
-    """
-    scale = random.uniform(min, max)
-    output = scale * input
-
-    return output
 
 def assert_sample_rate(sr):
     assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)

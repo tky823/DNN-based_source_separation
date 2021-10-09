@@ -188,7 +188,7 @@ class D3Net(nn.Module):
         self.out_scale.data.fill_(1)
         self.out_bias.data.zero_()
     
-    def get_package(self):
+    def get_config(self):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
             'growth_rate': self.growth_rate,
@@ -274,7 +274,7 @@ class D3Net(nn.Module):
         return model
     
     @classmethod
-    def build_model(cls, model_path):
+    def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
     
         in_channels, num_features = config['in_channels'], config['num_features']
@@ -310,6 +310,9 @@ class D3Net(nn.Module):
             norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
     

@@ -1,0 +1,17 @@
+control:
+  backbone: 'dense'
+  channels: [4, 256, 1024] # 4 because of [drums, bass, other, vocals]
+  nonlinear: 'relu'
+  dropout: 0.5
+  norm: true
+unet:
+  channels: [2, 16, 32, 64, 128, 256, 512] # 2 because of stereo
+  kernel_size: 5
+  stride: 2
+  enc_nonlinear: ['leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu']
+  dec_nonlinear: ['leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'sigmoid']
+  dilated: false
+  separable: false
+  bias: false
+  out_channels: null
+  conditioning: 'film'

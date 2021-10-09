@@ -56,7 +56,7 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 
 ## 実験結果
 - SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
-- 実験結果の例を`exp/20210903`で確認可能．
+- 実験結果の例を`exp/paper`で確認可能．
 
 | Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |

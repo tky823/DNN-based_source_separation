@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_bases, choose_layer_norm
+from utils.utils_filterbank import choose_filterbank
+from utils.utils_tasnet import choose_layer_norm
 from models.gtu import GTU1d
 from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 from models.dptransformer import DualPathTransformer
@@ -15,8 +16,8 @@ class DPTNet(nn.Module):
     """
     def __init__(
         self,
-        n_bases, kernel_size, stride=None,
-        enc_bases=None, dec_bases=None,
+        n_basis, kernel_size, stride=None,
+        enc_basis=None, dec_basis=None,
         sep_bottleneck_channels=64, sep_hidden_channels=256,
         sep_chunk_size=100, sep_hop_size=None, sep_num_blocks=6,
         sep_num_heads=4, sep_norm=True, sep_nonlinear='relu', sep_dropout=0,
@@ -29,28 +30,30 @@ class DPTNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
         if sep_hop_size is None:
-            sep_hop_size = sep_chunk_size//2
+            sep_hop_size = sep_chunk_size // 2
         
-        assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
-        assert n_bases%sep_num_heads == 0, "n_bases must be divisible by sep_num_heads"
+        assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
+        assert n_basis % sep_num_heads == 0, "n_basis must be divisible by sep_num_heads"
         
         # Encoder-decoder
-        self.n_bases = n_bases
+        self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
-        self.enc_bases, self.dec_bases = enc_bases, dec_bases
+        self.enc_basis, self.dec_basis = enc_basis, dec_basis
         
-        if enc_bases == 'trainable' and not dec_bases == 'pinv':    
+        if enc_basis == 'trainable' and not dec_basis == 'pinv':    
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
         
-        if enc_bases in ['Fourier', 'trainableFourier'] or dec_bases in ['Fourier', 'trainableFourier']:
+        if enc_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase'] or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
             self.window_fn = kwargs['window_fn']
+            self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
+            self.enc_onesided, self.enc_return_complex = None, None
         
         # Separator configuration
         self.sep_bottleneck_channels, self.sep_hidden_channels = sep_bottleneck_channels, sep_hidden_channels
@@ -68,11 +71,11 @@ class DPTNet(nn.Module):
         self.eps = eps
         
         # Network configuration
-        encoder, decoder = choose_bases(n_bases, kernel_size=kernel_size, stride=stride, enc_bases=enc_bases, dec_bases=dec_bases, **kwargs)
+        encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
         
         self.encoder = encoder
         self.separator = Separator(
-            n_bases, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
+            n_basis, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
             chunk_size=sep_chunk_size, hop_size=sep_hop_size, num_blocks=sep_num_blocks,
             num_heads=sep_num_heads, norm=sep_norm, nonlinear=sep_nonlinear, dropout=sep_dropout,
             mask_nonlinear=mask_nonlinear,
@@ -83,7 +86,7 @@ class DPTNet(nn.Module):
         self.decoder = decoder
         
     def forward(self, input):
-        output, latent = self.extract_latent(input)
+        output, _ = self.extract_latent(input)
         
         return output
         
@@ -93,42 +96,52 @@ class DPTNet(nn.Module):
             input (batch_size, 1, T)
         Returns:
             output (batch_size, n_sources, T)
-            latent (batch_size, n_sources, n_bases, T'), where T' = (T-K)//S+1
+            latent (batch_size, n_sources, n_basis, T'), where T' = (T-K)//S+1
         """
         n_sources = self.n_sources
-        n_bases = self.n_bases
+        n_basis = self.n_basis
         kernel_size, stride = self.kernel_size, self.stride
         
         batch_size, C_in, T = input.size()
         
-        assert C_in == 1, "input.size() is expected (?,1,?), but given {}".format(input.size())
+        assert C_in == 1, "input.size() is expected (?, 1, ?), but given {}".format(input.size())
         
-        padding = (stride - (T-kernel_size)%stride)%stride
-        padding_left = padding//2
+        padding = (stride - (T - kernel_size) % stride) % stride
+        padding_left = padding // 2
         padding_right = padding - padding_left
 
         input = F.pad(input, (padding_left, padding_right))
         w = self.encoder(input)
-        mask = self.separator(w)
-        w = w.unsqueeze(dim=1)
-        w_hat = w * mask
+
+        if torch.is_complex(w):
+            amplitude, phase = torch.abs(w), torch.angle(w)
+            mask = self.separator(amplitude)
+            amplitude, phase = amplitude.unsqueeze(dim=1), phase.unsqueeze(dim=1)
+            w_hat = amplitude * mask * torch.exp(1j * phase)
+        else:
+            mask = self.separator(w)
+            w = w.unsqueeze(dim=1)
+            w_hat = w * mask
+        
         latent = w_hat
-        w_hat = w_hat.view(batch_size*n_sources, n_bases, -1)
+        w_hat = w_hat.view(batch_size*n_sources, n_basis, -1)
         x_hat = self.decoder(w_hat)
         x_hat = x_hat.view(batch_size, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
         
         return output, latent
     
-    def get_package(self):
-        package = {
-            'n_bases': self.n_bases,
+    def get_config(self):
+        config = {
+            'n_basis': self.n_basis,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
-            'enc_bases': self.enc_bases,
-            'dec_bases': self.dec_bases,
+            'enc_basis': self.enc_basis,
+            'dec_basis': self.dec_basis,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
+            'enc_onesided': self.enc_onesided,
+            'enc_return_complex': self.enc_return_complex,
             'sep_hidden_channels': self.sep_hidden_channels,
             'sep_bottleneck_channels': self.sep_bottleneck_channels,
             'sep_chunk_size': self.sep_chunk_size,
@@ -144,35 +157,37 @@ class DPTNet(nn.Module):
             'eps': self.eps
         }
     
-        return package
+        return config
     
     @classmethod
-    def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        n_bases = package['n_bases']
-        kernel_size, stride = package['kernel_size'], package['stride']
-        enc_bases, dec_bases = package['enc_bases'], package['dec_bases']
-        enc_nonlinear = package['enc_nonlinear']
-        window_fn = package['window_fn']
+        n_basis = config.get('n_bases') or config['n_basis']
+        kernel_size, stride = config['kernel_size'], config['stride']
+        enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
+        enc_nonlinear = config['enc_nonlinear']
+        enc_onesided, enc_return_complex = config.get('enc_onesided') or None, config.get('enc_return_complex') or None
+        window_fn = config['window_fn']
         
-        sep_hidden_channels, sep_bottleneck_channels = package['sep_hidden_channels'], package['sep_bottleneck_channels']
-        sep_chunk_size, sep_hop_size = package['sep_chunk_size'], package['sep_hop_size']
-        sep_num_blocks = package['sep_num_blocks']
-        sep_num_heads = package['sep_num_heads']
-        sep_norm, sep_nonlinear, sep_dropout = package['sep_norm'], package['sep_nonlinear'], package['sep_dropout']
+        sep_hidden_channels, sep_bottleneck_channels = config['sep_hidden_channels'], config['sep_bottleneck_channels']
+        sep_chunk_size, sep_hop_size = config['sep_chunk_size'], config['sep_hop_size']
+        sep_num_blocks = config['sep_num_blocks']
+        sep_num_heads = config['sep_num_heads']
+        sep_norm, sep_nonlinear, sep_dropout = config['sep_norm'], config['sep_nonlinear'], config['sep_dropout']
         
-        sep_nonlinear, sep_norm = package['sep_nonlinear'], package['sep_norm']
-        mask_nonlinear = package['mask_nonlinear']
+        sep_nonlinear, sep_norm = config['sep_nonlinear'], config['sep_norm']
+        mask_nonlinear = config['mask_nonlinear']
 
-        causal = package['causal']
-        n_sources = package['n_sources']
+        causal = config['causal']
+        n_sources = config['n_sources']
         
-        eps = package['eps']
+        eps = config['eps']
 
         model = cls(
-            n_bases, kernel_size, stride=stride,
-            enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear, window_fn=window_fn,
+            n_basis, kernel_size, stride=stride,
+            enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
+            window_fn=window_fn, enc_onesided=enc_onesided, enc_return_complex=enc_return_complex,
             sep_bottleneck_channels=sep_bottleneck_channels, sep_hidden_channels=sep_hidden_channels,
             sep_chunk_size=sep_chunk_size, sep_hop_size=sep_hop_size, sep_num_blocks=sep_num_blocks,
             sep_num_heads=sep_num_heads,
@@ -182,6 +197,9 @@ class DPTNet(nn.Module):
             n_sources=n_sources,
             eps=eps
         )
+        
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
     
@@ -218,7 +236,7 @@ class Separator(nn.Module):
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         self.segment1d = Segment1d(chunk_size, hop_size)
         
-        norm_name = 'cLN' if causal else 'gLM'
+        norm_name = 'cLN' if causal else 'gLN'
         self.norm2d = choose_layer_norm(norm_name, bottleneck_channels, causal=causal, eps=eps)
 
         self.dptransformer = DualPathTransformer(
@@ -252,8 +270,8 @@ class Separator(nn.Module):
         chunk_size, hop_size = self.chunk_size, self.hop_size
         batch_size, num_features, n_frames = input.size()
         
-        padding = (hop_size-(n_frames-chunk_size)%hop_size)%hop_size
-        padding_left = padding//2
+        padding = (hop_size - (n_frames - chunk_size) % hop_size) % hop_size
+        padding_left = padding // 2
         padding_right = padding - padding_left
         
         x = self.bottleneck_conv1d(input)
@@ -305,7 +323,7 @@ def _test_dptnet():
 
     # Encoder decoder
     N, L = 12, 8
-    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = 'relu'
     
     # Separator
@@ -321,7 +339,7 @@ def _test_dptnet():
     causal = False
 
     model = DPTNet(
-        N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        N, L, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_bottleneck_channels=d, sep_hidden_channels=d_ff,
         sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h,
         mask_nonlinear=mask_nonlinear,
@@ -340,7 +358,7 @@ def _test_dptnet_paper():
 
     # Encoder decoder
     N, L = 64, 2
-    enc_bases, dec_bases = 'trainable', 'trainable'
+    enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = 'relu'
     
     # Separator
@@ -357,7 +375,7 @@ def _test_dptnet_paper():
     causal = False
 
     model = DPTNet(
-        N, L, enc_bases=enc_bases, dec_bases=dec_bases, enc_nonlinear=enc_nonlinear,
+        N, L, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_bottleneck_channels=N, sep_hidden_channels=d_ff,
         sep_chunk_size=K, sep_num_blocks=B, sep_num_heads=h,
         mask_nonlinear=mask_nonlinear,

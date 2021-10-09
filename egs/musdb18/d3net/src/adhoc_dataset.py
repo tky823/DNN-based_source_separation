@@ -6,20 +6,17 @@ import torchaudio
 import torch.nn.functional as F
 
 from dataset import SpectrogramDataset
-from dataset import apply_random_flip, apply_random_scaling
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 THRESHOLD_POWER = 1e-5
-MINSCALE = 0.25
-MAXSCALE = 1.25
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     """
     Training dataset that returns randomly selected mixture spectrograms.
-    In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 songs.
+    In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 tracks.
     """
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
@@ -39,7 +36,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             duration = patch_samples / sr
             total_duration = 0
 
-            for songID, name in enumerate(names):
+            for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
                 sr = audio_info.sample_rate
@@ -69,10 +66,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             if overlap is None:
                 overlap = patch_samples // 2
-            
             self.samples_per_epoch = None
 
-            for songID, name in enumerate(names):
+            for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
                 sr = audio_info.sample_rate
@@ -88,14 +84,13 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                
                 self.tracks.append(track)
 
                 for start in range(0, track_samples, patch_samples - overlap):
                     if start + patch_samples >= track_samples:
                         break
                     data = {
-                        'songID': songID,
+                        'trackID': trackID,
                         'start': start,
                         'samples': patch_samples,
                     }
@@ -156,25 +151,23 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         Returns:
             mixture <torch.Tensor>: (1, n_mics, T) if `target` is list, otherwise (n_mics, T)
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
-        n_songs = len(self.tracks)
-        song_indices = random.choices(range(n_songs), k=len(self.sources))
+        n_tracks = len(self.tracks)
+        track_indices = random.choices(range(n_tracks), k=len(self.sources))
 
         sources = []
 
-        for _source, songID in zip(self.sources, song_indices):
-            track = self.tracks[songID]
+        for _source, trackID in zip(self.sources, track_indices):
+            track = self.tracks[trackID]
             source_path = track['path'][_source]
             track_samples = track['samples']
 
             start = random.randint(0, track_samples - self.patch_samples - 1)
-
             source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.patch_samples)
 
-            source = apply_random_flip(source, dim=0, **self.augmentation['random_flip'])
-            source = apply_random_scaling(source, **self.augmentation['random_scaling'])
-
+            # Apply augmentation
+            source = self.augmentation(source)
             sources.append(source.unsqueeze(dim=0))
         
         if type(self.target) is list:
@@ -212,7 +205,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -230,30 +223,30 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
             
-            song_data = {
-                'songID': songID,
+            track_data = {
+                'trackID': trackID,
                 'start': 0,
                 'samples': samples
             }
             
             self.tracks.append(track)
-            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
+            self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
 
     def __getitem__(self, idx):
         """
         Returns:
             mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
-        song_data = self.json_data[idx]
+        track_data = self.json_data[idx]
         patch_size = self.patch_size
 
-        songID = song_data['songID']
-        track = self.tracks[songID]
+        trackID = track_data['trackID']
+        track = self.tracks[trackID]
         name = track['name']
         paths = track['path']
-        samples = song_data['samples']
+        samples = track_data['samples']
 
         if set(self.sources) == set(__sources__):
             mixture, _ = torchaudio.load(paths['mixture'], num_frames=samples) # (n_mics, T)
@@ -319,7 +312,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         self.tracks = []
         self.json_data = []
 
-        for songID, name in enumerate(names):
+        for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
             sr = audio_info.sample_rate
@@ -336,14 +329,14 @@ class SpectrogramTestDataset(SpectrogramDataset):
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
             
-            song_data = {
-                'songID': songID,
+            track_data = {
+                'trackID': trackID,
                 'start': 0,
                 'samples': track_samples
             }
             
             self.tracks.append(track)
-            self.json_data.append(song_data) # len(self.json_data) determines # of samples in dataset
+            self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
         
     def __getitem__(self, idx):
         """
@@ -351,13 +344,13 @@ class SpectrogramTestDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, n_mics, n_bins, n_frames)  if `target` is list, otherwise (n_mics, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
             samples <int>: Number of samples in time domain.
-            name <str>: Artist and title of song
+            name <str>: Artist and title of track
         """
-        song_data = self.json_data[idx]
+        track_data = self.json_data[idx]
         patch_size = self.patch_size
 
-        songID = song_data['songID']
-        track = self.tracks[songID]
+        trackID = track_data['trackID']
+        track = self.tracks[trackID]
         name = track['name']
         paths = track['path']
         samples = track['samples']

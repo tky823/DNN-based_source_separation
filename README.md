@@ -34,7 +34,8 @@ A PyTorch implementation of DNN-based source separation.
 | :---: | :---: | :---: |
 | Depthwise-separable convolution |  | ✔ |
 | Gated Linear Units |  | ✔ |
-| FiLM | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
+| FiLM (Feature-wise Linear Modulation) | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
+| PoCM (Point-wise Convolutional Modulation) | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) | ✔ |
 
 ## Method related to training
 | Method | Reference | Done |

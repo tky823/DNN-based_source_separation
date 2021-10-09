@@ -1,50 +1,63 @@
-# LibriSpeech separation using Conv-TasNet
+# Speech separation using Conv-TasNet
+Dataset: LibriSpeech (NOT LibriMix)
 
 ## Google Colaboratory
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/master/egs/librispeech/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
 
-You can use Google Colaboratory environment. Please see `train_conv-tasnet.ipynb`
+You can use Google Colaboratory environment. Please see `train_conv-tasnet.ipynb`.
 
 ## How to do
 At the training and evaluation stage, log is saved like `train_<TIME_STAMP>.log`.
 `<TIME_STAMP>` is given by `date "+%Y%m%d-%H%M%S"`, and it depends on time zone.
-I recommend that you specify your time zone like `TZ=UTC-9 date "+%Y%m%d-%H%M%S"`.
+I recommend that you specify your time zone like `export TZ=UTC-9`.
 Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
 
 ### 0. Preparation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/common/
-. ./prepare.sh <DATASET_DIR> <#SPEAKERS>
+cd <REPOSITORY_ROOT>/egs/tutorials/common/
+. ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
 ```
 
 ### 1. Training
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./train.sh <OUTPUT_DIR>
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
+. ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 If you want to resume training,
 ```
-. ./train.sh <OUTPUT_DIR> <MODEL_PATH>
+. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. Evaluation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
-. ./test.sh <OUTPUT_DIR>
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
+. ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/conv-tasnet/
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
 
 ## Results
 Evaluation for test data.
-Models are placed in sub-directory. These models are trained on Google Colaboratory.
+The models are trained on Google Colaboratory, and you can download like this.
+```
+cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
+. ./prepare_2speakers-model.sh
+```
 Network configuration may be different from original papers.
 
 | Model | N | L | H | B | Sc | P | X | R | causal | optimizer | lr | SI-SDRi [dB] | PESQ | 
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Conv-TasNet | 64 | 16 | 256 | 128 | 128 | 3 | 6 | 3 | False | adam | 0.001 |  |  |
+
+# Music source separation using Conv-TasNet
+Dataset: MUSDB18
+
+## Separation Example
+You can separate audio signal by pretrained Conv-TasNet.
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate.ipynb)

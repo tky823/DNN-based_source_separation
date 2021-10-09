@@ -11,10 +11,13 @@ test_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.jso
 sr=16000
 
 # Encoder & decoder
-enc_bases='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
-dec_bases='trainable' # choose from 'trainable','Fourier', 'trainableFourier', or 'pinv'
-enc_nonlinear='relu' # enc_nonlinear is activated if enc_bases='trainable' and dec_bases!='pinv'
-window_fn='' # window_fn is activated if enc_bases='Fourier' or dec_bases='Fourier'
+enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+dec_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase', 'pinv']
+enc_nonlinear='' # enc_nonlinear is activated if enc_basis='trainable' and dec_basis!='pinv'
+window_fn='' # window_fn is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+enc_onesided=0 # enc_onesided is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+enc_return_complex=0 # enc_return_complex is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+
 N=64
 L=16 # L corresponds to the window length (samples) in this script.
 
@@ -49,16 +52,16 @@ seed=111
 
 prefix=""
 
-if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pinv' ]; then
+if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pinv' ]; then
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
-if [ ${enc_bases} = 'Fourier' -o ${dec_bases} = 'Fourier' ]; then
-    prefix="${preffix}${window_fn}-window_"
+if [ ${enc_basis} = 'Fourier' -o ${enc_basis} = 'trainableFourier' -o ${enc_basis} = 'trainableFourierTrainablePhase' -o ${dec_basis} = 'Fourier' -o ${dec_basis} = 'trainableFourier' -o ${dec_basis} = 'trainableFourierTrainablePhase' ]; then
+    prefix="${preffix}${window_fn}-window_enc-onesided${enc_onesided}_enc-complex${enc_return_complex}/"
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/${enc_bases}-${dec_bases}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${n_sources}mix/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_F${F}_H${H}_K${K}_P${P}_B${B}/${prefix}causal${causal}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -74,7 +77,7 @@ if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
 fi
 
-time_stamp=`TZ=UTC-9 date "+%Y%m%d-%H%M%S"`
+time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="0"
 

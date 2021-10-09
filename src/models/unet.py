@@ -10,30 +10,33 @@ class UNetBase(nn.Module):
         super().__init__()
         
     @classmethod
-    def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        channels = package['channels']
-        kernel_size, stride, dilated = package['kernel_size'], package['stride'], package['dilated']
-        nonlinear_enc, nonlinear_dec = package['nonlinear_enc'], package['nonlinear_dec']
-        out_channels = package['out_channels']
+        channels = config['channels']
+        kernel_size, stride, dilated = config['kernel_size'], config['stride'], config['dilated']
+        enc_nonlinear, dec_nonlinear = config.get('enc_nonlinear') or config['nonlinear_enc'], config.get('dec_nonlinear') or config['nonlinear_dec']
+        out_channels = config['out_channels']
         
-        model = cls(channels, kernel_size, stride=stride, dilated=dilated, nonlinear_enc=nonlinear_enc, nonlinear_dec=nonlinear_dec, out_channels=out_channels)
+        model = cls(channels, kernel_size, stride=stride, dilated=dilated, enc_nonlinear=enc_nonlinear, dec_nonlinear=dec_nonlinear, out_channels=out_channels)
+        
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
         
-    def get_package(self):
-        package = {
+    def get_config(self):
+        config = {
             'channels': self.channels,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
             'dilated': self.dilated,
-            'nonlinear_enc': self.nonlinear_enc,
-            'nonlinear_dec': self.nonlinear_dec,
+            'enc_nonlinear': self.enc_nonlinear,
+            'dec_nonlinear': self.dec_nonlinear,
             'out_channels': self.out_channels
         }
         
-        return package
+        return config
         
     @property
     def num_parameters(self):
@@ -46,7 +49,7 @@ class UNetBase(nn.Module):
         return _num_parameters
 
 class UNet1d(UNetBase):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear_enc='relu', nonlinear_dec='relu', out_channels=None):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, enc_nonlinear='relu', dec_nonlinear='relu', out_channels=None):
         """
         Args:
             channels <list<int>>
@@ -54,31 +57,29 @@ class UNet1d(UNetBase):
         """
         super().__init__()
         
-        channels_enc = channels
+        enc_channels = channels
         
         if out_channels is None:
-            channels_dec = channels[::-1]
+            dec_channels = channels[::-1]
         else:
-            channels_dec = channels[:0:-1] + [out_channels]
+            dec_channels = channels[:0:-1] + [out_channels]
             
-        _channels_dec = []
-        
-        for idx, out_channel in enumerate(channels_dec):
+        _dec_channels = []
+        for idx, out_channel in enumerate(dec_channels):
             if idx == 0:
-                _channels_dec.append(out_channel)
+                _dec_channels.append(out_channel)
             else:
-                _channels_dec.append(2 * out_channel)
-        
-        channels_dec = _channels_dec
+                _dec_channels.append(2 * out_channel)
+        dec_channels = _dec_channels
         
         self.channels = channels
         self.kernel_size, self.stride, self.dilated = kernel_size, stride, dilated
-        self.nonlinear_enc, self.nonlinear_dec = nonlinear_enc, nonlinear_dec
+        self.enc_nonlinear, self.dec_nonlinear = enc_nonlinear, dec_nonlinear
         self.out_channels = out_channels
 
-        self.encoder = Encoder1d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
+        self.encoder = Encoder1d(enc_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=enc_nonlinear)
         self.bottleneck = nn.Conv1d(channels[-1], channels[-1], kernel_size=1, stride=1)
-        self.decoder = Decoder1d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
+        self.decoder = Decoder1d(dec_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=dec_nonlinear)
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -88,7 +89,7 @@ class UNet1d(UNetBase):
         return output
 
 class UNet2d(UNetBase):
-    def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear_enc='relu', nonlinear_dec='relu', out_channels=None):
+    def __init__(self, channels, kernel_size, stride=None, dilated=False, enc_nonlinear='relu', dec_nonlinear='relu', out_channels=None):
         """
         Args:
             channels <list<int>>
@@ -96,31 +97,29 @@ class UNet2d(UNetBase):
         """
         super().__init__()
         
-        channels_enc = channels
+        enc_channels = channels
         
         if out_channels is None:
-            channels_dec = channels[::-1]
+            dec_channels = channels[::-1]
         else:
-            channels_dec = channels[:0:-1] + [out_channels]
+            dec_channels = channels[:0:-1] + [out_channels]
             
-        _channels_dec = []
-        
-        for idx, out_channel in enumerate(channels_dec):
+        _dec_channels = []
+        for idx, out_channel in enumerate(dec_channels):
             if idx == 0:
-                _channels_dec.append(out_channel)
+                _dec_channels.append(out_channel)
             else:
-                _channels_dec.append(2 * out_channel)
-                
-        channels_dec = _channels_dec
+                _dec_channels.append(2 * out_channel)
+        dec_channels = _dec_channels
         
         self.channels = channels
         self.kernel_size, self.stride, self.dilated = kernel_size, stride, dilated
-        self.nonlinear_enc, self.nonlinear_dec = nonlinear_enc, nonlinear_dec
+        self.enc_nonlinear, self.dec_nonlinear = enc_nonlinear, dec_nonlinear
         self.out_channels = out_channels
 
-        self.encoder = Encoder2d(channels_enc, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_enc)
+        self.encoder = Encoder2d(enc_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=enc_nonlinear)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
-        self.decoder = Decoder2d(channels_dec, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear_dec)
+        self.decoder = Decoder2d(dec_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=dec_nonlinear)
         
     def forward(self, input):
         x, skip = self.encoder(input)
@@ -571,13 +570,13 @@ def _test_unet():
     H, W = 512, 256
 
     kernel_size, stride, dilated = 3, 1, True
-    nonlinear_enc = 'relu'
-    nonlinear_dec = ['relu', 'relu', 'relu', 'sigmoid']
+    enc_nonlinear = 'relu'
+    dec_nonlinear = ['relu', 'relu', 'relu', 'sigmoid']
 
     input = torch.randint(0, 5, (batch_size, C, H, W), dtype=torch.float)
     print(input.size())
 
-    unet2d = UNet2d(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear_enc=nonlinear_enc, nonlinear_dec=nonlinear_dec, out_channels=1)
+    unet2d = UNet2d(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, enc_nonlinear=enc_nonlinear, dec_nonlinear=dec_nonlinear, out_channels=1)
     print(unet2d)
     print("# Parameters: {}".format(unet2d.num_parameters))
 

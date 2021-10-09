@@ -21,11 +21,13 @@ parser.add_argument('--valid_list_path', type=str, default=None, help='Path for 
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
-parser.add_argument('--enc_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier'], help='Encoder type')
-parser.add_argument('--dec_bases', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier', 'pinv'], help='Decoder type')
+parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier','trainableFourierTrainablePhase'], help='Encoder type')
+parser.add_argument('--dec_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier','trainableFourierTrainablePhase', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
-parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--n_bases', '-N', type=int, default=64, help='# bases')
+parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
+parser.add_argument('--enc_onesided', type=int, default=None, choices=[0, 1, None], help='If true, encoder returns kernel_size // 2 + 1 bins.')
+parser.add_argument('--enc_return_complex', type=int, default=None, choices=[0, 1, None], help='If true, encoder returns complex tensor, otherwise real tensor concatenated real and imaginary part in feature dimension.')
+parser.add_argument('--n_basis', '-N', type=int, default=64, help='# basis')
 parser.add_argument('--kernel_size', '-L', type=int, default=2, help='Kernel size')
 parser.add_argument('--stride', type=int, default=None, help='Stride. If None, stride=kernel_size//2')
 parser.add_argument('--sep_bottleneck_channels', '-F', type=int, default=64, help='Bottleneck channels of separator')
@@ -61,7 +63,7 @@ def main(args):
     set_seed(args.seed)
     
     samples = int(args.sr * args.duration)
-    overlap = samples//2
+    overlap = samples // 2
     max_samples = int(args.sr * args.valid_duration)
     
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
@@ -78,8 +80,9 @@ def main(args):
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
     model = DPTNet(
-        args.n_bases, args.kernel_size, stride=args.stride,
-        enc_bases=args.enc_bases, dec_bases=args.dec_bases, enc_nonlinear=args.enc_nonlinear, window_fn=args.window_fn,
+        args.n_basis, args.kernel_size, stride=args.stride,
+        enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
+        window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels,
         sep_chunk_size=args.sep_chunk_size, sep_hop_size=args.sep_hop_size, sep_num_blocks=args.sep_num_blocks,
         sep_num_heads=args.sep_num_heads, sep_norm=args.sep_norm, sep_nonlinear=args.sep_nonlinear, sep_dropout=args.sep_dropout,

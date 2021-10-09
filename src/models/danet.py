@@ -105,8 +105,8 @@ class DANet(nn.Module):
 
         return output, latent
     
-    def get_package(self):
-        package = {
+    def get_config(self):
+        config = {
             'n_bins': self.n_bins,
             'embed_dim': self.embed_dim,
             'hidden_channels': self.hidden_channels,
@@ -117,24 +117,27 @@ class DANet(nn.Module):
             'eps': self.eps
         }
         
-        return package
+        return config
     
     @classmethod
-    def build_model(cls, model_path):
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         
-        n_bins = package['n_bins']
-        embed_dim = package['embed_dim']
-        hidden_channels = package['hidden_channels']
-        num_blocks = package['num_blocks']
+        n_bins = config['n_bins']
+        embed_dim = config['embed_dim']
+        hidden_channels = config['hidden_channels']
+        num_blocks = config['num_blocks']
         
-        causal = package['causal']
-        mask_nonlinear = package['mask_nonlinear']
-        iter_clustering = package['iter_clustering']
+        causal = config['causal']
+        mask_nonlinear = config['mask_nonlinear']
+        iter_clustering = config['iter_clustering']
         
-        eps = package['eps']
+        eps = config['eps']
         
         model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
         
         return model
     

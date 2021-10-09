@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from dataset import MUSDB18Dataset
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 SAMPLE_RATES_METATASNET = [8000, 16000, 32000]

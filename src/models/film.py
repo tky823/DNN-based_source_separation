@@ -15,7 +15,7 @@ class FiLM(nn.Module):
             output (batch_size, num_features, *)
         """
         n_dims = input.dim()
-        expand_dims = (1,) * n_dims
+        expand_dims = (1,) * (n_dims - 2)
         dims = gamma.size() + expand_dims
 
         gamma = gamma.view(*dims)
@@ -83,7 +83,7 @@ class FiLM3d(FiLM):
         
         return gamma * input + beta
 
-def _test_film():
+def _test_film1d():
     torch.manual_seed(111)
 
     batch_size, in_channels = 4, 3
@@ -98,7 +98,11 @@ def _test_film():
 
     print(model)
     print(input.size(), output.size())
-    print()
+
+def _test_film2d():
+    torch.manual_seed(111)
+
+    batch_size, in_channels = 4, 3
 
     print("-"*10, "FiLM2d", "-"*10)
 
@@ -110,7 +114,11 @@ def _test_film():
 
     print(model)
     print(input.size(), output.size())
-    print()
+
+def _test_film3d():
+    torch.manual_seed(111)
+
+    batch_size, in_channels = 4, 3
 
     print("-"*10, "FiLM3d", "-"*10)
 
@@ -122,7 +130,11 @@ def _test_film():
 
     print(model)
     print(input.size(), output.size())
-    print()
+
+def _test_film():
+    torch.manual_seed(111)
+
+    batch_size, in_channels = 4, 3
 
     print("-"*10, "FiLM (any dimension is acceptable)", "-"*10)
 
@@ -147,5 +159,13 @@ def _test_film():
     print()
 
 if __name__ == '__main__':
-    
+    _test_film1d()
+    print()
+
+    _test_film2d()
+    print()
+
+    _test_film3d()
+    print()
+
     _test_film()

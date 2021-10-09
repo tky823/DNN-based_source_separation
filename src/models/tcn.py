@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_layer_norm
 
-EPS=1e-12
+EPS = 1e-12
 
 """
     Temporal Convolutional Network
@@ -42,7 +42,6 @@ class TemporalConvNet(nn.Module):
         
         return output
 
-
 class ConvBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
@@ -65,7 +64,7 @@ class ConvBlock1d(nn.Module):
             
         self.net = nn.Sequential(*net)
 
-    def forward(self, input, enc_h=None):
+    def forward(self, input):
         num_layers = self.num_layers
         
         x = input
@@ -77,7 +76,6 @@ class ConvBlock1d(nn.Module):
 
         return x, skip_connection
 
-        
 class ResidualBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
@@ -99,7 +97,7 @@ class ResidualBlock1d(nn.Module):
             self.nonlinear = False
         
         if norm:
-            norm_name = 'cLN' if causal else 'gLM'
+            norm_name = 'cLN' if causal else 'gLN'
             self.norm1d = choose_layer_norm(norm_name, hidden_channels, causal=causal, eps=eps)
         if separable:
             self.separable_conv1d = DepthwiseSeparableConv1d(hidden_channels, num_features, skip_channels=skip_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=dual_head, eps=eps)
@@ -148,8 +146,7 @@ class ResidualBlock1d(nn.Module):
             output = output + residual
             
         return output, skip
-        
-        
+
 class DepthwiseSeparableConv1d(nn.Module):
     def __init__(self, in_channels, out_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
@@ -170,7 +167,7 @@ class DepthwiseSeparableConv1d(nn.Module):
             self.nonlinear = False
         
         if norm:
-            norm_name = 'cLN' if causal else 'gLM'
+            norm_name = 'cLN' if causal else 'gLN'
             self.norm1d = choose_layer_norm(norm_name, in_channels, causal=causal, eps=eps)
 
         if dual_head:
