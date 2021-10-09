@@ -246,7 +246,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         for source_idx, source_name in enumerate(self.sources):
             path = paths[source_name]
-            source = torchaudio.load(path, frame_offset=start, num_frames=samples)
+            source, _ = torchaudio.load(path, frame_offset=start, num_frames=samples)
             sources.append(source)
             scale = random.uniform(0.5, 1) # 1 doesn't work.
             latent[source_idx, source_idx] = scale
