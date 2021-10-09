@@ -1,7 +1,6 @@
 import os
 import random
 
-import numpy as np
 import torch
 import torchaudio
 
@@ -64,7 +63,7 @@ class WaveDataset(MUSDB18Dataset):
         else:
             raise ValueError("self.target must be list.")
 
-        return mixture, target, latent, name, sources, scale
+        return mixture, target, latent, name, scale
 
     def __len__(self):
         return len(self.json_data)
@@ -86,7 +85,7 @@ class SpectrogramDataset(WaveDataset):
         
         self.normalize = normalize
 
-    def _is_active(self, input, threshold=1e-5):
+    def _is_active(self, input, threshold=THRESHOLD_POWER):
         n_dims = input.dim()
 
         if n_dims > 2:
@@ -110,7 +109,7 @@ class SpectrogramDataset(WaveDataset):
             T (), <int>: Number of samples in time-domain
             title <str>: Title of track
         """
-        mixture, target, latent, title, source, scale = super().__getitem__(idx)
+        mixture, target, latent, title, scale = super().__getitem__(idx)
         
         n_dims = mixture.dim()
         T = mixture.size(-1)
@@ -128,7 +127,7 @@ class SpectrogramDataset(WaveDataset):
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
             target = target.reshape(*target_channels, *target.size()[-2:])
 
-        return mixture, target, latent, T, title, source, scale
+        return mixture, target, latent, T, title, scale
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
@@ -141,8 +140,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         
         if overlap is None:
             overlap = patch_samples // 2
-        
-        self.samples_per_epoch = None
+
+        self.tracks = []
+        self.json_data = []
 
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
@@ -179,7 +179,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
         """
-        mixture, target, latent, _, _, _, _ = super().__getitem__(idx)
+        mixture, target, latent, _, _, _ = super().__getitem__(idx)
 
         return mixture, target, latent
 
@@ -234,32 +234,28 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         data = self.json_data[idx]
 
         trackID = data['trackID']
-        track = self.mus.tracks[trackID]
-        track.chunk_start = data['start']
-        track.chunk_duration = data['duration']
+        track = self.tracks[trackID]
+        paths = track['path']
+        start, samples = data['start'], data['samples']
 
         sources = []
         target = []
-        latent = np.zeros((len(self.sources), len(self.sources)))
+        latent = torch.zeros((len(self.sources), len(self.sources)))
         scales = []
         source_names = self.sources.copy()
 
         for source_idx, source_name in enumerate(self.sources):
-            source = track.targets[source_name].audio.transpose(1, 0)[np.newaxis]
+            path = paths[source_name]
+            source = torchaudio.load(path, frame_offset=start, num_frames=samples)
             sources.append(source)
             scale = random.uniform(0.5, 1) # 1 doesn't work.
             latent[source_idx, source_idx] = scale
             target.append(scale * source)
             scales.append(scale)
         
-        sources = np.concatenate(sources, axis=0)
-        target = np.concatenate(target, axis=0)
-        mixture = sources.sum(axis=0, keepdims=True)
-
-        mixture = torch.Tensor(mixture).float()
-        target = torch.Tensor(target).float()
-        latent = torch.Tensor(latent).float()
-        scales = torch.Tensor(scales).float()
+        sources = torch.concatenate(sources, dim=0)
+        target = torch.concatenate(target, dim=0)
+        mixture = sources.sum(dim=0, keepdim=True)
         
         n_dims = mixture.dim()
 

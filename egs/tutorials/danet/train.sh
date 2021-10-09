@@ -34,7 +34,7 @@ optimizer='rmsprop'
 lr=1e-4
 weight_decay=0
 
-batch_size=4
+batch_size=128
 epochs=100
 
 use_cuda=1

@@ -71,7 +71,7 @@ class TasNet(nn.Module):
     def __init__(
         self,
         n_basis, kernel_size=40, stride=None, enc_basis=None, dec_basis=None,
-        sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=1000,
+        sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=500,
         mask_nonlinear='softmax',
         causal=False,
         n_sources=2,
@@ -90,9 +90,12 @@ class TasNet(nn.Module):
             self.in_channels = kwargs['in_channels']
         else:
             self.in_channels = 1
+        
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
+        self.enc_basis, self.dec_basis = enc_basis, dec_basis
         self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
+        self.sep_hidden_channels = sep_hidden_channels
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         self.n_sources = n_sources
@@ -105,7 +108,8 @@ class TasNet(nn.Module):
             n_basis, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels,
             causal=causal,
             mask_nonilnear=mask_nonlinear,
-            n_sources=n_sources
+            n_sources=n_sources,
+            eps=eps
         )
         self.decoder = decoder
     
@@ -173,6 +177,40 @@ class TasNet(nn.Module):
         
         return output, latent
     
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        in_channels = config.get('in_channels') or 1
+        n_basis = config.get('n_bases') or config['n_basis']
+        kernel_size, stride = config['kernel_size'], config['stride']
+        enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
+        enc_nonlinear = config.get('enc_nonlinear')
+        
+        sep_num_blocks, sep_num_layers = config['sep_num_blocks'], config['sep_num_layers']
+        sep_hidden_channels = config['sep_hidden_channels']
+        
+        causal = config['causal']
+        mask_nonlinear = config['mask_nonlinear']
+        
+        n_sources = config['n_sources']
+        
+        eps = config.get('eps') or EPS
+        
+        model = cls(
+            n_basis, in_channels=in_channels, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
+            sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
+            mask_nonlinear=mask_nonlinear,
+            causal=causal,
+            n_sources=n_sources,
+            eps=eps
+        )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        
+        return model
+    
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -183,21 +221,24 @@ class TasNet(nn.Module):
                 
         return _num_parameters
     
-    def get_package(self):
-        package = {
+    def get_config(self):
+        config = {
             'in_channels': self.in_channels,
             'n_basis': self.n_basis,
             'kernel_size': self.kernel_size,
             'stride': self.stride,
+            'enc_basis': self.enc_basis,
+            'dec_basis': self.dec_basis,
             'sep_num_blocks': self.sep_num_blocks,
             'sep_num_layers': self.sep_num_layers,
+            'sep_hidden_channels': self.sep_hidden_channels,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
             'n_sources': self.n_sources,
             'eps': self.eps
         }
         
-        return package
+        return config
 
 """
     Modules for LSTM-TasNet

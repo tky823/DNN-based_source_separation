@@ -14,6 +14,8 @@ from utils.utils import draw_loss_curve
 
 BITS_PER_SAMPLE_WSJ0 = 16
 MIN_PESQ = -0.5
+HALVE_LR = 3
+EARLY_STOP = 10
 
 class TrainerBase:
     def __init__(self, model, loader, pit_criterion, optimizer, args):
@@ -98,10 +100,10 @@ class TrainerBase:
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 10:
+                    if self.no_improvement >= EARLY_STOP:
                         print("Stop training")
                         break
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr

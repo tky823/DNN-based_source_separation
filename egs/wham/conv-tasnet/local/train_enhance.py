@@ -48,8 +48,8 @@ parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'ad
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
-parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
+parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 4')
+parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
 parser.add_argument('--sample_dir', type=str, default='./tmp/sample', help='Sample directory')
@@ -95,11 +95,11 @@ def main(args):
         if torch.cuda.is_available():
             model.cuda()
             model = nn.DataParallel(model)
-            print("Use CUDA")
+            print("Use CUDA", flush=True)
         else:
             raise ValueError("Cannot use CUDA.")
     else:
-        print("Does NOT use CUDA")
+        print("Does NOT use CUDA", flush=True)
         
     # Optimizer
     if args.optimizer == 'sgd':

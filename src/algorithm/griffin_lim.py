@@ -1,27 +1,28 @@
 import math
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from algorithm.stft import BatchSTFT, BatchInvSTFT
+from utils.utils_audio import build_window
 
 class GriffinLim(nn.Module):
     def __init__(self, fft_size, hop_size=None, window_fn='hann'):
         super().__init__()
+
         if hop_size is None:
-            hop_size = fft_size//4
+            hop_size = fft_size // 4
         
-        self.fft_size = fft_size
-        
-        self.stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=True)
-        self.istft = BatchInvSTFT(fft_size, hop_size=hop_size, window_fn=window_fn, normalize=True)
+        self.fft_size, self.hop_size = fft_size, hop_size
+
+        window = build_window(fft_size, window_fn=window_fn)
+        self.window = nn.Parameter(window, requires_grad=False)
     
     def forward(self, amplitude, phase=None, iteration=10):
         """
             Args:
-                amplitude (F_bin, T_bin)
+                amplitude (n_bins, n_frames)
             Returns:
-                phase (F_bin, T_bin): Reconstructed phase
+                phase (n_bins, n_frames): Reconstructed phase
         """
         for idx in range(iteration):
             phase = self.update(amplitude, phase)
@@ -31,83 +32,91 @@ class GriffinLim(nn.Module):
     def update(self, amplitude, phase=None):
         """
             Args:
-                amplitude (F_bin, T_bin)
+                amplitude (n_bins, n_frames) or (in_channels, n_bins, n_frames) or (in_channels, n_bins, n_frames)
             Returns:
-                phase (F_bin, T_bin)
+                phase (n_bins, n_frames) or (in_channels, n_bins, n_frames) or (in_channels, n_bins, n_frames)
         """
-        F_bin, T_bin = amplitude.size()
+        fft_size, hop_size = self.fft_size, self.hop_size
+        window = self.window
+
+        if torch.is_complex(amplitude):
+            raise ValueError("amplitude is NOT expected complex tensor.")
+        
+        n_dims = amplitude.dim()
+
+        if n_dims == 2:
+            channels = None
+            amplitude = amplitude.unsqueeze(dim=0)
+        elif n_dims > 2:
+            channels = amplitude.size()[:-2]
+            amplitude = amplitude.view(-1, *amplitude.size()[-2:])
+        else:
+            raise ValueError("Invalid shape of tensor.")
         
         if phase is None:
             sampler = torch.distributions.uniform.Uniform(0, 2*math.pi)
-            phase = sampler.sample((F_bin, T_bin)).to(amplitude.device)
+            phase = sampler.sample(amplitude.size()).to(amplitude.device)
         
-        real, imag = amplitude * torch.cos(phase), amplitude * torch.sin(phase)
-        spectrogram = torch.cat([real.unsqueeze(dim=2), imag.unsqueeze(dim=2)], dim=2).unsqueeze(dim=0) # (1, F_bin, T_bin, 2)
-        
-        signal = self.istft(spectrogram)
-        spectrogram = self.stft(signal)
-        
-        spectrogram = spectrogram.squeeze(dim=0)
-        real, imag = spectrogram[..., 0], spectrogram[..., 1]
-        phase = torch.atan2(imag, real)
+        spectrogram = amplitude * torch.exp(1j * phase)
+
+        signal = torch.istft(spectrogram, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=False)
+        spectrogram = torch.stft(signal, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=True)
+        phase = torch.angle(spectrogram)
+
+        if n_dims == 2:
+            phase = phase.squeeze(dim=0)
+        elif n_dims > 2:
+            phase = phase.view(*channels, *phase.size()[-2:])
+        else:
+            raise ValueError("Invalid shape of tensor.")
         
         return phase
-            
-if __name__ == '__main__':
-    import os
-    import numpy as np
-    from scipy.signal import resample_poly
+
+class FastGriffinLim(GriffinLim):
+    def __init__(self, fft_size, hop_size=None, window_fn='hann'):
+        super().__init__(fft_size, hop_size=hop_size, window_fn=window_fn)
+
+        raise NotImplementedError("Coming soon.")
+
+def _test():
+    target_sr = 16000
+    fft_size, hop_size = 4096, 1024
+
+    signal, sr = torchaudio.load("data/man-44100.wav")
+    resampler = torchaudio.transforms.Resample(sr, target_sr)
+    signal = resampler(signal)
+    torchaudio.save("data/man-{}.wav".format(target_sr), signal, sample_rate=target_sr, bits_per_sample=16)
     
-    from utils.utils_audio import read_wav, write_wav
+    T = signal.size(-1)
+    window = build_window(fft_size, window_fn='hann')
     
-    os.makedirs("data/GriffinLim", exist_ok=True)
-    torch.manual_seed(111)
+    spectrogram = torch.stft(signal, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=True)
+    oracle_signal = torch.istft(spectrogram, fft_size, hop_length=hop_size, window=window, length=T, onesided=True, return_complex=False)
+    torchaudio.save("data/man-oracle-{}.wav".format(target_sr), oracle_signal, sample_rate=target_sr, bits_per_sample=16)
     
-    fft_size, hop_size = 1024, 256
-    n_basis = 4
-    
-    signal, sr = read_wav("data/man-44100.wav")
-    signal = resample_poly(signal, up=16000, down=sr)
-    write_wav("data/man-16000.wav", signal=signal, sr=16000)
-    
-    T = len(signal)
-    signal = torch.Tensor(signal).unsqueeze(dim=0)
-    
-    stft = BatchSTFT(fft_size=fft_size, hop_size=hop_size)
-    istft = BatchInvSTFT(fft_size=fft_size, hop_size=hop_size)
-    
-    spectrogram = stft(signal)
-    oracle_signal = istft(spectrogram, T=T)
-    oracle_signal = oracle_signal.squeeze(dim=0).numpy()
-    write_wav("data/man-oracle.wav", signal=oracle_signal, sr=16000)
-    
-    griffin_lim = GriffinLim(fft_size, hop_size=hop_size)
-    
-    spectrogram = spectrogram.squeeze(dim=0)
-    real, imag = spectrogram[...,0], spectrogram[...,1]
-    amplitude = torch.sqrt(real**2+imag**2)
+    amplitude = torch.abs(spectrogram)
+    griffin_lim = GriffinLim(fft_size, hop_size=hop_size, window_fn='hann')
     
     # Griffin-Lim iteration 10
     iteration = 10
     estimated_phase = griffin_lim(amplitude, iteration=iteration)
+    estimated_spectrogram = amplitude * torch.exp(1j * estimated_phase)
+    estimated_signal = torch.istft(estimated_spectrogram, fft_size, hop_length=hop_size, window=window, length=T, onesided=True, return_complex=False)
+    torchaudio.save("data/GriffinLim/man-estimated-{}_iter{}.wav".format(target_sr, iteration), estimated_signal, sample_rate=target_sr, bits_per_sample=16)
     
-    real, imag = amplitude * torch.cos(estimated_phase), amplitude * torch.sin(estimated_phase)
-    estimated_spectrogram = torch.cat([real.unsqueeze(dim=2), imag.unsqueeze(dim=2)], dim=2) # (F_bin, T_bin, 2)
-    estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
-    
-    estimated_signal = istft(estimated_spectrogram, T=T)
-    estimated_signal = estimated_signal.squeeze(dim=0).numpy()
-    write_wav("data/GriffinLim/man-estimated_iter{}.wav".format(iteration), signal=estimated_signal, sr=16000)
-    
-    # Griffin-Lim iteration 100
-    iteration = 100
+    # Griffin-Lim iteration 500
+    iteration = 500
     estimated_phase = griffin_lim(amplitude, iteration=iteration)
+    estimated_spectrogram = amplitude * torch.exp(1j * estimated_phase)
+    estimated_signal = torch.istft(estimated_spectrogram, fft_size, hop_length=hop_size, window=window, length=T, onesided=True, return_complex=False)
+    torchaudio.save("data/GriffinLim/man-estimated-{}_iter{}.wav".format(target_sr, iteration), estimated_signal, sample_rate=target_sr, bits_per_sample=16)
     
-    real, imag = amplitude * torch.cos(estimated_phase), amplitude * torch.sin(estimated_phase)
-    estimated_spectrogram = torch.cat([real.unsqueeze(dim=2), imag.unsqueeze(dim=2)], dim=2) # (F_bin, T_bin, 2)
-    estimated_spectrogram = estimated_spectrogram.unsqueeze(dim=0)
+if __name__ == '__main__':
+    import os
+
+    import torchaudio
+        
+    os.makedirs("data/GriffinLim", exist_ok=True)
+    torch.manual_seed(111)
     
-    estimated_signal = istft(estimated_spectrogram, T=T)
-    estimated_signal = estimated_signal.squeeze(dim=0).numpy()
-    write_wav("data/GriffinLim/man-estimated_iter{}.wav".format(iteration), signal=estimated_signal, sr=16000)
-    
+    _test()

@@ -211,7 +211,7 @@ class WaveTestDataset(WaveEvalDataset):
             sources (n_sources, T) <torch.Tensor>
             segment_ID <str>
         """
-        mixture, sources, _, segment_ID = super().__getitem__(idx)
+        mixture, sources, segment_ID = super().__getitem__(idx)
         
         return mixture, sources, segment_ID
 
