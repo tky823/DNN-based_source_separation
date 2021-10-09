@@ -72,3 +72,8 @@
 
 ## v0.6.0
 - Bug fixes of D3Net.
+
+# v0.6.1
+- Add modules.
+  - LaSAFT related modules.
+- Add WHAM dataset.
