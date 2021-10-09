@@ -6,7 +6,7 @@ tag=""
 
 sources="[bass,drums,other,vocals]"
 patch=128
-max_duration=30
+valid_duration=30
 
 musdb18_root="../../../dataset/musdb18"
 sr=8192
@@ -65,7 +65,7 @@ train.py \
 --config_path "${config_path}" \
 --sr ${sr} \
 --patch_size ${patch} \
---max_duration ${max_duration} \
+--valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \

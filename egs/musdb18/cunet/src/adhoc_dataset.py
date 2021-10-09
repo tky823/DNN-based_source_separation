@@ -1,7 +1,6 @@
 import os
 import random
 
-import numpy as np
 import torch
 import torchaudio
 
@@ -86,7 +85,7 @@ class SpectrogramDataset(WaveDataset):
         
         self.normalize = normalize
 
-    def _is_active(self, input, threshold=1e-5):
+    def _is_active(self, input, threshold=THRESHOLD_POWER):
         n_dims = input.dim()
 
         if n_dims > 2:
@@ -234,32 +233,28 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         data = self.json_data[idx]
 
         trackID = data['trackID']
-        track = self.mus.tracks[trackID]
-        track.chunk_start = data['start']
-        track.chunk_duration = data['duration']
+        track = self.tracks[trackID]
+        paths = track['path']
+        start, samples = data['start'], data['samples']
 
         sources = []
         target = []
-        latent = np.zeros((len(self.sources), len(self.sources)))
+        latent = torch.zeros((len(self.sources), len(self.sources)))
         scales = []
         source_names = self.sources.copy()
 
         for source_idx, source_name in enumerate(self.sources):
-            source = track.targets[source_name].audio.transpose(1, 0)[np.newaxis]
+            path = paths[source_name]
+            source = torchaudio.load(path, frame_offset=start, num_frames=samples)
             sources.append(source)
             scale = random.uniform(0.5, 1) # 1 doesn't work.
             latent[source_idx, source_idx] = scale
             target.append(scale * source)
             scales.append(scale)
         
-        sources = np.concatenate(sources, axis=0)
-        target = np.concatenate(target, axis=0)
-        mixture = sources.sum(axis=0, keepdims=True)
-
-        mixture = torch.Tensor(mixture).float()
-        target = torch.Tensor(target).float()
-        latent = torch.Tensor(latent).float()
-        scales = torch.Tensor(scales).float()
+        sources = torch.concatenate(sources, dim=0)
+        target = torch.concatenate(target, dim=0)
+        mixture = sources.sum(dim=0, keepdim=True)
         
         n_dims = mixture.dim()
 

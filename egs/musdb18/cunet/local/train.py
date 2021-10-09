@@ -20,7 +20,7 @@ parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSD
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=128, help='Patch size')
-parser.add_argument('--max_duration', type=float, default=10, help='Max duration for validation')
+parser.add_argument('--valid_duration', type=float, default=10, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
@@ -44,11 +44,11 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_duration = (args.hop_size * (args.patch_size - 1 - (args.fft_size - args.hop_size) // args.hop_size - 1) + args.fft_size) / args.sr
-    overlap = patch_duration / 2
+    patch_samples = args.hop_size * (args.patch_size - 1) + args.fft_size - 2 * (args.fft_size // 2)
+    max_samples = int(args.valid_duration * args.sr)
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, duration=patch_duration, overlap=overlap, sources=args.sources)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, max_duration=args.max_duration, sources=args.sources)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, patch_samples=patch_samples, sources=args.sources)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sr=args.sr, max_samples=max_samples, sources=args.sources)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

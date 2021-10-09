@@ -5,6 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from models.tdf import TDF2d, MultiheadTDF2d
+from models.tdf import TFC2d
+
+EPS = 1e-12
 
 """
 Latent Source Attentive Frequency Transformation
@@ -58,39 +61,87 @@ class LaSAFT(nn.Module):
         return output
 
 class TFCLaSAFT(nn.Module):
-    def __init__(self, in_channels, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, num_heads=2, bias=False, nonlinear='relu'):
+    def __init__(self, in_channels, growth_rate, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, kernel_size=None, num_layers=2, num_heads=2, bias=False, nonlinear='relu', eps=EPS):
         super().__init__()
 
+        self.tfc2d = TFC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size, num_layers=num_layers, nonlinear=nonlinear)
+        
+        # LaSAFT
         transform_query = nn.Linear(embed_dim, hidden_dim)
         transform_value = nn.Sequential(
-            TDF2d(in_channels, n_bins, bottleneck_bins, bias=bias, nonlinear=nonlinear),
-            MultiheadTDF2d(in_channels, bottleneck_bins, n_bins, num_heads=num_heads, bias=bias, nonlinear=nonlinear, stack_dim=2)
+            TDF2d(growth_rate, n_bins, bottleneck_bins, bias=bias, nonlinear=nonlinear, eps=eps),
+            MultiheadTDF2d(growth_rate, bottleneck_bins, n_bins, num_heads=num_heads, bias=bias, nonlinear=nonlinear, stack_dim=2, eps=eps)
         )
-
         self.lasaft = LaSAFT(hidden_dim, transform_query, transform_value, num_heads=num_heads)
 
     def forward(self, input, embedding):
-        output = self.lasaft(input, embedding=embedding)
+        x = self.tfc2d(input)
+        output = x + self.lasaft(x, embedding=embedding)
+
+        return output
+
+class TFCLightSAFT(nn.Module):
+    def __init__(self, in_channels, growth_rate, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, kernel_size=None, num_layers=2, num_heads=2, bias=False, nonlinear='relu', eps=EPS):
+        super().__init__()
+
+        self.tfc2d = TFC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size, num_layers=num_layers, nonlinear=nonlinear)
+
+        # LaSAFT
+        transform_query = nn.Linear(embed_dim, hidden_dim)
+        transform_value = MultiheadTDF2d(growth_rate, in_bins=n_bins, out_bins=bottleneck_bins, num_heads=num_heads, bias=bias, nonlinear=nonlinear, stack_dim=2, eps=eps)
+        self.lasaft = LaSAFT(hidden_dim, transform_query, transform_value, num_heads=num_heads)
+
+        self.tdf2d = TDF2d(growth_rate, in_bins=bottleneck_bins, out_bins=n_bins, bias=bias, nonlinear=nonlinear, eps=eps)
+
+    def forward(self, input, embedding):
+        x = self.tfc2d(input)
+        x_lasaft = self.lasaft(x, embedding=embedding)
+        output = x + self.tdf2d(x_lasaft)
 
         return output
 
 def _test_tfc_lasaft():
     batch_size = 3
     in_channels = 2
+    n_bins, n_frames = 129, 12
+    growth_rate = 5
+    kernel_size, num_layers = (3, 5), 2
+
     embed_dim, hidden_dim = 8, 16
-    n_bins, bottleneck_bins = 129, 32
+    bottleneck_bins = 32
     num_heads = 4
-    n_frames = 12
 
     input, embedding = torch.randn((batch_size, in_channels, n_bins, n_frames), dtype=torch.float), torch.randn((batch_size, embed_dim), dtype=torch.float)
 
-    model = TFCLaSAFT(in_channels, embed_dim, hidden_dim, n_bins, bottleneck_bins=bottleneck_bins, num_heads=num_heads)
-    
+    model = TFCLaSAFT(in_channels, growth_rate=growth_rate, embed_dim=embed_dim, hidden_dim=hidden_dim, n_bins=n_bins, bottleneck_bins=bottleneck_bins, kernel_size=kernel_size, num_layers=num_layers, num_heads=num_heads)
     output = model(input, embedding=embedding)
+    
+    print(model)
+    print(input.size(), output.size())
 
+def _test_tfc_light_saft():
+    batch_size = 3
+    in_channels = 2
+    n_bins, n_frames = 129, 12
+    growth_rate = 5
+    kernel_size, num_layers = (3, 5), 2
+
+    embed_dim, hidden_dim = 8, 16
+    bottleneck_bins = 32
+    num_heads = 4
+
+    input, embedding = torch.randn((batch_size, in_channels, n_bins, n_frames), dtype=torch.float), torch.randn((batch_size, embed_dim), dtype=torch.float)
+
+    model = TFCLightSAFT(in_channels, growth_rate=growth_rate, embed_dim=embed_dim, hidden_dim=hidden_dim, n_bins=n_bins, bottleneck_bins=bottleneck_bins, kernel_size=kernel_size, num_layers=num_layers, num_heads=num_heads)
+    output = model(input, embedding=embedding)
+    
     print(model)
     print(input.size(), output.size())
 
 if __name__ == '__main__':
+    print("="*10, "LaSAFT", "="*10)
     _test_tfc_lasaft()
+    print()
 
+    print("="*10, "LightSAFT", "="*10)
+    _test_tfc_light_saft()
