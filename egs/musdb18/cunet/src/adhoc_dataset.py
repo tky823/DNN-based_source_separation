@@ -140,8 +140,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         
         if overlap is None:
             overlap = patch_samples // 2
-        
-        self.samples_per_epoch = None
+
+        self.tracks = []
+        self.json_data = []
 
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
