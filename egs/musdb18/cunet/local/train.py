@@ -99,7 +99,7 @@ def main(args):
     
     # Criterion
     if args.criterion == 'l1loss':
-        criterion = L1Loss(dim=(2,3))
+        criterion = L1Loss(dim=(2,3), reduction='mean')
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
