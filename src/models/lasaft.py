@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.tdf import TDF2d, MultiheadTDF2d
-from models.tdf import TFC2d
+from models.cunet import TDF2d, MultiheadTDF2d
+from models.cunet import TFC2d
 
 EPS = 1e-12
 
@@ -61,7 +61,7 @@ class LaSAFT(nn.Module):
         return output
 
 class TFCLaSAFT(nn.Module):
-    def __init__(self, in_channels, growth_rate, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, kernel_size=None, num_layers=2, num_heads=2, bias=False, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, kernel_size=None, num_layers=2, num_heads=2, nonlinear='relu', bias=False, eps=EPS):
         super().__init__()
 
         self.tfc2d = TFC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size, num_layers=num_layers, nonlinear=nonlinear)
@@ -69,8 +69,8 @@ class TFCLaSAFT(nn.Module):
         # LaSAFT
         transform_query = nn.Linear(embed_dim, hidden_dim)
         transform_value = nn.Sequential(
-            TDF2d(growth_rate, n_bins, bottleneck_bins, bias=bias, nonlinear=nonlinear, eps=eps),
-            MultiheadTDF2d(growth_rate, bottleneck_bins, n_bins, num_heads=num_heads, bias=bias, nonlinear=nonlinear, stack_dim=2, eps=eps)
+            TDF2d(growth_rate, n_bins, bottleneck_bins, nonlinear=nonlinear, bias=bias, eps=eps),
+            MultiheadTDF2d(growth_rate, bottleneck_bins, n_bins, num_heads=num_heads, nonlinear=nonlinear, bias=bias, stack_dim=2, eps=eps)
         )
         self.lasaft = LaSAFT(hidden_dim, transform_query, transform_value, num_heads=num_heads)
 
@@ -81,17 +81,17 @@ class TFCLaSAFT(nn.Module):
         return output
 
 class TFCLightSAFT(nn.Module):
-    def __init__(self, in_channels, growth_rate, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, kernel_size=None, num_layers=2, num_heads=2, bias=False, nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, growth_rate, embed_dim, hidden_dim, n_bins, bottleneck_bins=None, kernel_size=None, num_layers=2, num_heads=2, nonlinear='relu', bias=False, eps=EPS):
         super().__init__()
 
         self.tfc2d = TFC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size, num_layers=num_layers, nonlinear=nonlinear)
 
         # LaSAFT
         transform_query = nn.Linear(embed_dim, hidden_dim)
-        transform_value = MultiheadTDF2d(growth_rate, in_bins=n_bins, out_bins=bottleneck_bins, num_heads=num_heads, bias=bias, nonlinear=nonlinear, stack_dim=2, eps=eps)
+        transform_value = MultiheadTDF2d(growth_rate, in_bins=n_bins, out_bins=bottleneck_bins, num_heads=num_heads, nonlinear=nonlinear, bias=bias, stack_dim=2, eps=eps)
         self.lasaft = LaSAFT(hidden_dim, transform_query, transform_value, num_heads=num_heads)
 
-        self.tdf2d = TDF2d(growth_rate, in_bins=bottleneck_bins, out_bins=n_bins, bias=bias, nonlinear=nonlinear, eps=eps)
+        self.tdf2d = TDF2d(growth_rate, in_bins=bottleneck_bins, out_bins=n_bins, nonlinear=nonlinear, bias=bias, eps=eps)
 
     def forward(self, input, embedding):
         x = self.tfc2d(input)

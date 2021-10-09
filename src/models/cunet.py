@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+from utils.utils_cunet import choose_nonlinear, choose_rnn
 from conv import DepthwiseSeparableConv1d, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
 from models.film import FiLM2d
 from models.pocm import PoCM2d, GPoCM2d
@@ -301,12 +302,7 @@ class EncoderBlock2d(nn.Module):
         else:
             raise ValueError("Not support conditioning {}".format(conditioning))
         
-        if nonlinear == 'relu':
-            self.nonlinear = nn.ReLU()
-        elif nonlinear == 'leaky-relu':
-            self.nonlinear = nn.LeakyReLU()
-        else:
-            raise NotImplementedError()
+        self.nonlinear2d = choose_nonlinear(nonlinear)
             
     def forward(self, input, gamma, beta):
         """
@@ -333,7 +329,7 @@ class EncoderBlock2d(nn.Module):
         x = self.conv2d(input)
         x = self.norm2d(x)
         x = self.conditioning(x, gamma, beta)
-        output = self.nonlinear(x)
+        output = self.nonlinear2d(x)
         
         return output
 
@@ -355,15 +351,7 @@ class DecoderBlock2d(nn.Module):
         else:
             self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, bias=bias)
         self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
-        
-        if nonlinear == 'relu':
-            self.nonlinear = nn.ReLU()
-        elif nonlinear == 'sigmoid':
-            self.nonlinear = nn.Sigmoid()
-        elif nonlinear == 'leaky-relu':
-            self.nonlinear = nn.LeakyReLU()
-        else:
-            raise NotImplementedError()
+        self.nonlinear2d = choose_nonlinear(nonlinear)
             
     def forward(self, input, skip=None):
         """
@@ -403,10 +391,279 @@ class DecoderBlock2d(nn.Module):
         x = self.deconv2d(input)
         x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
         x = self.norm2d(x)
-        output = self.nonlinear(x)
+        output = self.nonlinear2d(x)
         
         return output
 
+class TDF2d(nn.Module):
+    """
+    Time-Distributed Fully-connected Layer for time-frequency representation
+    """
+    def __init__(self, num_features, in_bins, out_bins, nonlinear='relu', bias=False, eps=EPS):
+        super().__init__()
+
+        self.net = TDFTransformBlock2d(num_features, in_bins, out_bins, nonlinear=nonlinear, bias=bias, eps=eps)
+
+    def forward(self, input):
+        output = self.net(input)
+
+        return output
+
+class MultiheadTDF2d(nn.Module):
+    def __init__(self, num_features, in_bins, out_bins, num_heads, nonlinear='relu', bias=False, stack_dim=1, eps=EPS):
+        super().__init__()
+
+        self.num_heads = num_heads
+        self.stack_dim = stack_dim
+
+        net = []
+
+        for idx in range(num_heads):
+            net.append(TDFTransformBlock2d(num_features, in_bins, out_bins, nonlinear=nonlinear, bias=bias, eps=eps))
+
+        self.net = nn.ModuleList(net)
+
+    def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, in_channels, n_bins, n_frames) if stack_dim=1
+        Returns:
+            output <torch.Tensor>: (batch_size, num_heads, in_channels, n_bins, n_frames) if stack_dim=1
+        """
+        output = []
+
+        for idx in range(self.num_heads):
+            x = self.net[idx](input)
+            output.append(x)
+        
+        output = torch.stack(output, dim=self.stack_dim)
+
+        return output
+
+class TDFTransformBlock2d(nn.Module):
+    def __init__(self, num_features, in_bins, out_bins, nonlinear='relu', bias=False, eps=EPS):
+        super().__init__()
+
+        self.nonlinear = nonlinear
+
+        self.conv1d = nn.Conv1d(in_bins, out_bins, kernel_size=1, stride=1, bias=bias)
+        self.norm2d = nn.BatchNorm2d(num_features, eps=eps)
+
+        if nonlinear:
+            self.nonlinear2d = choose_nonlinear(nonlinear)
+    
+    def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, num_features, in_bins, n_frames)
+        Returns:
+            output <torch.Tensor>: (batch_size, num_features, out_bins, n_frames)
+        """
+        batch_size, num_features, _, n_frames = input.size()
+
+        x = input.view(batch_size * num_features, -1, n_frames)
+        x = self.conv1d(x)
+        x = x.view(batch_size, num_features, -1, n_frames)
+        x = self.norm2d(x)
+
+        if self.nonlinear:
+            output = self.nonlinear2d(x)
+        else:
+            output = x
+        
+        return output
+
+class TFC2d(nn.Module):
+    """
+    Time-Frequency Convolutions
+    """
+    def __init__(self, in_channels, growth_rate, kernel_size, num_layers=2, nonlinear='relu', bias=False, eps=EPS):
+        super().__init__()
+
+        _in_channels = in_channels
+
+        net = []
+        
+        for idx in range(num_layers):
+            net.append(TFCTransformBlock2d(_in_channels, growth_rate, kernel_size=kernel_size, stride=(1,1), nonlinear=nonlinear, bias=bias, eps=eps))
+            _in_channels += growth_rate
+
+        self.net = nn.Sequential(*net)
+
+        self.num_layers = num_layers
+
+    def forward(self, input):
+        stack = input
+        for idx in range(self.num_layers):
+            x = self.net[idx](stack)
+            if idx == self.num_layers - 1:
+                output = x
+            else:
+                stack = torch.cat([stack, x], dim=1)
+
+        return output
+
+class TFCTransformBlock2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=(1,1), nonlinear='relu', bias=False, eps=EPS):
+        super().__init__()
+
+        self.kernel_size = _pair(kernel_size)
+        self.stride = _pair(stride)
+        self.nonlinear = nonlinear
+
+        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, bias=bias)
+        self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
+
+        if nonlinear:
+            self.nonlinear2d = choose_nonlinear(nonlinear)
+    
+    def forward(self, input):
+        Kh, Kw = self.kernel_size
+        Sh, Sw = self.stride
+
+        padding_height = Kh - Sh
+        padding_width = Kw - Sw
+        padding_top = padding_height // 2
+        padding_left = padding_width // 2
+        padding_bottom = padding_height - padding_top
+        padding_right = padding_width - padding_left
+        
+        x = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
+        x = self.conv2d(x)
+        x = self.norm2d(x)
+
+        if self.nonlinear:
+            output = self.nonlinear2d(x)
+        else:
+            output = x
+
+        return output
+
+class TDC2d(nn.Module):
+    def __init__(self, in_channels, growth_rate, kernel_size, num_layers=2, nonlinear='relu', bias=False, eps=EPS):
+        super().__init__()
+
+        _in_channels = in_channels
+
+        net = []
+        
+        for idx in range(num_layers):
+            net.append(TDCTransformBlock2d(_in_channels, growth_rate, kernel_size=kernel_size, stride=1, nonlinear=nonlinear, bias=bias, eps=eps))
+            _in_channels += growth_rate
+
+        self.net = nn.Sequential(*net)
+
+        self.num_layers = num_layers
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, n_bins, n_frames)
+        Returns:
+            input (batch_size, growth_rate, n_bins, n_frames)
+        """
+        stack = input
+        for idx in range(self.num_layers):
+            x = self.net[idx](stack)
+            if idx == self.num_layers - 1:
+                output = x
+            else:
+                stack = torch.cat([stack, x], dim=1)
+
+        return output
+
+class TDCTransformBlock2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, nonlinear='relu', bias=False, eps=EPS):
+        super().__init__()
+
+        self.in_channels, self.out_channels = in_channels, out_channels
+        self.kernel_size, self.stride = kernel_size, stride
+        self.nonlinear = nonlinear
+
+        self.conv1d = nn.Conv1d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, bias=bias)
+        self.norm1d = nn.BatchNorm1d(out_channels, eps=eps)
+
+        if nonlinear:
+            self.nonlinear2d = choose_nonlinear(nonlinear)
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, n_bins, n_frames)
+        Returns:
+            input (batch_size, out_channels, n_bins, n_frames)
+        """
+        in_channels, out_channels = self.in_channels, self.out_channels
+        K, S = self.kernel_size, self.stride
+        batch_size, _, n_bins, n_frames = input.size()
+        
+        padding = K - S
+        padding_left = padding // 2
+        padding_right = padding - padding_left
+        
+        x = input.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, in_channels, n_bins)
+        x = x.view(batch_size * n_frames, in_channels, n_bins)
+        x = F.pad(x, (padding_left, padding_right))
+        x = self.conv1d(x)
+        x = self.norm1d(x)
+
+        if self.nonlinear:
+            output = self.nonlinear2d(x)
+        else:
+            output = x
+        
+        x = x.view(batch_size, n_frames, out_channels, n_bins)
+        output = x.permute(0, 2, 3, 1).contiguous() # (batch_size, out_channels, n_bins, n_frames)
+
+        return output
+
+class TDCRNN2d(nn.Module):
+    def __init__(self, in_channels, growth_rate, kernel_size, n_bins, bottleneck_bins=None, hidden_channels=None, num_layers_tdc=2, num_layers_rnn=2, nonlinear='relu', rnn='gru', causal=False, bias=False, eps=EPS):
+        super().__init__()
+
+        if causal:
+            num_directions = 1
+            bidirectional = False
+        else:
+            num_directions = 2
+            bidirectional = True
+
+        self.tdc2d = TDC2d(in_channels, growth_rate, kernel_size=kernel_size, num_layers=num_layers_tdc, nonlinear=nonlinear, bias=bias)
+        self.norm2d = nn.BatchNorm2d(growth_rate)
+        self.rnn = choose_rnn(rnn, input_size=n_bins, hidden_size=hidden_channels, num_layers=num_layers_rnn, batch_first=True, bidirectional=bidirectional)
+
+        out_channels = num_directions * hidden_channels
+
+        self.tdf2d = nn.Sequential(
+            TDF2d(growth_rate, out_channels, bottleneck_bins, nonlinear=nonlinear, bias=bias, eps=eps),
+            TDF2d(growth_rate, bottleneck_bins, n_bins, nonlinear=nonlinear, bias=bias, eps=eps)
+        )
+    
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, n_bins, n_frames)
+        Returns:
+            input (batch_size, growth_rate, n_bins, n_frames)
+        """
+        self.rnn.flatten_parameters()
+
+        x = self.tdc2d(input) # (batch_size, growth_rate, n_bins, n_frames)
+        x = self.norm2d(x) # (batch_size, growth_rate, n_bins, n_frames)
+
+        batch_size, growth_rate, n_bins, n_frames = x.size()
+        x = x.view(batch_size * growth_rate, n_bins, n_frames)
+        x = x.permute(0, 2, 1).contiguous() # (batch_size * growth_rate, n_frames, n_bins)
+        x, _ = self.rnn(x) # (batch_size * growth_rate, n_frames, hidden_channels)
+        x = x.permute(0, 2, 1) # (batch_size * growth_rate, hidden_channels, n_frames)
+
+        _, hidden_channels, _ = x.size()
+        x = x.view(batch_size, growth_rate, hidden_channels, n_frames)
+        output = self.tdf2d(x)
+
+        return output
+
+# Control Net
 class ControlDenseNet(nn.Module):
     def __init__(self, channels, out_channels, nonlinear='relu', dropout=False, norm=False, eps=EPS):
         """
@@ -517,12 +774,7 @@ class ControlDenseBlock(nn.Module):
         self.linear = nn.Linear(in_channels, out_channels)
 
         if self.nonlinear:
-            if self.nonlinear == 'relu':
-                self.nonlinear0d = nn.ReLU()
-            elif self.nonlinear == 'leaky-relu':
-                self.nonlinear0d = nn.LeakyReLU()
-            else:
-                raise ValueError("Not support nonlinear {}".format(self.nonlinear))
+            self.nonlinear0d = choose_nonlinear(nonlinear)
 
         if self.dropout:
             self.dropout0d = nn.Dropout(dropout)
@@ -663,12 +915,7 @@ class ControlConvBlock(nn.Module):
             self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
 
         if self.nonlinear:
-            if self.nonlinear == 'relu':
-                self.nonlinear1d = nn.ReLU()
-            elif self.nonlinear == 'leaky-relu':
-                self.nonlinear1d = nn.LeakyReLU()
-            else:
-                raise ValueError("Not support nonlinear {}".format(self.nonlinear))
+            self.nonlinear1d = choose_nonlinear(nonlinear)
 
         if self.dropout:
             self.dropout1d = nn.Dropout(dropout)
@@ -823,6 +1070,56 @@ def _test_cunet():
     print(model)
     print(input.size(), input_latent.size(), output.size())
 
+def _test_tfc():
+    batch_size = 4
+    n_bins, n_frames = 257, 128
+    in_channels, growth_rate = 2, 3
+    kernel_size = (2, 4)
+
+    input = torch.randn((batch_size, in_channels, n_bins, n_frames), dtype=torch.float)
+    model = TFC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size)
+
+    output = model(input)
+    print(model)
+    print(input.size(), output.size())
+
+def _test_tdc():
+    batch_size = 4
+    n_bins, n_frames = 257, 128
+    in_channels, growth_rate = 2, 3
+    kernel_size = 3
+
+    input = torch.randn((batch_size, in_channels, n_bins, n_frames), dtype=torch.float)
+
+    model = TDC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size)
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
+def _test_tdc_rnn():
+    batch_size = 4
+    n_bins, n_frames = 257, 128
+    in_channels, growth_rate = 2, 7
+    kernel_size = 3
+
+    hidden_channels = 16
+    bottleneck_bins = 32
+    num_layers_tdc, num_layers_rnn = 5, 3
+
+    input = torch.randn((batch_size, in_channels, n_bins, n_frames), dtype=torch.float)
+
+    model = TDCRNN2d(
+        in_channels, growth_rate, kernel_size=kernel_size,
+        n_bins=n_bins, bottleneck_bins=bottleneck_bins,
+        hidden_channels=hidden_channels,
+        num_layers_tdc=num_layers_tdc, num_layers_rnn=num_layers_rnn
+    )
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     print("="*10, "Control Net", "="*10)
     _test_control_net()
@@ -830,3 +1127,14 @@ if __name__ == '__main__':
 
     print("="*10, "Conditioned-U-Net", "="*10)
     _test_cunet()
+    print()
+
+    print("="*10, "Time-frequency Convolution", "="*10)
+    _test_tfc()
+    print()
+
+    print("="*10, "Time-distributed Convolution", "="*10)
+    _test_tdc()
+
+    print("="*10, "Time-distributed Convolution with RNN", "="*10)
+    _test_tdc_rnn()
