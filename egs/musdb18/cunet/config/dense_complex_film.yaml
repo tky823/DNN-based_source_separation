@@ -10,7 +10,7 @@ unet:
   stride: 2
   enc_nonlinear: ['leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu']
   dec_nonlinear: ['leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'leaky-relu', 'sigmoid']
-  dilated: true
+  dilated: false
   separable: false
   bias: false
   out_channels: null
