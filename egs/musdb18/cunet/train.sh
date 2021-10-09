@@ -2,8 +2,9 @@
 
 exp_dir="./exp"
 continue_from=""
+tag=""
 
-sources="[drums,bass,other,vocals]"
+sources="[bass,drums,other,vocals]"
 patch=128
 max_duration=30
 
@@ -17,7 +18,8 @@ hop_size=768
 # model
 control='dense' # or 'conv'
 simple_or_complex='complex'
-config_path="./config/${control}_${simple_or_complex}.yaml"
+conditioning='film'
+config_path="./config/${control}_${simple_or_complex}_${conditioning}.yaml"
 
 # Criterion
 criterion='l1loss'
@@ -39,7 +41,11 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${sources}/sr${sr}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+if [ -z "${tag}" ]; then
+    save_dir="${exp_dir}/${sources}/sr${sr}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+else
+    save_dir="${exp_dir}/${tag}"
+fi
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"

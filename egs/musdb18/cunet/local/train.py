@@ -67,7 +67,7 @@ def main(args):
         control_net = ControlDenseNet(config_control['channels'], config_unet['channels'][1:], nonlinear=config_control['nonlinear'], dropout=config_control['dropout'], norm=config_control['norm'])
     else:
         raise ValueError("Invalid control net")
-    unet = UNet2d(config_unet['channels'], kernel_size=config_unet['kernel_size'], stride=config_unet['stride'], nonlinear_enc=config_unet['nonlinear_enc'], nonlinear_dec=config_unet['nonlinear_dec'])
+    unet = UNet2d.build_from_config(config_unet)
     model = ConditionedUNet2d(control_net=control_net, unet=unet)
 
     print(model)

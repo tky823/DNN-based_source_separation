@@ -2,7 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+"""
+Reference: "LaSAFT: Latent Source Attentive Frequency Transformation For Conditioned Source Separation"
+"""
+
 class PoCM2d(nn.Module):
+    """
+    Point-wise Convolutional Modulation
+    """
     def __init__(self):
         super().__init__()
     
@@ -29,6 +36,9 @@ class PoCM2d(nn.Module):
         return output
 
 class GPoCM2d(nn.Module):
+    """
+    Gated Point-wise Convolutional Modulation
+    """
     def __init__(self):
         super().__init__()
 
