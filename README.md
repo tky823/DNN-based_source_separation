@@ -2,7 +2,7 @@
 A PyTorch implementation of DNN-based source separation.
 
 ## New information
-- v0.6.0: Add training, estimation, and evaluation scripts for D3Net.
+- v0.6.1: Add modules.
 
 ## Model
 | Model | Reference | Done |
