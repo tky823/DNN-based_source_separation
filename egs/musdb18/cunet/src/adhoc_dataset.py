@@ -63,7 +63,7 @@ class WaveDataset(MUSDB18Dataset):
         else:
             raise ValueError("self.target must be list.")
 
-        return mixture, target, latent, name, sources, scale
+        return mixture, target, latent, name, scale
 
     def __len__(self):
         return len(self.json_data)
@@ -109,7 +109,7 @@ class SpectrogramDataset(WaveDataset):
             T (), <int>: Number of samples in time-domain
             title <str>: Title of track
         """
-        mixture, target, latent, title, source, scale = super().__getitem__(idx)
+        mixture, target, latent, title, scale = super().__getitem__(idx)
         
         n_dims = mixture.dim()
         T = mixture.size(-1)
@@ -127,7 +127,7 @@ class SpectrogramDataset(WaveDataset):
             mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
             target = target.reshape(*target_channels, *target.size()[-2:])
 
-        return mixture, target, latent, T, title, source, scale
+        return mixture, target, latent, T, title, scale
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
@@ -179,7 +179,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             mixture <torch.Tensor>: Complex tensor with shape (1, 2, n_bins, n_frames)  if `target` is list, otherwise (2, n_bins, n_frames) 
             target <torch.Tensor>: Complex tensor with shape (len(target), 2, n_bins, n_frames) if `target` is list, otherwise (2, n_bins, n_frames)
         """
-        mixture, target, latent, _, _, _, _ = super().__getitem__(idx)
+        mixture, target, latent, _, _, _ = super().__getitem__(idx)
 
         return mixture, target, latent
 
