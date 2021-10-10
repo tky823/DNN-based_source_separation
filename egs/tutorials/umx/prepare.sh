@@ -1,7 +1,7 @@
 #!/bin/bash
 
 model_id=""
-model_name="basic"
+model_name="musdb18"
 file="model"
 
 . ./path.sh
@@ -10,7 +10,7 @@ file="model"
 echo "Download Open-Unmix. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 model_ids=(
-    ["basis"]="1PoSWSu-q7heEvOb6esWwGe7o333C8jR-"
+    ["musdb18"]="1PoSWSu-q7heEvOb6esWwGe7o333C8jR-"
 )
 
 if [ -z "${model_id}" ] ; then
