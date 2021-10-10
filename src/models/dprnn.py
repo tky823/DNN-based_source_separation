@@ -60,7 +60,7 @@ class IntraChunkRNN(nn.Module):
 
         if self.norm:
             norm_name = 'cLN' if causal else 'gLN'
-            self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
+            self.norm1d = choose_layer_norm(norm_name, num_features, causal=False, eps=eps)
         
     def forward(self, input):
         """
