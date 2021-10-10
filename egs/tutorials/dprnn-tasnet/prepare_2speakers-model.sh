@@ -7,10 +7,10 @@ file="model"
 . ./path.sh
 . parse_options.sh || exit 1
 
-echo "Download Conv-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
+echo "Download DPRNN-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
 
 model_ids=(
-    ["sr16000_L16_librispeech"]="1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo"
+    ["sr16000_L16_librispeech"]="1hTmxhI8JQlNnWVjwWUBGYlC7O_-ykK4H"
 )
 
 if [ -z "${model_id}" ] ; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 model_id=""
-model_name="sr44100_2sec"
+model_name="sr44100_L20"
 file="model"
 
 . ./path.sh
@@ -10,8 +10,8 @@ file="model"
 echo "Download Conv-TasNet. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 model_ids=(
-    ["sr44100_2sec"]="1kKQgkrG2FFnVOsuWeSBshFD1rhYT7lcq"
-    ["sr44100_8sec"]="1yQTdGu2jigAHotJJ7JAQcfqedACCP40t"
+    ["sr44100_L20"]="1pA-jt_709cq8Pl6TAix3Yf2ei6UNPldn"
+    ["sr44100_L64"]="1yQTdGu2jigAHotJJ7JAQcfqedACCP40t"
 )
 
 if [ -z "${model_id}" ] ; then

@@ -9,7 +9,7 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.danet import DANet
-from criterion.distance import L1Loss, L2Loss
+from criterion.distance import SquaredError, L1Loss, L2Loss
 
 parser = argparse.ArgumentParser(description="Training of DANet")
 
@@ -17,7 +17,7 @@ parser.add_argument('--train_wav_root', type=str, default=None, help='Path for t
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
 parser.add_argument('--train_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tr_mix')
 parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
@@ -32,14 +32,14 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='se', choices=['se', 'l1loss', 'l2loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='rmsprop', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate. Default: 1e-4')
 parser.add_argument('--lr_end', type=float, default=3e-6, help='Learning rate at the end of training. Exponential learning rate decay is applied. Default: 3e-6')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
-parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
+parser.add_argument('--epochs', type=int, default=150, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
 parser.add_argument('--sample_dir', type=str, default='./tmp/sample', help='Sample directory')
@@ -93,7 +93,9 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'l1loss':
+    if args.criterion == 'se':
+        criterion = SquaredError(reduction='sum') # (batch_size, n_sources, n_bins, n_frames)
+    elif args.criterion == 'l1loss':
         criterion = L1Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     elif args.criterion == 'l2loss':
         criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
@@ -102,7 +104,6 @@ def main(args):
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
-    
     
 if __name__ == '__main__':
     args = parser.parse_args()

@@ -260,7 +260,7 @@ def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1
 """
 For multichannel Wiener filter
 """
-def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, eps=EPS):
+def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, bin_parallel=True, frame_parallel=True, eps=EPS):
     """
     Args:
         mixture: (n_channels, n_bins, n_frames)
@@ -289,7 +289,35 @@ def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, ep
        
         v, R = v.unsqueeze(dim=3), R.unsqueeze(dim=2) # (n_sources, n_bins, n_frames, 1), (n_sources, n_bins, 1, n_channels, n_channels)
 
-        inv_Cxx = torch.linalg.inv(Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+        if bin_parallel:
+            if frame_parallel:
+                inv_Cxx = torch.linalg.inv(Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+            else:
+                n_frames = Cxx.size(1)
+
+                inv_Cxx = []
+                for frame_idx in range(n_frames):
+                    _Cxx = Cxx[:, frame_idx]
+                    _inv_Cxx = torch.linalg.inv(_Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
+                    inv_Cxx.append(_inv_Cxx)
+                
+                inv_Cxx = torch.stack(inv_Cxx, dim=1)
+        else:
+            inv_Cxx = []
+            if frame_parallel:
+                for _Cxx in Cxx:
+                    _inv_Cxx = torch.linalg.inv(_Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_frames, n_channels, n_channels)
+                    inv_Cxx.append(_inv_Cxx)
+            else:
+                for _Cxx in Cxx:
+                    _inv_Cxx = []
+                    for __Cxx in _Cxx:
+                        __inv_Cxx = torch.linalg.inv(__Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_channels, n_channels)
+                        _inv_Cxx.append(__inv_Cxx)
+                    _inv_Cxx = torch.stack(_inv_Cxx, dim=0)
+                    inv_Cxx.append(_inv_Cxx)
+
+            inv_Cxx = torch.stack(inv_Cxx, dim=0)
 
         if source_parallel:
             gain = v.unsqueeze(dim=4) * torch.sum(R.unsqueeze(dim=5) * inv_Cxx.unsqueeze(dim=2), dim=4) # (n_sources, n_bins, n_frames, n_channels, n_channels)

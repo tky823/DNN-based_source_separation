@@ -276,5 +276,11 @@ class WaveEvalDataset(WaveDataset):
 
         return mixture, target, name
 
+class TestDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+
 def assert_sample_rate(sr):
     assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
