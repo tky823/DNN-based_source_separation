@@ -59,7 +59,7 @@ class IntraChunkRNN(nn.Module):
         self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
         if self.norm:
-            norm_name = 'cLN' if causal else 'gLN'
+            norm_name = 'gLN'
             self.norm1d = choose_layer_norm(norm_name, num_features, causal=False, eps=eps)
         
     def forward(self, input):
