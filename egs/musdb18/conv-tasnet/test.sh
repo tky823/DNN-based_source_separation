@@ -103,6 +103,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 test.py \
 --musdb18_root ${musdb18_root} \
 --sr ${sr} \
+--duration ${duration} \
 --sources ${sources} \
 --criterion ${criterion} \
 --estimates_dir "${estimates_dir}" \

@@ -278,10 +278,12 @@ class WaveEvalDataset(WaveDataset):
         return mixture, target, name
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, samples=None, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
-        
-        assert_sample_rate(sr)
+    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, sources=__sources__, target=None):
+        super().__init__(
+            musdb18_root,
+            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sources=sources, target=target
+        )
 
         test_txt_path = os.path.join(musdb18_root, 'test.txt')
 
@@ -291,14 +293,14 @@ class WaveTestDataset(WaveDataset):
                 name = line.strip()
                 names.append(name)
         
-        self.samples = samples
+        self.samples = int(duration * sr)
+
         self.tracks = []
         self.json_data = []
 
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -321,15 +323,28 @@ class WaveTestDataset(WaveDataset):
             }
 
             self.json_data.append(data)
+
+        if sr != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        else:
+            self.pre_resampler = None
     
     def __getitem__(self, idx):
+        mixture, target, name = super().__getitem__(idx)
+
         n_sources = len(self.sources)
         samples = self.samples
 
-        mixture, target, name = super().__getitem__(idx)
-        track_samples = self.json_data[idx]['samples']
+        if self.pre_resampler is not None:
+            mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
+            mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
+
+            mixture = self.pre_resampler(mixture)
+            target = self.pre_resampler(target)
+
+            mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
         
-        _, n_mics, _ = mixture.size()
+        _, n_mics, track_samples = mixture.size()
         padding = (samples - mixture.size(-1) % samples) % samples
 
         mixture = F.pad(mixture, (0, padding))
