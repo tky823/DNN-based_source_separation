@@ -123,6 +123,7 @@ class AdhocTester(TesterBase):
     def _reset(self, args):
         self.sr = args.sr
         self.n_sources = args.n_sources
+        self.sources = args.sources
 
         self.musdb18_root = args.musdb18_root
         
