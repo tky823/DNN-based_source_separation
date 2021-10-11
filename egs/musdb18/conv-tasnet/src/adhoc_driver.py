@@ -185,11 +185,15 @@ class AdhocTester(TesterBase):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
-                estimated_sources = []
-                for _mixture in mixture:
+                mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
+                standardized_mixture = (mixture - mean) / (std + EPS)
+
+                standardized_estimated_sources = []
+                for _mixture in standardized_mixture:
                     _estimated_sources = self.model(_mixture.unsqueeze(dim=0)) # (1, n_sources, n_mics, T_segment)
-                    estimated_sources.append(_estimated_sources.squeeze(dim=0))
-                estimated_sources = torch.stack(estimated_sources, dim=0) # (batch_size, n_sources, n_mics, T_segment)
+                    standardized_estimated_sources.append(_estimated_sources.squeeze(dim=0))
+                standardized_estimated_sources = torch.stack(standardized_estimated_sources, dim=0) # (batch_size, n_sources, n_mics, T_segment)
+                estimated_sources = std * standardized_estimated_sources + mean
 
                 batch_size, n_sources, n_mics, T_segment = estimated_sources.size()
                 T_pad = batch_size * T_segment - samples
