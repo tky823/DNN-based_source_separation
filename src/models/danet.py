@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from algorithm.clustering import Kmeans
+from algorithm.clustering import KMeans
 
 EPS=1e-12
 
@@ -89,7 +89,7 @@ class DANet(nn.Module):
                 raise ValueError("assignment is required.")
             latent_kmeans = latent.squeeze(dim=0) # -> (embed_dim, n_bins*n_frames)
             latent_kmeans = latent_kmeans.permute(1, 0) # -> (n_bins*n_frames, embed_dim)
-            kmeans = Kmeans(latent_kmeans, K=n_sources)
+            kmeans = KMeans(latent_kmeans, K=n_sources)
             _, centroids = kmeans(iteration=iter_clustering) # (n_bins*n_frames, n_sources), (n_sources, embed_dim)
             attractor = centroids.unsqueeze(dim=0) # (batch_size, n_sources, embed_dim)
         else:
