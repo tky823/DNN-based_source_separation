@@ -52,11 +52,14 @@ batch_size=4
 samples_per_epoch=-1
 epochs=100
 
+estimate_all=1
+evaluate_all=1
+
 use_cuda=1
-overwrite=0
-num_workers=2
 seed=111
 gpu_id="0"
+
+model_choice="best" # 'last' or 'best'
 
 . ./path.sh
 . parse_options.sh || exit 1
@@ -82,22 +85,12 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_dir="${save_dir}/model"
-loss_dir="${save_dir}/loss"
-sample_dir="${save_dir}/sample"
-config_dir="${save_dir}/config"
-log_dir="${save_dir}/log"
+model_path="${save_dir}/model/${model_choice}.pth"
+log_dir="${save_dir}/log/test/${model_choice}"
+json_dir="${save_dir}/json/${model_choice}"
 
-if [ ! -e "${config_dir}" ]; then
-    mkdir -p "${config_dir}"
-fi
-
-augmentation_dir=`dirname ${augmentation_path}`
-augmentation_name=`basename ${augmentation_path}`
-
-if [ ! -e "${config_dir}/${augmentation_name}" ]; then
-    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
-fi
+musdb=`basename "${musdb18_root}"` # 'musdb18' or 'musdb18hq'
+estimates_dir="${save_dir}/${musdb}/${model_choice}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -107,46 +100,16 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
-train.py \
+test.py \
 --musdb18_root ${musdb18_root} \
 --sr ${sr} \
 --duration ${duration} \
---valid_duration ${valid_duration} \
---augmentation_path "${augmentation_path}" \
---enc_basis ${enc_basis} \
---dec_basis ${dec_basis} \
---enc_nonlinear "${enc_nonlinear}" \
---window_fn "${window_fn}" \
---enc_onesided "${enc_onesided}" \
---enc_return_complex "${enc_return_complex}" \
--N ${N} \
--L ${L} \
--B ${B} \
--H ${H} \
--Sc ${Sc} \
--P ${P} \
--X ${X} \
--R ${R} \
---dilated ${dilated} \
---separable ${separable} \
---causal ${causal} \
---sep_nonlinear ${sep_nonlinear} \
---sep_norm ${sep_norm} \
---mask_nonlinear ${mask_nonlinear} \
 --sources ${sources} \
 --criterion ${criterion} \
---optimizer ${optimizer} \
---lr ${lr} \
---weight_decay ${weight_decay} \
---max_norm ${max_norm} \
---batch_size ${batch_size} \
---samples_per_epoch ${samples_per_epoch} \
---epochs ${epochs} \
---model_dir "${model_dir}" \
---loss_dir "${loss_dir}" \
---sample_dir "${sample_dir}" \
---continue_from "${continue_from}" \
+--estimates_dir "${estimates_dir}" \
+--json_dir "${json_dir}" \
+--model_path "${model_path}" \
+--estimate_all ${estimate_all} \
+--evaluate_all ${evaluate_all} \
 --use_cuda ${use_cuda} \
---overwrite ${overwrite} \
---num_workers ${num_workers} \
---seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"
+--seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"

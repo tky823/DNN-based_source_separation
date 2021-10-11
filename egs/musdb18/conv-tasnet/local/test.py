@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description="Evaluation of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
+parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
 parser.add_argument('--model_path', type=str, default=None, help='Path to pretrained model.')
@@ -31,8 +32,9 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
+    args.n_sources = len(args.sources)
 
-    test_dataset = WaveTestDataset(args.musdb18_root, window_fn=args.window_fn, sr=args.sr, sources=args.sources, target=args.sources)
+    test_dataset = WaveTestDataset(args.musdb18_root, sr=args.sr, duration=args.duration, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
