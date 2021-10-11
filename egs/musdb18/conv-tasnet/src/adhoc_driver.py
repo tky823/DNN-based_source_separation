@@ -191,6 +191,7 @@ class AdhocTester(TesterBase):
 
                 mixture = mixture.squeeze(dim=0).cpu() # (n_sources, n_mics, T)
                 estimated_sources = estimated_sources.squeeze(dim=0).cpu() # (n_sources, n_mics, T)
+                name = name[0]
 
                 track_dir = os.path.join(self.estimates_dir, name)
                 os.makedirs(track_dir, exist_ok=True)
