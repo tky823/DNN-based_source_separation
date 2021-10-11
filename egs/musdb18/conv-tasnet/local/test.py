@@ -32,6 +32,7 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
+    args.n_sources = len(args.sources)
 
     test_dataset = WaveTestDataset(args.musdb18_root, sr=args.sr, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
