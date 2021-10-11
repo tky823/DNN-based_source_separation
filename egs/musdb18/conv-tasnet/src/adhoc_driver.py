@@ -185,13 +185,18 @@ class AdhocTester(TesterBase):
                 
                 estimated_sources = self.model(mixture) # (1, n_sources, n_mics, T)
 
-                loss_mixture = self.criterion(mixture, sources, batch_mean=False) # (1, n_sources)
-                loss = self.criterion(estimated_sources, sources, batch_mean=False) # (1, n_sources)
+                mixture = mixture.squeeze(dim=0)
+                sources = sources.squeeze(dim=0)
+                estimated_sources = estimated_sources.squeeze(dim=0) # (n_sources, n_mics, T)
+                name = name[0]
+
+                loss_mixture = self.criterion(mixture, sources, batch_mean=False) # (n_sources,)
+                loss = self.criterion(estimated_sources, sources, batch_mean=False) # (n_sources,)
                 loss_improvement = loss_mixture - loss # (n_sources,)
 
-                mixture = mixture.squeeze(dim=0).cpu() # (n_sources, n_mics, T)
-                estimated_sources = estimated_sources.squeeze(dim=0).cpu() # (n_sources, n_mics, T)
-                name = name[0]
+                mixture = mixture.cpu() # (n_sources, n_mics, T)
+                sources = sources.cpu() # (n_sources, n_mics, T)
+                estimated_sources = estimated_sources.cpu() # (n_sources, n_mics, T)
 
                 track_dir = os.path.join(self.estimates_dir, name)
                 os.makedirs(track_dir, exist_ok=True)
