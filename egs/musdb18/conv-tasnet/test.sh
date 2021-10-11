@@ -105,6 +105,5 @@ test.py \
 --model_path "${model_path}" \
 --estimate_all ${estimate_all} \
 --evaluate_all ${evaluate_all} \
---use_norbert ${use_norbert} \
 --use_cuda ${use_cuda} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
