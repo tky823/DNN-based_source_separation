@@ -345,13 +345,13 @@ class WaveTestDataset(WaveDataset):
             mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
         
         _, n_mics, track_samples = mixture.size()
-        padding = (samples - mixture.size(-1) % samples) % samples
+        padding = (samples - track_samples % samples) % samples
 
         mixture = F.pad(mixture, (0, padding))
         target = F.pad(target, (0, padding))
 
-        mixture = mixture.view(1, n_mics, -1, samples) # (1, n_mics, batch_size, samples)
-        target = target.view(n_sources, n_mics, -1, samples) # (n_sources, n_mics, batch_size, samples)
+        mixture = mixture.reshape(1, n_mics, -1, samples) # (1, n_mics, batch_size, samples)
+        target = target.reshape(n_sources, n_mics, -1, samples) # (n_sources, n_mics, batch_size, samples)
 
         mixture = mixture.permute(2, 0, 1, 3).contiguous() # (batch_size, 1, n_mics, samples)
         target = target.permute(2, 0, 1, 3).contiguous() # (batch_size, n_sources, n_mics, samples)

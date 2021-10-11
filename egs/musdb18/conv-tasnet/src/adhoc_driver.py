@@ -196,7 +196,7 @@ class AdhocTester(TesterBase):
 
                 mixture = mixture.permute(1, 2, 0, 3) # (1, n_mics, batch_size, T_segment)
                 sources = sources.permute(1, 2, 0, 3) # (n_sources, n_mics, batch_size, T_segment)
-                estimated_sources = estimated_sources.permute(1, 0, 2, 3) # (n_sources, n_mics, batch_size, T_segment)
+                estimated_sources = estimated_sources.permute(1, 2, 0, 3) # (n_sources, n_mics, batch_size, T_segment)
 
                 mixture = mixture.reshape(1, n_mics, batch_size * T_segment)
                 sources = sources.reshape(n_sources, n_mics, batch_size * T_segment)
