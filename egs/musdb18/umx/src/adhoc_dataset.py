@@ -18,7 +18,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     Training dataset that returns randomly selected mixture spectrograms.
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 tracks.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=6*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=True):
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
         
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
@@ -66,7 +66,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             if overlap is None:
                 overlap = patch_samples // 2
-            
             self.samples_per_epoch = None
 
             for trackID, name in enumerate(names):
@@ -85,7 +84,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                
                 self.tracks.append(track)
 
                 for start in range(0, track_samples, patch_samples - overlap):
@@ -195,8 +193,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 class SpectrogramEvalDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
-        
-        assert_sample_rate(sr)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         
@@ -300,8 +296,6 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 class SpectrogramTestDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
         super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
-
-        assert_sample_rate(sr)
 
         test_txt_path = os.path.join(musdb18_root, 'test.txt')
 
