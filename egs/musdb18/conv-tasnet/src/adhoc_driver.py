@@ -121,7 +121,8 @@ class AdhocTester(TesterBase):
         super().__init__(model, loader, criterion, args)
 
     def _reset(self, args):
-        super()._reset(args)
+        self.sr = args.sr
+        self.n_sources = args.n_sources
 
         self.musdb18_root = args.musdb18_root
         
@@ -137,6 +138,15 @@ class AdhocTester(TesterBase):
             os.makedirs(self.json_dir, exist_ok=True)
         
         self.use_estimate_all, self.use_evaluate_all = args.estimate_all, args.evaluate_all
+        
+        self.use_cuda = args.use_cuda
+        
+        config = torch.load(args.model_path, map_location=lambda storage, loc: storage)
+        
+        if isinstance(self.model, nn.DataParallel):
+            self.model.module.load_state_dict(config['state_dict'])
+        else:
+            self.model.load_state_dict(config['state_dict'])
     
     def run(self):
         if self.use_estimate_all:
