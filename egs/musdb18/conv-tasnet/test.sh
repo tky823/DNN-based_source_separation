@@ -1,37 +1,60 @@
 #!/bin/bash
 
 exp_dir="./exp"
+continue_from=""
 tag=""
 
-sources="[drums,bass,other,vocals]"
-patch=256
+sources="[bass,drums,other,vocals]"
+duration=8
+valid_duration=100
 
 musdb18_root="../../../dataset/musdb18"
 sr=44100
 
-window_fn='hann'
-fft_size=4096
-hop_size=1024
+# Encoder & decoder
+enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+dec_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase', 'pinv']
+enc_nonlinear='' # enc_nonlinear is activated if enc_basis='trainable' and dec_basis!='pinv'
+window_fn='' # window_fn is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+enc_onesided=0 # enc_onesided is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+enc_return_complex=0 # enc_return_complex is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
+
+N=256
+L=20
+
+# Separator
+H=512
+B=256
+Sc=128
+P=3
+X=10
+R=4
+dilated=1
+separable=1
+causal=0
+sep_nonlinear='prelu'
+sep_norm=1
+mask_nonlinear='sigmoid'
+
+# Augmentation
+augmentation_path="./config/paper/augmentation.yaml"
 
 # Criterion
 criterion='mse'
 
 # Optimizer
 optimizer='adam'
-lr=1e-3
-anneal_lr=1e-4
+lr=3e-4
 weight_decay=0
-max_norm=0 # 0 is handled as no clipping
+max_norm=5
 
-batch_size=6
-samples_per_epoch=7726 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data. 7726 = 3863 x 2.
-epochs=50
-anneal_epoch=40
+batch_size=4
+samples_per_epoch=-1
+epochs=100
 
 estimate_all=1
 evaluate_all=1
 
-use_norbert=0
 use_cuda=1
 seed=111
 gpu_id="0"
@@ -41,13 +64,18 @@ model_choice="best" # 'last' or 'best'
 . ./path.sh
 . parse_options.sh || exit 1
 
+prefix=""
+
+if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pinv' ]; then
+    prefix="${preffix}enc-${enc_nonlinear}_"
+fi
+
+if [ ${enc_basis} = 'Fourier' -o ${enc_basis} = 'trainableFourier' -o ${enc_basis} = 'trainableFourierTrainablePhase' -o ${dec_basis} = 'Fourier' -o ${dec_basis} = 'trainableFourier' -o ${dec_basis} = 'trainableFourierTrainablePhase' ]; then
+    prefix="${preffix}${window_fn}-window_enc-onesided${enc_onesided}_enc-complex${enc_return_complex}/"
+fi
+
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window"
-    if [ ${samples_per_epoch} -gt 0 ]; then
-        save_dir="${save_dir}/b${batch_size}_e${epochs}-${anneal_epoch}-s${samples_per_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
-    else
-        save_dir="${save_dir}/b${batch_size}_e${epochs}-${anneal_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
-    fi
+    save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
