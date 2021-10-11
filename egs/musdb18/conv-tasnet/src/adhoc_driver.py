@@ -5,6 +5,7 @@ import museval
 import torch
 import torchaudio
 import torch.nn as nn
+import torch.nn.functional as F
 
 from driver import TrainerBase, TesterBase
 
@@ -173,22 +174,33 @@ class AdhocTester(TesterBase):
         print(s, flush=True)
         
         with torch.no_grad():
-            for idx, (mixture, sources, name) in enumerate(self.loader):
+            for idx, (mixture, sources, samples, name) in enumerate(self.loader):
                 """
-                    mixture: (1, 1, n_mics, T)
-                    sources: (1, n_sources, n_mics, T)
+                    mixture: (batch_size, 1, n_mics, T_segment)
+                    sources: (batch_size, n_sources, n_mics, T_segment)
+                    samples <int>: Total samples
                     name <str>: Artist and title of song
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
-                estimated_sources = self.model(mixture) # (1, n_sources, n_mics, T)
+                estimated_sources = self.model(mixture) # (batch_size, n_sources, n_mics, T_segment)
 
-                mixture = mixture.squeeze(dim=0)
-                sources = sources.squeeze(dim=0)
-                estimated_sources = estimated_sources.squeeze(dim=0) # (n_sources, n_mics, T)
-                name = name[0]
+                batch_size, n_sources, n_mics, T_segment = estimated_sources.size()
+                T_pad = batch_size * T_segment - samples
+
+                mixture = mixture.permute(1, 2, 0, 3) # (1, n_mics, batch_size, T_segment)
+                sources = sources.permute(1, 2, 0, 3) # (n_sources, n_mics, batch_size, T_segment)
+                estimated_sources = estimated_sources.permute(1, 0, 2, 3) # (n_sources, n_mics, batch_size, T_segment)
+
+                mixture = mixture.view(n_sources, n_mics, batch_size * T_segment)
+                sources = sources.view(n_sources, n_mics, batch_size * T_segment)
+                estimated_sources = estimated_sources.view(n_sources, n_mics, batch_size * T_segment)
+
+                mixture = F.pad(mixture, (0, -T_pad))
+                sources = F.pad(sources, (0, -T_pad))
+                estimated_sources = F.pad(estimated_sources, (0, -T_pad))
 
                 loss_mixture = self.criterion(mixture, sources, batch_mean=False) # (n_sources,)
                 loss = self.criterion(estimated_sources, sources, batch_mean=False) # (n_sources,)
