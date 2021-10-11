@@ -194,7 +194,7 @@ class AdhocTester(TesterBase):
                 sources = sources.permute(1, 2, 0, 3) # (n_sources, n_mics, batch_size, T_segment)
                 estimated_sources = estimated_sources.permute(1, 0, 2, 3) # (n_sources, n_mics, batch_size, T_segment)
 
-                mixture = mixture.view(n_sources, n_mics, batch_size * T_segment)
+                mixture = mixture.view(1, n_mics, batch_size * T_segment)
                 sources = sources.view(n_sources, n_mics, batch_size * T_segment)
                 estimated_sources = estimated_sources.view(n_sources, n_mics, batch_size * T_segment)
 
@@ -206,7 +206,7 @@ class AdhocTester(TesterBase):
                 loss = self.criterion(estimated_sources, sources, batch_mean=False) # (n_sources,)
                 loss_improvement = loss_mixture - loss # (n_sources,)
 
-                mixture = mixture.cpu() # (n_sources, n_mics, T)
+                mixture = mixture.cpu() # (1, n_mics, T)
                 sources = sources.cpu() # (n_sources, n_mics, T)
                 estimated_sources = estimated_sources.cpu() # (n_sources, n_mics, T)
 
