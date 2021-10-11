@@ -33,7 +33,7 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
 
-    test_dataset = WaveTestDataset(args.musdb18_root, window_fn=args.window_fn, sr=args.sr, sources=args.sources, target=args.sources)
+    test_dataset = WaveTestDataset(args.musdb18_root, sr=args.sr, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
