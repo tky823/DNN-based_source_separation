@@ -7,7 +7,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from adhoc_dataset import WaveTestDataset, TestDataLoader
+from dataset import WaveTestDataset
+from adhoc_dataset import TestDataLoader
 from adhoc_driver import AdhocTester
 from models.conv_tasnet import ConvTasNet
 from criterion.distance import MeanAbsoluteError, MeanSquaredError
