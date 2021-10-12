@@ -1,1 +1,1 @@
-../musdb18/test.txt
+../MUSDB18/test.txt
