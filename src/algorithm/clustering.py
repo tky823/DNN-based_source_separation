@@ -51,8 +51,8 @@ class KMeans(nn.Module):
             centroid_id += random.choices(range(num_data), k=1, weights=weights)
 
         return centroid_id
-        
-    def __call__(self, iteration=10):
+    
+    def forward(self, iteration=10):
         onehot_labels, centroids = None, None
         
         for idx in range(iteration):
