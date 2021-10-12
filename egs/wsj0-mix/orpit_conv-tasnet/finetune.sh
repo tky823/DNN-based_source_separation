@@ -59,6 +59,7 @@ use_cuda=1
 overwrite=0
 seed_train=111
 seed_finetune=111
+gpu_id="0"
 
 . ./path.sh
 . parse_options.sh || exit 1
@@ -91,7 +92,7 @@ fi
 
 time_stamp=`date "+%Y%m%d-%H%M%S"`
 
-export CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 finetune.py \
 --train_wav_root ${train_wav_root} \
@@ -134,4 +135,4 @@ finetune.py \
 --continue_from "${continue_from}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
---seed ${seed_finetune} | tee "${log_dir}/train_${time_stamp}.log"
+--seed ${seed_finetune} | tee "${log_dir}/finetune_${time_stamp}.log"
