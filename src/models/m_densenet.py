@@ -75,8 +75,8 @@ class MDenseNet(nn.Module):
         
         self.relu2d = nn.ReLU()
 
-        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(max_bin,)), nn.Parameter(torch.Tensor(max_bin,))
-        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(max_bin,)), nn.Parameter(torch.Tensor(max_bin,))
+        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(max_bin,), requires_grad=True), nn.Parameter(torch.Tensor(max_bin,), requires_grad=True)
+        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(max_bin,), requires_grad=True), nn.Parameter(torch.Tensor(max_bin,), requires_grad=True)
 
         self.max_bin = max_bin
         self.in_channels, self.num_features = in_channels, num_features

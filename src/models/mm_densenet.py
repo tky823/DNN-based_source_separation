@@ -27,7 +27,7 @@ class ParallelMMDenseNet(nn.Module):
         for key in modules.keys():
             module = modules[key]
             if not isinstance(module, MMDenseNet):
-                raise ValueError("All modules must be D3Net.")
+                raise ValueError("All modules must be MMDenseNet.")
             
             if in_channels is None:
                 in_channels = module.in_channels
@@ -88,6 +88,7 @@ class MMDenseNet(nn.Module):
             out_channels = max(out_channels, growth_rate[band][-1])
 
         net = {}
+
         for band in bands:
             if growth_rate[band][-1] < out_channels:
                 _out_channels = out_channels
@@ -102,6 +103,7 @@ class MMDenseNet(nn.Module):
                 out_channels=_out_channels,
                 eps=eps
             )
+        
         net[FULL] = MDenseNetBackbone(
             in_channels, num_features[FULL], growth_rate[FULL],
             kernel_size[FULL], scale=scale[FULL],
@@ -117,13 +119,13 @@ class MMDenseNet(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.d2block = DenseBlock(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
+        self.dense_block = DenseBlock(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
 
-        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
-        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
+        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True), nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True)
+        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True), nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True)
 
         self.in_channels, self.num_features = in_channels, num_features
         self.growth_rate = growth_rate
@@ -149,7 +151,7 @@ class MMDenseNet(nn.Module):
         Returns:
             output (batch_size, in_channels, n_bins, n_frames)
         """
-        sections = self.sections
+        bands, sections = self.bands, self.sections
         n_bins = input.size(2)
         eps = self.eps
 
@@ -159,9 +161,23 @@ class MMDenseNet(nn.Module):
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
+        x_valid = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
 
-        x = self.net(x)
+        x = self.band_split(x_valid)
+
+        x_bands = []
+        for band, x_band in zip(bands, x):
+            x_band = self.net[band](x_band)
+            x_bands.append(x_band)
+        x_bands = torch.cat(x_bands, dim=2)
+    
+        x_full = self.net[FULL](x_valid)
+
+        x = torch.cat([x_bands, x_full], dim=1)
+
+        x = self.dense_block(x)
+        x = self.norm2d(x)
+        x = self.glu2d(x)
         x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
         x = self.relu2d(x)
 
@@ -255,7 +271,8 @@ class MMDenseNet(nn.Module):
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
-            depth=depth, dilated=dilated, norm=norm, nonlinear=nonlinear,
+            dilated=dilated, norm=norm, nonlinear=nonlinear,
+            depth=depth,
             growth_rate_final=growth_rate_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
@@ -274,11 +291,17 @@ class MMDenseNet(nn.Module):
         growth_rate = config['growth_rate']
 
         kernel_size = config['kernel_size']
-        max_bin = config['max_bin']
+        bands, sections = config['bands'], config['sections']
         scale = config['scale']
 
         dilated, norm, nonlinear = config['dilated'], config['norm'], config['nonlinear']
         depth = config['depth']
+
+        growth_rate_final = config['growth_rate_final']
+        kernel_size_final = config['kernel_size_final']
+        dilated_final = config['dilated_final']
+        depth_final = config['depth_final']
+        norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
         eps = config.get('eps') or EPS
         
@@ -286,10 +309,15 @@ class MMDenseNet(nn.Module):
             in_channels, num_features,
             growth_rate,
             kernel_size,
-            max_bin=max_bin,
+            bands=bands, sections=sections,
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
+            growth_rate_final=growth_rate_final,
+            kernel_size_final=kernel_size_final,
+            dilated_final=dilated_final,
+            depth_final=depth_final,
+            norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
 
@@ -307,3 +335,21 @@ class MMDenseNet(nn.Module):
                 _num_parameters += p.numel()
                 
         return _num_parameters
+
+def _test_mm_densenet():
+    config_path = "./data/mm_densenet/paper.yaml"
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
+
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = MMDenseNet.build_from_config(config_path)
+    
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
+if __name__ == '__main__':
+    torch.manual_seed(111)
+
+    print('='*10, "MMDenseNet", '='*10)
+    _test_mm_densenet()
