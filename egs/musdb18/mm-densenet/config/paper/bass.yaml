@@ -6,9 +6,9 @@ low:
   growth_rate: [14, 16, 16, 16, 16, 16, 16]
   kernel_size: [4, 3] # (bin, frame)
   scale: 2
-  dilated: [False, False, False, False, False]
-  norm: [True, True, True, True, True]
-  nonlinear: [relu, relu, relu, relu, relu]
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
   depth: [4, 4, 4, 4, 4, 4, 4]
 high:
   sections: 513
@@ -16,18 +16,18 @@ high:
   growth_rate: [10, 10, 10, 10, 10, 10, 10]
   kernel_size: [3, 3] # (bin, frame)
   scale: 2
-  dilated: [False, False, False, False, False]
-  norm: [True, True, True, True, True]
-  nonlinear: [relu, relu, relu, relu, relu]
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
   depth: [3, 3, 3, 3, 3, 3, 3]
 full:
   num_features: 32
   growth_rate: [6, 6, 6, 6, 6, 6, 6]
   kernel_size: [4, 3] # (bin, frame)
   scale: 2
-  dilated: [False, False, False, False, False]
-  norm: [True, True, True, True, True]
-  nonlinear: [relu, relu, relu, relu, relu]
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
   depth: [2, 2, 2, 4, 2, 2, 2]
 final:
   growth_rate: 4
