@@ -229,7 +229,7 @@ class MDenseNetBackbone(nn.Module):
             in_channels <int>
             num_features <int>
             growth_rate <list<int>>: `len(growth_rate)` must be an odd number.
-            kernel_size <int>
+            kernel_size <int> or <tuple<int>>
             scale <int> or <list<int>>: Upsampling and Downsampling scale
             dilated <list<bool>>
             norm <list<bool>>

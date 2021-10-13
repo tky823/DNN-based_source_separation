@@ -13,7 +13,7 @@ musdb18_root="../../../dataset/MUSDB18"
 sr=44100
 
 window_fn='hann'
-fft_size=4096
+fft_size=2048
 hop_size=1024
 
 # Model
@@ -26,16 +26,14 @@ augmentation_path="./config/paper/augmentation.yaml"
 criterion='mse'
 
 # Optimizer
-optimizer='adam'
+optimizer='rmsprop'
 lr=1e-3
-anneal_lr=1e-4
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
 batch_size=6
-samples_per_epoch=7726 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data. 7726 = 3863 x 2.
+samples_per_epoch=-1 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data. 7726 = 3863 x 2.
 epochs=50
-anneal_epoch=40
 
 use_cuda=1
 overwrite=0
@@ -49,9 +47,9 @@ gpu_id="0"
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/sr${sr}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window"
     if [ ${samples_per_epoch} -gt 0 ]; then
-        save_dir="${save_dir}/b${batch_size}_e${epochs}-${anneal_epoch}-s${samples_per_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+        save_dir="${save_dir}/b${batch_size}_e${epochs}-s${samples_per_epoch}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     else
-        save_dir="${save_dir}/b${batch_size}_e${epochs}-${anneal_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+        save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     fi
 else
     save_dir="${exp_dir}/${tag}"
@@ -103,13 +101,11 @@ train.py \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
---anneal_lr ${anneal_lr} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
 --samples_per_epoch ${samples_per_epoch} \
 --epochs ${epochs} \
---anneal_epoch ${anneal_epoch} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \
