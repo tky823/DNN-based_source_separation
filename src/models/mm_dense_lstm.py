@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from utils.utils_m_densenet import choose_layer_norm
-from utils.utils_mm_dense_lstm import choose_rnn, choose_dense_rnn_block
+from utils.utils_dense_lstm import choose_dense_rnn_block
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.m_densenet import DenseBlock
@@ -18,9 +18,9 @@ See https://ieeexplore.ieee.org/document/8521383
 FULL = 'full'
 EPS = 1e-12
 
-class MMDenseLSTM(nn.Module):
+class MMDenseRNN(nn.Module):
     """
-    Multi-scale Multi-band DenseLSTM
+    Multi-scale Multi-band Dense RNN
     """
     def __init__(
         self,
@@ -36,6 +36,7 @@ class MMDenseLSTM(nn.Module):
         dilated_final=False,
         norm_final=True, nonlinear_final='relu',
         depth_final=None,
+        rnn_position='parallel',
         eps=EPS,
         **kwargs
     ):
@@ -57,20 +58,22 @@ class MMDenseLSTM(nn.Module):
             else:
                 _out_channels = None
             
-            net[band] = MMDenseLSTMBackbone(
+            net[band] = MMDenseRNNBackbone(
                 in_channels, num_features[band], growth_rate[band],
                 kernel_size[band], scale=scale[band],
                 dilated=dilated[band], norm=norm[band], nonlinear=nonlinear[band],
                 depth=depth[band],
+                rnn_position=rnn_position,
                 out_channels=_out_channels,
                 eps=eps
             )
         
-        net[FULL] = MMDenseLSTMBackbone(
+        net[FULL] = MMDenseRNNBackbone(
             in_channels, num_features[FULL], growth_rate[FULL],
             kernel_size[FULL], scale=scale[FULL],
             dilated=dilated[FULL], norm=norm[FULL], nonlinear=nonlinear[FULL],
             depth=depth[FULL],
+            rnn_position=rnn_position,
             eps=eps
         )
 
@@ -81,7 +84,7 @@ class MMDenseLSTM(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.dense_block = DenseLSTMBlock(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
+        self.dense_block = choose_dense_rnn_block(rnn_position, _in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
@@ -101,6 +104,8 @@ class MMDenseLSTM(nn.Module):
         self.dilated_final = dilated_final
         self.depth_final = depth_final
         self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
+
+        self.rnn_position = rnn_position
 
         self.eps = eps
         
@@ -178,6 +183,7 @@ class MMDenseLSTM(nn.Module):
             'dilated_final': self.dilated_final,
             'depth_final': self.depth_final,
             'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
+            'rnn_position': self.rnn_position,
             'eps': self.eps
         }
         
@@ -225,6 +231,8 @@ class MMDenseLSTM(nn.Module):
         depth_final = config['final']['depth']
         norm_final, nonlinear_final = config['final']['norm'], config['final']['nonlinear']
 
+        rnn_position = config['rnn_position']
+
         eps = config.get('eps') or EPS
 
         model = cls(
@@ -240,6 +248,7 @@ class MMDenseLSTM(nn.Module):
             dilated_final=dilated_final,
             depth_final=depth_final,
             norm_final=norm_final, nonlinear_final=nonlinear_final,
+            rnn_position=rnn_position,
             eps=eps
         )
         
@@ -265,6 +274,8 @@ class MMDenseLSTM(nn.Module):
         depth_final = config['depth_final']
         norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
+        rnn_position = config['rnn_position']
+
         eps = config.get('eps') or EPS
         
         model = cls(
@@ -280,6 +291,7 @@ class MMDenseLSTM(nn.Module):
             dilated_final=dilated_final,
             depth_final=depth_final,
             norm_final=norm_final, nonlinear_final=nonlinear_final,
+            rnn_position=rnn_position,
             eps=eps
         )
 
@@ -298,7 +310,7 @@ class MMDenseLSTM(nn.Module):
                 
         return _num_parameters
 
-class MMDenseLSTMBackbone(nn.Module):
+class MMDenseRNNBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, out_channels=None, eps=EPS):
         """
         Args:
@@ -614,106 +626,6 @@ class UpSampleDenseRNNBlock(nn.Module):
         x = torch.cat([x, skip], dim=1)
 
         output = self.dense_rnn_block(x)
-
-        return output
-
-class RNNAfterDenseBlock(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, dilated=False, norm=True, nonlinear='relu', rnn_type='parallel', eps=EPS):
-        """
-        Args:
-            in_channels <int>: # of input channels
-            growth_rate <int> or <list<int>>: # of output channels
-            kernel_size <int> or <tuple<int>>: Kernel size
-            dilated <bool> or <list<bool>>: Applies dilated convolution.
-            norm <bool> or <list<bool>>: Applies batch normalization.
-            nonlinear <str> or <list<str>>: Applies nonlinear function.
-            depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
-        """
-        super().__init__()
-
-        self.rnn = choose_rnn(rnn_type)
-        self.dense_block = DenseBlock(
-            in_channels, growth_rate, kernel_size,
-            depth=depth, dilated=dilated, norm=norm, nonlinear=nonlinear,
-            eps=eps
-        )
-    
-    def forward(self, input):
-        """
-        Args:
-            input: (batch_size, in_channels, H, W)
-        Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
-        """
-        x = self.dense_block(input)
-        output, _ = self.rnn(x)
-
-        return output
-
-class RNNBeforeDenseBlock(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, dilated=False, norm=True, nonlinear='relu', rnn_type='parallel', eps=EPS):
-        """
-        Args:
-            in_channels <int>: # of input channels
-            growth_rate <int> or <list<int>>: # of output channels
-            kernel_size <int> or <tuple<int>>: Kernel size
-            dilated <bool> or <list<bool>>: Applies dilated convolution.
-            norm <bool> or <list<bool>>: Applies batch normalization.
-            nonlinear <str> or <list<str>>: Applies nonlinear function.
-            depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
-        """
-        super().__init__()
-
-        self.rnn = choose_rnn(rnn_type)
-        self.dense_block = DenseBlock(
-            in_channels, growth_rate, kernel_size,
-            depth=depth, dilated=dilated, norm=norm, nonlinear=nonlinear,
-            eps=eps
-        )
-    
-    def forward(self, input):
-        """
-        Args:
-            input: (batch_size, in_channels, H, W)
-        Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
-        """
-        x, _ = self.rnn(input)
-        output = self.dense_block(x)
-
-        return output
-
-class DenseRNNParallelBlock(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, depth=None, dilated=False, norm=True, nonlinear='relu', rnn_type='parallel', eps=EPS):
-        """
-        Args:
-            in_channels <int>: # of input channels
-            growth_rate <int> or <list<int>>: # of output channels
-            kernel_size <int> or <tuple<int>>: Kernel size
-            dilated <bool> or <list<bool>>: Applies dilated convolution.
-            norm <bool> or <list<bool>>: Applies batch normalization.
-            nonlinear <str> or <list<str>>: Applies nonlinear function.
-            depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
-        """
-        super().__init__()
-
-        self.dense_block = DenseBlock(
-            in_channels, growth_rate, kernel_size,
-            depth=depth, dilated=dilated, norm=norm, nonlinear=nonlinear,
-            eps=eps
-        )
-        self.rnn = choose_rnn(rnn_type)
-    
-    def forward(self, input):
-        """
-        Args:
-            input: (batch_size, in_channels, H, W)
-        Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
-        """
-        x_dense = self.dense_block(input)
-        x_rnn, _ = self.rnn(input)
-        output = x_dense + x_rnn
 
         return output
 

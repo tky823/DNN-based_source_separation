@@ -1,7 +1,5 @@
 import torch.nn as nn
 
-EPS = 1e-12
-
 def choose_rnn(name, **kwargs):
     if name == 'rnn':
         rnn = nn.RNN(**kwargs)
