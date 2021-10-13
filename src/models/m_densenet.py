@@ -7,6 +7,11 @@ from torch.nn.modules.utils import _pair
 from utils.utils_m_densenet import choose_layer_norm, choose_nonlinear
 from models.glu import GLU2d
 
+"""
+Reference: Multi-scale Multi-band DenseNets for Audio Source Separation
+See https://arxiv.org/abs/1706.09588
+"""
+
 EPS = 1e-12
 
 class ParallelMDenseNet(nn.Module):

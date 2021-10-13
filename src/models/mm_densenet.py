@@ -8,6 +8,11 @@ from models.transform import BandSplit
 from models.glu import GLU2d
 from models.m_densenet import MDenseNetBackbone, DenseBlock
 
+"""
+Reference: Multi-scale Multi-band DenseNets for Audio Source Separation
+See https://arxiv.org/abs/1706.09588
+"""
+
 FULL = 'full'
 EPS = 1e-12
 
@@ -65,7 +70,7 @@ class MMDenseNet(nn.Module):
         in_channels, num_features,
         growth_rate,
         kernel_size,
-        bands=['low','middle'], sections=[256,1344],
+        bands=['low','middle'], sections=[512,513],
         scale=(2,2),
         dilated=False, norm=True, nonlinear='relu',
         depth=None,
