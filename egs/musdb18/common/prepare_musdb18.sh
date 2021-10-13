@@ -1,6 +1,6 @@
 #!/bin/bash
 
-musdb18_root="" # By default musdb18_root="../../../dataset/musdb18" if is_hq=0, musdb18_root="../../../dataset/musdb18hq" otherwise.
+musdb18_root="" # By default musdb18_root="../../../dataset/MUSDB18" if is_hq=0, musdb18_root="../../../dataset/MUSDB18HQ" otherwise.
 is_hq=0
 to_wav=0
 
@@ -11,7 +11,7 @@ subsets=( "train" "test" )
 if [ ${is_hq} -eq 0 ]; then
     file=musdb18.zip
     if [ -z "${musdb18_root}" ]; then
-        musdb18_root="../../../dataset/musdb18"
+        musdb18_root="../../../dataset/MUSDB18"
     fi
     
     if [ -e "${musdb18_root}/train/A Classic Education - NightOwl.stem.mp4" ]; then
@@ -56,7 +56,7 @@ if [ ${is_hq} -eq 0 ]; then
 else
     file=musdb18hq.zip
     if [ -z "${musdb18_root}" ]; then
-        musdb18_root="../../../dataset/musdb18hq"
+        musdb18_root="../../../dataset/MUSDB18HQ"
     fi
 
     if [ -e "${musdb18_root}/train/A Classic Education - NightOwl/vocals.wav" ]; then
@@ -73,6 +73,6 @@ subsets=( "train" "validation" "test" )
 
 for subset in "${subsets[@]}" ; do
     if [ ! -e "${musdb18_root}/${subset}.txt" ]; then
-        cp "../../../dataset/musdb18/${subset}.txt" "${musdb18_root}"
+        cp "../../../dataset/MUSDB18/${subset}.txt" "${musdb18_root}"
     fi
 done

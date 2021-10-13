@@ -9,7 +9,7 @@ target='vocals'
 duration=6
 valid_duration=100
 
-musdb18_root="../../../dataset/musdb18"
+musdb18_root="../../../dataset/MUSDB18"
 sr=44100
 
 window_fn='hann'

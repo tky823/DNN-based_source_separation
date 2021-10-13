@@ -1,7 +1,7 @@
 # Example of outputs
 I trained D3Net and share the outputs. The networks are all trained by default setting except for random scaling. See `config/improved/augmentation-*.yaml`.
 - You have to unzip `config.zip`, `log.zip`, and `loss.zip`.
-- You can download pretrained models from [https://drive.google.com/file/d/1UXtrJ0eo__Gonwqe9FoJaPQY4kFg_6aE/view?usp=sharing](https://drive.google.com/file/d/1UXtrJ0eo__Gonwqe9FoJaPQY4kFg_6aE/view?usp=sharing), which includes `drums/last.pth`, `drums/best.pth`, `bass/last.pth`, ..., `vocals/best.pth`.
+- You can download pretrained models from [https://drive.google.com/file/d/1D1Q097xz9aaiFUPtbLOjAgVYPPLnOsiA/view?usp=sharing](https://drive.google.com/file/d/1D1Q097xz9aaiFUPtbLOjAgVYPPLnOsiA/view?usp=sharing), which includes `drums/last.pth`, `drums/best.pth`, `bass/last.pth`, ..., `vocals/best.pth`.
 - You can download output JSON files from [https://drive.google.com/file/d/1GU2CBgHKrRcFJZHzwckcdHAgVA7xqRGx/view?usp=sharing](https://drive.google.com/file/d/1GU2CBgHKrRcFJZHzwckcdHAgVA7xqRGx/view?usp=sharing).
 
 ## Results

@@ -10,8 +10,8 @@ file="model"
 echo "Download D3Net. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 model_ids=(
-    ["improved"]="1XL5RIoyIEnATH2zIO0BOHujWo7UnxwuY"
-    ["paper"]="1UXtrJ0eo__Gonwqe9FoJaPQY4kFg_6aE"
+    ["improved"]="1ZDWDO56m4oDg_R6xbV3lCZnpQeseXGXw"
+    ["paper"]="1D1Q097xz9aaiFUPtbLOjAgVYPPLnOsiA"
 )
 
 if [ -z "${model_id}" ] ; then
