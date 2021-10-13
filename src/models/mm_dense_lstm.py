@@ -12,7 +12,7 @@ from models.m_densenet import DenseBlock
 
 """
 Reference: MMDenseLSTM: An efficient combination of convolutional and recurrent neural networks for audio source separation
-See 
+See https://ieeexplore.ieee.org/document/8521383
 """
 
 FULL = 'full'
