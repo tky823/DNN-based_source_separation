@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from utils.utils_m_densenet import choose_layer_norm, choose_nonlinear
+from models.glu import GLU2d
 
 EPS = 1e-12
 
@@ -66,6 +67,11 @@ class MDenseNet(nn.Module):
         scale=(2,2),
         dilated=False, norm=True, nonlinear='relu',
         depth=None,
+        growth_rate_final=None,
+        kernel_size_final=None,
+        dilated_final=False,
+        norm_final=True, nonlinear_final='relu',
+        depth_final=None,
         eps=EPS,
         **kwargs
     ):
@@ -73,6 +79,12 @@ class MDenseNet(nn.Module):
 
         self.net = MDenseNetBackbone(in_channels, num_features, growth_rate, kernel_size, scale=scale, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
         
+        self.relu2d = nn.ReLU()
+        
+        _in_channels = growth_rate[-1] # output channels of self.net
+        self.dense_block = DenseBlock(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
+        self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
+        self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
 
         self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(max_bin,), requires_grad=True), nn.Parameter(torch.Tensor(max_bin,), requires_grad=True)
@@ -85,6 +97,12 @@ class MDenseNet(nn.Module):
         self.scale = scale
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
         self.depth = depth
+
+        self.growth_rate_final = growth_rate_final
+        self.kernel_size_final = kernel_size_final
+        self.dilated_final = dilated_final
+        self.depth_final = depth_final
+        self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
 
         self.eps = eps
         
@@ -110,6 +128,9 @@ class MDenseNet(nn.Module):
         x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
 
         x = self.net(x)
+        x = self.dense_block(x)
+        x = self.norm2d(x)
+        x = self.glu2d(x)
         x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
         x = self.relu2d(x)
 
@@ -143,6 +164,11 @@ class MDenseNet(nn.Module):
             'scale': self.scale,
             'dilated': self.dilated, 'norm': self.norm, 'nonlinear': self.nonlinear,
             'depth': self.depth,
+            'growth_rate_final': self.growth_rate_final,
+            'kernel_size_final': self.kernel_size_final,
+            'dilated_final': self.dilated_final,
+            'depth_final': self.depth_final,
+            'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
             'eps': self.eps
         }
         
@@ -165,6 +191,12 @@ class MDenseNet(nn.Module):
         nonlinear = config['nonlinear']
         depth = config['depth']
 
+        growth_rate_final = config['final']['growth_rate']
+        kernel_size_final = config['final']['kernel_size']
+        dilated_final = config['final']['dilated']
+        depth_final = config['final']['depth']
+        norm_final, nonlinear_final = config['final']['norm'], config['final']['nonlinear']
+
         eps = config.get('eps') or EPS
 
         model = cls(
@@ -175,6 +207,11 @@ class MDenseNet(nn.Module):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
+            growth_rate_final=growth_rate_final,
+            kernel_size_final=kernel_size_final,
+            dilated_final=dilated_final,
+            depth_final=depth_final,
+            norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
         
@@ -194,6 +231,12 @@ class MDenseNet(nn.Module):
         dilated, norm, nonlinear = config['dilated'], config['norm'], config['nonlinear']
         depth = config['depth']
 
+        growth_rate_final = config['growth_rate_final']
+        kernel_size_final = config['kernel_size_final']
+        dilated_final = config['dilated_final']
+        depth_final = config['depth_final']
+        norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
+
         eps = config.get('eps') or EPS
         
         model = cls(
@@ -204,6 +247,11 @@ class MDenseNet(nn.Module):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
+            growth_rate_final=growth_rate_final,
+            kernel_size_final=kernel_size_final,
+            dilated_final=dilated_final,
+            depth_final=depth_final,
+            norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
 
@@ -229,7 +277,7 @@ class MDenseNetBackbone(nn.Module):
             in_channels <int>
             num_features <int>
             growth_rate <list<int>>: `len(growth_rate)` must be an odd number.
-            kernel_size <int>
+            kernel_size <int> or <tuple<int>>
             scale <int> or <list<int>>: Upsampling and Downsampling scale
             dilated <list<bool>>
             norm <list<bool>>

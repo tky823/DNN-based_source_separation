@@ -1,0 +1,38 @@
+in_channels: 2
+bands: [low, high]
+low:
+  sections: 512
+  num_features: 32
+  growth_rate: [14, 16, 16, 16, 16, 16, 16]
+  kernel_size: [4, 3] # (bin, frame)
+  scale: 2
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
+  depth: [4, 4, 4, 4, 4, 4, 4]
+high:
+  sections: 513
+  num_features: 32
+  growth_rate: [10, 10, 10, 10, 10, 10, 10]
+  kernel_size: [3, 3] # (bin, frame)
+  scale: 2
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
+  depth: [3, 3, 3, 3, 3, 3, 3]
+full:
+  num_features: 32
+  growth_rate: [6, 6, 6, 6, 6, 6, 6]
+  kernel_size: [4, 3] # (bin, frame)
+  scale: 2
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
+  depth: [2, 2, 2, 4, 2, 2, 2]
+final:
+  growth_rate: 4
+  kernel_size: [2, 1] # (bin, frame)
+  dilated: False
+  norm: True
+  nonlinear: relu
+  depth: 2
