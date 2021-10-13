@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-EPS=1e-12
+EPS = 1e-12
 
 """
 Reference: 
