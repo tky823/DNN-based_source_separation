@@ -307,7 +307,8 @@ class Separator(nn.Module):
         skip = 0
         
         for idx in range(num_blocks):
-            x, (_, _) = self.rnn[idx](x)
+            self.rnn[idx].flatten_parameters()
+            x, _ = self.rnn[idx](x)
             skip = x + skip
         
         x = skip
