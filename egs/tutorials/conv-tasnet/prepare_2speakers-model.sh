@@ -9,7 +9,7 @@ file="model"
 
 echo "Download Conv-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
 
-model_ids=(
+declare -A model_ids=(
     ["sr16000_L16_librispeech"]="1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo"
 )
 
