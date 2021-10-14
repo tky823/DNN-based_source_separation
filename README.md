@@ -2,7 +2,9 @@
 A PyTorch implementation of DNN-based source separation.
 
 ## New information
-- v0.6.1: Add modules.
+- v0.6.2
+  - Modify links to pretrained models.
+  - Change attibute name in some model.
 
 ## Model
 | Model | Reference | Done |
