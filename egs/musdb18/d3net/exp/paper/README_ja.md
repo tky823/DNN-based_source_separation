@@ -1,10 +1,10 @@
-# Example of outputs
+# 出力結果の例
 D3Netを学習させた結果を共有します．ネットワークはランダムスケールを除いて，デフォルトの設定で学習済み．`config/improved/augmentation-*.yaml`を見てください．
 - `config.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
 - 学習済みモデルは[https://drive.google.com/file/d/1D1Q097xz9aaiFUPtbLOjAgVYPPLnOsiA/view?usp=sharing](https://drive.google.com/file/d/1D1Q097xz9aaiFUPtbLOjAgVYPPLnOsiA/view?usp=sharing)からダウンロードできます．これらは，`drums/last.pth`，`drums/best.pth`，`bass/last.pth`，...，`vocals/best.pth`を含んでいます．
 - 出力されたJSONファイルは[https://drive.google.com/file/d/1GU2CBgHKrRcFJZHzwckcdHAgVA7xqRGx/view?usp=sharing](https://drive.google.com/file/d/1GU2CBgHKrRcFJZHzwckcdHAgVA7xqRGx/view?usp=sharing)からダウンロードできます．
 
-## Results
+## 実験結果
 SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
 | Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
