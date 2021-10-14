@@ -1,3 +1,9 @@
+# 出力結果の例
+Conv-TasNetを学習させた結果を共有します．拡張に関しては`config/8sec_L20_H256/augmentation-*.yaml`を見てください．
+- `config.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
+- 学習済みモデルは[https://drive.google.com/file/d/1pA-jt_709cq8Pl6TAix3Yf2ei6UNPldn/view?usp=sharing](https://drive.google.com/file/d/1pA-jt_709cq8Pl6TAix3Yf2ei6UNPldn/view?usp=sharing)からダウンロードできます．これらは，`last.pth`と`best.pth`を含んでいます．
+- 出力されたJSONファイルは[https://drive.google.com/file/d/1aH3n6obNBP2j1vjaz-YfUtl_U2YJ6Mu7/view?usp=sharing](https://drive.google.com/file/d/1aH3n6obNBP2j1vjaz-YfUtl_U2YJ6Mu7/view?usp=sharing)からダウンロードできます．
+
 ## 実験結果
 - SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
 

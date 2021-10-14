@@ -1,3 +1,9 @@
+# Example of outputs
+I trained Conv-TasNet and share the outputs. See `config/improved/augmentation-*.yaml` for augmentation.
+- You have to unzip `config.zip`, `log.zip`, and `loss.zip`.
+- You can download pretrained models from [https://drive.google.com/file/d/1yQTdGu2jigAHotJJ7JAQcfqedACCP40t/view?usp=sharing](https://drive.google.com/file/d/1yQTdGu2jigAHotJJ7JAQcfqedACCP40t/view?usp=sharing) that includes `last.pth` and `best.pth`.
+- You can download output JSON files from [https://drive.google.com/file/d/1R-63xiocr6Cjp84O9pKej-X2iZFb-QOl/view?usp=sharing](https://drive.google.com/file/d/1R-63xiocr6Cjp84O9pKej-X2iZFb-QOl/view?usp=sharing).
+
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
 
