@@ -8,7 +8,7 @@ SDR [dB] (median of median SDR of each song computed by `museval`)
 | Conv-TasNet | 5.59 | 6.11 | 5.95 | 3.78 | 11.90 | 5.36 |
 | CUNet | - | - | - | - | - | - |
 | Meta-TasNet | - | - | - | - | - | - |
-| UMX | - | - | - | - | - | - |
+| UMX | 5.71 | 6.00 | 4.82 | 3.99 | 12.14 | 5.13 |
 | X-UMX | - | - | - | - | - | - |
 | D3Net | 6.63 | 6.40 | 5.24 | 4.58 | 13.24 | 5.71 |
 
