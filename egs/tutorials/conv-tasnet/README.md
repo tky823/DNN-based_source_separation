@@ -2,9 +2,9 @@
 Dataset: LibriSpeech (NOT LibriMix)
 
 ## Google Colaboratory
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_librispeech.ipynb)
 
-You can use Google Colaboratory environment. Please see `train_conv-tasnet.ipynb`.
+You can use Google Colaboratory environment. Please see `train_librispeech.ipynb`.
 
 ## How to do
 At the training and evaluation stage, log is saved like `train_<TIME_STAMP>.log`.
@@ -60,4 +60,4 @@ Dataset: MUSDB18
 ## Separation Example
 You can separate audio signal by pretrained Conv-TasNet.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate_music.ipynb)

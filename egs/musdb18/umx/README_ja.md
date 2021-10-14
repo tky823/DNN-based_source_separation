@@ -63,4 +63,4 @@ cd <REPOSITORY_ROOT>/egs/musdb18/umx/
 | UMX | 5.81 | 6.09 | 4.69 | 3.66 | 12.07 | 5.06 | 100エポック学習後 |
 | UMX | 6.32 | 5.73 | 5.23 | 4.02 | - | 5.33 | 公式実装 |
 
-- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/umx/separate_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_ja.ipynb)にとんでください．
+- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/umx/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_music_ja.ipynb)にとんでください．

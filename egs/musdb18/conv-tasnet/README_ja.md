@@ -57,4 +57,4 @@ cd <REPOSITORY_ROOT>/egs/musdb18/conv-tasnet/
 | Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.59 | 6.11 | 5.95 | 3.78 | 11.90 | 5.36 | - |
 | Conv-TasNet | 44100 | 8 | 64 | 256 | 512 | 5.91 | 5.82 | 5.38 | 3.51 | 11.85 | 5.16 | - |
 
-- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/conv-tasnet/separate_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate_ja.ipynb)にとんでください．
+- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/conv-tasnet/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate_music_ja.ipynb)にとんでください．

@@ -1,7 +1,7 @@
 # LibriSpeech separation using DPRNN-TasNet
 
 ## Google Colaboratory
-You can use Google Colaboratory environment. Please see `train_dprnn-tasnet.ipynb`
+You can use Google Colaboratory environment. Please see `train_librispeech.ipynb`
 
 ## How to do
 At the training and evaluation stage, log is saved like `train_<TIME_STAMP>.log`.

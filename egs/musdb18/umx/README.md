@@ -63,4 +63,4 @@ cd <REPOSITORY_ROOT>/egs/musdb18/umx/
 | UMX | 5.81 | 6.09 | 4.69 | 3.66 | 12.07 | 5.06 | After 100 epochs. |
 | UMX | 6.32 | 5.73 | 5.23 | 4.02 | - | 5.33 | Official report. |
 
-- You can separate your audio using these pretrained models. See `egs/tutorials/umx/separate.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate.ipynb).
+- You can separate your audio using these pretrained models. See `egs/tutorials/umx/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_music.ipynb).
