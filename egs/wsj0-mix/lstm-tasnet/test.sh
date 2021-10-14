@@ -41,6 +41,9 @@ lr=1e-3
 weight_decay=0
 max_norm=5
 
+finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
+model_choice="best"
+
 batch_size_train=128
 batch_size_finetune=128
 epochs_train=50
