@@ -66,4 +66,4 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 | D3Net | 6.63 | 6.40 | 5.24 | 4.58 | 13.24 | 5.71 | 50エポック学習後 |
 | D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | 公式実装 |
 
-- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/d3net/separate_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_ja.ipynb)にとんでください．
+- 学習済みモデルを使って分離を試すことができます．`egs/tutorials/d3net/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_music_ja.ipynb)にとんでください．

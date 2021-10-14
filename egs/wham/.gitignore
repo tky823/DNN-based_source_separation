@@ -1,0 +1,6 @@
+.DS_Store
+
+# outputs
+*.png
+*.wav
+*.pth

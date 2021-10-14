@@ -1,13 +1,21 @@
 #!/bin/bash
 
-model_id="1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo"
+model_id=""
+model_name="sr16000_L16_librispeech"
+file="model"
 
 . ./path.sh
 . parse_options.sh || exit 1
 
 echo "Download Conv-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
 
-file='archive'
+model_ids=(
+    ["sr16000_L16_librispeech"]="1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo"
+)
+
+if [ -z "${model_id}" ] ; then
+    model_id="${model_ids[${model_name}]}"
+fi
 
 curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${model_id}" > /dev/null
 code="$(awk '/_warning_/ {print $NF}' /tmp/cookie)"  

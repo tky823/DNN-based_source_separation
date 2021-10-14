@@ -6,7 +6,7 @@ tag=""
 sources="[bass,drums,other,vocals]"
 duration=6
 
-musdb18_root="../../../dataset/musdb18"
+musdb18_root="../../../dataset/MUSDB18"
 sr=44100
 
 window_fn='hann'

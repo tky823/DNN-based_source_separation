@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-EPS=1e-12
+EPS = 1e-12
 
 """
 Reference: 
@@ -42,7 +42,6 @@ class DenseNet(nn.Module):
 
         return output
 
-
 class DenseBlock(nn.Module):
     def __init__(self, in_channels, out_channels, growth_rate, kernel_size, stride=(1,1), hidden_channels=128, num_layers=3, eps=EPS):
         super().__init__()
@@ -59,7 +58,7 @@ class DenseBlock(nn.Module):
         self.transition2d = Transition2d(num_features, out_channels, eps)
     
     def forward(self, input):
-        x = self.net(input)    
+        x = self.net(input)
         output = self.transition2d(x)
 
         return output
@@ -79,9 +78,11 @@ class DenseLayer(nn.Module):
 
     def forward(self, input):
         _, _, H_in, W_in = input.size()
+        Kh, Kw = self.kernel_size
+        Sh, Sw = self.stride
 
-        padding_height = H_in * (self.stride[0] - 1) + self.kernel_size[0]  - self.stride[0]
-        padding_width = W_in * (self.stride[1] - 1) + self.kernel_size[1]  - self.stride[1]
+        padding_height = H_in * (Sh - 1) + Kh  - Sh
+        padding_width = W_in * (Sw - 1) + Kw  - Sw
         padding_up = padding_height // 2
         padding_bottom = padding_height - padding_up
         padding_left = padding_width // 2

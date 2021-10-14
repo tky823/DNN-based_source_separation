@@ -111,8 +111,8 @@ class D3Net(nn.Module):
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
 
-        self.in_scale, self.in_bias = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
-        self.out_scale, self.out_bias = nn.Parameter(torch.Tensor(sum(sections),)), nn.Parameter(torch.Tensor(sum(sections),))
+        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True), nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True)
+        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True), nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True)
 
         self.in_channels, self.num_features = in_channels, num_features
         self.growth_rate = growth_rate
@@ -121,11 +121,13 @@ class D3Net(nn.Module):
         self.num_d2blocks = num_d2blocks
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
         self.depth = depth
+        
         self.growth_rate_final = growth_rate_final
         self.kernel_size_final = kernel_size_final
         self.dilated_final = dilated_final
         self.depth_final = depth_final
         self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
+
         self.eps = eps
         
         self._reset_parameters()
@@ -147,7 +149,7 @@ class D3Net(nn.Module):
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x_valid = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps)
+        x_valid = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
 
         x = self.band_split(x_valid)
 
@@ -164,7 +166,7 @@ class D3Net(nn.Module):
         x = self.d2block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.out_scale.unsqueeze(dim=1) * x + self.out_bias.unsqueeze(dim=1)
+        x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
@@ -183,10 +185,10 @@ class D3Net(nn.Module):
         return output
     
     def _reset_parameters(self):
-        self.in_scale.data.fill_(1)
-        self.in_bias.data.zero_()
-        self.out_scale.data.fill_(1)
-        self.out_bias.data.zero_()
+        self.scale_in.data.fill_(1)
+        self.bias_in.data.zero_()
+        self.scale_out.data.fill_(1)
+        self.bias_out.data.zero_()
     
     def get_config(self):
         config = {
@@ -749,6 +751,9 @@ class DownSampleD3Block(nn.Module):
         return output, skip
 
 class UpSampleD3Block(nn.Module):
+    """
+    D3Block + up sample
+    """
     def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
         super().__init__()
 
@@ -766,9 +771,9 @@ class UpSampleD3Block(nn.Module):
         _, _, H_skip, W_skip = skip.size()
         padding_height = H - H_skip
         padding_width = W - W_skip
-        padding_top = padding_height//2
+        padding_top = padding_height // 2
         padding_bottom = padding_height - padding_top
-        padding_left = padding_width//2
+        padding_left = padding_width // 2
         padding_right = padding_width - padding_left
 
         x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
