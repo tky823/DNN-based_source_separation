@@ -77,3 +77,7 @@
 - Add modules.
   - LaSAFT related modules.
 - Add WHAM dataset.
+
+# v0.6.2
+- Modify links to pretrained models.
+- Change attibute name in some model.

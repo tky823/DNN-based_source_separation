@@ -9,7 +9,7 @@ file="model"
 
 echo "Download Open-Unmix. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
-model_ids=(
+declare -A model_ids=(
     ["paper"]="1C67tgD79YIe-uEs31NTPMxuh7JNLPB7T"
 )
 

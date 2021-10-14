@@ -9,7 +9,7 @@ file="model"
 
 echo "Download DPRNN-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
 
-model_ids=(
+declare -A model_ids=(
     ["sr16000_L16_librispeech"]="1hTmxhI8JQlNnWVjwWUBGYlC7O_-ykK4H"
 )
 
