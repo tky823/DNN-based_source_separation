@@ -72,9 +72,9 @@ if [ ${finetune} -eq 1 ]; then
 fi
 
 model_dir="${save_dir}/model"
-loss_dir="${save_dir}/loss"
-sample_dir="${save_dir}/sample"
+model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
+out_dir="${save_dir}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
