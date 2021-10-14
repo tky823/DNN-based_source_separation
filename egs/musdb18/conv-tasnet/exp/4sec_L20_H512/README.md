@@ -9,4 +9,4 @@ I trained Conv-TasNet and share the outputs. See `4sec_L20_H512/config/augmentat
 
 | Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 8 | 20 | 256 | 512 | - | - | - | - | - | - | - |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | - | - | - | - | - | - | - |

@@ -9,4 +9,4 @@ Conv-TasNetを学習させた結果を共有します．拡張に関しては`4s
 
 | Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 8 | 20 | 256 | 512 | - | - | - | - | - | - | - |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | - | - | - | - | - | - | - |
