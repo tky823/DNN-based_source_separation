@@ -9,8 +9,8 @@ file="model"
 
 echo "Download Conv-TasNet. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
-model_ids=(
-    ["sr44100_L20"]="1OjwxsUR5udVpimahIfWy92HE0Xkam61w"
+declare -A model_ids=(
+    ["sr44100_L20"]="1a-IQn3hsN84N2X_WF84uXbwe7VAk_vaB"
     ["sr44100_L64"]="1r_mJ3-LN8OYDa2xO8nFKpdaKN1pF0GTP"
 )
 
