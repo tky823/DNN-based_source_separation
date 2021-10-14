@@ -11,11 +11,8 @@ duration=4
 valid_duration=10
 max_or_min='min'
 
-train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
-valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
-
-train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
-valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
+wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
+test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tt_mix"
 
 # Encoder & decoder
 enc_basis='trainableGated' # choose from ['trainable', 'trainableGated']
@@ -40,6 +37,9 @@ optimizer='adam'
 lr=1e-3
 weight_decay=0
 max_norm=5
+
+finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
+model_choice="best"
 
 batch_size_train=128
 batch_size_finetune=128
@@ -72,9 +72,9 @@ if [ ${finetune} -eq 1 ]; then
 fi
 
 model_dir="${save_dir}/model"
-loss_dir="${save_dir}/loss"
-sample_dir="${save_dir}/sample"
+model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
+out_dir="${save_dir}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
