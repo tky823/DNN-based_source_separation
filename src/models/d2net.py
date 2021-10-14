@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.modules.utils import _pair
 
-from utils.utils_d3net import choose_layer_norm, choose_nonlinear
+from models.m_densenet import ConvBlock2d
 
 EPS = 1e-12
 
@@ -188,58 +186,6 @@ class D2Block(nn.Module):
                 x, x_residual = torch.split(x_residual, sections, dim=1)
         
         output = x_residual
-
-        return output
-
-class ConvBlock2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, norm=True, nonlinear='relu', eps=EPS):
-        super().__init__()
-
-        assert stride == 1, "`stride` is expected 1"
-
-        self.kernel_size = _pair(kernel_size)
-        self.dilation = _pair(dilation)
-
-        self.norm = norm
-        self.nonlinear = nonlinear
-
-        if self.norm:
-            if type(self.norm) is bool:
-                name = 'BN'
-            else:
-                name = self.norm
-            self.norm2d = choose_layer_norm(name, in_channels, n_dims=2, eps=eps)
-        
-        if self.nonlinear is not None:
-            self.nonlinear2d = choose_nonlinear(self.nonlinear)
-        
-        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
-
-    def forward(self, input):
-        """
-        Args:
-            input (batch_size, in_channels, H, W)
-        Returns:
-            output (batch_size, out_channels, H, W)
-        """
-        kernel_size = self.kernel_size
-        dilation = self.dilation
-        padding_height = (kernel_size[0] - 1) * dilation[0]
-        padding_width = (kernel_size[1] - 1) * dilation[1]
-        padding_up = padding_height // 2
-        padding_bottom = padding_height - padding_up
-        padding_left = padding_width // 2
-        padding_right = padding_width - padding_left
-
-        x = input
-
-        if self.norm:
-            x = self.norm2d(x)
-        if self.nonlinear:
-            x = self.nonlinear2d(x)
-        
-        x = F.pad(x, (padding_left, padding_right, padding_up, padding_bottom))
-        output = self.conv2d(x)
 
         return output
 

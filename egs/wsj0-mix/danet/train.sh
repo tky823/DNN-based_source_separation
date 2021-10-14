@@ -34,7 +34,7 @@ mask_nonlinear='sigmoid'
 iter_clustering=10
 
 # Criterion
-criterion='l2loss'
+criterion='se' # or 'l2loss'
 
 # Optimizer
 optimizer='rmsprop'

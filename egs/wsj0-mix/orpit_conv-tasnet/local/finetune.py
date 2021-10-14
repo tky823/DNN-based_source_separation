@@ -12,7 +12,7 @@ from models.conv_tasnet import ConvTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import ORPIT
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet using ORPIT")
+parser = argparse.ArgumentParser(description="Finetuning of Conv-TasNet using ORPIT")
 
 parser.add_argument('--train_wav_root', type=str, default=None, help='Path for training dataset ROOT directory')
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')

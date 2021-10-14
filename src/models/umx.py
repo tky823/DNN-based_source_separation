@@ -107,8 +107,8 @@ class OpenUnmix(nn.Module):
         self.net = nn.Sequential(*net)
         self.relu2d = nn.ReLU()
 
-        self.in_scale, self.in_bias = nn.Parameter(torch.Tensor(max_bin,)), nn.Parameter(torch.Tensor(max_bin,))
-        self.out_scale, self.out_bias = nn.Parameter(torch.Tensor(n_bins,)), nn.Parameter(torch.Tensor(n_bins,))
+        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(max_bin,)), nn.Parameter(torch.Tensor(max_bin,))
+        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,)), nn.Parameter(torch.Tensor(n_bins,))
 
         # Hyperparameters
         self.in_channels, self.n_bins = in_channels, n_bins
@@ -124,10 +124,10 @@ class OpenUnmix(nn.Module):
         self._reset_parameters()
     
     def _reset_parameters(self):
-        self.in_scale.data.fill_(1)
-        self.in_bias.data.zero_()
-        self.out_scale.data.fill_(1)
-        self.out_bias.data.zero_()
+        self.scale_in.data.fill_(1)
+        self.bias_in.data.zero_()
+        self.scale_out.data.fill_(1)
+        self.bias_out.data.zero_()
 
     def forward(self, input):
         """
@@ -150,7 +150,7 @@ class OpenUnmix(nn.Module):
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
 
-        x = (x_valid - self.in_bias.unsqueeze(dim=1)) / (torch.abs(self.in_scale.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+        x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
         x = x.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
         x = x.view(batch_size * n_frames, in_channels * max_bin)
 
@@ -164,7 +164,7 @@ class OpenUnmix(nn.Module):
         x_full = x_full.view(batch_size, n_frames, in_channels, n_bins)
         x_full = x_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
 
-        x_full = self.out_scale.unsqueeze(dim=1) * x_full + self.out_bias.unsqueeze(dim=1)
+        x_full = self.scale_out.unsqueeze(dim=1) * x_full + self.bias_out.unsqueeze(dim=1)
         x_full = self.relu2d(x_full)
 
         output = x_full * input

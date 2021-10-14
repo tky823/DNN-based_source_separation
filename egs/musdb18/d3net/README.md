@@ -66,4 +66,4 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 | D3Net | 6.63 | 6.40 | 5.24 | 4.58 | 13.24 | 5.71 | After 50 epochs. |
 | D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | Official report. |
 
-- You can separate your audio using these pretrained models. See `egs/tutorials/d3net/separate.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate.ipynb).
+- You can separate your audio using these pretrained models. See `egs/tutorials/d3net/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_music.ipynb).

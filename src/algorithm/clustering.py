@@ -1,13 +1,16 @@
 import random
 
 import torch
+import torch.nn as nn
 
-class Kmeans:
+class KMeans(nn.Module):
     def __init__(self, data, K=2, init_centroids='kmeans++'):
         """
         Args:
             data (num_data, dimension) <torch.Tensor>
         """
+        super().__init__()
+
         self.K = K
         
         num_data = len(data)
@@ -48,8 +51,8 @@ class Kmeans:
             centroid_id += random.choices(range(num_data), k=1, weights=weights)
 
         return centroid_id
-        
-    def __call__(self, iteration=10):
+    
+    def forward(self, iteration=10):
         onehot_labels, centroids = None, None
         
         for idx in range(iteration):
@@ -107,7 +110,7 @@ def _test_kmeans():
     plt.scatter(data[:,0], data[:,1])
     plt.savefig("data/Kmeans/faithful-0.png", bbox_inches='tight')
 
-    kmeans = Kmeans(data, K=K)
+    kmeans = KMeans(data, K=K)
     onehot_labels, centroids = kmeans(iteration=iteration) # (N, K), (K, D)
 
     plt.figure()
@@ -117,7 +120,7 @@ def _test_kmeans():
 
     # or same as ...
 
-    kmeans = Kmeans(data, K=K)
+    kmeans = KMeans(data, K=K)
     
     for idx in range(iteration):
         onehot_labels, centroids = kmeans.update_once()
