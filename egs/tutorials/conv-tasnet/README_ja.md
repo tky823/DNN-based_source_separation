@@ -2,9 +2,9 @@
 データセット: LibriSpeech (NOT LibriMix)
 
 ## Google Colaboratory
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_conv-tasnet.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_librispeech.ipynb)
 
-Google Colaboratoryの環境で試すことができます．`train_conv-tasnet.ipynb`を見てください．
+Google Colaboratoryの環境で試すことができます．`train_librispeech.ipynb`を見てください．
 
 ## 実行方法
 At the training and evaluation stage, log is saved like `train_<TIME_STAMP>.log`.
