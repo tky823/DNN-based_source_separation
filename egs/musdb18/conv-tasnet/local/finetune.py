@@ -11,7 +11,7 @@ from utils.utils import set_seed
 from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
 from dataset import TrainDataLoader, EvalDataLoader
 from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
-from adhoc_driver import AdhocFinetunTrainer
+from adhoc_driver import AdhocFinetuneTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.distance import MeanAbsoluteError, MeanSquaredError
 from criterion.sdr import NegSDR, NegSISDR
@@ -127,16 +127,20 @@ def main(args):
     # Criterion
     if args.criterion == 'mae':
         criterion = MeanAbsoluteError(dim=-1, reduction='mean')
+        args.save_normalized = False
     elif args.criterion == 'mse':
         criterion = MeanSquaredError(dim=-1, reduction='mean')
+        args.save_normalized = False
     elif args.criterion == 'sisdr':
         criterion = NegSISDR()
+        args.save_normalized = True
     elif args.criterion == 'sdr':
         criterion = NegSDR()
+        args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    trainer = AdhocFinetunTrainer(model, loader, criterion, optimizer, args)
+    trainer = AdhocFinetuneTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
     
 if __name__ == '__main__':
