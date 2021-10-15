@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dataset_root="../../../dataset"
+librispeech_root="../../../dataset"
 n_sources=2
 
 sr=16000
@@ -26,66 +26,75 @@ test_url="http://www.openslr.org/resources/12/${test_file}"
 test_dataset="test-clean"
 test_json="test-${n_sources}mix.json"
 
-if [ -e "${dataset_root}/LibriSpeech/${train_dataset}/103" ]; then
+if [ -e "${librispeech_root}/${train_dataset}/103" ]; then
     echo "Already downloaded dataset ${train_dataset}"
 else
-    mkdir -p "${dataset_root}"
+    if [ ! -d "${librispeech_root}" ] ; then
+        mkdir -p "${librispeech_root}"
+    fi
     wget ${train_url} -P "/tmp"
-    tar -xf "/tmp/${train_file}" -C "${dataset_root}"
+    tar -xf "/tmp/${train_file}" -C "/tmp/"
     rm "/tmp/${train_file}"
+    mv "/tmp/LibriSpeech/"* "${librispeech_root}"
 fi
 
-if [ -e "${dataset_root}/LibriSpeech/${valid_dataset}/1272" ]; then
+if [ -e "${librispeech_root}/${valid_dataset}/1272" ]; then
     echo "Already downloaded dataset ${valid_dataset}"
 else
-    mkdir -p "${dataset_root}"
+    if [ ! -d "${librispeech_root}" ] ; then
+        mkdir -p "${librispeech_root}"
+    fi
     wget ${valid_url} -P "/tmp"
-    tar -xf "/tmp/${valid_file}" -C "${dataset_root}"
+    tar -xf "/tmp/${valid_file}" -C "/tmp/"
     rm "/tmp/${valid_file}"
+    mv "/tmp/LibriSpeech/"* "${librispeech_root}"
 fi
 
-if [ -e "${dataset_root}/LibriSpeech/${test_dataset}/1089" ]; then
+if [ -e "${librispeech_root}/${test_dataset}/1089" ]; then
     echo "Already downloaded dataset ${test_dataset}"
 else
-    mkdir -p "${dataset_root}"
+    if [ ! -d "${librispeech_root}" ] ; then
+        mkdir -p "${librispeech_root}"
+    fi
     wget ${test_url} -P "/tmp"
-    tar -xf "/tmp/${test_file}" -C "${dataset_root}"
+    tar -xf "/tmp/${test_file}" -C "/tmp/"
     rm "/tmp/${test_file}"
+    mv "/tmp/LibriSpeech/"* "${librispeech_root}"
 fi
 
-if [ -e "${dataset_root}/LibriSpeech/${train_dataset}/${train_json}" ]; then
+if [ -e "${librispeech_root}/${train_dataset}/${train_json}" ]; then
     echo "${train_json} already exists."
 else
     prepare_librispeech.py \
-    --librispeech_root "${dataset_root}/LibriSpeech" \
-    --wav_root "${dataset_root}/LibriSpeech" \
-    --json_path "${dataset_root}/LibriSpeech/${train_dataset}/${train_json}" \
+    --librispeech_root "${librispeech_root}" \
+    --wav_root "${librispeech_root}" \
+    --json_path "${librispeech_root}/${train_dataset}/${train_json}" \
     --n_sources ${n_sources} \
     --sr ${sr} \
     --duration ${train_duration} \
     --seed ${seed}
 fi
 
-if [ -e "${dataset_root}/LibriSpeech/${valid_dataset}/${valid_json}" ]; then
+if [ -e "${librispeech_root}/${valid_dataset}/${valid_json}" ]; then
     echo "${valid_json} already exists."
 else
     prepare_librispeech.py \
-    --librispeech_root "${dataset_root}/LibriSpeech" \
-    --wav_root "${dataset_root}/LibriSpeech" \
-    --json_path "${dataset_root}/LibriSpeech/${valid_dataset}/${valid_json}" \
+    --librispeech_root "${librispeech_root}" \
+    --wav_root "${librispeech_root}" \
+    --json_path "${librispeech_root}/${valid_dataset}/${valid_json}" \
     --n_sources ${n_sources} \
     --sr ${sr} \
     --duration ${valid_duration} \
     --seed ${seed}
 fi
 
-if [ -e "${dataset_root}/LibriSpeech/${test_dataset}/${test_json}" ]; then
+if [ -e "${librispeech_root}/${test_dataset}/${test_json}" ]; then
     echo "${test_json} already exists."
 else
     prepare_librispeech.py \
-    --librispeech_root "${dataset_root}/LibriSpeech" \
-    --wav_root "${dataset_root}/LibriSpeech" \
-    --json_path "${dataset_root}/LibriSpeech/${test_dataset}/${test_json}" \
+    --librispeech_root "${librispeech_root}" \
+    --wav_root "${librispeech_root}" \
+    --json_path "${librispeech_root}/${test_dataset}/${test_json}" \
     --n_sources ${n_sources} \
     --sr ${sr} \
     --duration ${test_duration} \
