@@ -29,37 +29,37 @@ test_json="test-${n_sources}mix.json"
 if [ -e "${librispeech_root}/${train_dataset}/103" ]; then
     echo "Already downloaded dataset ${train_dataset}"
 else
-    if [ ! -d "${librispeech_root}" ] ; then
-        mkdir -p "${librispeech_root}"
+    if [ ! -d "${librispeech_root}/${train_dataset}" ] ; then
+        mkdir -p "${librispeech_root}/${train_dataset}"
     fi
     wget ${train_url} -P "/tmp"
     tar -xf "/tmp/${train_file}" -C "/tmp/"
     rm "/tmp/${train_file}"
-    mv "/tmp/LibriSpeech/"* "${librispeech_root}"
+    mv "/tmp/LibriSpeech/${train_dataset}"* "${librispeech_root}/${train_dataset}"
 fi
 
 if [ -e "${librispeech_root}/${valid_dataset}/1272" ]; then
     echo "Already downloaded dataset ${valid_dataset}"
 else
-    if [ ! -d "${librispeech_root}" ] ; then
-        mkdir -p "${librispeech_root}"
+    if [ ! -d "${librispeech_root}/${valid_dataset}" ] ; then
+        mkdir -p "${librispeech_root}/${valid_dataset}"
     fi
     wget ${valid_url} -P "/tmp"
     tar -xf "/tmp/${valid_file}" -C "/tmp/"
     rm "/tmp/${valid_file}"
-    mv "/tmp/LibriSpeech/"* "${librispeech_root}"
+    mv "/tmp/LibriSpeech/${valid_dataset}"* "${librispeech_root}/${valid_dataset}"
 fi
 
 if [ -e "${librispeech_root}/${test_dataset}/1089" ]; then
     echo "Already downloaded dataset ${test_dataset}"
 else
-    if [ ! -d "${librispeech_root}" ] ; then
-        mkdir -p "${librispeech_root}"
+    if [ ! -d "${librispeech_root}/${test_dataset}" ] ; then
+        mkdir -p "${librispeech_root}/${test_dataset}"
     fi
     wget ${test_url} -P "/tmp"
     tar -xf "/tmp/${test_file}" -C "/tmp/"
     rm "/tmp/${test_file}"
-    mv "/tmp/LibriSpeech/"* "${librispeech_root}"
+    mv "/tmp/LibriSpeech/${test_dataset}"* "${librispeech_root}/${test_dataset}"
 fi
 
 if [ -e "${librispeech_root}/${train_dataset}/${train_json}" ]; then
