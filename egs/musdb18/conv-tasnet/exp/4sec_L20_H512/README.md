@@ -9,4 +9,5 @@ I trained Conv-TasNet and share the outputs. See `4sec_L20_H512/config/augmentat
 
 | Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | - | - | - | - | - | - | - |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 6.04 | 6.06 | 5.32 | 4.00 | 12.33 | 5.35 | Epoch is chosen by validation loss. |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 6.06 | 5.98 | 4.82 | 3.73 | 12.32 | 5.15 | After 100 epochs. |
