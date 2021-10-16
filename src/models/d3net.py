@@ -769,11 +769,10 @@ class D3Block(nn.Module):
         """
         growth_rate, num_blocks = self.growth_rate, self.num_blocks
 
-        x_residual = 0
-
         for idx in range(num_blocks):
             if idx == 0:
                 x = input
+                x_residual = 0
             else:
                 _in_channels = growth_rate[idx - 1]
                 sections = [_in_channels, sum(growth_rate[idx:])]

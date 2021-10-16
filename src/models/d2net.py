@@ -182,11 +182,10 @@ class D2Block(nn.Module):
         """
         growth_rate, depth = self.growth_rate, self.depth
 
-        x_residual = 0
-
         for idx in range(depth):
             if idx == 0:
                 x = input
+                x_residual = 0
             else:
                 _in_channels = growth_rate[idx - 1]
                 sections = [_in_channels, sum(growth_rate[idx:])]
