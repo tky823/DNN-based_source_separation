@@ -68,6 +68,13 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
             else:
                 raise NotImplementedError("Not support {} channels input.".format(n_mics))
             
+            max_value = torch.max(torch.abs(estimated_sources))
+            max_value = max_value.item()
+
+            if max_value >= 1:
+                norm, _ = torch.max(torch.abs(estimated_sources), dim=1, keepdim=True)
+                estimated_sources = 0.9 * (estimated_sources / norm)
+            
             estimated_sources = estimated_sources.cpu()
 
             estimated_sources_channels = estimated_sources.size()[:-1]
