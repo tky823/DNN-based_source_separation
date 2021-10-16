@@ -3,14 +3,14 @@ bands: [low, middle]
 low:
   sections: 256
   num_features: 32
-  growth_rate: [14, 15, 16, 18, 16, 14, 14]
+  growth_rate: [16, 18, 20, 22, 20, 18, 16]
   kernel_size: 3
   scale: 2
   num_d2blocks: [2, 2, 2, 2, 2, 2, 2]
   dilated: [True, True, True, True, True, True, True]
   norm: [True, True, True, True, True, True, True]
   nonlinear: [relu, relu, relu, relu, relu, relu, relu]
-  depth: [4, 5, 5, 6, 4, 4, 4]
+  depth: [5, 5, 5, 5, 4, 4, 4]
 middle:
   sections: 1344
   num_features: 8
@@ -23,15 +23,15 @@ middle:
   nonlinear: [relu, relu, relu, relu, relu]
   depth: [1, 1, 1, 1, 1]
 full:
-  num_features: 30
-  growth_rate: [11, 12, 13, 14, 16, 14, 12, 11, 10]
+  num_features: 32
+  growth_rate: [13, 14, 15, 16, 17, 16, 14, 12, 11]
   kernel_size: 3
   scale: 2
-  num_d2blocks: [3, 4, 6, 7, 8, 5, 4, 3, 3]
+  num_d2blocks: [2, 2, 2, 2, 2, 2, 2, 2, 2]
   dilated: [True, True, True, True, True, True, True, True, True]
   norm: [True, True, True, True, True, True, True, True, True]
   nonlinear: [relu, relu, relu, relu, relu, relu, relu, relu, relu]
-  depth: [2, 2, 2, 2, 2, 2, 2, 2, 2]
+  depth: [4, 5, 6, 7, 8, 6, 5, 4, 4]
 final:
   growth_rate: 12
   kernel_size: 3
