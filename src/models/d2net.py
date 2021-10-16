@@ -12,7 +12,7 @@ class D2BlockFixedDilation(nn.Module):
             in_channels <int>: # of input channels
             growth_rate <int> or <list<int>>: # of output channels
             kernel_size <int> or <tuple<int>>: Kernel size
-            dilated <bool> or <list<bool>>: Applies dilated convolution.
+            dilation <int>: Dilataion od dilated convolution.
             norm <bool> or <list<bool>>: Applies batch normalization.
             nonlinear <str> or <list<str>>: Applies nonlinear function.
             depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
@@ -28,6 +28,9 @@ class D2BlockFixedDilation(nn.Module):
             depth = len(growth_rate)
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
+        
+        if not type(dilation) is int:
+            raise ValueError("Not support dilated={}".format(dilated))
         
         if type(norm) is bool:
             assert depth is not None, "Specify `depth`"
@@ -53,38 +56,41 @@ class D2BlockFixedDilation(nn.Module):
         self.depth = depth
 
         net = []
-        _in_channels = in_channels
+        _in_channels = in_channels - sum(growth_rate)
 
         for idx in range(depth):
+            if idx == 0:
+                _in_channels = in_channels
+            else:
+                _in_channels = growth_rate[idx - 1]
             _out_channels = sum(growth_rate[idx:])
+            
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
-            _in_channels = growth_rate[idx]
-
-        self.net = nn.ModuleList(net)
+        
+        self.net = nn.Sequential(*net)
     
     def forward(self, input):
         """
         Args:
             input: (batch_size, in_channels, H, W)
         Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by ... 
+            output: (batch_size, out_channels, H, W), where out_channels = growth_rate[-1].
         """
         growth_rate, depth = self.growth_rate, self.depth
 
-        x = input
         x_residual = 0
 
         for idx in range(depth):
+            if idx == 0:
+                x = input
+            else:
+                _in_channels = growth_rate[idx - 1]
+                sections = [_in_channels, sum(growth_rate[idx:])]
+                x, x_residual = torch.split(x_residual, sections, dim=1)
+            
             x = self.net[idx](x)
             x_residual = x_residual + x
-            
-            in_channels = growth_rate[idx]
-            stacked_channels = sum(growth_rate[idx+1:])
-            sections = [in_channels, stacked_channels]
-
-            if idx != depth - 1:
-                x, x_residual = torch.split(x_residual, sections, dim=1)
         
         output = x_residual
 
@@ -148,42 +154,46 @@ class D2Block(nn.Module):
         self.depth = depth
 
         net = []
-        _in_channels = in_channels
+        _in_channels = in_channels - sum(growth_rate)
 
         for idx in range(depth):
+            if idx == 0:
+                _in_channels = in_channels
+            else:
+                _in_channels = growth_rate[idx - 1]
             _out_channels = sum(growth_rate[idx:])
+            
             if dilated[idx]:
                 dilation = 2**idx
             else:
                 dilation = 1
+            
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
-            _in_channels = growth_rate[idx]
-
-        self.net = nn.ModuleList(net)
+        
+        self.net = nn.Sequential(*net)
     
     def forward(self, input):
         """
         Args:
             input: (batch_size, in_channels, H, W)
         Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by ... 
+            output: (batch_size, out_channels, H, W), where out_channels = growth_rate[-1].
         """
         growth_rate, depth = self.growth_rate, self.depth
 
-        x = input
         x_residual = 0
 
         for idx in range(depth):
+            if idx == 0:
+                x = input
+            else:
+                _in_channels = growth_rate[idx - 1]
+                sections = [_in_channels, sum(growth_rate[idx:])]
+                x, x_residual = torch.split(x_residual, sections, dim=1)
+            
             x = self.net[idx](x)
             x_residual = x_residual + x
-            
-            in_channels = growth_rate[idx]
-            stacked_channels = sum(growth_rate[idx+1:])
-            sections = [in_channels, stacked_channels]
-
-            if idx != depth - 1:
-                x, x_residual = torch.split(x_residual, sections, dim=1)
         
         output = x_residual
 
