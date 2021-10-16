@@ -56,7 +56,7 @@ model_dir="${save_dir}/model"
 log_dir="${save_dir}/log/test/${model_choice}"
 json_dir="${save_dir}/json/${model_choice}"
 
-musdb=`basename "${musdb18_root}"` # 'musdb18' or 'musdb18hq'
+musdb=`basename "${musdb18_root}"` # 'MUSDB18' or 'MUSDB18HQ'
 estimates_dir="${save_dir}/${musdb}/${model_choice}/test"
 
 if [ ! -e "${log_dir}" ]; then
