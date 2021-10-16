@@ -591,119 +591,6 @@ class Decoder(nn.Module):
 
         return output
 
-class D3Block(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
-        """
-        Args:
-            in_channels <int>: # of input channels
-            growth_rate <int> or <list<int>>: # of output channels, TODO: <list<list<int>>>
-            kernel_size <int> or <tuple<int>>: Kernel size
-            num_blocks <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `num_blocks`.
-            dilated <str> or <bool> or <list<bool>>: Applies dilated convolution.
-            norm <bool> or <list<bool>>: Applies batch normalization.
-            nonlinear <str> or <list<str>>: Applies nonlinear function.
-            depth <int>: 
-        """
-        super().__init__()
-
-        if type(growth_rate) is int:
-            assert num_blocks is not None, "Specify `num_blocks`"
-            growth_rate = [growth_rate] * num_blocks
-        elif type(growth_rate) is list:
-            if num_blocks is not None:
-                assert num_blocks == len(growth_rate), "`num_blocks` is different from `len(growth_rate)`"
-            num_blocks = len(growth_rate)
-        else:
-            raise ValueError("Not support growth_rate={}".format(growth_rate))
-
-        naive_dilated = False
-        
-        if type(dilated) is str:
-            if dilated == 'multi':
-                pass # naive_dilated = False
-            elif dilated == 'naive':
-                naive_dilated = True
-            else:
-                raise ValueError("Not support dilated={}".format(dilated))
-        
-        if not naive_dilated:
-            # w/o dilation or multi dilation
-            if type(dilated) is bool:
-                assert num_blocks is not None, "Specify `num_blocks`"
-                dilated = [dilated] * num_blocks
-            elif type(dilated) is list:
-                if num_blocks is not None:
-                    assert num_blocks == len(dilated), "`num_blocks` is different from `len(dilated)`"
-                num_blocks = len(dilated)
-            else:
-                raise ValueError("Not support dilated={}".format(dilated))
-
-        if type(norm) is bool:
-            assert num_blocks is not None, "Specify `num_blocks`"
-            norm = [norm] * num_blocks
-        elif type(norm) is list:
-            if num_blocks is not None:
-                assert num_blocks == len(norm), "`num_blocks` is different from `len(norm)`"
-            num_blocks = len(norm)
-        else:
-            raise ValueError("Not support norm={}".format(norm))
-        
-        if type(nonlinear) is str:
-            assert num_blocks is not None, "Specify `num_blocks`"
-            nonlinear = [nonlinear] * num_blocks
-        elif type(nonlinear) is list:
-            if num_blocks is not None:
-                assert num_blocks == len(nonlinear), "`num_blocks` is different from `len(nonlinear)`"
-            num_blocks = len(nonlinear)
-        else:
-            raise ValueError("Not support nonlinear={}".format(nonlinear))
-    
-        self.growth_rate = growth_rate
-        self.num_blocks = num_blocks
-        self.out_channels = growth_rate[-1]
-
-        net = []
-        _in_channels = in_channels
-
-        for idx in range(num_blocks):
-            _out_channels = sum(growth_rate[idx:])
-            if naive_dilated:
-                dilation = 2**idx
-                d2block = D2BlockFixedDilation(_in_channels, _out_channels, kernel_size=kernel_size, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
-            else:
-                d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
-            net.append(d2block)
-            _in_channels = growth_rate[idx]
-
-        self.net = nn.ModuleList(net)
-    
-    def forward(self, input):
-        """
-        Args:
-            input: (batch_size, in_channels, H, W)
-        Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by ... 
-        """
-        growth_rate, num_blocks = self.growth_rate, self.num_blocks
-
-        x = input
-        x_residual = 0
-
-        for idx in range(num_blocks):
-            x = self.net[idx](x)
-            x_residual = x_residual + x
-            
-            in_channels = growth_rate[idx]
-            stacked_channels = sum(growth_rate[idx+1:])
-            sections = [in_channels, stacked_channels]
-
-            if idx != num_blocks - 1:
-                x, x_residual = torch.split(x_residual, sections, dim=1)
-        
-        output = x_residual
-
-        return output
-
 class DownSampleD3Block(nn.Module):
     """
     D3Block + down sample
@@ -780,6 +667,121 @@ class UpSampleD3Block(nn.Module):
         x = torch.cat([x, skip], dim=1)
 
         output = self.d3block(x)
+
+        return output
+
+class D3Block(nn.Module):
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
+        """
+        Args:
+            in_channels <int>: # of input channels
+            growth_rate <int> or <list<int>>: # of output channels, TODO: <list<list<int>>>
+            kernel_size <int> or <tuple<int>>: Kernel size
+            num_blocks <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `num_blocks`.
+            dilated <str> or <bool> or <list<bool>>: Applies dilated convolution.
+            norm <bool> or <list<bool>>: Applies batch normalization.
+            nonlinear <str> or <list<str>>: Applies nonlinear function.
+            depth <int>: 
+        """
+        super().__init__()
+
+        if type(growth_rate) is int:
+            assert num_blocks is not None, "Specify `num_blocks`"
+            growth_rate = [growth_rate] * num_blocks
+        elif type(growth_rate) is list:
+            if num_blocks is not None:
+                assert num_blocks == len(growth_rate), "`num_blocks` is different from `len(growth_rate)`"
+            num_blocks = len(growth_rate)
+        else:
+            raise ValueError("Not support growth_rate={}".format(growth_rate))
+
+        naive_dilated = False
+        
+        if type(dilated) is str:
+            if dilated == 'multi':
+                pass # naive_dilated = False
+            elif dilated == 'naive':
+                naive_dilated = True
+            else:
+                raise ValueError("Not support dilated={}".format(dilated))
+        
+        if not naive_dilated:
+            # w/o dilation or multi dilation
+            if type(dilated) is bool:
+                assert num_blocks is not None, "Specify `num_blocks`"
+                dilated = [dilated] * num_blocks
+            elif type(dilated) is list:
+                if num_blocks is not None:
+                    assert num_blocks == len(dilated), "`num_blocks` is different from `len(dilated)`"
+                num_blocks = len(dilated)
+            else:
+                raise ValueError("Not support dilated={}".format(dilated))
+
+        if type(norm) is bool:
+            assert num_blocks is not None, "Specify `num_blocks`"
+            norm = [norm] * num_blocks
+        elif type(norm) is list:
+            if num_blocks is not None:
+                assert num_blocks == len(norm), "`num_blocks` is different from `len(norm)`"
+            num_blocks = len(norm)
+        else:
+            raise ValueError("Not support norm={}".format(norm))
+        
+        if type(nonlinear) is str:
+            assert num_blocks is not None, "Specify `num_blocks`"
+            nonlinear = [nonlinear] * num_blocks
+        elif type(nonlinear) is list:
+            if num_blocks is not None:
+                assert num_blocks == len(nonlinear), "`num_blocks` is different from `len(nonlinear)`"
+            num_blocks = len(nonlinear)
+        else:
+            raise ValueError("Not support nonlinear={}".format(nonlinear))
+    
+        self.growth_rate = growth_rate
+        self.num_blocks = num_blocks
+        self.out_channels = growth_rate[-1]
+
+        net = []
+        
+
+        for idx in range(num_blocks):
+            if idx == 0:
+                _in_channels = in_channels
+            else:
+                _in_channels = growth_rate[idx - 1]
+            _out_channels = sum(growth_rate[idx:])
+
+            if naive_dilated:
+                dilation = 2**idx
+                d2block = D2BlockFixedDilation(_in_channels, _out_channels, kernel_size=kernel_size, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
+            else:
+                d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
+            net.append(d2block)
+        
+        self.net = nn.Sequential(*net)
+    
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, in_channels, H, W)
+        Returns:
+            output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
+        """
+        growth_rate, num_blocks = self.growth_rate, self.num_blocks
+
+        for idx in range(num_blocks):
+            if idx == 0:
+                x = input
+                x_residual = 0
+            else:
+                _in_channels = growth_rate[idx - 1]
+                sections = [_in_channels, sum(growth_rate[idx:])]
+                x, x_residual = torch.split(x_residual, sections, dim=1)
+            
+            x = self.net[idx](x)
+            x_residual = x_residual + x
+        
+        output = x_residual
 
         return output
 
