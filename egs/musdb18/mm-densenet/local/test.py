@@ -10,7 +10,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from adhoc_dataset import SpectrogramTestDataset, TestDataLoader
 from adhoc_driver import AdhocTester
-from models.mm_dense import MMDenseNet, ParallelMMDenseNet
+from models.mm_densenet import MMDenseNet, ParallelMMDenseNet
 from criterion.distance import MeanSquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of MMDenseNet")
