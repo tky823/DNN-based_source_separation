@@ -72,8 +72,7 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
             max_value = max_value.item()
 
             if max_value >= 1:
-                norm, _ = torch.max(torch.abs(estimated_sources), dim=1, keepdim=True)
-                estimated_sources = 0.9 * (estimated_sources / norm)
+                estimated_sources = 0.9 * (estimated_sources / max_value)
             
             estimated_sources = estimated_sources.cpu()
 
