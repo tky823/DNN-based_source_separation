@@ -72,19 +72,28 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
                 # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
                 if n_mics == 1:
                     _mixture_amplitude = torch.tile(_mixture_amplitude, (1, NUM_CHANNELS_MUSDB18, 1, 1))
+                elif n_mics == 2:
+                    _mixture_amplitude_flipped = torch.flip(_mixture_amplitude, dims=(1,))
+                    _mixture_amplitude = torch.cat([_mixture_amplitude, _mixture_amplitude_flipped], dim=0)
+                else:
+                    raise NotImplementedError("Not support {} channels input.".format(n_mics))
                 
                 for target in __sources__:
                     _estimated_sources_amplitude = model(_mixture_amplitude, target=target)
 
                     if n_mics == 1:
                         _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=1, keepdim=True)
+                    elif n_mics == 2:
+                        _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True)
+                    else:
+                        raise NotImplementedError("Not support {} channels input.".format(n_mics))
                     
                     estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
         
             estimated_sources_amplitude = [
-                torch.cat(estimated_sources_amplitude[target], dim=0).unsqueeze(dim=0) for target in __sources__
+                torch.cat(estimated_sources_amplitude[target], dim=0) for target in __sources__
             ]
-            estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
+            estimated_sources_amplitude = torch.stack(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
             estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4)
             estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
 

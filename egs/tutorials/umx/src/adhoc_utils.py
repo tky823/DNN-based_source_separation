@@ -70,12 +70,21 @@ def separate_by_umx(model_paths, file_paths, out_dirs):
                 # _mixture_amplitude: (1, n_mics, n_bins, n_frames)
                 if n_mics == 1:
                     _mixture_amplitude = torch.tile(_mixture_amplitude, (1, NUM_CHANNELS_MUSDB18, 1, 1))
+                elif n_mics == 2:
+                    _mixture_amplitude_flipped = torch.flip(_mixture_amplitude, dims=(1,))
+                    _mixture_amplitude = torch.cat([_mixture_amplitude, _mixture_amplitude_flipped], dim=0)
+                else:
+                    raise NotImplementedError("Not support {} channels input.".format(n_mics))
                 
                 for target in __sources__:
                     _estimated_sources_amplitude = model(_mixture_amplitude, target=target)
 
                     if n_mics == 1:
                         _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=1, keepdim=True)
+                    elif n_mics == 2:
+                        _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True)
+                    else:
+                        raise NotImplementedError("Not support {} channels input.".format(n_mics))
                     
                     estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
         
