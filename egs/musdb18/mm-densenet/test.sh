@@ -35,9 +35,11 @@ batch_size=6
 samples_per_epoch=6400 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data.
 epochs=50
 
+estimate_all=1
+evaluate_all=1
+
+use_norbert=0
 use_cuda=1
-overwrite=0
-num_workers=2
 seed=111
 gpu_id="0"
 

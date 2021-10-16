@@ -669,7 +669,7 @@ class DenseBlock(nn.Module):
             net.append(conv_block)
             
 
-        self.net = nn.ModuleList(net)
+        self.net = nn.Sequential(*net)
     
     def forward(self, input):
         """
