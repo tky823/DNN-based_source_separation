@@ -50,14 +50,24 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
 
             if n_mics == 1:
                 mixture = torch.tile(mixture, (1, 1, NUM_CHANNELS_MUSDB18, 1))
+            elif n_mics == 2:
+                mixture_flipped = torch.flip(mixture, dims=(2,))
+                mixture = torch.cat([mixture, mixture_flipped], dim=0)
+            else:
+                raise NotImplementedError("Not support {} channels input.".format(n_mics))
+
             mean, std = mixture.mean(dim=-1, keepdim=True), mixture.std(dim=-1, keepdim=True)
             standardized_mixture = (mixture - mean) / (std + EPS)
             standardized_estimated_sources = model(standardized_mixture)
             estimated_sources = std * standardized_estimated_sources + mean
+
             if n_mics == 1:
                 estimated_sources = estimated_sources.mean(dim=2, keepdim=True)
-
-            mixture = mixture.cpu()
+            elif n_mics == 2:
+                estimated_sources = estimated_sources.mean(dim=0, keepdim=True)
+            else:
+                raise NotImplementedError("Not support {} channels input.".format(n_mics))
+            
             estimated_sources = estimated_sources.cpu()
 
             estimated_sources_channels = estimated_sources.size()[:-1]
