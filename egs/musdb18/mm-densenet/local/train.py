@@ -15,11 +15,11 @@ from adhoc_driver import AdhocTrainer
 from models.mm_densenet import MMDenseNet
 from criterion.distance import MeanSquaredError
 
-parser = argparse.ArgumentParser(description="Training of D3Net")
+parser = argparse.ArgumentParser(description="Training of MMDenseNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -34,7 +34,7 @@ parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Defau
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
-parser.add_argument('--samples_per_epoch', type=int, default=-1, help='Training samples in one epoch')
+parser.add_argument('--samples_per_epoch', type=int, default=64*100, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')

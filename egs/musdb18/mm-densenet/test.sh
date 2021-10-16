@@ -55,28 +55,12 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_dir="${save_dir}/model/${target}"
-loss_dir="${save_dir}/loss/${target}"
-sample_dir="${save_dir}/sample/${target}"
-config_dir="${save_dir}/config"
-log_dir="${save_dir}/log/${target}"
+model_dir="${save_dir}/model"
+log_dir="${save_dir}/log/test/${model_choice}"
+json_dir="${save_dir}/json/${model_choice}"
 
-if [ ! -e "${config_dir}" ]; then
-    mkdir -p "${config_dir}"
-fi
-
-config_name=`basename ${config_path}`
-
-if [ ! -e "${config_dir}/${config_name}" ]; then
-    cp "${config_path}" "${config_dir}/${config_name}"
-fi
-
-augmentation_dir=`dirname ${augmentation_path}`
-augmentation_name=`basename ${augmentation_path}`
-
-if [ ! -e "${config_dir}/${augmentation_name}" ]; then
-    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
-fi
+musdb=`basename "${musdb18_root}"` # 'MUSDB18' or 'MUSDB18HQ'
+estimates_dir="${save_dir}/${musdb}/${model_choice}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -86,31 +70,21 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
-train.py \
+test.py \
 --musdb18_root ${musdb18_root} \
---config_path "${config_path}" \
 --sr ${sr} \
 --patch_size ${patch} \
---valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
---augmentation_path "${augmentation_path}" \
 --sources ${sources} \
---target ${target} \
 --criterion ${criterion} \
---optimizer ${optimizer} \
---lr ${lr} \
---weight_decay ${weight_decay} \
---max_norm ${max_norm} \
---batch_size ${batch_size} \
---samples_per_epoch ${samples_per_epoch} \
---epochs ${epochs} \
+--estimates_dir "${estimates_dir}" \
+--json_dir "${json_dir}" \
 --model_dir "${model_dir}" \
---loss_dir "${loss_dir}" \
---sample_dir "${sample_dir}" \
---continue_from "${continue_from}" \
+--model_choice "${model_choice}" \
+--estimate_all ${estimate_all} \
+--evaluate_all ${evaluate_all} \
+--use_norbert ${use_norbert} \
 --use_cuda ${use_cuda} \
---overwrite ${overwrite} \
---num_workers ${num_workers} \
---seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"
+--seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
