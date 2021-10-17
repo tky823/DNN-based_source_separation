@@ -1,1 +1,0 @@
-../../common/prepare_pesq.sh

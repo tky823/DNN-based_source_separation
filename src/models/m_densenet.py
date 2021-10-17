@@ -652,19 +652,24 @@ class DenseBlock(nn.Module):
         self.depth = depth
 
         net = []
-        _in_channels = in_channels
 
         for idx in range(depth):
+            if idx == 0:
+                _in_channels = in_channels
+            else:
+                _in_channels = growth_rate[idx - 1]
+            
             _out_channels = sum(growth_rate[idx:])
+
             if dilated[idx]:
                 dilation = 2**idx
             else:
                 dilation = 1
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
-            _in_channels = growth_rate[idx]
+            
 
-        self.net = nn.ModuleList(net)
+        self.net = nn.Sequential(*net)
     
     def forward(self, input):
         """
@@ -675,19 +680,17 @@ class DenseBlock(nn.Module):
         """
         growth_rate, depth = self.growth_rate, self.depth
 
-        x = input
-        x_residual = 0
-
         for idx in range(depth):
+            if idx == 0:
+                x = input
+                x_residual = 0
+            else:
+                _in_channels = growth_rate[idx - 1]
+                sections = [_in_channels, sum(growth_rate[idx:])]
+                x, x_residual = torch.split(x_residual, sections, dim=1)
+            
             x = self.net[idx](x)
             x_residual = x_residual + x
-            
-            in_channels = growth_rate[idx]
-            stacked_channels = sum(growth_rate[idx+1:])
-            sections = [in_channels, stacked_channels]
-
-            if idx != depth - 1:
-                x, x_residual = torch.split(x_residual, sections, dim=1)
 
         output = x_residual
 

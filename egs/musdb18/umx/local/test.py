@@ -16,7 +16,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Evaluation of Open-Unmix")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=6, help='Duration')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
@@ -69,6 +69,7 @@ def main(args):
     # Criterion
     if args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
+        args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     

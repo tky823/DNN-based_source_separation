@@ -1,1 +1,1 @@
-../MUSDB18/train.txt
+../musdb18/train.txt

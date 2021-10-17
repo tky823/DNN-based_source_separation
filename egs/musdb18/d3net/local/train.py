@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description="Training of D3Net")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -30,12 +30,12 @@ parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", 
 parser.add_argument('--target', type=str, default=None, choices=['bass', 'drums', 'other', 'vocals'], help='Target source name')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
-parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
-parser.add_argument('--anneal_lr', type=float, default=0.0001, help='Learning rate. Default: 0.0001')
+parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
+parser.add_argument('--anneal_lr', type=float, default=1e-4, help='Learning rate. Default: 1e-4')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
-parser.add_argument('--samples_per_epoch', type=int, default=3863*2, help='Training samples in one epoch')
+parser.add_argument('--samples_per_epoch', type=int, default=64*100, help='Training samples in one epoch. Default: 6400.')
 parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
 parser.add_argument('--anneal_epoch', type=int, default=40, help='Epoch when annealing')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
@@ -104,6 +104,7 @@ def main(args):
     # Criterion
     if args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
+        args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
