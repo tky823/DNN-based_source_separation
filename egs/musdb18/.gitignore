@@ -1,0 +1,9 @@
+.DS_Store
+
+# outputs
+*.png
+*.wav
+*.pth
+
+# ipython notebook
+*.ipynb
