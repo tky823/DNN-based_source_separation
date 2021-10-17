@@ -82,6 +82,10 @@ def separate_by_umx(model_paths, file_paths, out_dirs):
                     if n_mics == 1:
                         _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=1, keepdim=True)
                     elif n_mics == 2:
+                        sections = [1, 1]
+                        _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.split(_estimated_sources_amplitude, sections, dim=0)
+                        _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dim=(1,))
+                        _estimated_sources_amplitude = torch.cat([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0)
                         _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True)
                     else:
                         raise NotImplementedError("Not support {} channels input.".format(n_mics))
