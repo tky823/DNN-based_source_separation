@@ -19,7 +19,7 @@ parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSD
 parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='mse', choices=['mae', 'mse', 'sisdr', 'sdr'], help='Criterion')
 parser.add_argument('--model_path', type=str, default=None, help='Path to pretrained model.')
 parser.add_argument('--estimates_dir', type=str, default=None, help='Estimated sources output directory')
 parser.add_argument('--json_dir', type=str, default=None, help='Json directory')
