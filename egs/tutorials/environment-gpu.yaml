@@ -1,0 +1,17 @@
+name: DNN-based_source_separation_tutorials-gpu
+
+channels:
+  - pytorch
+  - conda-forge
+
+dependencies:
+  - python>=3.6,<=3.8
+  - numpy>=1.19
+  - scipy>=1.6.1
+  - matplotlib>=3.1.3
+  - mir_eval==0.6
+  - pytorch>=1.8.0
+  - torchaudio>=0.8.0
+  - cudatoolkit>=10
+© 2021 GitHub, Inc.
+Terms
