@@ -85,7 +85,13 @@ class MMDenseRNN(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.dense_block = choose_dense_rnn_block(rnn_type, rnn_position, _in_channels, growth_rate_final, hidden_channels_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, causal=causal, eps=eps)
+        self.dense_block = choose_dense_rnn_block(
+            rnn_type, rnn_position,
+            _in_channels, growth_rate_final, hidden_channels_final,
+            kernel_size_final, n_bins=sum(sections), dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final,
+            causal=causal,
+            eps=eps
+        )
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
@@ -95,18 +101,22 @@ class MMDenseRNN(nn.Module):
 
         self.in_channels, self.num_features = in_channels, num_features
         self.growth_rate = growth_rate
+        self.hidden_channels, self.bottleneck_hidden_channels = hidden_channels, bottleneck_hidden_channels,
         self.kernel_size = kernel_size
         self.scale = scale
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
         self.depth = depth
         
         self.growth_rate_final = growth_rate_final
+        self.hidden_channels_final = hidden_channels_final
         self.kernel_size_final = kernel_size_final
         self.dilated_final = dilated_final
         self.depth_final = depth_final
         self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
 
-        self.rnn_position = rnn_position
+        self.causal = causal
+
+        self.rnn_type, self.rnn_position = rnn_type, rnn_position
 
         self.eps = eps
         
@@ -174,17 +184,20 @@ class MMDenseRNN(nn.Module):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
             'growth_rate': self.growth_rate,
+            'hidden_channels': self.hidden_channels, 'bottleneck_hidden_channels': self.bottleneck_hidden_channels,
             'kernel_size': self.kernel_size,
             'bands': self.bands, 'sections': self.sections,
             'scale': self.scale,
             'dilated': self.dilated, 'norm': self.norm, 'nonlinear': self.nonlinear,
             'depth': self.depth,
             'growth_rate_final': self.growth_rate_final,
+            'hidden_channels_final': self.hidden_channels_final,
             'kernel_size_final': self.kernel_size_final,
             'dilated_final': self.dilated_final,
             'depth_final': self.depth_final,
             'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
-            'rnn_position': self.rnn_position,
+            'causal': self.causal,
+            'rnn_type': self.rnn_type, 'rnn_position': self.rnn_position,
             'eps': self.eps
         }
         
@@ -232,13 +245,14 @@ class MMDenseRNN(nn.Module):
             band: config[band]['depth'] for band in bands + [FULL]
         }
 
-        growth_rate_final = config['final']['growth_rate']
+        growth_rate_final, hidden_channels_final = config['final']['growth_rate'], config['final']['hidden_channels']
         kernel_size_final = config['final']['kernel_size']
         dilated_final = config['final']['dilated']
         depth_final = config['final']['depth']
         norm_final, nonlinear_final = config['final']['norm'], config['final']['nonlinear']
 
-        rnn_position = config['rnn_position']
+        causal = config['causal']
+        rnn_type, rnn_position = config['rnn_type'], config['rnn_position']
 
         eps = config.get('eps') or EPS
 
@@ -250,12 +264,13 @@ class MMDenseRNN(nn.Module):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
-            growth_rate_final=growth_rate_final,
+            growth_rate_final=growth_rate_final, hidden_channels_final=hidden_channels_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
-            depth_final=depth_final,
             norm_final=norm_final, nonlinear_final=nonlinear_final,
-            rnn_position=rnn_position,
+            depth_final=depth_final,
+            causal=causal,
+            rnn_type=rnn_type, rnn_position=rnn_position,
             eps=eps
         )
         
@@ -266,6 +281,7 @@ class MMDenseRNN(nn.Module):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
     
         in_channels, num_features = config['in_channels'], config['num_features']
+        hidden_channels, bottleneck_hidden_channels = config['hidden_channels'], config['bottleneck_hidden_channels']
         growth_rate = config['growth_rate']
 
         kernel_size = config['kernel_size']
@@ -281,13 +297,14 @@ class MMDenseRNN(nn.Module):
         depth_final = config['depth_final']
         norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
-        rnn_position = config['rnn_position']
+        causal = config['causal']
+        rnn_type, rnn_position = config['rnn_type'], config['rnn_position']
 
         eps = config.get('eps') or EPS
         
         model = cls(
             in_channels, num_features,
-            growth_rate,
+            growth_rate, hidden_channels, bottleneck_hidden_channels,
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
@@ -298,7 +315,8 @@ class MMDenseRNN(nn.Module):
             dilated_final=dilated_final,
             depth_final=depth_final,
             norm_final=norm_final, nonlinear_final=nonlinear_final,
-            rnn_position=rnn_position,
+            causal=causal,
+            rnn_type=rnn_type, rnn_position=rnn_position,
             eps=eps
         )
 

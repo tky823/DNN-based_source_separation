@@ -35,6 +35,7 @@ class MDenseRNNBackbone(nn.Module):
         assert len(growth_rate) % 2 == 1, "`len(growth_rate)` must be an odd number."
 
         kernel_size = _pair(kernel_size)
+        scale = _pair(scale)
         num_encoder_blocks = len(growth_rate) // 2
 
         # Network
@@ -246,7 +247,7 @@ class UpSampleDenseRNNBlock(nn.Module):
 
         return output
 
-def _test_mm_dense_rnn_backbone():
+def _test_m_dense_rnn_backbone():
     batch_size = 4
     n_bins, n_frames = 16, 64
     in_channels, num_features = 2, 32
@@ -262,7 +263,7 @@ def _test_mm_dense_rnn_backbone():
     depth = [3, 3, 4, 2, 2]
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
 
-    model = MMDenseRNNBackbone(
+    model = MDenseRNNBackbone(
         in_channels, num_features, growth_rate,
         hidden_channels, bottleneck_hidden_channels,
         kernel_size,
@@ -281,4 +282,4 @@ if __name__ == '__main__':
     torch.manual_seed(111)
 
     print('='*10, "MMDenseRNN backbone", '='*10)
-    _test_mm_dense_rnn_backbone()
+    _test_m_dense_rnn_backbone()
