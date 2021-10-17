@@ -33,7 +33,7 @@ weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
 batch_size=6
-samples_per_epoch=7726 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data. 7726 = 3863 x 2.
+samples_per_epoch=6400 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data.
 epochs=50
 anneal_epoch=40
 

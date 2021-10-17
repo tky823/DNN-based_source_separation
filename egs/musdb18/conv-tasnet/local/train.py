@@ -127,12 +127,16 @@ def main(args):
     # Criterion
     if args.criterion == 'mae':
         criterion = MeanAbsoluteError(dim=-1, reduction='mean')
+        args.save_normalized = False
     elif args.criterion == 'mse':
         criterion = MeanSquaredError(dim=-1, reduction='mean')
+        args.save_normalized = False
     elif args.criterion == 'sisdr':
         criterion = NegSISDR()
+        args.save_normalized = True
     elif args.criterion == 'sdr':
         criterion = NegSDR()
+        args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     

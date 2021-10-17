@@ -27,11 +27,11 @@ full:
   growth_rate: [10, 10, 12, 14, 16, 14, 12, 8, 8]
   kernel_size: 3
   scale: 2
-  num_d2blocks: [4, 5, 6, 7, 8, 6, 6, 4, 4]
+  num_d2blocks: [2, 2, 2, 2, 2, 2, 2, 2, 2]
   dilated: [naive, naive, naive, naive, naive, naive, naive, naive, naive]
   norm: [True, True, True, True, True, True, True, True, True]
   nonlinear: [relu, relu, relu, relu, relu, relu, relu, relu, relu]
-  depth: [2, 2, 2, 2, 2, 2, 2, 2, 2]
+  depth: [4, 5, 6, 7, 8, 6, 6, 4, 4]
 final:
   growth_rate: 12
   kernel_size: 3

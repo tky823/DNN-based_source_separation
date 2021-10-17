@@ -16,7 +16,7 @@ Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
 ```
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh \
---dataset_root <DATASET_DIR> \
+--librispeech_root <LIBRISPEECH_ROOT> \
 --n_sources <#SPEAKERS>
 ```
 

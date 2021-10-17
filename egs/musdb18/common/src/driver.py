@@ -76,6 +76,12 @@ class TrainerBase:
             self.best_loss = float('infinity')
             self.prev_loss = float('infinity')
             self.no_improvement = 0
+        
+        # For save_model
+        if hasattr(args, 'save_normalized'):
+            self.save_normalized = args.save_normalized
+        else:
+            self.save_normalized = False
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -185,13 +191,24 @@ class TrainerBase:
                     save_dir = os.path.join(self.sample_dir, titles[0])
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
+
+                    if self.save_normalized:
+                        norm = torch.abs(mixture).max()
+                        mixture = mixture / norm
+                    
                     torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_dir = os.path.join(self.sample_dir, titles[0], "epoch{}".format(epoch + 1))
                     os.makedirs(save_dir, exist_ok=True)
+
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         target = self.valid_loader.dataset.target[source_idx]
                         save_path = os.path.join(save_dir, "{}.wav".format(target))
+
+                        if self.save_normalized:
+                            norm = torch.abs(estimated_source).max()
+                            estimated_source = estimated_source / norm
+                        
                         torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
@@ -246,6 +263,12 @@ class TesterBase:
             self.model.module.load_state_dict(config['state_dict'])
         else:
             self.model.load_state_dict(config['state_dict'])
+    
+        # For save_model
+        if hasattr(args, 'save_normalized'):
+            self.save_normalized = args.save_normalized
+        else:
+            self.save_normalized = False
     
     def run(self):
         raise NotImplementedError("Implement `run` in sub-class.")

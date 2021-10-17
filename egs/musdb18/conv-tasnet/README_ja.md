@@ -53,7 +53,7 @@ cd <REPOSITORY_ROOT>/egs/musdb18/conv-tasnet/
 
 | Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | - | - | - | - | - | - | - |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 6.04 | 6.06 | 5.32 | 4.00 | 12.33 | 5.35 | - |
 | Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.59 | 6.11 | 5.95 | 3.78 | 11.90 | 5.36 | - |
 | Conv-TasNet | 44100 | 8 | 64 | 256 | 512 | 5.91 | 5.82 | 5.38 | 3.51 | 11.85 | 5.16 | - |
 

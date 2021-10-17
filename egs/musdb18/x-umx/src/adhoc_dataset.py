@@ -52,7 +52,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                         'mixture': mixture_path
                     }
                 }
-                
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
                 
@@ -100,7 +99,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                         'samples': patch_samples,
                     }
                     self.json_data.append(data)
-    
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -136,7 +135,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             source = self.sources[0]
             
             return len(self.json_data[source])
-
+    
     def _getitem(self, idx):
         """
         Returns time domain signals
@@ -196,6 +195,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             mixture = sources.sum(dim=0)
 
         return mixture, target
+
 
 class SpectrogramEvalDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):

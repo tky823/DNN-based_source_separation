@@ -11,25 +11,27 @@ Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
 
 ### 0. Preparation
 ```
-cd <REPOSITORY_ROOT>/egs/librispeech/common/
-. ./prepare.sh <DATASET_DIR> <#SPEAKERS>
+cd <REPOSITORY_ROOT>/egs/tutorials/common/
+. ./prepare_librispeech.sh \
+--librispeech_root <LIBRISPEECH_ROOT> \
+--n_sources <#SPEAKERS>
 ```
 
 ### 1. Training
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/dprnn_tasnet/
-. ./train.sh <OUTPUT_DIR>
+. ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 If you want to resume training,
 ```
-. ./train.sh <OUTPUT_DIR> <MODEL_PATH>
+. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. Evaluation
 ```
 cd <REPOSITORY_ROOT>/egs/librispeech/dprnn_tasnet/
-. ./test.sh <OUTPUT_DIR>
+. ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
