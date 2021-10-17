@@ -665,18 +665,19 @@ class DenseBlock(nn.Module):
                 dilation = 2**idx
             else:
                 dilation = 1
+            
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
-            
 
         self.net = nn.Sequential(*net)
+        self.out_channels = _out_channels
     
     def forward(self, input):
         """
         Args:
             input: (batch_size, in_channels, H, W)
         Returns:
-            output: (batch_size, out_channels, H, W), where `out_channels` is determined by ... 
+            output: (batch_size, out_channels, H, W), where `out_channels` is determined by growth_rate.
         """
         growth_rate, depth = self.growth_rate, self.depth
 
