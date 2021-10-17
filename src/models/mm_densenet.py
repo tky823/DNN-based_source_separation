@@ -343,7 +343,7 @@ class MMDenseNet(nn.Module):
 
 def _test_mm_densenet():
     config_path = "./data/mm_densenet/paper.yaml"
-    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 1025, 256
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = MMDenseNet.build_from_config(config_path)

@@ -36,7 +36,7 @@ class MMDenseRNN(nn.Module):
         dilated_final=False,
         norm_final=True, nonlinear_final='relu',
         depth_final=None,
-        rnn_position='parallel',
+        rnn_type='lstm', rnn_position='parallel',
         eps=EPS,
         **kwargs
     ):
@@ -63,7 +63,7 @@ class MMDenseRNN(nn.Module):
                 kernel_size[band], scale=scale[band],
                 dilated=dilated[band], norm=norm[band], nonlinear=nonlinear[band],
                 depth=depth[band],
-                rnn_position=rnn_position,
+                rnn_type=rnn_type, rnn_position=rnn_position,
                 out_channels=_out_channels,
                 eps=eps
             )
@@ -73,7 +73,7 @@ class MMDenseRNN(nn.Module):
             kernel_size[FULL], scale=scale[FULL],
             dilated=dilated[FULL], norm=norm[FULL], nonlinear=nonlinear[FULL],
             depth=depth[FULL],
-            rnn_position=rnn_position,
+            rnn_type=rnn_type, rnn_position=rnn_position,
             eps=eps
         )
 
@@ -84,7 +84,7 @@ class MMDenseRNN(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.dense_block = choose_dense_rnn_block(rnn_position, _in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
+        self.dense_block = choose_dense_rnn_block(rnn_type, rnn_position, _in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
@@ -311,7 +311,7 @@ class MMDenseRNN(nn.Module):
         return _num_parameters
 
 class MMDenseRNNBackbone(nn.Module):
-    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, out_channels=None, eps=EPS):
+    def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, rnn_type='lstm', rnn_position='parallel', out_channels=None, eps=EPS):
         """
         Args:
             in_channels <int>
@@ -345,7 +345,10 @@ class MMDenseRNNBackbone(nn.Module):
         bottleneck_dense_block = DenseBlock(
             _in_channels, _growth_rate,
             kernel_size=kernel_size,
-            dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks], depth=depth[num_encoder_blocks]
+            dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks],
+            depth=depth[num_encoder_blocks],
+            rnn_type=rnn_type, rnn_position=rnn_position,
+            eps=eps
         )
 
         _in_channels = _growth_rate
@@ -354,6 +357,7 @@ class MMDenseRNNBackbone(nn.Module):
         decoder = Decoder(
             _in_channels, skip_channels, growth_rate[num_encoder_blocks+1:], kernel_size=kernel_size, up_scale=scale,
             dilated=dilated[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], norm=norm[num_encoder_blocks+1:], nonlinear=nonlinear[num_encoder_blocks+1:],
+            rnn_type=rnn_type, rnn_position=rnn_position,
             eps=eps
         )
         
@@ -399,7 +403,7 @@ class MMDenseRNNBackbone(nn.Module):
         return output
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, rnn_type='lstm', rnn_position='parallel', eps=EPS):
         """
         Args:
             in_channels <int>: 
@@ -454,7 +458,14 @@ class Encoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_dense_blocks):
-            downsample_block = DownSampleDenseRNNBlock(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
+            downsample_block = DownSampleDenseRNNBlock(
+                _in_channels, growth_rate[idx],
+                kernel_size=kernel_size, down_scale=down_scale,
+                dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx],
+                depth=depth[idx],
+                rnn_type=rnn_type, rnn_position=rnn_position,
+                eps=eps
+            )
             net.append(downsample_block)
             _in_channels = growth_rate[idx]
         
@@ -477,7 +488,7 @@ class Encoder(nn.Module):
         return output, skip
 
 class Decoder(nn.Module):
-    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, eps=EPS):
+    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, rnn_type='lstm', rnn_position='parallel', eps=EPS):
         """
         Args:
             in_channels <int>: 
@@ -533,7 +544,14 @@ class Decoder(nn.Module):
         _in_channels = in_channels
 
         for idx in range(num_dense_blocks):
-            upsample_block = UpSampleDenseRNNBlock(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
+            upsample_block = UpSampleDenseRNNBlock(
+                _in_channels, skip_channels[idx], growth_rate[idx],
+                kernel_size=kernel_size, up_scale=up_scale,
+                dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx],
+                depth=depth[idx],
+                rnn_type=rnn_type, rnn_position=rnn_position,
+                eps=eps
+            )
             net.append(upsample_block)
             _in_channels = growth_rate[idx]
         
@@ -558,12 +576,12 @@ class DownSampleDenseRNNBlock(nn.Module):
     """
     DenseRNNBlock + down sample
     """
-    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, eps=EPS):
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, rnn_type='lstm', rnn_position='parallel', eps=EPS):
         super().__init__()
 
         self.down_scale = _pair(down_scale)
 
-        self.dense_rnn_block = choose_dense_rnn_block('parallel', in_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
+        self.dense_rnn_block = choose_dense_rnn_block(rnn_type, rnn_position, in_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
         self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
     
     def forward(self, input):
@@ -602,12 +620,12 @@ class UpSampleDenseRNNBlock(nn.Module):
     """
     DenseRNNBlock + up sample
     """
-    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, eps=EPS):
+    def __init__(self, in_channels, skip_channels, growth_rate, kernel_size=(2,2), up_scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, rnn_type='lstm', rnn_position='parallel', eps=EPS):
         super().__init__()
 
         self.norm2d = choose_layer_norm('BN', in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
-        self.dense_rnn_block = choose_dense_rnn_block('parallel', in_channels + skip_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
+        self.dense_rnn_block = choose_dense_rnn_block(rnn_type, rnn_position, in_channels + skip_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
     
     def forward(self, input, skip):
         x = self.norm2d(input)
@@ -629,5 +647,44 @@ class UpSampleDenseRNNBlock(nn.Module):
 
         return output
 
+def _test_down_dense_block():
+    batch_size = 4
+    n_bins, n_frames = 16, 64
+    in_channels = 3
+    growth_rate = 2
+    kernel_size = (3, 3)
+    down_scale = (2, 2)
+    depth = 4
+
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = DownSampleDenseRNNBlock(in_channels, growth_rate, kernel_size=kernel_size, down_scale=down_scale, depth=depth)
+
+    print(model)
+    output, skip = model(input)
+    print(input.size(), output.size(), skip.size())
+    print()
+
+    growth_rate = [3, 4, 5, 6]
+    model = DownSampleDenseRNNBlock(in_channels, growth_rate, kernel_size=kernel_size, down_scale=down_scale, depth=depth)
+
+    print(model)
+    output, skip = model(input)
+    print(input.size(), output.size(), skip.size())
+
+def _test_mm_dense_lstm():
+    config_path = "./data/mm_dense_lstm/parallel.yaml"
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 1025, 256
+
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = MMDenseRNN.build_from_config(config_path)
+    
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     torch.manual_seed(111)
+
+    _test_down_dense_block()
+    # _test_mm_dense_lstm()

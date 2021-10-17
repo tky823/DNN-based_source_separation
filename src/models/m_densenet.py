@@ -849,7 +849,7 @@ def _test_m_densenet_backbone():
 
 def _test_m_densenet():
     config_path = "./data/m_densenet/paper.yaml"
-    batch_size, in_channels, n_bins, n_frames = 4, 2, 257, 140 # 4, 2, 2049, 256
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 1025, 256
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = MDenseNet.build_from_config(config_path)
