@@ -83,14 +83,12 @@ class MDenseRNNBackbone(nn.Module):
                 eps=eps
             )
 
-        _in_channels = _growth_rate
-        skip_channels = growth_rate[num_encoder_blocks - 1::-1]
-
+        _in_channels = bottleneck_dense_block.out_channels
+        skip_channels = encoder.skip_channels
         n_bins_detail = n_bins_detail[num_encoder_blocks - 1::-1]
 
-        
         decoder = Decoder(
-            _in_channels, skip_channels, growth_rate[num_encoder_blocks + 1:], hidden_channels=hidden_channels[num_encoder_blocks + 1:],
+            _in_channels, skip_channels[::-1], growth_rate[num_encoder_blocks + 1:], hidden_channels=hidden_channels[num_encoder_blocks + 1:],
             kernel_size=kernel_size, n_bins=n_bins_detail, up_scale=scale,
             dilated=dilated[num_encoder_blocks + 1:], depth=depth[num_encoder_blocks + 1:], norm=norm[num_encoder_blocks + 1:], nonlinear=nonlinear[num_encoder_blocks + 1:],
             causal=causal,
@@ -103,7 +101,7 @@ class MDenseRNNBackbone(nn.Module):
         self.decoder = decoder
 
         if out_channels is not None:
-            _in_channels = growth_rate[-1]
+            _in_channels = decoder.out_channels
 
             net = []
             norm2d = choose_layer_norm('BN', _in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
@@ -193,6 +191,7 @@ class Encoder(nn.Module):
         assert not causal, "causal=True is not supported."
 
         num_dense_blocks = len(growth_rate)
+        skip_channels = []
         net = []
 
         _in_channels = in_channels
@@ -206,14 +205,16 @@ class Encoder(nn.Module):
                     depth=depth[idx],
                     eps=eps
                 )
+                skip_channels.append(downsample_block.out_channels)
             else:
                 raise NotImplementedError("Not support DownSampleDenseRNNBlock now.")
             
             net.append(downsample_block)
-            _in_channels = growth_rate[idx]
+            _in_channels = skip_channels[-1]
         
         self.net = nn.Sequential(*net)
 
+        self.skip_channels = skip_channels
         self.num_dense_blocks = num_dense_blocks
     
     def forward(self, input):
@@ -326,11 +327,13 @@ class Decoder(nn.Module):
                     rnn_type=rnn_type, rnn_position=rnn_position,
                     eps=eps
                 )
+                
             net.append(upsample_block)
-            _in_channels = growth_rate[idx]
+            _in_channels = upsample_block.out_channels
         
         self.net = nn.Sequential(*net)
 
+        self.out_channels = upsample_block.out_channels
         self.num_dense_blocks = num_dense_blocks
     
     def forward(self, input, skip):
@@ -356,6 +359,8 @@ class UpSampleDenseRNNBlock(nn.Module):
         self.norm2d = choose_layer_norm('BN', in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
         self.dense_rnn_block = choose_dense_rnn_block(rnn_type, rnn_position, in_channels + skip_channels, growth_rate, hidden_channels, kernel_size, n_bins=n_bins, dilated=dilated, norm=norm, nonlinear=nonlinear, causal=causal, depth=depth, eps=eps)
+        
+        self.out_channels = self.dense_rnn_block.out_channels
     
     def forward(self, input, skip):
         x = self.norm2d(input)

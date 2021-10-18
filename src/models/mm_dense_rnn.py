@@ -59,6 +59,9 @@ class MMDenseRNN(nn.Module):
             else:
                 _out_channels = None
             
+            if hidden_channels[band][-1] > 0:
+                raise ValueError("Cannot concatenate after the band-specific network.")
+            
             net[band] = MDenseRNNBackbone(
                 in_channels, num_features[band], growth_rate[band], hidden_channels[band],
                 kernel_size[band], n_bins=section, scale=scale[band],

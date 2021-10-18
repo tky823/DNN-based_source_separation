@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from utils.utils_model import choose_rnn
@@ -40,7 +41,9 @@ class RNNAfterDenseBlock(nn.Module):
         out_channels = self.dense_block.out_channels
         self.bottleneck_conv2d = nn.Conv2d(out_channels, 1, kernel_size=(1, 1))
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, batch_first=True, bidirectional=bidirectional, **rnn_kwargs)
-        self.linear = nn.Linear(num_directions * hidden_channels, out_channels * n_bins)
+        self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
+
+        self.out_channels = self.dense_block.out_channels + 1
     
     def forward(self, input):
         """
@@ -50,16 +53,17 @@ class RNNAfterDenseBlock(nn.Module):
             output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
         """
         batch_size, _, H, W = input.size()
-        out_channels = self.dense_block.out_channels
 
         x = self.dense_block(input)
-        x = self.bottleneck_conv2d(x)
-        x = x.squeeze(dim=1)
-        x = x.permute(0, 2, 1).contiguous()
-        x, _ = self.rnn(x)
-        x = self.linear(x)
-        x = x.view(batch_size, W, out_channels, H)
-        output = x.permute(0, 2, 3, 1).contiguous()
+        x_rnn = self.bottleneck_conv2d(x)
+        x_rnn = x_rnn.squeeze(dim=1)
+        x_rnn = x_rnn.permute(0, 2, 1).contiguous()
+        x_rnn, _ = self.rnn(x_rnn)
+        x_rnn = self.linear(x_rnn)
+        x_rnn = x_rnn.view(batch_size, W, 1, H)
+        x_rnn = x_rnn.permute(0, 2, 3, 1).contiguous()
+
+        output = torch.cat([x, x_rnn], dim=1)
 
         return output
 
@@ -86,12 +90,13 @@ class RNNBeforeDenseBlock(nn.Module):
 
         self.bottleneck_conv2d = nn.Conv2d(in_channels, 1, kernel_size=(1, 1))
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, batch_first=True, bidirectional=bidirectional, **rnn_kwargs)
-        self.linear = nn.Linear(num_directions * hidden_channels, in_channels * n_bins)
+        self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
         self.dense_block = DenseBlock(
-            in_channels, growth_rate, kernel_size,
+            in_channels + 1, growth_rate, kernel_size,
             depth=depth, dilated=dilated, norm=norm, nonlinear=nonlinear,
             eps=eps
         )
+        self.out_channels = self.dense_block.out_channels
     
     def forward(self, input):
         """
@@ -102,13 +107,14 @@ class RNNBeforeDenseBlock(nn.Module):
         """
         batch_size, in_channels, H, W = input.size()
 
-        x = self.bottleneck_conv2d(input)
-        x = x.squeeze(dim=1)
-        x = x.permute(0, 2, 1).contiguous()
-        x, _ = self.rnn(x)
-        x = self.linear(x)
-        x = x.view(batch_size, W, in_channels, H)
-        x = x.permute(0, 2, 3, 1).contiguous()
+        x_rnn = self.bottleneck_conv2d(input)
+        x_rnn = x_rnn.squeeze(dim=1)
+        x_rnn = x_rnn.permute(0, 2, 1).contiguous()
+        x_rnn, _ = self.rnn(x_rnn)
+        x_rnn = self.linear(x_rnn)
+        x_rnn = x_rnn.view(batch_size, W, 1, H)
+        x_rnn = x_rnn.permute(0, 2, 3, 1).contiguous()
+        x = torch.cat([input, x_rnn], dim=1)
         output = self.dense_block(x)
 
         return output
@@ -139,10 +145,11 @@ class DenseRNNParallelBlock(nn.Module):
             depth=depth, dilated=dilated, norm=norm, nonlinear=nonlinear,
             eps=eps
         )
-        out_channels = self.dense_block.out_channels
         self.bottleneck_conv2d = nn.Conv2d(in_channels, 1, kernel_size=(1, 1))
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, batch_first=True, bidirectional=bidirectional, **rnn_kwargs)
-        self.linear = nn.Linear(num_directions * hidden_channels, out_channels * n_bins)
+        self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
+
+        self.out_channels = self.dense_block.out_channels + 1
     
     def forward(self, input):
         """
@@ -152,7 +159,6 @@ class DenseRNNParallelBlock(nn.Module):
             output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
         """
         batch_size, _, H, W = input.size()
-        out_channels = self.dense_block.out_channels
 
         x_dense = self.dense_block(input)
         x_rnn = self.bottleneck_conv2d(input)
@@ -160,9 +166,9 @@ class DenseRNNParallelBlock(nn.Module):
         x_rnn = x_rnn.permute(0, 2, 1).contiguous()
         x_rnn, _ = self.rnn(x_rnn)
         x_rnn = self.linear(x_rnn)
-        x_rnn = x_rnn.view(batch_size, W, out_channels, H)
+        x_rnn = x_rnn.view(batch_size, W, 1, H)
         x_rnn = x_rnn.permute(0, 2, 3, 1).contiguous()
-        output = x_dense + x_rnn
+        output = torch.cat([x_dense, x_rnn], dim=1)
 
         return output
 
@@ -218,8 +224,6 @@ def _test_dense_rnn_parallel():
     print(input.size(), output.size())
 
 if __name__ == '__main__':
-    import torch
-
     print("="*10, "RNNAfterDenseBlock", "="*10)
     _test_rnn_after_dense()
     print()
