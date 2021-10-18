@@ -1,5 +1,5 @@
 # Example of outputs
-I trained Conv-TasNet and share the outputs. See `4sec_L20_H512/config/augmentation-*.yaml` for augmentation.
+I trained Conv-TasNet and share the outputs. See `config/paper/augmentation.yaml` for augmentation.
 - You have to unzip `config.zip`, `log.zip`, and `loss.zip`.
 - You can download pretrained models from [https://drive.google.com/file/d/1a-IQn3hsN84N2X_WF84uXbwe7VAk_vaB/view?usp=sharing](https://drive.google.com/file/d/1a-IQn3hsN84N2X_WF84uXbwe7VAk_vaB/view?usp=sharing) that includes `last.pth` and `best.pth`.
 - You can download output JSON files from [https://drive.google.com/file/d/1KDjKJsiVex0D2P1Q4q--6CXo514_x2xA/view?usp=sharing](https://drive.google.com/file/d/1KDjKJsiVex0D2P1Q4q--6CXo514_x2xA/view?usp=sharing).
