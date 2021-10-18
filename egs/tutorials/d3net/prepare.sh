@@ -11,7 +11,7 @@ echo "Download D3Net. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 declare -A model_ids=(
     ["improved"]="1ZDWDO56m4oDg_R6xbV3lCZnpQeseXGXw"
-    ["paper"]="1NlppyJHDiVGEaH7bDII16LYQcAWe_ThN"
+    ["paper"]="1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF"
 )
 
 if [ -z "${model_id}" ] ; then
