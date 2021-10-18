@@ -1,7 +1,7 @@
 # 出力結果の例
 D3Netを学習させた結果を共有します．
 - `config.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
-- 学習済みモデルは[https://drive.google.com/file/d/1NlppyJHDiVGEaH7bDII16LYQcAWe_ThN/view?usp=sharing](https://drive.google.com/file/d/1NlppyJHDiVGEaH7bDII16LYQcAWe_ThN/view?usp=sharing)からダウンロードできます．これらは，`bass/last.pth`，`bass/best.pth`，...，`vocals/best.pth`を含んでいます．
+- 学習済みモデルは[https://drive.google.com/file/d/1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF/view?usp=sharing](https://drive.google.com/file/d/1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF/view?usp=sharing)からダウンロードできます．これらは，`bass/last.pth`，`bass/best.pth`，...，`vocals/best.pth`を含んでいます．
 - 出力されたJSONファイルは[https://drive.google.com/file/d/1hrhUekc-BJbVeZw6xdTPU2Gg3Dael5vM/view?usp=sharing](https://drive.google.com/file/d/1hrhUekc-BJbVeZw6xdTPU2Gg3Dael5vM/view?usp=sharing)からダウンロードできます．
 
 ## 実験結果

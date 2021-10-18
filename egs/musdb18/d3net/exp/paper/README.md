@@ -1,7 +1,7 @@
 # Example of outputs
 I trained D3Net and share the outputs.
 - You have to unzip `config.zip`, `log.zip`, and `loss.zip`.
-- You can download pretrained models from [https://drive.google.com/file/d/1NlppyJHDiVGEaH7bDII16LYQcAWe_ThN/view?usp=sharing](https://drive.google.com/file/d/1NlppyJHDiVGEaH7bDII16LYQcAWe_ThN/view?usp=sharing) that includes `bass/last.pth`, `bass/best.pth`, ...`vocals/best.pth`.
+- You can download pretrained models from [https://drive.google.com/file/d/1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF/view?usp=sharing](https://drive.google.com/file/d/1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF/view?usp=sharing) that includes `bass/last.pth`, `bass/best.pth`, ...`vocals/best.pth`.
 - You can download output JSON files from [https://drive.google.com/file/d/1hrhUekc-BJbVeZw6xdTPU2Gg3Dael5vM/view?usp=sharing](https://drive.google.com/file/d/1hrhUekc-BJbVeZw6xdTPU2Gg3Dael5vM/view?usp=sharing).
 
 ## Results
