@@ -10,7 +10,7 @@ file="model"
 echo "Download D3Net. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 declare -A model_ids=(
-    ["improved"]="1ZDWDO56m4oDg_R6xbV3lCZnpQeseXGXw"
+    ["improved"]="1pce_DYaeDYMvsKHmDAvL1Cww_1I3pnhr"
     ["paper"]="1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF"
 )
 
