@@ -7,7 +7,7 @@ D3Netを学習させた結果を共有します．
 ## 実験結果
 - SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
 
-| Model | Sampling rate [Hz] | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Model | Sampling rate [Hz] | Vocals | Bass | Drums | Other | Accompaniment | Average | Note |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | D3Net | 44100 | - | - | - | - | - | - | 検証ロスが最小となるエポックで学習を止めた場合 |
 | D3Net | 44100 | - | - | - | - | - | - | 100エポック学習後 |

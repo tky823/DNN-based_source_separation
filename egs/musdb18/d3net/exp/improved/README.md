@@ -7,7 +7,7 @@ I trained D3Net and share the outputs.
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
 
-| Model | Sampling rate [Hz] |  Vocals | Bass | Drums | Other | Accompaniment | Average | Note |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Model | Sampling rate [Hz] | Vocals | Bass | Drums | Other | Accompaniment | Average | Note |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | D3Net | 44100 | - | - | - | - | - | - | Epoch is chosen by validation loss. |
 | D3Net | 44100 | - | - | - | - | - | - | After 100 epochs. |
