@@ -1,16 +1,16 @@
 # MUSDB18を使用した楽音分離
 ## 実験結果
 SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
-| Model | Vocals | Drums | Bass | Other | Accompaniment | Average |
+| Model | Vocals | Bass | Drums | Other | Accompaniment | Average |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | MMDense | - | - | - | - | - | - |
 | MMDenseLSTM | - | - | - | - | - | - |
-| Conv-TasNet | 5.59 | 6.11 | 5.95 | 3.78 | 11.90 | 5.36 |
+| Conv-TasNet | 5.59 | 5.95 | 6.11 | 3.78 | 11.90 | 5.36 |
 | CUNet | - | - | - | - | - | - |
 | Meta-TasNet | - | - | - | - | - | - |
-| UMX | 5.71 | 6.00 | 4.82 | 3.99 | 12.14 | 5.13 |
+| UMX | 5.71 | 6.00 | 3.99 | 4.82 | 12.14 | 5.13 |
 | X-UMX | - | - | - | - | - | - |
-| D3Net | 6.63 | 6.40 | 5.24 | 4.58 | 13.24 | 5.71 |
+| D3Net | 6.63 | 5.24 | 6.40 | 4.58 | 13.24 | 5.71 |
 
 ## 分離の例
 - Conv-TasNet: `egs/tutorials/conv-tasnet/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate_music_ja.ipynb)にとんでください．
