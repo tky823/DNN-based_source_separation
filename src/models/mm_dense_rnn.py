@@ -7,6 +7,7 @@ from utils.utils_m_densenet import choose_layer_norm
 from utils.utils_dense_rnn import choose_dense_rnn_block
 from models.transform import BandSplit
 from models.glu import GLU2d
+from models.m_densenet import DenseBlock
 from models.m_dense_rnn import MDenseRNNBackbone
 
 """
@@ -24,7 +25,7 @@ class MMDenseRNN(nn.Module):
     def __init__(
         self,
         in_channels, num_features,
-        growth_rate, hidden_channels, bottleneck_hidden_channels,
+        growth_rate, hidden_channels,
         kernel_size,
         bands=['low','middle'], sections=[512,513],
         scale=(2,2),
@@ -58,8 +59,11 @@ class MMDenseRNN(nn.Module):
             else:
                 _out_channels = None
             
+            if hidden_channels[band][-1] > 0:
+                raise ValueError("Cannot concatenate after the band-specific network.")
+            
             net[band] = MDenseRNNBackbone(
-                in_channels, num_features[band], growth_rate[band], hidden_channels[band], bottleneck_hidden_channels[band],
+                in_channels, num_features[band], growth_rate[band], hidden_channels[band],
                 kernel_size[band], n_bins=section, scale=scale[band],
                 dilated=dilated[band], norm=norm[band], nonlinear=nonlinear[band],
                 depth=depth[band],
@@ -69,7 +73,7 @@ class MMDenseRNN(nn.Module):
             )
         
         net[FULL] = MDenseRNNBackbone(
-            in_channels, num_features[FULL], growth_rate[FULL], hidden_channels[FULL], bottleneck_hidden_channels[FULL],
+            in_channels, num_features[FULL], growth_rate[FULL], hidden_channels[FULL],
             kernel_size[FULL], n_bins=sum(sections), scale=scale[FULL],
             dilated=dilated[FULL], norm=norm[FULL], nonlinear=nonlinear[FULL],
             causal=causal,
@@ -85,13 +89,23 @@ class MMDenseRNN(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.dense_block = choose_dense_rnn_block(
-            rnn_type, rnn_position,
-            _in_channels, growth_rate_final, hidden_channels_final,
-            kernel_size_final, n_bins=sum(sections), dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final,
-            causal=causal,
-            eps=eps
-        )
+        if hidden_channels_final <= 0:
+            self.dense_block = DenseBlock(
+                _in_channels, growth_rate_final,
+                kernel_size_final,
+                dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final,
+                eps=eps
+            )
+        else:
+            self.dense_block = choose_dense_rnn_block(
+                rnn_type, rnn_position,
+                _in_channels, growth_rate_final, hidden_channels_final,
+                kernel_size_final, n_bins=sum(sections),
+                dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final,
+                causal=causal,
+                eps=eps
+            )
+        
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
         self.relu2d = nn.ReLU()
@@ -101,7 +115,7 @@ class MMDenseRNN(nn.Module):
 
         self.in_channels, self.num_features = in_channels, num_features
         self.growth_rate = growth_rate
-        self.hidden_channels, self.bottleneck_hidden_channels = hidden_channels, bottleneck_hidden_channels,
+        self.hidden_channels = hidden_channels,
         self.kernel_size = kernel_size
         self.scale = scale
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
@@ -184,7 +198,7 @@ class MMDenseRNN(nn.Module):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
             'growth_rate': self.growth_rate,
-            'hidden_channels': self.hidden_channels, 'bottleneck_hidden_channels': self.bottleneck_hidden_channels,
+            'hidden_channels': self.hidden_channels,
             'kernel_size': self.kernel_size,
             'bands': self.bands, 'sections': self.sections,
             'scale': self.scale,
@@ -223,9 +237,6 @@ class MMDenseRNN(nn.Module):
         hidden_channels = {
             band: config[band]['hidden_channels'] for band in bands + [FULL]
         }
-        bottleneck_hidden_channels = {
-            band: config[band]['bottleneck_hidden_channels'] for band in bands + [FULL]
-        }
         kernel_size = {
             band: config[band]['kernel_size'] for band in bands + [FULL]
         }
@@ -258,7 +269,7 @@ class MMDenseRNN(nn.Module):
 
         model = cls(
             in_channels, num_features,
-            growth_rate, hidden_channels, bottleneck_hidden_channels,
+            growth_rate, hidden_channels,
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
@@ -281,7 +292,7 @@ class MMDenseRNN(nn.Module):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
     
         in_channels, num_features = config['in_channels'], config['num_features']
-        hidden_channels, bottleneck_hidden_channels = config['hidden_channels'], config['bottleneck_hidden_channels']
+        hidden_channels = config['hidden_channels']
         growth_rate = config['growth_rate']
 
         kernel_size = config['kernel_size']
@@ -304,7 +315,7 @@ class MMDenseRNN(nn.Module):
         
         model = cls(
             in_channels, num_features,
-            growth_rate, hidden_channels, bottleneck_hidden_channels,
+            growth_rate, hidden_channels,
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,

@@ -530,6 +530,7 @@ class DownSampleDenseBlock(nn.Module):
 
         self.dense_block = DenseBlock(in_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
         self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
+        self.out_channels = self.dense_block.out_channels
     
     def forward(self, input):
         """
@@ -573,6 +574,7 @@ class UpSampleDenseBlock(nn.Module):
         self.norm2d = choose_layer_norm('BN', in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
         self.dense_block = DenseBlock(in_channels + skip_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
+        self.out_channels = self.dense_block.out_channels
     
     def forward(self, input, skip):
         x = self.norm2d(input)

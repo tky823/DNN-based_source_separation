@@ -5,7 +5,7 @@ from torch.nn.modules.utils import _pair
 
 from utils.utils_m_densenet import choose_layer_norm
 from utils.utils_dense_rnn import choose_dense_rnn_block
-from models.m_densenet import Encoder
+from models.m_densenet import DownSampleDenseBlock, UpSampleDenseBlock, DenseBlock
 
 """
 Reference: MMDenseLSTM: An efficient combination of convolutional and recurrent neural networks for audio source separation
@@ -16,14 +16,13 @@ FULL = 'full'
 EPS = 1e-12
 
 class MDenseRNNBackbone(nn.Module):
-    def __init__(self, in_channels, num_features, growth_rate, hidden_channels, bottleneck_hidden_channels, kernel_size, n_bins=None, scale=(2,2), dilated=False, norm=True, nonlinear='relu', causal=False, depth=None, rnn_type='rnn', rnn_position='parallel', out_channels=None, eps=EPS):
+    def __init__(self, in_channels, num_features, growth_rate, hidden_channels, kernel_size, n_bins=None, scale=(2,2), dilated=False, norm=True, nonlinear='relu', causal=False, depth=None, rnn_type='rnn', rnn_position='parallel', out_channels=None, eps=EPS):
         """
         Args:
             in_channels <int>
             num_features <int>
             growth_rate <list<int>>: `len(growth_rate)` must be an odd number.
-            hidden_channels <list<int>>: `len(hidden_channels) = len(growth_rate)//2`.
-            bottleneck_hidden_channels <int>
+            hidden_channels <list<int>>: `len(hidden_channels) = len(growth_rate)`.
             kernel_size <int> or <tuple<int>>
             scale <int> or <list<int>>: Upsampling and Downsampling scale
             dilated <list<bool>>
@@ -43,35 +42,54 @@ class MDenseRNNBackbone(nn.Module):
 
         encoder, decoder = [], []
         encoder = Encoder(
-            num_features, growth_rate[:num_encoder_blocks],
+            num_features, growth_rate[:num_encoder_blocks], hidden_channels=hidden_channels[:num_encoder_blocks],
             kernel_size=kernel_size, down_scale=scale,
-            dilated=dilated[:num_encoder_blocks], norm=norm[:num_encoder_blocks], nonlinear=nonlinear[:num_encoder_blocks], depth=depth[:num_encoder_blocks],
+            dilated=dilated[:num_encoder_blocks], norm=norm[:num_encoder_blocks], nonlinear=nonlinear[:num_encoder_blocks],
+            causal=causal,
+            depth=depth[:num_encoder_blocks],
             eps=eps
         )
 
         _in_channels, _growth_rate = growth_rate[num_encoder_blocks - 1], growth_rate[num_encoder_blocks]
-        bottleneck_bins = n_bins
+        _n_bins = n_bins
+        n_bins_detail = [n_bins]
 
-        for idx in range(num_encoder_blocks):
-            bottleneck_bins //= scale[0]
+        for _ in range(num_encoder_blocks):
+            remain = (scale[0] - (_n_bins % scale[0])) % scale[0]
+            if remain > 0:
+                _n_bins //= scale[0]
+                _n_bins += 1
+            else:
+                _n_bins //= scale[0]
+            n_bins_detail.append(_n_bins)
 
-        bottleneck_dense_block = choose_dense_rnn_block(
-            rnn_type, rnn_position,
-            _in_channels, _growth_rate, bottleneck_hidden_channels,
-            kernel_size=kernel_size,
-            n_bins=bottleneck_bins,
-            dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks],
-            causal=causal,
-            depth=depth[num_encoder_blocks],
-            eps=eps
-        )
+        if hidden_channels[num_encoder_blocks] <= 0:
+            bottleneck_dense_block = DenseBlock(
+                _in_channels, _growth_rate,
+                kernel_size=kernel_size,
+                dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks],
+                depth=depth[num_encoder_blocks],
+                eps=eps
+            )
+        else:
+            bottleneck_dense_block = choose_dense_rnn_block(
+                rnn_type, rnn_position,
+                _in_channels, _growth_rate, hidden_channels[num_encoder_blocks],
+                kernel_size=kernel_size,
+                n_bins=n_bins_detail[-1],
+                dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks],
+                causal=causal,
+                depth=depth[num_encoder_blocks],
+                eps=eps
+            )
 
-        _in_channels = _growth_rate
-        skip_channels = growth_rate[num_encoder_blocks - 1::-1]
+        _in_channels = bottleneck_dense_block.out_channels
+        skip_channels = encoder.skip_channels
+        n_bins_detail = n_bins_detail[num_encoder_blocks - 1::-1]
 
         decoder = Decoder(
-            _in_channels, skip_channels, growth_rate[num_encoder_blocks + 1:], hidden_channels=hidden_channels,
-            kernel_size=kernel_size, n_bins=bottleneck_bins, up_scale=scale,
+            _in_channels, skip_channels[::-1], growth_rate[num_encoder_blocks + 1:], hidden_channels=hidden_channels[num_encoder_blocks + 1:],
+            kernel_size=kernel_size, n_bins=n_bins_detail, up_scale=scale,
             dilated=dilated[num_encoder_blocks + 1:], depth=depth[num_encoder_blocks + 1:], norm=norm[num_encoder_blocks + 1:], nonlinear=nonlinear[num_encoder_blocks + 1:],
             causal=causal,
             rnn_type=rnn_type, rnn_position=rnn_position,
@@ -83,7 +101,7 @@ class MDenseRNNBackbone(nn.Module):
         self.decoder = decoder
 
         if out_channels is not None:
-            _in_channels = growth_rate[-1]
+            _in_channels = decoder.out_channels
 
             net = []
             norm2d = choose_layer_norm('BN', _in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
@@ -119,6 +137,100 @@ class MDenseRNNBackbone(nn.Module):
         
         return output
 
+class Encoder(nn.Module):
+    def __init__(self, in_channels, growth_rate, hidden_channels, kernel_size, down_scale=(2,2), dilated=False, norm=True, nonlinear='relu', causal=False, depth=None, eps=EPS):
+        """
+        Args:
+            in_channels <int>: 
+            growth_rate <list<int>>:
+            kernel_size <tuple<int>> or <int>:
+            hidden_channels <list<int>>:
+            dilated <list<bool>> or <bool>:
+            norm <list<bool>> or <bool>:
+            nonlinear <list<str>> or <str>:
+            depth <list<int>> or <int>:
+        """
+        super().__init__()
+
+        if type(growth_rate) is list:
+            num_dense_blocks = len(growth_rate)
+        else:
+            # TODO: implement
+            raise ValueError("`growth_rate` must be list.")
+
+        if type(dilated) is bool:
+            dilated = [dilated] * num_dense_blocks
+        elif type(dilated) is list:
+            assert num_dense_blocks == len(dilated), "Invalid length of `dilated`"
+        else:
+            raise ValueError("Invalid type of `dilated`.")
+
+        if type(norm) is bool:
+            norm = [norm] * num_dense_blocks
+        elif type(norm) is list:
+            assert num_dense_blocks == len(norm), "Invalid length of `norm`"
+        else:
+            raise ValueError("Invalid type of `norm`.")
+
+        if type(nonlinear) is str:
+            nonlinear = [nonlinear] * num_dense_blocks
+        elif type(nonlinear) is list:
+            assert num_dense_blocks == len(nonlinear), "Invalid length of `nonlinear`"
+        else:
+            raise ValueError("Invalid type of `nonlinear`.")
+        
+        if depth is None:
+            depth = [None] * num_dense_blocks
+        elif type(depth) is int:
+            depth = [depth] * num_dense_blocks
+        elif type(depth) is list:
+            assert num_dense_blocks == len(depth), "Invalid length of `depth`"
+        else:
+            raise ValueError("Invalid type of `depth`.")
+        
+        assert not causal, "causal=True is not supported."
+
+        num_dense_blocks = len(growth_rate)
+        skip_channels = []
+        net = []
+
+        _in_channels = in_channels
+
+        for idx in range(num_dense_blocks):
+            if hidden_channels[idx] <= 0:
+                downsample_block = DownSampleDenseBlock(
+                    _in_channels, growth_rate[idx],
+                    kernel_size=kernel_size, down_scale=down_scale,
+                    dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx],
+                    depth=depth[idx],
+                    eps=eps
+                )
+                skip_channels.append(downsample_block.out_channels)
+            else:
+                raise NotImplementedError("Not support DownSampleDenseRNNBlock now.")
+            
+            net.append(downsample_block)
+            _in_channels = skip_channels[-1]
+        
+        self.net = nn.Sequential(*net)
+
+        self.skip_channels = skip_channels
+        self.num_dense_blocks = num_dense_blocks
+    
+    def forward(self, input):
+        num_dense_blocks = self.num_dense_blocks
+
+        x = input
+        skip = []
+
+        for idx in range(num_dense_blocks):
+            x, x_skip = self.net[idx](x)
+            skip.append(x_skip)
+        
+        output = x
+
+        return output, skip
+
 class Decoder(nn.Module):
     def __init__(self, in_channels, skip_channels, growth_rate, hidden_channels, kernel_size, n_bins=None, up_scale=(2,2), dilated=False, norm=True, nonlinear='relu', causal=False, depth=None, rnn_type='rnn', rnn_position='parallel', eps=EPS):
         """
@@ -128,7 +240,8 @@ class Decoder(nn.Module):
             growth_rate <list<int>>:
             hidden_channels <list<int>>:
             kernel_size <tuple<int>> or <int>:
-            n_bins <int>:
+            n_bins <int> or <list<int>>:
+            up_scale <tuple<int>>
             dilated <list<bool>> or <bool>:
             norm <list<bool>> or <bool>:
             nonlinear <list<str>> or <str>:
@@ -146,6 +259,17 @@ class Decoder(nn.Module):
             hidden_channels = [hidden_channels] * num_dense_blocks
         elif type(hidden_channels) is list:
             assert num_dense_blocks == len(hidden_channels), "Invalid length of `hidden_channels`"
+        else:
+            raise ValueError("`hidden_channels` must be list.")
+        
+        if type(n_bins) is int:
+            _n_bins = n_bins
+            n_bins = []
+            for _ in range(num_dense_blocks):
+                _n_bins *= up_scale[0]
+                n_bins.append(_n_bins)
+        elif type(n_bins) is list:
+            assert num_dense_blocks == len(n_bins), "Invalid length of `n_bins`"
         else:
             raise ValueError("`hidden_channels` must be list.")
         
@@ -183,24 +307,33 @@ class Decoder(nn.Module):
         net = []
 
         _in_channels = in_channels
-        _n_bins = n_bins
 
         for idx in range(num_dense_blocks):
-            upsample_block = UpSampleDenseRNNBlock(
-                _in_channels, skip_channels[idx], growth_rate[idx], hidden_channels=hidden_channels[idx],
-                kernel_size=kernel_size, n_bins=_n_bins, up_scale=up_scale,
-                dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx],
-                causal=causal,
-                depth=depth[idx],
-                rnn_type=rnn_type, rnn_position=rnn_position,
-                eps=eps
-            )
+            if hidden_channels[idx] <= 0:
+                upsample_block = UpSampleDenseBlock(
+                    _in_channels, skip_channels[idx], growth_rate[idx],
+                    kernel_size=kernel_size, up_scale=up_scale,
+                    dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx],
+                    depth=depth[idx],
+                    eps=eps
+                )
+            else:
+                upsample_block = UpSampleDenseRNNBlock(
+                    _in_channels, skip_channels[idx], growth_rate[idx], hidden_channels=hidden_channels[idx],
+                    kernel_size=kernel_size, n_bins=n_bins[idx], up_scale=up_scale,
+                    dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx],
+                    causal=causal,
+                    depth=depth[idx],
+                    rnn_type=rnn_type, rnn_position=rnn_position,
+                    eps=eps
+                )
+                
             net.append(upsample_block)
-            _in_channels = growth_rate[idx]
-            _n_bins = up_scale[0] * _n_bins
+            _in_channels = upsample_block.out_channels
         
         self.net = nn.Sequential(*net)
 
+        self.out_channels = upsample_block.out_channels
         self.num_dense_blocks = num_dense_blocks
     
     def forward(self, input, skip):
@@ -225,7 +358,9 @@ class UpSampleDenseRNNBlock(nn.Module):
 
         self.norm2d = choose_layer_norm('BN', in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
-        self.dense_rnn_block = choose_dense_rnn_block(rnn_type, rnn_position, in_channels + skip_channels, growth_rate, hidden_channels, kernel_size, n_bins=2*n_bins, dilated=dilated, norm=norm, nonlinear=nonlinear, causal=causal, depth=depth, eps=eps)
+        self.dense_rnn_block = choose_dense_rnn_block(rnn_type, rnn_position, in_channels + skip_channels, growth_rate, hidden_channels, kernel_size, n_bins=n_bins, dilated=dilated, norm=norm, nonlinear=nonlinear, causal=causal, depth=depth, eps=eps)
+        
+        self.out_channels = self.dense_rnn_block.out_channels
     
     def forward(self, input, skip):
         x = self.norm2d(input)
@@ -253,8 +388,7 @@ def _test_m_dense_rnn_backbone():
     in_channels, num_features = 2, 32
 
     growth_rate = [2, 3, 4, 4, 2]
-    hidden_channels = [2, 3] # len(growth_rate)//2
-    bottleneck_hidden_channels = 7
+    hidden_channels = [0, 0, 1, 3, 2] # len(growth_rate)
     kernel_size = 3
     
     dilated = [True, True, True, True, True]
@@ -265,7 +399,7 @@ def _test_m_dense_rnn_backbone():
 
     model = MDenseRNNBackbone(
         in_channels, num_features, growth_rate,
-        hidden_channels, bottleneck_hidden_channels,
+        hidden_channels,
         kernel_size,
         n_bins=n_bins,
         dilated=dilated, norm=norm, nonlinear=nonlinear,

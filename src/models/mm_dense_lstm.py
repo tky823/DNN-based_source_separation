@@ -9,9 +9,9 @@ class MMDenseLSTM(MMDenseRNN):
     def __init__(
         self,
         in_channels, num_features,
-        growth_rate, hidden_channels, bottleneck_hidden_channels,
+        growth_rate, hidden_channels,
         kernel_size,
-        bands=['low','middle'], sections=[512,513],
+        bands=['low','middle','high'], sections=[380,644,1025],
         scale=(2,2),
         dilated=False, norm=True, nonlinear='relu',
         depth=None,
@@ -27,7 +27,7 @@ class MMDenseLSTM(MMDenseRNN):
     ):
         
         super().__init__(
-            in_channels, num_features, growth_rate, hidden_channels, bottleneck_hidden_channels,
+            in_channels, num_features, growth_rate, hidden_channels,
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
@@ -46,7 +46,7 @@ class MMDenseLSTM(MMDenseRNN):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
             'growth_rate': self.growth_rate,
-            'hidden_channels': self.hidden_channels, 'bottleneck_hidden_channels': self.bottleneck_hidden_channels,
+            'hidden_channels': self.hidden_channels,
             'kernel_size': self.kernel_size,
             'bands': self.bands, 'sections': self.sections,
             'scale': self.scale,
@@ -85,9 +85,6 @@ class MMDenseLSTM(MMDenseRNN):
         hidden_channels = {
             band: config[band]['hidden_channels'] for band in bands + [FULL]
         }
-        bottleneck_hidden_channels = {
-            band: config[band]['bottleneck_hidden_channels'] for band in bands + [FULL]
-        }
         kernel_size = {
             band: config[band]['kernel_size'] for band in bands + [FULL]
         }
@@ -120,7 +117,7 @@ class MMDenseLSTM(MMDenseRNN):
 
         model = cls(
             in_channels, num_features,
-            growth_rate, hidden_channels, bottleneck_hidden_channels,
+            growth_rate, hidden_channels,
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
@@ -143,7 +140,7 @@ class MMDenseLSTM(MMDenseRNN):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
     
         in_channels, num_features = config['in_channels'], config['num_features']
-        hidden_channels, bottleneck_hidden_channels = config['hidden_channels'], config['bottleneck_hidden_channels']
+        hidden_channels = config['hidden_channels']
         growth_rate = config['growth_rate']
 
         kernel_size = config['kernel_size']
@@ -166,7 +163,7 @@ class MMDenseLSTM(MMDenseRNN):
         
         model = cls(
             in_channels, num_features,
-            growth_rate, hidden_channels, bottleneck_hidden_channels,
+            growth_rate, hidden_channels,
             kernel_size,
             bands=bands, sections=sections,
             scale=scale,
@@ -199,6 +196,19 @@ def _test_mm_dense_lstm():
     print(model)
     print(input.size(), output.size())
 
+def _test_mm_dense_lstm_paper():
+    config_path = "./data/mm_dense_lstm/paper.yaml"
+    batch_size, in_channels, n_bins, n_frames = 4, 2, 2049, 256
+
+    input = torch.randn(batch_size, in_channels, n_bins, n_frames)
+    model = MMDenseLSTM.build_from_config(config_path)
+
+    output = model(input)
+
+    print(model)
+    print(model.num_parameters)
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     import torch
 
@@ -206,3 +216,7 @@ if __name__ == '__main__':
 
     print('='*10, "MMDenseLSTM", '='*10)
     _test_mm_dense_lstm()
+    print()
+
+    print('='*10, "MMDenseLSTM (paper)", '='*10)
+    _test_mm_dense_lstm_paper()
