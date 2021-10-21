@@ -12,6 +12,44 @@ See https://ieeexplore.ieee.org/document/8521383
 FULL = 'full'
 EPS = 1e-12
 
+class RNNBlock(nn.Module):
+    def __init__(self, in_channels, hidden_channels, n_bins=None, causal=False, rnn_type='lstm'):
+        super().__init__()
+
+        if causal:
+            num_directions = 1
+            bidirectional = False
+        else:
+            num_directions = 2
+            bidirectional = True
+        
+        self.bottleneck_conv2d = nn.Conv2d(in_channels, 1, kernel_size=(1,1))
+        self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, batch_first=True, bidirectional=bidirectional)
+        self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
+
+        self.out_channels = 1
+    
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, in_channels, H, W)
+        Returns:
+            output: (batch_size, out_channels, H, W), where `out_channels` is determined by `growth_rate`.
+        """
+        batch_size, _, H, W = input.size()
+
+        self.rnn.flatten_parameters()
+        
+        x = self.bottleneck_conv2d(input) # (batch_size, 1, H, W)
+        x = x.squeeze(dim=1) # (batch_size, H, W)
+        x = x.permute(0, 2, 1).contiguous() # (batch_size, W, H)
+        x, _ = self.rnn(x)
+        x = self.linear(x) # (batch_size, W, H)
+        x = x.view(batch_size, W, 1, H)
+        output = x.permute(0, 2, 3, 1).contiguous()
+
+        return output
+
 class RNNAfterDenseBlock(nn.Module):
     def __init__(self, in_channels, growth_rate, kernel_size, n_bins=None, depth=None, dilated=False, norm=True, nonlinear='relu', causal=False, rnn_type='rnn', hidden_channels=None, eps=EPS, **rnn_kwargs):
         """
