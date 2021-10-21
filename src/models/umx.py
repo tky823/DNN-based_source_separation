@@ -109,8 +109,8 @@ class OpenUnmix(nn.Module):
         self.net = nn.Sequential(*net)
         self.relu2d = nn.ReLU()
 
-        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(max_bin,)), nn.Parameter(torch.Tensor(max_bin,))
-        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,)), nn.Parameter(torch.Tensor(n_bins,))
+        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(max_bin,), requires_grad=True), nn.Parameter(torch.Tensor(max_bin,), requires_grad=True)
+        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
 
         # Hyperparameters
         self.in_channels, self.n_bins = in_channels, n_bins
@@ -183,6 +183,7 @@ class OpenUnmix(nn.Module):
             'max_bin': self.max_bin,
             'dropout': self.dropout,
             'causal': self.causal,
+            'rnn_type': self.rnn_type,
             'eps': self.eps
         }
         
