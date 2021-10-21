@@ -2,6 +2,8 @@ import yaml
 import torch
 import torch.nn as nn
 
+from utils.utils_model import choose_rnn
+
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 EPS = 1e-12
 
@@ -60,7 +62,7 @@ Open-Unmix
     See https://hal.inria.fr/hal-02293689/document
 """
 class OpenUnmix(nn.Module):
-    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, eps=EPS):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', eps=EPS):
         """
         Args:
             in_channels <int>: Input channels
@@ -85,20 +87,20 @@ class OpenUnmix(nn.Module):
 
         self.block = TransformBlock1d(in_channels * max_bin, hidden_channels, bias=False, nonlinear='tanh')
 
-        lstm_in_channels = hidden_channels
+        rnn_in_channels = hidden_channels
 
         if causal:
             bidirectional = False
-            lstm_hidden_channels = hidden_channels
+            rnn_hidden_channels = hidden_channels
             out_channels = hidden_channels
         else:
             assert hidden_channels % 2 == 0, "hidden_channels is expected even number, but given {}.".format(hidden_channels)
 
             bidirectional = True
-            lstm_hidden_channels = hidden_channels // 2
+            rnn_hidden_channels = hidden_channels // 2
             out_channels = hidden_channels
 
-        self.rnn = nn.LSTM(lstm_in_channels, lstm_hidden_channels, num_layers=num_layers, bidirectional=bidirectional, batch_first=True, dropout=dropout)
+        self.rnn = choose_rnn(rnn_type, input_size=rnn_in_channels, hidden_size=rnn_hidden_channels, num_layers=num_layers, bidirectional=bidirectional, batch_first=True, dropout=dropout)
 
         net = []
         net.append(TransformBlock1d(hidden_channels + out_channels, hidden_channels, bias=False, nonlinear='relu'))
@@ -118,6 +120,7 @@ class OpenUnmix(nn.Module):
 
         self.dropout = dropout
         self.causal = causal
+        self.rnn_type = rnn_type
         
         self.eps = eps
 
@@ -157,8 +160,8 @@ class OpenUnmix(nn.Module):
         x = self.block(x) # (batch_size * n_frames, hidden_channels)
 
         x = x.view(batch_size, n_frames, hidden_channels)
-        x_lstm, (_, _) = self.rnn(x) # (batch_size, n_frames, out_channels)
-        x = torch.cat([x, x_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
+        x_rnn, _ = self.rnn(x) # (batch_size, n_frames, out_channels)
+        x = torch.cat([x, x_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
         x = x.view(batch_size * n_frames, hidden_channels + out_channels)
         x_full = self.net(x) # (batch_size * n_frames, n_bins)
         x_full = x_full.view(batch_size, n_frames, in_channels, n_bins)
@@ -195,8 +198,10 @@ class OpenUnmix(nn.Module):
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
         n_bins, max_bin = config['n_bins'], config['max_bin']
+
         dropout = config['dropout']
         causal = config['causal']
+        rnn_type = config.get('rnn_type') or 'lstm'
 
         eps = config.get('eps') or EPS
 
@@ -207,6 +212,7 @@ class OpenUnmix(nn.Module):
             n_bins=n_bins, max_bin=max_bin,
             dropout=dropout,
             causal=causal,
+            rnn_type=rnn_type,
             eps=eps
         )
         
@@ -220,8 +226,10 @@ class OpenUnmix(nn.Module):
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
         n_bins, max_bin = config['n_bins'], config['max_bin']
+
         dropout = config['dropout']
         causal = config['causal']
+        rnn_type = config.get('rnn_type') or 'lstm'
 
         eps = config.get('eps') or EPS
         
@@ -232,6 +240,7 @@ class OpenUnmix(nn.Module):
             n_bins=n_bins, max_bin=max_bin,
             dropout=dropout,
             causal=causal,
+            rnn_type=rnn_type,
             eps=eps
         )
         
