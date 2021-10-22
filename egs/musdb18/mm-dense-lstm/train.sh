@@ -16,6 +16,9 @@ window_fn='hann'
 fft_size=2048
 hop_size=1024
 
+# Model
+config_path="./config/lstm-after-dense/${target}.yaml"
+
 # Augmentation
 augmentation_path="./config/paper/augmentation.yaml"
 
@@ -32,15 +35,11 @@ batch_size=8
 samples_per_epoch=6400 # If you specified samples_per_epoch=-1, samples_per_epoch is computed as 3863, which corresponds to total duration of training data.
 epochs=50
 
-estimate_all=1
-evaluate_all=1
-
-use_norbert=0
 use_cuda=1
+overwrite=0
+num_workers=2
 seed=111
 gpu_id="0"
-
-model_choice="best" # 'last' or 'best'
 
 . ./path.sh
 . parse_options.sh || exit 1
@@ -56,12 +55,28 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_dir="${save_dir}/model"
-log_dir="${save_dir}/log/test/${model_choice}"
-json_dir="${save_dir}/json/${model_choice}"
+model_dir="${save_dir}/model/${target}"
+loss_dir="${save_dir}/loss/${target}"
+sample_dir="${save_dir}/sample/${target}"
+config_dir="${save_dir}/config"
+log_dir="${save_dir}/log/${target}"
 
-musdb=`basename "${musdb18_root}"` # 'MUSDB18' or 'MUSDB18HQ'
-estimates_dir="${save_dir}/${musdb}/${model_choice}/test"
+if [ ! -e "${config_dir}" ]; then
+    mkdir -p "${config_dir}"
+fi
+
+config_name=`basename ${config_path}`
+
+if [ ! -e "${config_dir}/${config_name}" ]; then
+    cp "${config_path}" "${config_dir}/${config_name}"
+fi
+
+augmentation_dir=`dirname ${augmentation_path}`
+augmentation_name=`basename ${augmentation_path}`
+
+if [ ! -e "${config_dir}/${augmentation_name}" ]; then
+    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
+fi
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -71,21 +86,31 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
-test.py \
+train.py \
 --musdb18_root ${musdb18_root} \
+--config_path "${config_path}" \
 --sr ${sr} \
 --patch_size ${patch} \
+--valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+--augmentation_path "${augmentation_path}" \
 --sources ${sources} \
+--target ${target} \
 --criterion ${criterion} \
---estimates_dir "${estimates_dir}" \
---json_dir "${json_dir}" \
+--optimizer ${optimizer} \
+--lr ${lr} \
+--weight_decay ${weight_decay} \
+--max_norm ${max_norm} \
+--batch_size ${batch_size} \
+--samples_per_epoch ${samples_per_epoch} \
+--epochs ${epochs} \
 --model_dir "${model_dir}" \
---model_choice "${model_choice}" \
---estimate_all ${estimate_all} \
---evaluate_all ${evaluate_all} \
---use_norbert ${use_norbert} \
+--loss_dir "${loss_dir}" \
+--sample_dir "${sample_dir}" \
+--continue_from "${continue_from}" \
 --use_cuda ${use_cuda} \
---seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
+--overwrite ${overwrite} \
+--num_workers ${num_workers} \
+--seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"

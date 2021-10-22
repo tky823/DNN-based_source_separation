@@ -1,9 +1,55 @@
 import yaml
+import torch.nn as nn
 
 from models.mm_dense_rnn import MMDenseRNN
 
 FULL = 'full'
 EPS = 1e-12
+
+class ParallelMMDenseLSTM(nn.Module):
+    def __init__(self, modules):
+        super().__init__()
+
+        if isinstance(modules, nn.ModuleDict):
+            pass
+        elif isinstance(modules, dict):
+            modules = nn.ModuleDict(modules)
+        else:
+            raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
+    
+        in_channels = None
+
+        for key in modules.keys():
+            module = modules[key]
+            if not isinstance(module, MMDenseLSTM):
+                raise ValueError("All modules must be MMDenseLSTM.")
+            
+            if in_channels is None:
+                in_channels = module.in_channels
+            else:
+                assert in_channels == module.in_channels, "`in_channels` are different among modules."
+        
+        self.net = modules
+
+        self.in_channels = in_channels
+
+    def forward(self, input, target=None):
+        if type(target) is not str:
+            raise TypeError("`target` is expected str, but given {}".format(type(target)))
+        
+        output = self.net[target](input)
+
+        return output
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
 class MMDenseLSTM(MMDenseRNN):
     def __init__(

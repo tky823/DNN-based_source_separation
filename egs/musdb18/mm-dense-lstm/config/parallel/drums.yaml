@@ -1,0 +1,57 @@
+in_channels: 2
+bands: [low, middle, high]
+causal: False
+rnn_type: rnn
+rnn_position: parallel
+low:
+  sections: 380
+  num_features: 32
+  growth_rate: [14, 14, 14, 14, 14, 14, 14]
+  hidden_channels: [0, 0, 0, 64, 0, 64, 0] # if causal=False, output is 2*64
+  kernel_size: 3
+  scale: 2
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
+  depth: [5, 5, 5, 5, 5, 5, 5]
+middle:
+  sections: 644
+  num_features: 32
+  growth_rate: [4, 4, 4, 4, 4, 4, 4]
+  hidden_channels: [0, 0, 0, 16, 0, 0, 0] # if causal=False, output is 2*16
+  kernel_size: 3
+  scale: 2
+  dilated: [False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu]
+  depth: [4, 4, 4, 4, 4, 4, 4]
+high:
+  sections: 1025
+  num_features: 32
+  growth_rate: [2, 2, 0, 2, 2]
+  hidden_channels: [0, 0, 4, 0, 0] # if causal=False, output is 2*4
+  kernel_size: 3
+  scale: 2
+  dilated: [False, False, null, False, False]
+  norm: [True, True, null, True, True]
+  nonlinear: [relu, relu, null, relu, relu]
+  depth: [1, 1, 0, 1, 1]
+full:
+  sections: 2049
+  num_features: 8
+  growth_rate: [7, 7, 7, 7, 7, 7, 7, 7, 7]
+  hidden_channels: [0, 0, 0, 0, 64, 0, 0, 64, 0] # if causal=False, output is 2*64
+  kernel_size: 3
+  scale: 2
+  dilated: [False, False, False, False, False, False, False, False, False]
+  norm: [True, True, True, True, True, True, True, True, True]
+  nonlinear: [relu, relu, relu, relu, relu, relu, relu, relu, relu]
+  depth: [3, 3, 4, 5, 5, 5, 4, 3, 3]
+final:
+  growth_rate: 12
+  hidden_channels: 0
+  kernel_size: 3
+  dilated: True
+  norm: True
+  nonlinear: 'relu'
+  depth: 3
