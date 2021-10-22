@@ -19,10 +19,14 @@ class SquaredError(nn.Module):
         
     def forward(self, input, target, batch_mean=True):
         sum_dim, mean_dim = self.sum_dim, self.mean_dim
-        
-        dims = self.reduction_dims
 
         loss = (input - target)**2
+
+        n_dims = loss.dim()
+        dims = (
+            n_dims + dim if dim < 0 else dim for dim in self.reduction_dims
+        )
+        dims = sorted(dims)[::-1]
 
         if sum_dim is not None:
             loss = loss.sum(dim=sum_dim, keepdim=True)
@@ -30,8 +34,8 @@ class SquaredError(nn.Module):
         if mean_dim is not None:
             loss = loss.mean(dim=mean_dim, keepdim=True)
         
-        if len(dims) > 0:
-            loss = loss.squeeze(dim=dims)
+        for dim in dims:
+            loss = loss.squeeze(dim=dim)
 
         if batch_mean:
             loss = loss.mean(dim=0)
