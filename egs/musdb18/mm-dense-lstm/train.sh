@@ -13,7 +13,7 @@ musdb18_root="../../../dataset/MUSDB18"
 sr=44100
 
 window_fn='hann'
-fft_size=2048
+fft_size=4096
 hop_size=1024
 
 # Model
