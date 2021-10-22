@@ -1,4 +1,5 @@
 import yaml
+import torch
 import torch.nn as nn
 
 from models.mm_dense_rnn import MMDenseRNN
