@@ -6,6 +6,7 @@ from torch.nn.modules.utils import _pair
 from utils.utils_m_densenet import choose_layer_norm
 from utils.utils_dense_rnn import choose_dense_rnn_block
 from models.m_densenet import DownSampleDenseBlock, UpSampleDenseBlock, DenseBlock
+from models.dense_rnn import RNNBlock
 
 """
 Reference: MMDenseLSTM: An efficient combination of convolutional and recurrent neural networks for audio source separation
@@ -71,6 +72,14 @@ class MDenseRNNBackbone(nn.Module):
                 depth=depth[num_encoder_blocks],
                 eps=eps
             )
+        elif depth[num_encoder_blocks] == 0:
+            bottleneck_dense_block = RNNBlock(
+                _in_channels, hidden_channels[num_encoder_blocks],
+                n_bins=n_bins_detail[-1],
+                causal=causal, rnn_type=rnn_type
+            )
+        elif depth[num_encoder_blocks] < 0:
+            raise NotImplementedError("Invalid depth is specified.")
         else:
             bottleneck_dense_block = choose_dense_rnn_block(
                 rnn_type, rnn_position,
@@ -187,8 +196,6 @@ class Encoder(nn.Module):
             assert num_dense_blocks == len(depth), "Invalid length of `depth`"
         else:
             raise ValueError("Invalid type of `depth`.")
-        
-        assert not causal, "causal=True is not supported."
 
         num_dense_blocks = len(growth_rate)
         skip_channels = []
