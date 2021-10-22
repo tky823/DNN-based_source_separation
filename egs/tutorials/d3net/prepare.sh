@@ -1,7 +1,7 @@
 #!/bin/bash
 
 model_id=""
-model_name="improved"
+model_name="paper"
 file="model"
 
 . ./path.sh
