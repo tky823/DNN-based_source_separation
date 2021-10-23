@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from utils.utils_model import choose_nonlinear, choose_rnn
 
-__sources__ = ['drums', 'bass', 'other', 'vocals']
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 EPS = 1e-12
 
 """
