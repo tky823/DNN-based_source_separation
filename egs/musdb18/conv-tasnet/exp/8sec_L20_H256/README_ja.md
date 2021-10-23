@@ -7,7 +7,7 @@ Conv-TasNetを学習させた結果を共有します．拡張に関しては`co
 ## 実験結果
 - SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)
 
-| Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.59 | 6.11 | 5.95 | 3.78 | 11.90 | 5.36 | 検証ロスが最小となるエポックで学習を止めた場合． |
-| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.82 | 6.10 | 5.13 | 3.57 | 12.00 | 5.16 | 100エポック学習後． |
+| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.95 | 6.11 | 3.78 | 5.59 | 11.90 | 5.36 | 検証ロスが最小となるエポックで学習を止めた場合 |
+| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.13 | 6.10 | 3.57 | 5.82 | 12.00 | 5.16 | 100エポック学習後 |

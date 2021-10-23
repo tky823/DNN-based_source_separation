@@ -7,7 +7,7 @@ I trained Conv-TasNet and share the outputs. See `config/paper/augmentation.yaml
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
 
-| Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 6.04 | 6.06 | 5.32 | 4.00 | 12.33 | 5.35 | Epoch is chosen by validation loss. |
-| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 6.06 | 5.98 | 4.82 | 3.73 | 12.32 | 5.15 | After 100 epochs. |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 5.32 | 6.06 | 4.00 | 6.04 | 12.33 | 5.35 | Epoch is chosen by validation loss. |
+| Conv-TasNet | 44100 | 4 | 20 | 256 | 512 | 4.82 | 5.98 | 3.73 | 6.06 | 12.32 | 5.15 | After 100 epochs. |

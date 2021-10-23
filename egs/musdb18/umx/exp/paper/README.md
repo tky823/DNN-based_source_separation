@@ -6,7 +6,7 @@ I trained UMX and share the outputs. The networks are all trained by default set
 
 ## Results
 SDR [dB] (median of median SDR of each song computed by `museval`)
-| Model | Vocals | Bass | Drums | Other | Accompaniment | Average | Note |
+| Model | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| UMX | 5.71 | 4.82 | 6.00 | 3.99 | 12.14 | 5.13 | Epoch is chosen by validation loss. |
-| UMX | 5.81 | 4.69 | 6.09 | 3.66 | 12.07 | 5.06 | After 100 epochs. |
+| UMX | 4.82 | 6.00 | 3.99 | 5.71 | 12.14 | 5.13 | Epoch is chosen by validation loss. |
+| UMX | 4.69 | 6.09 | 3.66 | 5.81 | 12.07 | 5.06 | After 100 epochs. |
