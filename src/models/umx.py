@@ -2,7 +2,7 @@ import yaml
 import torch
 import torch.nn as nn
 
-from utils.utils_model import choose_rnn
+from utils.utils_model import choose_nonlinear, choose_rnn
 
 __sources__ = ['drums', 'bass', 'other', 'vocals']
 EPS = 1e-12
@@ -445,12 +445,7 @@ class TransformBlock1d(nn.Module):
             self.nonlinear = False
         else:
             self.nonlinear = True
-            if nonlinear == 'relu':
-                self.nonlinear1d = nn.ReLU()
-            elif nonlinear == 'tanh':
-                self.nonlinear1d = nn.Tanh()
-            else:
-                raise NotImplementedError("Invalid nonlinear function ({}) is specified.".format(nonlinear))
+            self.nonlinear1d = choose_nonlinear(nonlinear)
     
     def forward(self, input):
         x = self.fc(input)

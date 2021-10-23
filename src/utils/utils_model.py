@@ -1,5 +1,19 @@
 import torch.nn as nn
 
+def choose_nonlinear(name, **kwargs):
+    if name == 'relu':
+        nonlinear = nn.ReLU()
+    elif name == 'sigmoid':
+        nonlinear = nn.Sigmoid()
+    elif name == 'tanh':
+        nonlinear = nn.Tanh()
+    elif name == 'leaky-relu':
+        nonlinear = nn.LeakyReLU()
+    else:
+        raise NotImplementedError("Invalid nonlinear function is specified. Choose 'relu' instead of {}.".format(name))
+    
+    return nonlinear
+
 def choose_rnn(name, **kwargs):
     if name == 'rnn':
         rnn = nn.RNN(**kwargs)
