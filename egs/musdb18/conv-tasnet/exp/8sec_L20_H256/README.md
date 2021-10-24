@@ -1,5 +1,5 @@
 # Example of outputs
-I trained Conv-TasNet and share the outputs. See `8sec_L20_H256/config/augmentation-*.yaml` for augmentation.
+I trained Conv-TasNet and share the outputs. See `config/paper/augmentation.yaml` for augmentation.
 - You have to unzip `config.zip`, `log.zip`, and `loss.zip`.
 - You can download pretrained models from [https://drive.google.com/file/d/1pA-jt_709cq8Pl6TAix3Yf2ei6UNPldn/view?usp=sharing](https://drive.google.com/file/d/1pA-jt_709cq8Pl6TAix3Yf2ei6UNPldn/view?usp=sharing) that includes `last.pth` and `best.pth`.
 - You can download output JSON files from [https://drive.google.com/file/d/1aH3n6obNBP2j1vjaz-YfUtl_U2YJ6Mu7/view?usp=sharing](https://drive.google.com/file/d/1aH3n6obNBP2j1vjaz-YfUtl_U2YJ6Mu7/view?usp=sharing).
@@ -7,7 +7,7 @@ I trained Conv-TasNet and share the outputs. See `8sec_L20_H256/config/augmentat
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
 
-| Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| Model | Sampling rate [Hz] | Duration [sec] | L | N | H | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.59 | 6.11 | 5.95 | 3.78 | 11.90 | 5.36 | Epoch is chosen by validation loss. |
-| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.82 | 6.10 | 5.13 | 3.57 | 12.00 | 5.16 | After 100 epochs. |
+| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.95 | 6.11 | 3.78 | 5.59 | 11.90 | 5.36 | Epoch is chosen by validation loss. |
+| Conv-TasNet | 44100 | 8 | 20 | 256 | 256 | 5.13 | 6.10 | 3.57 | 5.82 | 12.00 | 5.16 | After 100 epochs. |

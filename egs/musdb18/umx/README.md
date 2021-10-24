@@ -57,10 +57,10 @@ cd <REPOSITORY_ROOT>/egs/musdb18/umx/
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
 
-| Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| Model | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| UMX | 5.71 | 6.00 | 4.82 | 3.99 | 12.14 | 5.13 | Epoch is chosen by validation loss. |
-| UMX | 5.81 | 6.09 | 4.69 | 3.66 | 12.07 | 5.06 | After 100 epochs. |
-| UMX | 6.32 | 5.73 | 5.23 | 4.02 | - | 5.33 | Official report. |
+| UMX | 4.82 | 6.00 | 3.99 | 5.71 | 12.14 | 5.13 | Epoch is chosen by validation loss. |
+| UMX | 4.69 | 6.09 | 3.66 | 5.81 | 12.07 | 5.06 | After 100 epochs. |
+| UMX | 5.23 | 5.73 | 4.02 | 6.32 | - | 5.33 | Official report. |
 
 - You can separate your audio using these pretrained models. See `egs/tutorials/umx/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_music.ipynb).

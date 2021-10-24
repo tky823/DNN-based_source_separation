@@ -56,14 +56,14 @@ cd <REPOSITORY_ROOT>/egs/musdb18/d3net/
 
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
-- You can check example in `exp/paper`.
+- You can check example in `exp/nnabla`.
 
-| Model | Vocals | Drums | Bass | Other | Accompaniment | Average | Note |
+| Model | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | D3Net w/o dilation | - | - | - | - | - | - | - |
 | D3Net standard dilation | - | - | - | - | - | - | - |
-| D3Net | 6.58 | 6.46 | 5.12 | 4.54 | 13.06 | 5.68 | Epoch is chosen by validation loss. |
-| D3Net | 6.63 | 6.40 | 5.24 | 4.58 | 13.24 | 5.71 | After 50 epochs. |
-| D3Net | 7.24 | 7.01 | 5.25 | 4.53 | 13.52 | 6.01 | Official report. |
+| D3Net | 5.24 | 6.71 | 4.59 | 6.97 | 13.22 | 5.88 | Epoch is chosen by validation loss. |
+| D3Net | 5.24 | 6.65 | 4.52 | 6.91 | 13.29 | 5.83 | After 50 epochs. |
+| D3Net | 5.25 | 7.01 | 4.53 | 7.24 | 13.52 | 6.01 | Official report. |
 
 - You can separate your audio using these pretrained models. See `egs/tutorials/d3net/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_music.ipynb).

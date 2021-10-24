@@ -10,8 +10,9 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
 from models.danet import DANet
-from criterion.distance import SquaredError, L1Loss, L2Loss
+from criterion.distance import L1Loss, L2Loss
 from criterion.pit import PIT2d
+from adhoc_criterion import SquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
@@ -62,7 +63,7 @@ def main(args):
     
     # Criterion
     if args.criterion == 'se':
-        criterion = SquaredError(reduction='sum') # (batch_size, n_sources, n_bins, n_frames)
+        criterion = SquaredError(sum_dim=(1,2), mean_dim=3) # (batch_size, n_sources, n_bins, n_frames)
     elif args.criterion == 'l1loss':
         criterion = L1Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     elif args.criterion == 'l2loss':

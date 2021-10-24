@@ -182,6 +182,12 @@ class FinetuneTrainer(AdhocTrainer):
         
         self.optimizer.load_state_dict(config['optim_dict'])
 
+        # For save_model
+        if hasattr(args, 'save_normalized'):
+            self.save_normalized = args.save_normalized
+        else:
+            self.save_normalized = False
+
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
             config = self.model.module.get_config()

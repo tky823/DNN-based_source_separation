@@ -69,12 +69,6 @@ if [ ! -e "${config_dir}" ]; then
     mkdir -p "${config_dir}"
 fi
 
-config_name=`basename ${config_path}`
-
-if [ ! -e "${config_dir}/${config_name}" ]; then
-    cp "${config_path}" "${config_dir}/${config_name}"
-fi
-
 augmentation_dir=`dirname ${augmentation_path}`
 augmentation_name=`basename ${augmentation_path}`
 
