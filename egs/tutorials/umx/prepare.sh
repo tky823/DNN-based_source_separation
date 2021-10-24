@@ -1,7 +1,7 @@
 #!/bin/bash
 
 model_id=""
-model_name="paper"
+model_name="musdb18"
 file="model"
 
 . ./path.sh
@@ -10,6 +10,8 @@ file="model"
 echo "Download Open-Unmix. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 declare -A model_ids=(
+    ["musdb18"]="1C67tgD79YIe-uEs31NTPMxuh7JNLPB7T"
+    ["musdb18hq"]="1W0fNeGoqQU6Zj0KHA8n3n6iSonuiaHdQ"
     ["paper"]="1C67tgD79YIe-uEs31NTPMxuh7JNLPB7T"
 )
 
