@@ -12,7 +12,7 @@ duration=6
 model_choice='best'
 model_dir="./pretrained/paper-musdb18/${model_choice}" # `model_dir` must includes "bass.pth", "drums.pth", "other.pth", and "vocals.pth".
 
-test.py \
+submission.py \
 --sr ${sr} \
 --duration ${duration} \
 --fft_size ${fft_size} \
