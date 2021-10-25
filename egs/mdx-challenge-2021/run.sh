@@ -2,6 +2,6 @@
 
 model=umx
 
-cd egs/${model}
+cd ${model}
 
 . ./submission.sh
