@@ -5,7 +5,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
-from music_demixing import MusicDemixingPredictor
+from evaluator.music_demixing import MusicDemixingPredictor
 from utils.utils_audio import build_window
 from algorithm.frequency_mask import multichannel_wiener_filter
 from models.umx import OpenUnmix, ParallelOpenUnmix
