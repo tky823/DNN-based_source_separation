@@ -97,7 +97,7 @@ class UMXPredictor(MusicDemixingPredictor):
         modules = {}
 
         for source in self.sources:
-            model_path = os.path.join(self.model_dir, "{}.pth")
+            model_path = os.path.join(self.model_dir, "{}.pth".format(source))
             if not os.path.exists(model_path):
                 raise FileNotFoundError("Cannot find {}.".format(model_path))
             modules[source] = OpenUnmix.build_model(model_path, load_state_dict=True)
