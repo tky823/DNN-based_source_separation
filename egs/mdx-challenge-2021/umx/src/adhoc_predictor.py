@@ -17,8 +17,8 @@ EPS = 1e-12
 def separate(waveform, umx, fft_size=4096, hop_size=1024, window_fn='hann', patch_size=256, sources=__sources__, iteration_wfm=1, device="cpu"):
     """
     Args:
-        waveform
-        umx
+        waveform <torch.Tensor>: Mixture waveform with shape of (2, T).
+        umx <models.ParallelOpenUnmix>: Pretrained model.
         fft_size <int>: Default: 4096
         hop_size <int>: Default: 1024
         window_fn <str>: Window function. Default: 'hann'
