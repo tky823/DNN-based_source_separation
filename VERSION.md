@@ -81,3 +81,7 @@
 # v0.6.2
 - Modify links to pretrained models.
 - Change attibute name in some model.
+
+# v0.6.3
+- Update results.
+- Add MDX challenge 2021 examples.
