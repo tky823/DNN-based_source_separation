@@ -6,9 +6,69 @@ from torch.nn.modules.utils import _pair
 from utils.utils_cunet import choose_nonlinear
 from models.film import FiLM2d
 from models.pocm import PoCM2d, GPoCM2d
-from models.cunet import TDC2d
+from models.cunet import TDF2d, TDC2d
 
 EPS = 1e-12
+
+class TDFUNet2d(nn.Module):
+    def __init__(
+            self,
+            channels,
+            kernel_size, stride=None,
+            num_layers=2,
+            bias=False,
+            enc_nonlinear='relu', dec_nonlinear='relu',
+            out_channels=None,
+            conditioning='film',
+            eps=EPS
+        ):
+        """
+        Args:
+            channels <list<int>>:
+        """
+        super().__init__()
+        
+        raise NotImplementedError("In progress")
+
+class TDFEncoder2d(nn.Module):
+    def __init__(self, channels, kernel_size, stride=None, num_layers=2, bias=False, nonlinear='relu', conditioning='film', eps=EPS):
+        """
+        Args:
+            channels <list<int>>
+            kernel_size <tuple<int,int>> or <list<tuple<int,int>>>
+            stride <tuple<int,int>> or <list<tuple<int,int>>>
+            num_layers <int> or <list<int>>
+            nonlinear <str> or <list<str>>
+        """
+        super().__init__()
+        
+        raise NotImplementedError("In progress")
+
+class TDFDecoder2d(nn.Module):
+    def __init__(self, channels, kernel_size, stride=None, num_layers=2, bias=False, nonlinear='relu', eps=EPS):
+        """
+        Args:
+            channels <list<int>>
+            kernel_size <tuple<int,int>> or <list<tuple<int,int>>>
+            stride <tuple<int,int>> or <list<tuple<int,int>>>
+            num_layers <int> or <list<int>>
+            nonlinear <str> or <list<str>>
+        """
+        super().__init__()
+        
+        raise NotImplementedError("In progress")
+
+class TDFEncoderBlock2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, num_layers=2, bias=False, nonlinear='relu', resample='conv', conditioning='film', eps=EPS, **kwargs):
+        super().__init__()
+
+        raise NotImplementedError("In progress")
+
+class TDFDecoderBlock2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, num_layers=2, bias=False, nonlinear='relu', resample='conv', eps=EPS, **kwargs):
+        super().__init__()
+
+        raise NotImplementedError("In progress")
 
 class TDCUNet2d(nn.Module):
     def __init__(
@@ -98,66 +158,6 @@ class TDCUNet2d(nn.Module):
         }
 
         return config
-
-class PreprocessBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=(2,1), nonlinear='relu', eps=EPS):
-        super().__init__()
-
-        self.kernel_size = _pair(kernel_size)
-        self.nonlinear = nonlinear
-
-        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=(1,1))
-        self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
-
-        if self.nonlinear:
-            self.nonlinear2d = choose_nonlinear(nonlinear)
-    
-    def forward(self, input):
-        Kh, Kw = self.kernel_size
-        padding_height, padding_width = Kh - 1, Kw - 1
-        padding_top, padding_left = padding_height // 2, padding_width // 2
-        padding_bottom, padding_right = padding_height - padding_top, padding_width - padding_left
-        
-        x = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
-        x = self.conv2d(x)
-        x = self.norm2d(x)
-
-        if self.nonlinear:
-            output = self.nonlinear2d(x)
-        else:
-            output = x
-
-        return output
-
-class PostprocessBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=(2,1), nonlinear=None, eps=EPS):
-        super().__init__()
-
-        self.kernel_size = _pair(kernel_size)
-        self.nonlinear = nonlinear
-
-        self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride=(1,1))
-        self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
-
-        if self.nonlinear:
-            self.nonlinear2d = choose_nonlinear(nonlinear)
-    
-    def forward(self, input):
-        Kh, Kw = self.kernel_size
-        padding_height, padding_width = Kh - 1, Kw - 1
-        padding_top, padding_left = padding_height // 2, padding_width // 2
-        padding_bottom, padding_right = padding_height - padding_top, padding_width - padding_left
-        
-        x = self.deconv2d(input)
-        x = F.pad(x, (padding_left, padding_right, padding_top, padding_bottom))
-        x = self.norm2d(x)
-
-        if self.nonlinear:
-            output = self.nonlinear2d(x)
-        else:
-            output = x
-        
-        return output
 
 class TDCEncoder2d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, num_layers=2, bias=False, nonlinear='relu', conditioning='film', eps=EPS):
@@ -373,6 +373,66 @@ class TDCDecoderBlock2d(nn.Module):
 
         x = self.upsample2d(x)
         output = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
+        
+        return output
+
+class PreprocessBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=(2,1), nonlinear='relu', eps=EPS):
+        super().__init__()
+
+        self.kernel_size = _pair(kernel_size)
+        self.nonlinear = nonlinear
+
+        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=(1,1))
+        self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
+
+        if self.nonlinear:
+            self.nonlinear2d = choose_nonlinear(nonlinear)
+    
+    def forward(self, input):
+        Kh, Kw = self.kernel_size
+        padding_height, padding_width = Kh - 1, Kw - 1
+        padding_top, padding_left = padding_height // 2, padding_width // 2
+        padding_bottom, padding_right = padding_height - padding_top, padding_width - padding_left
+        
+        x = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
+        x = self.conv2d(x)
+        x = self.norm2d(x)
+
+        if self.nonlinear:
+            output = self.nonlinear2d(x)
+        else:
+            output = x
+
+        return output
+
+class PostprocessBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=(2,1), nonlinear=None, eps=EPS):
+        super().__init__()
+
+        self.kernel_size = _pair(kernel_size)
+        self.nonlinear = nonlinear
+
+        self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride=(1,1))
+        self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
+
+        if self.nonlinear:
+            self.nonlinear2d = choose_nonlinear(nonlinear)
+    
+    def forward(self, input):
+        Kh, Kw = self.kernel_size
+        padding_height, padding_width = Kh - 1, Kw - 1
+        padding_top, padding_left = padding_height // 2, padding_width // 2
+        padding_bottom, padding_right = padding_height - padding_top, padding_width - padding_left
+        
+        x = self.deconv2d(input)
+        x = F.pad(x, (padding_left, padding_right, padding_top, padding_bottom))
+        x = self.norm2d(x)
+
+        if self.nonlinear:
+            output = self.nonlinear2d(x)
+        else:
+            output = x
         
         return output
 

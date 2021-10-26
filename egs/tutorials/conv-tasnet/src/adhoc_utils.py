@@ -64,6 +64,10 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
             if n_mics == 1:
                 estimated_sources = estimated_sources.mean(dim=2, keepdim=True)
             elif n_mics == 2:
+                sections = [1, 1]
+                estimated_sources, estimated_sources_flipped = torch.split(estimated_sources, sections, dim=0)
+                estimated_sources_flipped = torch.flip(estimated_sources_flipped, dims=(2,))
+                estimated_sources = torch.cat([estimated_sources, estimated_sources_flipped], dim=0)
                 estimated_sources = estimated_sources.mean(dim=0, keepdim=True)
             else:
                 raise NotImplementedError("Not support {} channels input.".format(n_mics))
