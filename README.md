@@ -24,7 +24,7 @@ A PyTorch implementation of DNN-based source separation.
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | Conditioned-U-Net | [Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations](https://arxiv.org/abs/1907.01277) | ✔ |
 | MMDenseNet | [Multi-scale Multi-band DenseNets for Audio Source Separation](https://arxiv.org/abs/1706.09588) | ✔ |
-| MMDenseLSTM | [MMDenseLSTM: An Efficient Combination of Convolutional and Recurrent Neural Networks for Audio Source Separation](https://arxiv.org/abs/1805.02410) | |
+| MMDenseLSTM | [MMDenseLSTM: An Efficient Combination of Convolutional and Recurrent Neural Networks for Audio Source Separation](https://arxiv.org/abs/1805.02410) | ✔ |
 | UMX (Open-Unmix) | [Open-Unmix - A Reference Implementation for Music Source Separation](https://hal.inria.fr/hal-02293689/document) | ✔ |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
 | DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
