@@ -1,5 +1,5 @@
 `src/` includes
-- aicrowd_helpers.py
-- music_demixing.py
+- evaluator/aicrowd_helpers.py
+- evaluator/music_demixing.py
 
 They are provided by Music Demixing Challenge 2021.

@@ -5,7 +5,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
-from music_demixing import MusicDemixingPredictor
+from evaluator.music_demixing import MusicDemixingPredictor
 from utils.utils_audio import build_window
 from algorithm.frequency_mask import multichannel_wiener_filter
 from models.umx import OpenUnmix, ParallelOpenUnmix
@@ -17,8 +17,8 @@ EPS = 1e-12
 def separate(waveform, umx, fft_size=4096, hop_size=1024, window_fn='hann', patch_size=256, sources=__sources__, iteration_wfm=1, device="cpu"):
     """
     Args:
-        waveform
-        umx
+        waveform <torch.Tensor>: Mixture waveform with shape of (2, T).
+        umx <models.ParallelOpenUnmix>: Pretrained model.
         fft_size <int>: Default: 4096
         hop_size <int>: Default: 1024
         window_fn <str>: Window function. Default: 'hann'
@@ -97,7 +97,7 @@ class UMXPredictor(MusicDemixingPredictor):
         modules = {}
 
         for source in self.sources:
-            model_path = os.path.join(self.model_dir, "{}.pth")
+            model_path = os.path.join(self.model_dir, "{}.pth".format(source))
             if not os.path.exists(model_path):
                 raise FileNotFoundError("Cannot find {}.".format(model_path))
             modules[source] = OpenUnmix.build_model(model_path, load_state_dict=True)

@@ -367,7 +367,7 @@ class AdhocTester(TesterBase):
         print(s, flush=True)
     
     def evaluate_all(self):
-        mus = musdb.DB(root=self.musdb18_root, subsets='test')
+        mus = musdb.DB(root=self.musdb18_root, subsets='test', is_wav=True)
         
         results = museval.EvalStore(frames_agg='median', tracks_agg='median')
 

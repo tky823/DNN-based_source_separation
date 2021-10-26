@@ -59,8 +59,8 @@ cd <REPOSITORY_ROOT>/egs/musdb18/umx/
 
 | Model | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| UMX | 4.82 | 6.00 | 3.99 | 5.71 | 12.14 | 5.13 | 検証ロスが最小となるエポックで学習を止めた場合． |
-| UMX | 4.69 | 6.09 | 3.66 | 5.81 | 12.07 | 5.06 | 100エポック学習後 |
+| UMX | 5.02 | 6.06 | 4.00 | 6.14 | 12.18 | 5.30 | 検証ロスが最小となるエポックで学習を止めた場合 |
+| UMX | 5.00 | 6.15 | 4.04 | 5.75 | 12.35 | 5.23 | 学習後 |
 | UMX | 5.23 | 5.73 | 4.02 | 6.32 | - | 5.33 | 公式実装 |
 
 - 学習済みモデルを使って分離を試すことができます．`egs/tutorials/umx/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_music_ja.ipynb)にとんでください．
