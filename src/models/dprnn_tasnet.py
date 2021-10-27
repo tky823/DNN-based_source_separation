@@ -25,9 +25,9 @@ class DPRNNTasNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
-        assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
+        assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
         if 'in_channels' in kwargs:

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from utils.utils_filterbank import choose_filterbank
 from utils.utils_tasnet import choose_layer_norm
-from models.tcn import TemporalConvNet
+from models.tdcn import TimeDilatedConvNet
 
 __pretrained_model_ids__ = {
     "musdb18": {
@@ -267,7 +267,7 @@ class Separator(nn.Module):
         norm_name = 'cLN' if causal else 'gLN'
         self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
-        self.tcn = TemporalConvNet(
+        self.tdcn = TimeDilatedConvNet(
             bottleneck_channels, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers,
             dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm
         )
@@ -294,7 +294,7 @@ class Separator(nn.Module):
 
         x = self.norm1d(input)
         x = self.bottleneck_conv1d(x)
-        x = self.tcn(x)
+        x = self.tdcn(x)
         x = self.prelu(x)
         x = self.mask_conv1d(x)
         x = self.mask_nonlinear(x)

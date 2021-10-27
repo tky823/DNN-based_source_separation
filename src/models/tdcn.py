@@ -1,24 +1,18 @@
-import warnings
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.utils_tasnet import choose_layer_norm
 
+"""
+Time dilated convolutional network.
+"""
+
 EPS = 1e-12
 
-"""
-    Temporal Convolutional Network
-    See "Temporal Convolutional Networks for Action Segmentation and Detection"
-    https://arxiv.org/abs/1611.05267
-"""
-
-class TemporalConvNet(nn.Module):
+class TimeDilatedConvNet(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, num_blocks=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear=None, norm=True, eps=EPS):
         super().__init__()
-
-        warnings.warn("Use TimeDilatedConvNet instead.", DeprecationWarning)
         
         self.num_blocks = num_blocks
         
@@ -26,9 +20,9 @@ class TemporalConvNet(nn.Module):
         
         for idx in range(num_blocks):
             if idx == num_blocks - 1:
-                net.append(ConvBlock1d(num_features, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=False, eps=eps))
+                net.append(TimeDilatedConvBlock1d(num_features, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=False, eps=eps))
             else:
-                net.append(ConvBlock1d(num_features, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=True, eps=eps))
+                net.append(TimeDilatedConvBlock1d(num_features, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm, dual_head=True, eps=eps))
         
         self.net = nn.Sequential(*net)
         
@@ -46,7 +40,7 @@ class TemporalConvNet(nn.Module):
         
         return output
 
-class ConvBlock1d(nn.Module):
+class TimeDilatedConvBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
         
@@ -197,22 +191,21 @@ class DepthwiseSeparableConv1d(nn.Module):
         
         return output, skip
 
-def _test_tcn():
+def _test_tdcn():
     batch_size = 4
     T = 128
     in_channels, out_channels, skip_channels = 16, 16, 32
-    kernel_size, stride = 3, 1
+    kernel_size = 3
     num_blocks = 3
     num_layers = 4
     dilated, separable = True, False
     causal = True
     nonlinear = 'prelu'
     norm = True
-    dual_head = False
     
     input = torch.randn((batch_size, in_channels, T), dtype=torch.float)
     
-    model = TemporalConvNet(in_channels, hidden_channels=out_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm)
+    model = TimeDilatedConvNet(in_channels, hidden_channels=out_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm)
     
     print(model)
     output = model(input)
@@ -220,4 +213,4 @@ def _test_tcn():
     print(input.size(), output.size())
 
 if __name__ == '__main__':
-    _test_tcn()
+    _test_tdcn()
