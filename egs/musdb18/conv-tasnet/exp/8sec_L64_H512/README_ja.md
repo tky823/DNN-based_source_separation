@@ -1,7 +1,7 @@
 # 出力結果の例
 Conv-TasNetを学習させた結果を共有します．拡張に関しては`config/paper/augmentation.yaml`を見てください．
 - `config.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
-- 学習済みモデルは[https://drive.google.com/file/d/1yQTdGu2jigAHotJJ7JAQcfqedACCP40t/view?usp=sharing](https://drive.google.com/file/d/1yQTdGu2jigAHotJJ7JAQcfqedACCP40t/view?usp=sharing)からダウンロードできます．これらは，`last.pth`と`best.pth`を含んでいます．
+- 学習済みモデルは[https://drive.google.com/file/d/1paXNGgH8m0kiJTQnn1WH-jEIurCKXwtw/view?usp=sharing](https://drive.google.com/file/d/1paXNGgH8m0kiJTQnn1WH-jEIurCKXwtw/view?usp=sharing)からダウンロードできます．これらは，`last.pth`と`best.pth`を含んでいます．
 - 出力されたJSONファイルは[https://drive.google.com/file/d/1R-63xiocr6Cjp84O9pKej-X2iZFb-QOl/view?usp=sharing](https://drive.google.com/file/d/1R-63xiocr6Cjp84O9pKej-X2iZFb-QOl/view?usp=sharing)からダウンロードできます．
 
 ## 実験結果
