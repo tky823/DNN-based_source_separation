@@ -39,4 +39,4 @@ def download_pretrained_model_from_google_drive(model_id, path="./tmp", quiet=Fa
     gdown.download("https://drive.google.com/uc?id={}".format(model_id), zip_path, quiet=quiet)
 
     with zipfile.ZipFile(zip_path) as f:
-            f.extract_all(path)
+            f.extractall(path)
