@@ -345,10 +345,11 @@ class D3Net(nn.Module):
             raise NotImplementedError("Not support task={}.".format(task))
         
         download_dir = os.path.join(root, task, config)
-        
-        download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
         model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
         return model
