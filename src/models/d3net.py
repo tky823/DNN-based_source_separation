@@ -16,6 +16,12 @@ See https://arxiv.org/abs/2010.01733
 
 FULL = 'full'
 EPS = 1e-12
+__pretrained_model_ids__ = {
+    "musdb18": {
+        "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
+        "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
+    }
+}
 
 class ParallelD3Net(nn.Module):
     def __init__(self, modules):
@@ -316,6 +322,35 @@ class D3Net(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+    
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task == 'musdb18':
+            config = kwargs.get('config') or "nnabla"
+            model_choice = kwargs.get('model_choice') or 'best'
+            model_id = pretrained_model_ids_task[config]
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        download_dir = os.path.join(root, task, config)
+        
+        download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
         return model
     
     @property
