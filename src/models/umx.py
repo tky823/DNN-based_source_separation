@@ -5,12 +5,15 @@ import torch.nn as nn
 from utils.utils_model import choose_nonlinear, choose_rnn
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
-EPS = 1e-12
 __pretrained_model_ids__ = {
     "musdb18": {
         "paper": "1sqlK26fLJ6ns-NOxCrxhwI92wv45QPCB",
+    },
+    "musdb18hq": {
+        "paper": "1N2pZBRL5R7tIEEryPY3iCWTVgw27dXEx"
     }
 }
+EPS = 1e-12
 
 """
 Reference: https://github.com/sigsep/open-unmix-pytorch
@@ -268,7 +271,7 @@ class OpenUnmix(nn.Module):
             
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
-        if task == 'musdb18':
+        if task in ['musdb18', 'musdb18hq']:
             config = kwargs.get('config') or "paper"
             model_choice = kwargs.get('model_choice') or 'best'
             model_id = pretrained_model_ids_task[config]
