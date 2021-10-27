@@ -6,6 +6,11 @@ from utils.utils_model import choose_nonlinear, choose_rnn
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 EPS = 1e-12
+__pretrained_model_ids__ = {
+    "musdb18": {
+        "paper": "1sqlK26fLJ6ns-NOxCrxhwI92wv45QPCB",
+    }
+}
 
 """
 Reference: https://github.com/sigsep/open-unmix-pytorch
@@ -248,6 +253,36 @@ class OpenUnmix(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+    
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task == 'musdb18':
+            config = kwargs.get('config') or "paper"
+            model_choice = kwargs.get('model_choice') or 'best'
+            model_id = pretrained_model_ids_task[config]
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        download_dir = os.path.join(root, task, config)
+        model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
         return model
     
     @property

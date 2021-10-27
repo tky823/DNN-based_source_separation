@@ -6,6 +6,16 @@ from utils.utils_filterbank import choose_filterbank
 from utils.utils_tasnet import choose_layer_norm
 from models.tcn import TemporalConvNet
 
+__pretrained_model_ids__ = {
+    "musdb18": {
+        "4sec_L20": "1a-IQn3hsN84N2X_WF84uXbwe7VAk_vaB",
+        "8sec_L64": "1r_mJ3-LN8OYDa2xO8nFKpdaKN1pF0GTP"
+    },
+    "librispeech": {
+        "2speakers": "1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo",
+    }
+}
+
 EPS = 1e-12
 
 class ConvTasNet(nn.Module):
@@ -198,6 +208,39 @@ class ConvTasNet(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task == 'musdb18':
+            config = kwargs.get('config') or '4sec_L20'
+            model_choice = kwargs.get('model_choice') or 'best'
+        elif task == 'librispeech':
+            config = kwargs.get('config') or '2speakers'
+            model_choice = kwargs.get('model_choice') or 'best'
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+
+        model_id = pretrained_model_ids_task[config]
+        download_dir = os.path.join(root, task, config)
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
         return model
     
     @property
