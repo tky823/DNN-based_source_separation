@@ -121,7 +121,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
     if args.criterion_frequency == 'se':
-        criterion_frequency = SquaredError(reduction='sum', reduction_dim=(2, 3, 4)) # (batch_size, n_sources, in_channels, n_bins, n_frames)
+        criterion_frequency = SquaredError(reduction='sum') # (batch_size, in_channels, n_bins, n_frames) for combination loss, be careful.
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
