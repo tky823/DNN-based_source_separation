@@ -116,7 +116,10 @@ class AdhocTrainer(TrainerBase):
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
 
-            mean_valid_loss = valid_loss.mean(dim=0).item()
+            if self.combination:
+                mean_valid_loss = valid_loss
+            else:
+                mean_valid_loss = valid_loss.mean(dim=0).item()
             
             if mean_valid_loss < self.best_loss:
                 self.best_loss = mean_valid_loss
