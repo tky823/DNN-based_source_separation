@@ -37,6 +37,7 @@ optimizer='adam'
 lr=1e-3
 weight_decay=1e-5
 max_norm=0 # 0 is handled as no clipping
+scheduler_path="./config/paper/scheduler.yaml"
 
 batch_size=16
 samples_per_epoch=6400
@@ -100,6 +101,7 @@ train.py \
 --lr ${lr} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
+--scheduler_path "${scheduler_path}" \
 --batch_size ${batch_size} \
 --samples_per_epoch ${samples_per_epoch} \
 --epochs ${epochs} \

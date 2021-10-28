@@ -42,6 +42,7 @@ parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'ad
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
+parser.add_argument('--scheduler_path', type=str, default=None, help='Path to scheduler.yaml')
 parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 16')
 parser.add_argument('--samples_per_epoch', type=int, default=64*100, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
@@ -113,6 +114,15 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
+
+    # Scheduler
+    with open(args.scheduler_path) as f:
+        config_scheduler = yaml.safe_load(f)
+    
+    if config_scheduler['scheduler'] == 'ReduceLROnPlateau':
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+    else:
+        raise NotImplementedError("Not support schduler {}.".format(args.scheduler))
     
     # Criterion
     if args.criterion_time == 'wsdr':
@@ -132,7 +142,7 @@ def main(args):
         fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
     )
     
-    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()
 
 if __name__ == '__main__':

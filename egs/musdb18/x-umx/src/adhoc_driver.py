@@ -15,13 +15,13 @@ BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
 class AdhocTrainer(TrainerBase):
-    def __init__(self, model, loader, criterion, optimizer, args):
+    def __init__(self, model, loader, criterion, optimizer, scheduler, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
         self.model = model
         
         self.criterion = criterion
-        self.optimizer = optimizer
+        self.optimizer, self.scheduler = optimizer, scheduler
         
         self._reset(args)
         
@@ -76,6 +76,7 @@ class AdhocTrainer(TrainerBase):
                 self.model.load_state_dict(package['state_dict'])
             
             self.optimizer.load_state_dict(package['optim_dict'])
+            self.scheduler.load_state_dict(package['scheduler_dict'])
         else:
             model_path = os.path.join(self.model_dir, "best.pth")
             
@@ -121,19 +122,13 @@ class AdhocTrainer(TrainerBase):
             else:
                 mean_valid_loss = valid_loss.mean(dim=0).item()
             
+            self.scheduler.step(mean_valid_loss)
+            
             if mean_valid_loss < self.best_loss:
                 self.best_loss = mean_valid_loss
                 self.no_improvement = 0
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
-            else:
-                self.no_improvement += 1
-                if self.no_improvement >= 10:
-                    for param_group in self.optimizer.param_groups:
-                        prev_lr = param_group['lr']
-                        lr = 0.5 * prev_lr
-                        print("Learning rate: {} -> {}".format(prev_lr, lr))
-                        param_group['lr'] = lr
             
             self.prev_loss = mean_valid_loss
             
@@ -293,6 +288,7 @@ class AdhocTrainer(TrainerBase):
             package['state_dict'] = self.model.state_dict()
             
         package['optim_dict'] = self.optimizer.state_dict()
+        package['scheduler_dict'] = self.scheduler.state_dict()
         
         package['best_loss'] = self.best_loss
         package['no_improvement'] = self.no_improvement
