@@ -148,11 +148,10 @@ class AdhocTrainer(TrainerBase):
                 sources = sources.cuda()
             
             mixture_amplitude = torch.abs(mixture)
-            sources_amplitude = torch.abs(sources)
 
             estimated_sources_amplitude = self.model(mixture_amplitude)
             
-            loss = self.criterion(estimated_sources_amplitude, sources_amplitude) # (n_sources,)
+            loss = self.criterion(estimated_sources_amplitude, sources) # (n_sources,)
             loss_mean = loss.mean(dim=0)
 
             self.optimizer.zero_grad()
