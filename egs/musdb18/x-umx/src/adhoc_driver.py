@@ -98,11 +98,18 @@ class AdhocTrainer(TrainerBase):
             end = time.time()
             
             s = "[Epoch {}/{}] loss (train):".format(epoch + 1, self.epochs)
-            for target, loss in zip(self.sources, train_loss):
-                s += " ({}) {:.5f}".format(target, loss.item())
+
+            if self.combination:
+                s += " {:.5f}".format(train_loss)
+            else:
+                for target, loss in zip(self.sources, train_loss):
+                    s += " ({}) {:.5f}".format(target, loss.item())
             s += ", loss (valid):"
-            for target, loss in zip(self.sources, valid_loss):
-                s += " ({}) {:.5f}".format(target, loss.item())
+            if self.combination:
+                s += " {:.5f}".format(valid_loss)
+            else:
+                for target, loss in zip(self.sources, valid_loss):
+                    s += " ({}) {:.5f}".format(target, loss.item())
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
             
@@ -174,7 +181,10 @@ class AdhocTrainer(TrainerBase):
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
-            train_loss += loss.detach() # () if combination loss, else (n_sources,)
+            if self.combination:
+                train_loss += loss.item() # ()
+            else:
+                train_loss += loss.detach() # (n_sources,)
 
             if (idx + 1) % 100 == 0:
                 s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
@@ -217,7 +227,11 @@ class AdhocTrainer(TrainerBase):
                 estimated_sources_amplitude = self.model(mixture_amplitude)
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=False)
                 loss = loss.mean(dim=0) # () if combination loss, else (n_sources,)
-                valid_loss += loss.detach()
+
+                if self.combination:
+                    valid_loss += loss.item()
+                else:
+                    valid_loss += loss.detach()
 
                 batch_size, n_sources, n_mics, n_bins, n_frames = estimated_sources_amplitude.size()
 
