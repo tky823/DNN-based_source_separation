@@ -17,7 +17,7 @@ from adhoc_criterion import MultiDomainLoss
 parser = argparse.ArgumentParser(description="Training of CrossNet-Open-Unmix")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=6, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -31,13 +31,14 @@ parser.add_argument('--dropout', type=float, default=0, help='dropout')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mdl', choices=['mdl'], help='Criterion')
+parser.add_argument('--combination', type=int, default=1, help='Combination Loss.')
 parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
 parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 128')
+parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 16')
 parser.add_argument('--samples_per_epoch', type=int, default=64*100, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
@@ -107,7 +108,11 @@ def main(args):
     
     # Criterion
     if args.criterion == 'mdl':
-        criterion = MultiDomainLoss(weight_time=args.weight_time, weight_frequency=args.weight_frequency)
+        criterion = MultiDomainLoss(
+            combination=args.combination,
+            weight_time=args.weight_time, weight_frequency=args.weight_frequency,
+            fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
+        )
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     

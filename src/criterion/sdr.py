@@ -234,17 +234,16 @@ class NegSISDR(nn.Module):
     Weighted SDR (signal-to-distortion ratio)
     See "Phase-Aware Speech Enhancement with Deep Complex U-Net"
 """
-def weighted_sdr(mixture, input, target, eps=EPS):
+def weighted_sdr(input, target, source_dim=1, eps=EPS):
     """
     Args:
-        mixture <torch.Tensor>: (*, 1, *, T)
         input <torch.Tensor>: (*, n_sources, *, T)
         target <torch.Tensor>: (*, n_sources, *, T)
     Returns:
         loss <torch.Tensor>: (*, n_sources, *)
     """
-    mixture, input, target
-
+    mixture = target.sum(dim=source_dim, keepdim=True) # (*, 1, *, T)
+    
     target_power = torch.sum(target**2, dim=-1)
     loss = torch.sum(target * input, dim=-1) / (target_power * torch.sum(input**2, dim=-1) + eps)
 
@@ -259,9 +258,10 @@ def weighted_sdr(mixture, input, target, eps=EPS):
     return loss
 
 class WeightedSDR(nn.Module):
-    def __init__(self, reduction='mean', eps=EPS):
+    def __init__(self, source_dim=1, reduction='mean', eps=EPS):
         super().__init__()
 
+        self.source_dim = source_dim
         self.reduction = reduction
 
         if not reduction in ['mean', 'sum']:
@@ -269,20 +269,19 @@ class WeightedSDR(nn.Module):
 
         self.eps = eps
     
-    def forward(self, mixture, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            mixture <torch.Tensor>: (batch_size, T) or (batch_size, 1, T), or (batch_size, 1, n_mics, T)
             input <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
             target <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
         Returns:
             loss <torch.Tensor>: (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics) if batch_mean=False
         """
-        n_dims = mixture.dim()
+        n_dims = target.dim()
 
         assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dims)
 
-        loss = weighted_sdr(mixture, input, target, eps=self.eps)
+        loss = weighted_sdr(input, target, source_dim=self.source_dim, eps=self.eps)
 
         if self.reduction:
             if n_dims == 3:
@@ -306,9 +305,10 @@ class WeightedSDR(nn.Module):
         return True
 
 class NegWeightedSDR(nn.Module):
-    def __init__(self, reduction='mean', eps=EPS):
+    def __init__(self, source_dim=1, reduction='mean', eps=EPS):
         super().__init__()
 
+        self.source_dim = source_dim
         self.reduction = reduction
 
         if not reduction in ['mean', 'sum']:
@@ -316,20 +316,19 @@ class NegWeightedSDR(nn.Module):
 
         self.eps = eps
     
-    def forward(self, mixture, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            mixture <torch.Tensor>: (batch_size, T) or (batch_size, 1, T), or (batch_size, 1, n_mics, T)
             input <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
             target <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
         Returns:
             loss <torch.Tensor>: (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics) if batch_mean=False
         """
-        n_dims = mixture.dim()
+        n_dims = target.dim()
 
         assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dims)
 
-        loss = - weighted_sdr(mixture, input, target, eps=self.eps)
+        loss = - weighted_sdr(input, target, source_dim=self.source_dim, eps=self.eps)
 
         if self.reduction:
             if n_dims == 3:
@@ -356,18 +355,34 @@ def _test_sisdr():
     pass
 
 def _test_weighted_sdr():
+    batch_size = 3
+    n_sources = 4
+    in_channels, T = 2, 32
+
     print("-"*10, "weighted SDR", "-"*10)
+    input = torch.randn(batch_size, n_sources, in_channels, T)
+    target = input.clone()
+
     criterion = WeightedSDR()
+    loss = criterion(input, target)
 
     print(criterion.maximize)
+    print(loss)
     print()
 
     print("-"*10, "Negative weighted SDR", "-"*10)
+    input = torch.randn(batch_size, n_sources, in_channels, T)
+    target = torch.randn(batch_size, n_sources, in_channels, T)
+
     criterion = NegWeightedSDR()
+    loss = criterion(input, target)
 
     print(criterion.maximize)
+    print(loss)
 
 if __name__ == '__main__':
+    print("="*10, "SI-SDR", "="*10)
     _test_sisdr()
 
+    print("="*10, "Weighted SDR", "="*10)
     _test_weighted_sdr()

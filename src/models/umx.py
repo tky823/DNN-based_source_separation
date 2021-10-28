@@ -311,7 +311,7 @@ CrossNet-Open-Unmix
     See https://arxiv.org/abs/2010.04228
 """
 class CrossNetOpenUnmix(nn.Module):
-    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, sources=__sources__, eps=EPS):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', sources=__sources__, eps=EPS):
         """
         Args:
             in_channels <int>: Input channels
@@ -328,7 +328,7 @@ class CrossNetOpenUnmix(nn.Module):
         
         net = {}
         for source in sources:
-            net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, eps=eps)
+            net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, rnn_type=rnn_type, eps=eps)
 
         self.backbone = nn.ModuleDict(net)
 
@@ -340,6 +340,7 @@ class CrossNetOpenUnmix(nn.Module):
 
         self.dropout = dropout
         self.causal = causal
+        self.rnn_type = rnn_type
 
         self.sources = sources
 
@@ -364,20 +365,23 @@ class CrossNetOpenUnmix(nn.Module):
         else:
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
-    
+
         x_sum = 0
+
         for source in self.sources:
-            x_source = (x_valid - self.backbone[source].in_bias.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].in_scale.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+            x_source = (x_valid - self.backbone[source].bias_in.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
             x_source = x_source.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
             x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
             x_sum = x_sum + x_source
+        
         x = x_sum / len(self.sources)
 
         x_sum = 0
+
         for source in self.sources:
-            x_source_lstm, (_, _) = self.backbone[source].rnn(x) # (batch_size, n_frames, out_channels)
+            x_source_lstm, _ = self.backbone[source].rnn(x) # (batch_size, n_frames, out_channels)
             x_source = torch.cat([x, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
             x_sum = x_sum + x_source
@@ -385,14 +389,16 @@ class CrossNetOpenUnmix(nn.Module):
 
         x_sum = 0
         output = []
+
         for source in self.sources:
             x_source_full = self.backbone[source].net(x) # (batch_size * n_frames, n_bins)
             x_source_full = x_source_full.view(batch_size, n_frames, in_channels, n_bins)
             x_source_full = x_source_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
-            x_source_full = self.backbone[source].out_scale.unsqueeze(dim=1) * x_source_full + self.backbone[source].out_bias.unsqueeze(dim=1)
+            x_source_full = self.backbone[source].scale_out.unsqueeze(dim=1) * x_source_full + self.backbone[source].bias_out.unsqueeze(dim=1)
             x_source_full = self.backbone[source].relu2d(x_source_full)
             x_source = x_source_full * input
             output.append(x_source.unsqueeze(dim=1))
+        
         output = torch.cat(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
 
         return output
@@ -406,6 +412,7 @@ class CrossNetOpenUnmix(nn.Module):
             'max_bin': self.max_bin,
             'dropout': self.dropout,
             'causal': self.causal,
+            'rnn_type': self.rnn_type,
             'sources': self.sources,
             'eps': self.eps
         }
@@ -424,6 +431,7 @@ class CrossNetOpenUnmix(nn.Module):
         n_bins, max_bin = config['n_bins'], config['max_bin']
         dropout = config['dropout']
         causal = config['causal']
+        rnn_type = config['rnn_type']
 
         sources = config['sources']
 
@@ -437,6 +445,7 @@ class CrossNetOpenUnmix(nn.Module):
             dropout=dropout,
             causal=causal,
             sources=sources,
+            rnn_type=rnn_type,
             eps=eps
         )
         
@@ -452,6 +461,7 @@ class CrossNetOpenUnmix(nn.Module):
         n_bins, max_bin = config['n_bins'], config['max_bin']
         dropout = config['dropout']
         causal = config['causal']
+        rnn_type = config['rnn_type']
 
         sources = config['sources']
 
@@ -464,6 +474,7 @@ class CrossNetOpenUnmix(nn.Module):
             n_bins=n_bins, max_bin=max_bin,
             dropout=dropout,
             causal=causal,
+            rnn_type=rnn_type,
             sources=sources,
             eps=eps
         )
@@ -512,7 +523,6 @@ def _test_openunmix():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
 
-    print('='*10, "OpenUnmix", '='*10)
     print('-'*10, "Non causal", '-'*10)
     causal = False
     model = OpenUnmix(in_channels=in_channels, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal)
@@ -539,19 +549,21 @@ def _test_crossnet_openunmix():
 
     input = torch.randn(batch_size, 1, in_channels, n_bins, n_frames)
 
-    print('='*10, "CrossNetOpenUnmix", '='*10)
     print('-'*10, "Non causal", '-'*10)
     causal = False
     model = CrossNetOpenUnmix(in_channels=in_channels, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal)
     output = model(input)
 
     print(model)
+    print(model.num_parameters)
     print(input.size(), output.size())
 
 if __name__ == '__main__':
     torch.manual_seed(111)
 
-    _test_openunmix()
+    print("="*10, "Open-Unmix (UMX)", "="*10)
+    # _test_openunmix()
     print()
 
+    print("="*10, "Cross-Net Open-Unmix (X-UMX)", "="*10)
     _test_crossnet_openunmix()

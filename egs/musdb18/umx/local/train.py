@@ -37,7 +37,7 @@ parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'ad
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 128')
+parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 16')
 parser.add_argument('--samples_per_epoch', type=int, default=64*100, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')

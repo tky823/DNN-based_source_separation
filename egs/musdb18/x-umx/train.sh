@@ -4,11 +4,11 @@ exp_dir="./exp"
 continue_from=""
 tag=""
 
-sources="[drums,bass,other,vocals]"
+sources="[bass,drums,other,vocals]"
 duration=6
 valid_duration=100
 
-musdb18_root="../../../dataset/musdb18"
+musdb18_root="../../../dataset/MUSDB18"
 sr=44100
 
 window_fn='hann'
@@ -27,6 +27,7 @@ augmentation_path="./config/paper/augmentation.yaml"
 
 # Criterion
 criterion='mdl' # multi-domain loss
+combination=1
 weight_time=1e+0
 weight_frequency=1e+1
 
@@ -51,7 +52,7 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/${criterion}_time${weight_time}-frequency${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
+    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/${criterion}/comb${combination}/time${weight_time}-freq${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
     if [ ${samples_per_epoch} -gt 0 ]; then
         save_dir="${save_dir}/b${batch_size}_e${epochs}-s${samples_per_epoch}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     else
@@ -88,8 +89,9 @@ train.py \
 --num_layers ${num_layers} \
 --dropout ${dropout} \
 --causal ${causal} \
---sources ${sources} \
+--sources "${sources}" \
 --criterion ${criterion} \
+--combination ${combination} \
 --weight_time ${weight_time} \
 --weight_frequency ${weight_frequency} \
 --optimizer ${optimizer} \
