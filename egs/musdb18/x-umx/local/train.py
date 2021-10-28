@@ -120,7 +120,8 @@ def main(args):
         config_scheduler = yaml.safe_load(f)
     
     if config_scheduler['scheduler'] == 'ReduceLROnPlateau':
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+        config_scheduler.pop('scheduler')
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, **config_scheduler)
     else:
         raise NotImplementedError("Not support schduler {}.".format(args.scheduler))
     
