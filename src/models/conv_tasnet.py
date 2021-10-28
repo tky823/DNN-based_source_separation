@@ -236,14 +236,14 @@ class ConvTasNet(nn.Module):
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sr][config]
-            download_dir = os.path.join(root, task, "sr{}".format(sr), config)
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
         elif task == 'librispeech':
             sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
             n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sr][n_sources]
-            download_dir = os.path.join(root, task, "sr{}/{}speakers".format(sr, n_sources))
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sr, n_sources))
         else:
             raise NotImplementedError("Not support task={}.".format(task))
 

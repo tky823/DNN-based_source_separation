@@ -235,7 +235,7 @@ class DPRNNTasNet(nn.Module):
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sr][n_sources]
-            download_dir = os.path.join(root, task, "sr{}/{}speakers".format(sr, n_sources))
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sr, n_sources))
         else:
             raise NotImplementedError("Not support task={}.".format(task))
         

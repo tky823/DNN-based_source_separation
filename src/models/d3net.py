@@ -346,7 +346,7 @@ class D3Net(nn.Module):
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sr][config]
-            download_dir = os.path.join(root, task, "sr{}".format(sr), config)
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
         else:
             raise NotImplementedError("Not support task={}.".format(task))
         
