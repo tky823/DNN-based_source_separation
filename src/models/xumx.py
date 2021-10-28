@@ -261,6 +261,38 @@ class CrossNetOpenUnmix(nn.Module):
         
         return model
     
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task in ['musdb18', 'musdb18hq']:
+            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            config = kwargs.get('config') or "paper"
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sr][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        return model
+    
     @property
     def num_parameters(self):
         _num_parameters = 0
