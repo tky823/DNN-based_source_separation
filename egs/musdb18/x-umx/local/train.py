@@ -12,6 +12,8 @@ from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.umx import CrossNetOpenUnmix
+from criterion.distance import SquaredError
+from criterion.sdr import NegWeightedSDR
 from adhoc_criterion import MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Training of CrossNet-Open-Unmix")
@@ -30,8 +32,9 @@ parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LS
 parser.add_argument('--dropout', type=float, default=0, help='dropout')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
-parser.add_argument('--criterion', type=str, default='mdl', choices=['mdl'], help='Criterion')
 parser.add_argument('--combination', type=int, default=1, help='Combination Loss.')
+parser.add_argument('--criterion_time', type=str, default='wsdr', choices=['wsdr'], help='Criterion in time domain')
+parser.add_argument('--criterion_frequency', type=str, default='se', choices=['se'], help='Criterion in time-frequency domain')
 parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
 parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -107,8 +110,19 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
+    if args.criterion_time == 'wsdr':
+        criterion_time = NegWeightedSDR(source_dim=1, reduction='sum')
+    else:
+        raise ValueError("Not support criterion {}".format(args.criterion_time))
+    
+    if args.criterion_frequency == 'se':
+        criterion_frequency = SquaredError(reduction='sum')
+    else:
+        raise ValueError("Not support criterion {}".format(args.criterion_time))
+    
     if args.criterion == 'mdl':
         criterion = MultiDomainLoss(
+            criterion_time, criterion_frequency,
             combination=args.combination,
             weight_time=args.weight_time, weight_frequency=args.weight_frequency,
             fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize

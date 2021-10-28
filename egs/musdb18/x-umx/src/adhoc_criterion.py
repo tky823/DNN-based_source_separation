@@ -9,11 +9,8 @@ from criterion.sdr import NegWeightedSDR
 EPS = 1e-12
 
 class MultiDomainLoss(nn.Module):
-    def  __init__(self, combination=True, weight_time=10, weight_frequency=1, fft_size=None, hop_size=None, window=None, normalize=False):
+    def  __init__(self, criterion_time, criterion_frequency, weight_time=10, weight_frequency=1, combination=True, fft_size=None, hop_size=None, window=None, normalize=False):
         super().__init__()
-
-        criterion_time = NegWeightedSDR(reduction='sum')
-        criterion_frequency = SquaredError(reduction='sum')
 
         if combination:
             self.criterion_time = CombinationLoss(criterion_time)
