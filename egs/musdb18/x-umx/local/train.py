@@ -12,7 +12,7 @@ from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
 from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocSchedulerTrainer
-from models.umx import CrossNetOpenUnmix
+from models.xumx import CrossNetOpenUnmix
 from criterion.distance import SquaredError
 from criterion.sdr import NegWeightedSDR
 from adhoc_criterion import MultiDomainLoss
