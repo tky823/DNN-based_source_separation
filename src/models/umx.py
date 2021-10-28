@@ -169,9 +169,7 @@ class OpenUnmix(nn.Module):
         x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
         x = x.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
         x = x.view(batch_size * n_frames, in_channels * max_bin)
-
         x = self.block(x) # (batch_size * n_frames, hidden_channels)
-
         x = x.view(batch_size, n_frames, hidden_channels)
         x_rnn, _ = self.rnn(x) # (batch_size, n_frames, out_channels)
         x = torch.cat([x, x_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)

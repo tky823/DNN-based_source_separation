@@ -106,21 +106,21 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
             x_sources.append(x_source)
         
-        x = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
+        x_sources_block = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
         x_sources = []
 
         for idx, source in enumerate(self.sources):
-            x_source = x[idx]
+            x_source = x_sources_block[idx]
             x_source_lstm, _ = self.backbone[source].rnn(x_source) # (batch_size, n_frames, out_channels)
             x_source = torch.cat([x_source, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
             x_sources.append(x_source)
         
-        x = torch.stack(x_sources, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
+        x_sources = torch.stack(x_sources, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
         output = []
 
-        for source in self.sources:
-            x_source = x[idx]
+        for idx, source in enumerate(self.sources):
+            x_source = x_sources[idx]
             x_source_full = self.backbone[source].net(x_source) # (batch_size * n_frames, n_bins)
             x_source_full = x_source_full.view(batch_size, n_frames, in_channels, n_bins)
             x_source_full = x_source_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
@@ -140,7 +140,7 @@ class CrossNetOpenUnmix(nn.Module):
 
         batch_size, _, _, n_frames = x_valid.size()
 
-        x_sum = []
+        x_sources = []
 
         for source in self.sources:
             x_source = (x_valid - self.backbone[source].bias_in.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
@@ -148,20 +148,21 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
-            x_sum.append(x_source)
+            x_sources.append(x_source)
         
-        x_sum = torch.stack(x_sum, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
-        x = x_sum.mean(dim=0) # (batch_size, n_frames, hidden_channels)
-        x_sum = []
+        x_sources_block = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
+        x_mean = x_sources_block.mean(dim=0) # (batch_size, n_frames, hidden_channels)
+        x_sources = []
 
-        for source in self.sources:
-            x_source_lstm, _ = self.backbone[source].rnn(x) # (batch_size, n_frames, out_channels)
-            x_source = torch.cat([x, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
+        for idx, source in enumerate(self.sources):
+            x_source = x_sources_block[idx]
+            x_source_lstm, _ = self.backbone[source].rnn(x_mean) # (batch_size, n_frames, out_channels)
+            x_source = torch.cat([x_source, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
-            x_sum.append(x_source)
+            x_sources.append(x_source)
         
-        x_sum = torch.stack(x_sum, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
-        x = x_sum.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
+        x_sources = torch.stack(x_sources, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
+        x = x_sources.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
         output = []
 
         for source in self.sources:
