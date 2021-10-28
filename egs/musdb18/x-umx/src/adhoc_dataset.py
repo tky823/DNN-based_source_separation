@@ -6,15 +6,11 @@ import torchaudio
 import torch.nn.functional as F
 
 from dataset import SpectrogramDataset
-from dataset import apply_random_flip, apply_random_scaling
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-THRESHOLD_POWER = 1e-5
-MINSCALE = 0.25
-MAXSCALE = 1.25
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     """
@@ -171,8 +167,9 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
             source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=self.patch_samples)
 
-            source = apply_random_flip(source, dim=0, **self.augmentation['random_flip'])
-            source = apply_random_scaling(source, **self.augmentation['random_scaling'])
+            # Apply augmentation
+            source = self.augmentation(source)
+            sources.append(source.unsqueeze(dim=0))
 
             sources.append(source.unsqueeze(dim=0))
         
@@ -195,7 +192,6 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             mixture = sources.sum(dim=0)
 
         return mixture, target
-
 
 class SpectrogramEvalDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
