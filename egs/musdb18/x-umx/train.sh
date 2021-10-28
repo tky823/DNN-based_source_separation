@@ -21,6 +21,7 @@ hidden_channels=512
 num_layers=3
 dropout=4e-1
 causal=0
+bridge=1
 
 # Augmentation
 augmentation_path="./config/paper/augmentation.yaml"
@@ -54,7 +55,7 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/comb${combination}/${criterion_time}${weight_time}-${criterion_frequency}${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
+    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/comb${combination}/${criterion_time}${weight_time}-${criterion_frequency}${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/bridge${bridge}/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
     if [ ${samples_per_epoch} -gt 0 ]; then
         save_dir="${save_dir}/b${batch_size}_e${epochs}-s${samples_per_epoch}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     else
@@ -110,6 +111,7 @@ train.py \
 --num_layers ${num_layers} \
 --dropout ${dropout} \
 --causal ${causal} \
+--bridge ${bridge} \
 --sources "${sources}" \
 --combination ${combination} \
 --criterion_time ${criterion_time} \

@@ -311,7 +311,7 @@ CrossNet-Open-Unmix
     See https://arxiv.org/abs/2010.04228
 """
 class CrossNetOpenUnmix(nn.Module):
-    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', sources=__sources__, eps=EPS):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', bridge=True, sources=__sources__, eps=EPS):
         """
         Args:
             in_channels <int>: Input channels
@@ -327,6 +327,7 @@ class CrossNetOpenUnmix(nn.Module):
         super().__init__()
         
         net = {}
+        
         for source in sources:
             net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, rnn_type=rnn_type, eps=eps)
 
@@ -341,6 +342,7 @@ class CrossNetOpenUnmix(nn.Module):
         self.dropout = dropout
         self.causal = causal
         self.rnn_type = rnn_type
+        self.bridge = bridge
 
         self.sources = sources
 
@@ -354,11 +356,8 @@ class CrossNetOpenUnmix(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, in_channels, n_bins, n_frames)
         """
         n_bins, max_bin = self.n_bins, self.max_bin
-        in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
-        eps = self.eps
 
         input = input.squeeze(dim=1)
-        batch_size, _, _, n_frames = input.size()
 
         if max_bin == n_bins:
             x_valid = input
@@ -366,7 +365,21 @@ class CrossNetOpenUnmix(nn.Module):
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
 
-        x_sum = 0
+        if self.bridge:
+            output = self.forward_bridge(input, x_valid)
+        else:
+            output = self.forward_no_bridge(input, x_valid)
+        
+        return output
+
+    def forward_no_bridge(self, input, x_valid):
+        n_bins, max_bin = self.n_bins, self.max_bin
+        in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
+        eps = self.eps
+
+        batch_size, _, _, n_frames = x_valid.size()
+
+        x_sources = []
 
         for source in self.sources:
             x_source = (x_valid - self.backbone[source].bias_in.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
@@ -374,20 +387,64 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
-            x_sum = x_sum + x_source
+            x_sources.append(x_source)
         
-        x = x_sum / len(self.sources)
+        x = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
+        x_sources = []
 
-        x_sum = 0
+        for idx, source in enumerate(self.sources):
+            x_source = x[idx]
+            x_source_lstm, _ = self.backbone[source].rnn(x_source) # (batch_size, n_frames, out_channels)
+            x_source = torch.cat([x_source, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
+            x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
+            x_sources.append(x_source)
+        
+        x = torch.stack(x_sources, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
+        output = []
+
+        for source in self.sources:
+            x_source = x[idx]
+            x_source_full = self.backbone[source].net(x_source) # (batch_size * n_frames, n_bins)
+            x_source_full = x_source_full.view(batch_size, n_frames, in_channels, n_bins)
+            x_source_full = x_source_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
+            x_source_full = self.backbone[source].scale_out.unsqueeze(dim=1) * x_source_full + self.backbone[source].bias_out.unsqueeze(dim=1)
+            x_source_full = self.backbone[source].relu2d(x_source_full)
+            x_source = x_source_full * input
+            output.append(x_source)
+        
+        output = torch.stack(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
+
+        return output
+    
+    def forward_bridge(self, input, x_valid):
+        n_bins, max_bin = self.n_bins, self.max_bin
+        in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
+        eps = self.eps
+
+        batch_size, _, _, n_frames = x_valid.size()
+
+        x_sum = []
+
+        for source in self.sources:
+            x_source = (x_valid - self.backbone[source].bias_in.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+            x_source = x_source.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
+            x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
+            x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
+            x_source = x_source.view(batch_size, n_frames, hidden_channels)
+            x_sum.append(x_source)
+        
+        x_sum = torch.stack(x_sum, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
+        x = x_sum.mean(dim=0) # (batch_size, n_frames, hidden_channels)
+        x_sum = []
 
         for source in self.sources:
             x_source_lstm, _ = self.backbone[source].rnn(x) # (batch_size, n_frames, out_channels)
             x_source = torch.cat([x, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
-            x_sum = x_sum + x_source
-        x = x_sum / len(self.sources)
-
-        x_sum = 0
+            x_sum.append(x_source)
+        
+        x_sum = torch.stack(x_sum, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
+        x = x_sum.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
         output = []
 
         for source in self.sources:
@@ -397,9 +454,9 @@ class CrossNetOpenUnmix(nn.Module):
             x_source_full = self.backbone[source].scale_out.unsqueeze(dim=1) * x_source_full + self.backbone[source].bias_out.unsqueeze(dim=1)
             x_source_full = self.backbone[source].relu2d(x_source_full)
             x_source = x_source_full * input
-            output.append(x_source.unsqueeze(dim=1))
+            output.append(x_source)
         
-        output = torch.cat(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
+        output = torch.stack(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
 
         return output
     
@@ -413,6 +470,7 @@ class CrossNetOpenUnmix(nn.Module):
             'dropout': self.dropout,
             'causal': self.causal,
             'rnn_type': self.rnn_type,
+            'bridge': self.bridge,
             'sources': self.sources,
             'eps': self.eps
         }
@@ -432,6 +490,7 @@ class CrossNetOpenUnmix(nn.Module):
         dropout = config['dropout']
         causal = config['causal']
         rnn_type = config['rnn_type']
+        bridge = config['bridge']
 
         sources = config['sources']
 
@@ -446,6 +505,7 @@ class CrossNetOpenUnmix(nn.Module):
             causal=causal,
             sources=sources,
             rnn_type=rnn_type,
+            bridge=bridge,
             eps=eps
         )
         
@@ -462,6 +522,7 @@ class CrossNetOpenUnmix(nn.Module):
         dropout = config['dropout']
         causal = config['causal']
         rnn_type = config['rnn_type']
+        bridge = config['bridge']
 
         sources = config['sources']
 
@@ -475,6 +536,7 @@ class CrossNetOpenUnmix(nn.Module):
             dropout=dropout,
             causal=causal,
             rnn_type=rnn_type,
+            bridge=bridge,
             sources=sources,
             eps=eps
         )

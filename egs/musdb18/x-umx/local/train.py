@@ -32,6 +32,7 @@ parser.add_argument('--hidden_channels', type=int, default=512, help='# of hidde
 parser.add_argument('--num_layers', type=int, default=3, help='# of layers in LSTM')
 parser.add_argument('--dropout', type=float, default=0, help='dropout')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
+parser.add_argument('--bridge', type=int, default=1, help='Bridging network.')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--combination', type=int, default=1, help='Combination Loss.')
 parser.add_argument('--criterion_time', type=str, default='wsdr', choices=['wsdr'], help='Criterion in time domain')
@@ -90,7 +91,14 @@ def main(args):
     
     in_channels = 2
     args.n_bins = args.fft_size // 2 + 1
-    model = CrossNetOpenUnmix(in_channels, hidden_channels=args.hidden_channels, num_layers=args.num_layers, n_bins=args.n_bins, max_bin=args.max_bin, dropout=args.dropout, causal=args.causal, sources=args.sources)
+    model = CrossNetOpenUnmix(
+        in_channels, hidden_channels=args.hidden_channels, num_layers=args.num_layers,
+        n_bins=args.n_bins, max_bin=args.max_bin,
+        dropout=args.dropout,
+        causal=args.causal,
+        bridge=args.bridge,
+        sources=args.sources
+    )
 
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
