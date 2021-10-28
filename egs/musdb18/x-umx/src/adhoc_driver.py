@@ -65,10 +65,7 @@ class AdhocTrainer(TrainerBase):
             
             self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
             self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
-            
             self.best_loss = config['best_loss']
-            self.prev_loss = torch.mean(self.valid_loss[self.start_epoch - 1], dim=0)
-            self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
                 self.model.module.load_state_dict(config['state_dict'])
@@ -89,8 +86,6 @@ class AdhocTrainer(TrainerBase):
             self.start_epoch = 0
             
             self.best_loss = float('infinity')
-            self.prev_loss = float('infinity')
-            self.no_improvement = 0
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -126,11 +121,8 @@ class AdhocTrainer(TrainerBase):
             
             if mean_valid_loss < self.best_loss:
                 self.best_loss = mean_valid_loss
-                self.no_improvement = 0
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
-            
-            self.prev_loss = mean_valid_loss
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
@@ -291,8 +283,6 @@ class AdhocTrainer(TrainerBase):
         config['scheduler_dict'] = self.scheduler.state_dict()
         
         config['best_loss'] = self.best_loss
-        config['no_improvement'] = self.no_improvement
-        
         config['train_loss'] = self.train_loss
         config['valid_loss'] = self.valid_loss
         
