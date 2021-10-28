@@ -6,13 +6,20 @@ from utils.utils_filterbank import choose_filterbank
 from utils.utils_tasnet import choose_layer_norm
 from models.tdcn import TimeDilatedConvNet
 
+SAMPLE_RATE_MUSDB18 = 44100
+SAMPLE_RATE_LIBRISPEECH = 16000
 __pretrained_model_ids__ = {
     "musdb18": {
-        "4sec_L20": "1a-IQn3hsN84N2X_WF84uXbwe7VAk_vaB",
-        "8sec_L64": "1r_mJ3-LN8OYDa2xO8nFKpdaKN1pF0GTP"
+        SAMPLE_RATE_MUSDB18: {
+            "4sec_L20": "1A6dIofHZJQCUkyq-vxZ6KbPmEHLcf4WK",
+            "8sec_L20": "1C4uv2z0w1s4rudIMaErLyEccNprJQWSZ",
+            "8sec_L64": "1paXNGgH8m0kiJTQnn1WH-jEIurCKXwtw"
+        }
     },
     "librispeech": {
-        "2speakers": "1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo",
+        SAMPLE_RATE_LIBRISPEECH: {
+            2: "1NI6Q_WZHiTKkgkNTEcZE1yHskHgYUHpy"
+        }
     }
 }
 
@@ -224,16 +231,22 @@ class ConvTasNet(nn.Module):
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
         if task == 'musdb18':
+            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or '4sec_L20'
             model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sr][config]
+            download_dir = os.path.join(root, task, "sr{}".format(sr), config)
         elif task == 'librispeech':
-            config = kwargs.get('config') or '2speakers'
+            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
+            n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sr][n_sources]
+            download_dir = os.path.join(root, task, "sr{}/{}speakers".format(sr, n_sources))
         else:
             raise NotImplementedError("Not support task={}.".format(task))
 
-        model_id = pretrained_model_ids_task[config]
-        download_dir = os.path.join(root, task, config)
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
         if not os.path.exists(model_path):

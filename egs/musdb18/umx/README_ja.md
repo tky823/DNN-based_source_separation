@@ -61,6 +61,9 @@ cd <REPOSITORY_ROOT>/egs/musdb18/umx/
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | UMX | 5.02 | 6.06 | 4.00 | 6.14 | 12.18 | 5.30 | 検証ロスが最小となるエポックで学習を止めた場合 |
 | UMX | 5.00 | 6.15 | 4.04 | 5.75 | 12.35 | 5.23 | 学習後 |
+| UMX-HQ | - | - | - | - | - | - | 検証ロスが最小となるエポックで学習を止めた場合 |
+| UMX-HQ | - | - | - | - | - | - | 学習後 |
 | UMX | 5.23 | 5.73 | 4.02 | 6.32 | - | 5.33 | 公式実装 |
+| UMX-HQ | - | - | - | - | - | - | 公式実装 |
 
 - 学習済みモデルを使って分離を試すことができます．`egs/tutorials/umx/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_music_ja.ipynb)にとんでください．

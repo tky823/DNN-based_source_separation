@@ -1,19 +1,20 @@
 import torch
 import torch.nn as nn
 
+from utils.utils_model import choose_rnn
 from utils.utils_tasnet import choose_layer_norm
 
 EPS=1e-12
 
 class DPRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, norm=True, causal=False, eps=EPS):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, norm=True, causal=False, rnn_type='lstm', eps=EPS):
         super().__init__()
         
         # Network confguration
         net = []
         
         for _ in range(num_blocks):
-            net.append(DPRNNBlock(num_features, hidden_channels, norm=norm, causal=causal, eps=eps))
+            net.append(DPRNNBlock(num_features, hidden_channels, norm=norm, causal=causal, rnn_type=rnn_type, eps=eps))
         
         self.net = nn.Sequential(*net)
 
@@ -29,11 +30,11 @@ class DPRNN(nn.Module):
         return output
 
 class DPRNNBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, causal, norm=True, rnn_type='lstm', eps=EPS):
         super().__init__()
         
-        self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels, norm=norm, eps=eps)
-        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, norm=norm, causal=causal, eps=eps)
+        self.intra_chunk_block = IntraChunkRNN(num_features, hidden_channels, norm=norm, rnn_type=rnn_type, eps=eps)
+        self.inter_chunk_block = InterChunkRNN(num_features, hidden_channels, norm=norm, causal=causal, rnn_type=rnn_type, eps=eps)
         
     def forward(self, input):
         """
@@ -48,14 +49,18 @@ class DPRNNBlock(nn.Module):
         return output
 
 class IntraChunkRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, norm=True, rnn_type='lstm', eps=EPS):
         super().__init__()
         
         self.num_features, self.hidden_channels = num_features, hidden_channels
         num_directions = 2 # bi-direction
         self.norm = norm
         
-        self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=True)
+        if rnn_type == 'lstm':
+            self.rnn = choose_rnn(rnn_type, input_size=num_features, hidden_size=hidden_channels, batch_first=True, bidirectional=True)
+        else:
+            raise NotImplementedError("Not support {}.".format(rnn_type))
+        
         self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
         if self.norm:
@@ -69,7 +74,7 @@ class IntraChunkRNN(nn.Module):
         Returns:
             output (batch_size, num_features, S, chunk_size)
         """
-        num_features, hidden_channels = self.num_features, self.hidden_channels
+        num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
 
         self.rnn.flatten_parameters()
@@ -77,7 +82,7 @@ class IntraChunkRNN(nn.Module):
         residual = input # (batch_size, num_features, S, chunk_size)
         x = input.permute(0, 2, 3, 1).contiguous() # -> (batch_size, S, chunk_size, num_features)
         x = x.view(batch_size*S, chunk_size, num_features)
-        x, (_, _) = self.rnn(x) # (batch_size*S, chunk_size, num_features) -> (batch_size*S, chunk_size, num_directions*hidden_channels)
+        x, _ = self.rnn(x) # (batch_size*S, chunk_size, num_features) -> (batch_size*S, chunk_size, num_directions*hidden_channels)
         x = self.fc(x) # -> (batch_size*S, chunk_size, num_features)
         x = x.view(batch_size, S*chunk_size, num_features) # (batch_size, S*chunk_size, num_features)
         x = x.permute(0, 2, 1).contiguous() # -> (batch_size, num_features, S*chunk_size)
@@ -89,18 +94,24 @@ class IntraChunkRNN(nn.Module):
         return output
 
 class InterChunkRNN(nn.Module):
-    def __init__(self, num_features, hidden_channels, causal, norm=True, eps=EPS):
+    def __init__(self, num_features, hidden_channels, causal, norm=True, rnn_type='lstm', eps=EPS):
         super().__init__()
         
         self.num_features, self.hidden_channels = num_features, hidden_channels
         self.norm = norm
+
+        if not rnn_type == 'lstm':
+            self.rnn = choose_rnn(rnn_type, input_size=num_features, hidden_size=hidden_channels, batch_first=True, bidirectional=True)
+        else:
+            # Ensures LSTM
+            raise NotImplementedError("Not support {}.".format(rnn_type))
         
         if causal: # uni-direction
             num_directions = 1
-            self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=False)
+            self.rnn = choose_rnn(rnn_type, input_size=num_features, hidden_size=hidden_channels, batch_first=True, bidirectional=False)
         else: # bi-direction
             num_directions = 2
-            self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=True, bidirectional=True)
+            self.rnn = choose_rnn(rnn_type, input_size=num_features, hidden_size=hidden_channels, batch_first=True, bidirectional=True)
         
         self.fc = nn.Linear(num_directions*hidden_channels, num_features)
 
@@ -123,7 +134,7 @@ class InterChunkRNN(nn.Module):
         residual = input # (batch_size, num_features, S, chunk_size)
         x = input.permute(0, 3, 2, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (batch_size, chunk_size, S, num_features)
         x = x.view(batch_size*chunk_size, S, num_features) # -> (batch_size*chunk_size, S, num_features)
-        x, (_, _) = self.rnn(x) # -> (batch_size*chunk_size, S, num_directions*hidden_channels)
+        x, _ = self.rnn(x) # -> (batch_size*chunk_size, S, num_directions*hidden_channels)
         x = self.fc(x) # -> (batch_size*chunk_size, S, num_features)
         x = x.view(batch_size, chunk_size*S, num_features) # -> (batch_size, chunk_size*S, num_features)
         x = x.permute(0, 2, 1).contiguous() # -> (batch_size, num_features, chunk_size*S)

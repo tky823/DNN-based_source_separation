@@ -7,6 +7,7 @@ I trained UMX and share the outputs. The networks are all trained by default set
 ## Results
 - SDR [dB] (median of median SDR of each song computed by `museval`)
 - Dataset: MUSDB18HQ (training, test)
+
 | Model | Bass | Drums | Other | Vocals | Accompaniment | Average | Note |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | UMX | 4.92 | 5.89 | 3.82 | 5.77 | 12.18 | 5.09 | Epoch is chosen by validation loss. |

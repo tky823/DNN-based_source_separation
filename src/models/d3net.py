@@ -16,10 +16,13 @@ See https://arxiv.org/abs/2010.01733
 
 FULL = 'full'
 EPS = 1e-12
+SAMPLE_RATE_MUSDB18 = 44100
 __pretrained_model_ids__ = {
     "musdb18": {
-        "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
-        "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
+            "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
+        }
     }
 }
 
@@ -338,13 +341,15 @@ class D3Net(nn.Module):
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
         if task == 'musdb18':
+            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "nnabla"
             model_choice = kwargs.get('model_choice') or 'best'
-            model_id = pretrained_model_ids_task[config]
+
+            model_id = pretrained_model_ids_task[sr][config]
+            download_dir = os.path.join(root, task, "sr{}".format(sr), config)
         else:
             raise NotImplementedError("Not support task={}.".format(task))
         
-        download_dir = os.path.join(root, task, config)
         model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
 
         if not os.path.exists(model_path):
