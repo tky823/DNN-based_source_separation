@@ -100,7 +100,7 @@ class InterChunkRNN(nn.Module):
         self.num_features, self.hidden_channels = num_features, hidden_channels
         self.norm = norm
 
-        if not rnn_type == 'lstm':
+        if rnn_type == 'lstm':
             self.rnn = choose_rnn(rnn_type, input_size=num_features, hidden_size=hidden_channels, batch_first=True, bidirectional=True)
         else:
             # Ensures LSTM
