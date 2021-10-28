@@ -11,7 +11,6 @@ __sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-THRESHOLD_POWER = 1e-5
 
 class SpectrogramTrainDataset(SpectrogramDataset):
     """
@@ -66,6 +65,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             if overlap is None:
                 overlap = patch_samples // 2
+            
             self.samples_per_epoch = None
 
             for trackID, name in enumerate(names):
@@ -84,6 +84,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
+                
                 self.tracks.append(track)
 
                 for start in range(0, track_samples, patch_samples - overlap):
