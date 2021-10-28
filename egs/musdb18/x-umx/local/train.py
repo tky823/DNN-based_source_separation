@@ -11,7 +11,7 @@ from utils.utils import set_seed
 from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
 from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
-from adhoc_driver import AdhocTrainer
+from adhoc_driver import AdhocSchedulerTrainer
 from models.umx import CrossNetOpenUnmix
 from criterion.distance import SquaredError
 from criterion.sdr import NegWeightedSDR
@@ -143,7 +143,7 @@ def main(args):
         fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
     )
     
-    trainer = AdhocTrainer(model, loader, criterion, optimizer, scheduler, args)
+    trainer = AdhocSchedulerTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()
 
 if __name__ == '__main__':

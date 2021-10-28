@@ -14,7 +14,7 @@ from driver import TrainerBase, TesterBase
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-class AdhocTrainer(TrainerBase):
+class AdhocSchedulerTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, scheduler, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
