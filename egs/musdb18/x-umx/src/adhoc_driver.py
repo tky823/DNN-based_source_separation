@@ -151,7 +151,7 @@ class AdhocTrainer(TrainerBase):
             sources_amplitude = torch.abs(sources)
 
             estimated_sources_amplitude = self.model(mixture_amplitude)
-
+            
             loss = self.criterion(estimated_sources_amplitude, sources_amplitude) # (n_sources,)
             loss_mean = loss.mean(dim=0)
 

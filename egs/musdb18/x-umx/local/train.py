@@ -116,19 +116,16 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
     if args.criterion_frequency == 'se':
-        criterion_frequency = SquaredError(reduction='sum')
+        criterion_frequency = SquaredError(reduction='sum', reduction_dim=(2, 3, 4)) # (batch_size, n_sources, in_channels, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
-    if args.criterion == 'mdl':
-        criterion = MultiDomainLoss(
-            criterion_time, criterion_frequency,
-            combination=args.combination,
-            weight_time=args.weight_time, weight_frequency=args.weight_frequency,
-            fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
-        )
-    else:
-        raise ValueError("Not support criterion {}".format(args.criterion))
+    criterion = MultiDomainLoss(
+        criterion_time, criterion_frequency,
+        combination=args.combination,
+        weight_time=args.weight_time, weight_frequency=args.weight_frequency,
+        fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
+    )
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
