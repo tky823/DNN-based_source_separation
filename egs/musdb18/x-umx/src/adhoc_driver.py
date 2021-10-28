@@ -202,7 +202,7 @@ class AdhocTrainer(TrainerBase):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, source, name) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, name) in enumerate(self.valid_loader):
                 """
                     mixture: (batch_size, 1, n_mics, n_bins, n_frames)
                     sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
@@ -210,13 +210,12 @@ class AdhocTrainer(TrainerBase):
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
-                    source = source.cuda()
+                    sources = sources.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
-                sources_amplitude = torch.abs(source)
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude)
-                loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
+                loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=False)
                 loss = loss.mean(dim=0) # () if combination loss, else (n_sources,)
                 valid_loss += loss.detach()
 
