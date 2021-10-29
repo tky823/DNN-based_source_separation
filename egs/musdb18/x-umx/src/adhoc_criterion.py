@@ -121,17 +121,13 @@ class CombinationLoss(nn.Module):
                 loss_pair = self.criterion(_input, _target, batch_mean=batch_mean)
                 loss.append(loss_pair)
 
-        if batch_mean:
-            dim = 0
-        else:
-            dim = 1
-        
+        dim = 0 if batch_mean else 1
         loss = torch.stack(loss, dim=dim)
 
         if reduction == 'mean':
-            loss = loss.mean(dim=1)
+            loss = loss.mean(dim=dim)
         elif reduction == 'sum':
-            loss = loss.sum(dim=1)
+            loss = loss.sum(dim=dim)
         
         return loss
 
