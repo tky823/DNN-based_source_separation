@@ -45,6 +45,8 @@ class MultiDomainLoss(nn.Module):
             raise ValueError("target should be complex.")
         
         batch_size, n_sources, n_mics, n_bins, n_frames = target.size()
+        
+        window = window.to(target.device)
 
         target_amplitude = torch.abs(target)
         target = target.view(batch_size * n_sources * n_mics, n_bins, n_frames)
