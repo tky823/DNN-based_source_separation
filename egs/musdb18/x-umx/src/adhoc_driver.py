@@ -168,7 +168,7 @@ class AdhocSchedulerTrainer(TrainerBase):
             if self.combination:
                 train_loss += mean_loss.item()
             else:
-                train_loss += mean_loss.detach()
+                train_loss += loss.detach()
 
             if (idx + 1) % 100 == 0:
                 s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
