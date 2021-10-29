@@ -12,7 +12,7 @@ class ResidualBlock2d(nn.Module):
         self.kernel_size = kernel_size
 
         self.bottleneck_conv2d_in = nn.Conv2d(in_channels, bottleneck_channels, kernel_size=1, bias=False)
-        self.bottleneck_norm2d_in = nn.BatchNorm2d(bottleneck_channels)
+        self.bottleneck_norm2d_in = nn.BatchNorm2d(bottleneck_channels, eps=eps)
         self.bottleneck_nonlinear2d_in = choose_nonlinear(nonlinear)
 
         self.conv2d = nn.Conv2d(bottleneck_channels, bottleneck_channels, kernel_size=kernel_size, stride=(1,1), bias=False)

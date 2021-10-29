@@ -17,9 +17,9 @@ class HRNet(nn.Module):
         else:
             assert len(num_stacks) == len(hidden_channels), "Inavalid length of num_stacks."
 
-        self.conv2d_in = StackedResidualBlock2d(in_channels, hidden_channels[0], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=in_num_stacks)
+        self.conv2d_in = StackedResidualBlock2d(in_channels, hidden_channels[0], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=in_num_stacks, eps=eps)
         self.backbone = HRNetBackbone(hidden_channels, bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks, eps=eps)
-        self.conv2d_out = StackedResidualBlock2d(sum(hidden_channels), in_channels, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=out_num_stacks)
+        self.conv2d_out = StackedResidualBlock2d(sum(hidden_channels), in_channels, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=out_num_stacks, eps=eps)
         self.mask_nonlinear2d = choose_nonlinear(mask_nonlinear)
 
         self.in_channels, self.hidden_channels, self.bottleneck_channels = hidden_channels, bottleneck_channels, bottleneck_channels
@@ -159,9 +159,9 @@ class HRNetBackbone(nn.Module):
 
         for idx in range(num_stages):
             if idx == num_stages - 1:
-                block = StackedParallelResidualBlock2d(hidden_channels[:idx + 1], 0, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks[idx])
+                block = StackedParallelResidualBlock2d(hidden_channels[:idx + 1], 0, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks[idx], eps=eps)
             else:
-                block = StackedParallelResidualBlock2d(hidden_channels[:idx + 1], hidden_channels[idx + 1], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks[idx])
+                block = StackedParallelResidualBlock2d(hidden_channels[:idx + 1], hidden_channels[idx + 1], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks[idx], eps=eps)
             
             net.append(block)
         
@@ -180,7 +180,7 @@ class HRNetBackbone(nn.Module):
         return output
 
 class StackedParallelResidualBlock2d(nn.Module):
-    def __init__(self, in_channels, additional_channels, bottleneck_channels, kernel_size=(3,3), scale=(2,2), upsample='bilinear', downsample='conv', nonlinear='relu', num_stacks=1):
+    def __init__(self, in_channels, additional_channels, bottleneck_channels, kernel_size=(3,3), scale=(2,2), upsample='bilinear', downsample='conv', nonlinear='relu', num_stacks=1, eps=EPS):
         super().__init__()
 
         self.num_stacks = num_stacks
@@ -191,14 +191,14 @@ class StackedParallelResidualBlock2d(nn.Module):
         for idx in range(num_stacks):
             blocks = []
             for _in_channels in in_channels:
-                block = ResidualBlock2d(_in_channels, _in_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear)
+                block = ResidualBlock2d(_in_channels, _in_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, eps=eps)
                 blocks.append(block)
             blocks = nn.ModuleList(blocks)
             residual_block2d.append(blocks)
         
         self.residual_block2d = nn.ModuleList(residual_block2d)
         
-        self.mix_block2d = MixBlock2d(in_channels, additional_channels, scale=scale, upsample=upsample, downsample=downsample)
+        self.mix_block2d = MixBlock2d(in_channels, additional_channels, scale=scale, upsample=upsample, downsample=downsample, eps=eps)
     
     def forward(self, input):
         x_in = input
@@ -216,7 +216,7 @@ class StackedParallelResidualBlock2d(nn.Module):
         return output
 
 class StackedResidualBlock2d(nn.Module):
-    def __init__(self, in_channels, out_channels, bottleneck_channels, kernel_size=(3,3), nonlinear='relu', num_stacks=1):
+    def __init__(self, in_channels, out_channels, bottleneck_channels, kernel_size=(3,3), nonlinear='relu', num_stacks=1, eps=EPS):
         super().__init__()
 
         self.num_stacks = num_stacks
@@ -224,9 +224,9 @@ class StackedResidualBlock2d(nn.Module):
 
         for idx in range(num_stacks):
             if idx == 0:
-                block = ResidualBlock2d(in_channels, out_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear)
+                block = ResidualBlock2d(in_channels, out_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, eps=eps)
             else:
-                block = ResidualBlock2d(out_channels, out_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear)
+                block = ResidualBlock2d(out_channels, out_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, eps=eps)
             net.append(block)
         
         self.net = nn.ModuleList(net)
@@ -242,7 +242,7 @@ class StackedResidualBlock2d(nn.Module):
         return output
 
 class MixBlock2d(nn.Module):
-    def __init__(self, in_channels, additional_channels, scale=(2,2), upsample='bilinear', downsample='conv'):
+    def __init__(self, in_channels, additional_channels, scale=(2,2), upsample='bilinear', downsample='conv', eps=EPS):
         super().__init__()
 
         max_level_in = len(in_channels) - 1
@@ -267,9 +267,9 @@ class MixBlock2d(nn.Module):
                 _scale = (sH, sW)
 
                 if idx_in < idx_out:
-                    block = DownsampleBlock2d(_in_channels, _out_channels, scale=_scale, mode=downsample)
+                    block = DownsampleBlock2d(_in_channels, _out_channels, scale=_scale, mode=downsample, eps=eps)
                 elif idx_in > idx_out:
-                    block = UpsampleBlock2d(_in_channels, _out_channels, scale=_scale, mode=upsample)
+                    block = UpsampleBlock2d(_in_channels, _out_channels, scale=_scale, mode=upsample, eps=eps)
                 else:
                     block = nn.Identity()
                 
