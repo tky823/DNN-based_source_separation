@@ -1,4 +1,5 @@
 import yaml
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -394,7 +395,7 @@ class UpsampleBlock2d(nn.Module):
     def forward(self, input):
         x = self.pointwise_conv2d(input)
         x = self.norm2d(x)
-        output = F.interpolate(x, scale_factor=self.scale, mode=self.mode)
+        output = F.interpolate(x, scale_factor=self.scale, mode=self.mode, align_corners=False)
 
         return output
 
@@ -533,8 +534,6 @@ def _test_hrnet_from_config():
     print(output.size())
 
 if __name__ == '__main__':
-    import torch
-
     torch.manual_seed(111)
     
     print("="*10, "MixBlock2d", "="*10)
