@@ -298,7 +298,7 @@ class MixBlock2d(nn.Module):
                     padding_bottom, padding_right = Ph - padding_top, Pw - padding_left
                     x = F.pad(x, (-padding_left, -padding_right, -padding_top, padding_bottom))
 
-                    print(x_level_out.size(), x.size())
+                    print(x_level_out.size(), x.size(), -padding_left, -padding_right, -padding_top, padding_bottom)
                 
                 x_level_out = x_level_out + x
             
