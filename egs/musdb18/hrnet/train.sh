@@ -20,7 +20,7 @@ hop_size=1024
 config_path="./config/paper/${target}.yaml"
 
 # Augmentation
-augmentation_path="./config/paper/augmentation.yaml"
+augmentation_path="./config/augmentation.yaml"
 
 # Criterion
 criterion='mse'
