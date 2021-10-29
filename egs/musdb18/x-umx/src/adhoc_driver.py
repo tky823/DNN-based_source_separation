@@ -174,13 +174,18 @@ class AdhocSchedulerTrainer(TrainerBase):
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
+                batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
+
                 mixture_amplitude = torch.abs(mixture)
                 
-                estimated_sources_amplitude = self.model(mixture_amplitude)
-                print(estimated_sources_amplitude.size(), sources.size())
+                mixture_amplitude = mixture_amplitude.view(batch_size, n_mics, n_bins, n_frames)
+                sources = sources.view(batch_size * n_sources, n_mics, n_bins, n_frames)
+
+                estimated_sources_amplitude = self.model(mixture_amplitude) # (batch_size * n_sources, n_mics, n_bins, n_frames)
+
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=False)
-                print(loss.size())
-                loss = loss.mean(dim=0)
+                loss = loss.view(batch_size, n_sources)
+                loss = loss.mean()
                 valid_loss += loss.item()
 
                 batch_size, n_sources, n_mics, n_bins, n_frames = estimated_sources_amplitude.size()
