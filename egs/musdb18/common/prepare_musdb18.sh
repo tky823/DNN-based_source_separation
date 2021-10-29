@@ -13,13 +13,16 @@ if [ ${is_hq} -eq 0 ]; then
     if [ ${is_7s} -eq 0 ]; then
         file="musdb18.zip"
         url="https://zenodo.org/record/1117372/files/${file}"
+        if [ -z "${musdb18_root}" ]; then
+            musdb18_root="../../../dataset/MUSDB18-7s"
+        fi
     else
         file="MUSDB18-7-STEMS.zip"
         url="https://zenodo.org/api/files/1ff52183-071a-4a59-923f-7a31c4762d43/${file}"
-    fi
-    
-    if [ -z "${musdb18_root}" ]; then
-        musdb18_root="../../../dataset/MUSDB18"
+        
+        if [ -z "${musdb18_root}" ]; then
+            musdb18_root="../../../dataset/MUSDB18"
+        fi
     fi
     
     if [ -e "${musdb18_root}/train/A Classic Education - NightOwl.stem.mp4" ]; then
