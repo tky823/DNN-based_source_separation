@@ -63,8 +63,6 @@ class MultiDomainLoss(nn.Module):
         loss_time = self.criterion_time(input_time, target_time, batch_mean=batch_mean)
         loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
 
-        print(loss_frequency)
-
         if batch_mean:
             loss_time = loss_time.mean(dim=0)
             loss_frequency = loss_frequency.mean(dim=0)
