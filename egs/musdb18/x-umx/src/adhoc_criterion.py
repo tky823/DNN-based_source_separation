@@ -3,6 +3,8 @@ import itertools
 import torch
 import torch.nn as nn
 
+from criterion.combination import CombinationLoss
+
 EPS = 1e-12
 
 class MultiDomainLoss(nn.Module):
@@ -81,56 +83,6 @@ class MultiDomainLoss(nn.Module):
 
         return loss
 
-class CombinationLoss(nn.Module):
-    """
-    Combination Loss for Multi Sources
-    """
-    def __init__(self, criterion, source_dim=1, min_pair=1, max_pair=None):
-        super().__init__()
-
-        self.criterion = criterion
-
-        self.source_dim = source_dim
-        self.min_pair, self.max_pair = min_pair, max_pair
-
-    def forward(self, input, target, reduction='mean', batch_mean=True):
-        assert target.size() == input.size(), "input.size() are expected same."
-
-        source_dim = self.source_dim
-        min_pair, max_pair = self.min_pair, self.max_pair
-
-        n_sources = input.size(source_dim)
-
-        if max_pair is None:
-            max_pair = n_sources - 1
-        
-        input = torch.unbind(input, dim=source_dim)
-        target = torch.unbind(target, dim=source_dim)
-
-        loss = []
-
-        for _n_sources in range(min_pair, max_pair + 1):
-            for pair_indices in itertools.combinations(range(n_sources), _n_sources):
-                _input, _target = [], []
-                for idx in pair_indices:
-                    _input.append(input[idx])
-                    _target.append(target[idx])
-                _input, _target = torch.stack(_input, dim=0), torch.stack(_target, dim=0)
-                _input, _target = _input.sum(dim=0), _target.sum(dim=0)
-
-                loss_pair = self.criterion(_input, _target, batch_mean=batch_mean)
-                loss.append(loss_pair)
-
-        dim = 0 if batch_mean else 1
-        loss = torch.stack(loss, dim=dim)
-
-        if reduction == 'mean':
-            loss = loss.mean(dim=dim)
-        elif reduction == 'sum':
-            loss = loss.sum(dim=dim)
-        
-        return loss
-
 def _test_mdl():
     from utils.utils_audio import build_window
 
@@ -159,28 +111,8 @@ def _test_mdl():
 
     print(loss)
 
-def _test_cl():
-    batch_size = 3
-    n_sources = 4
-    in_channels, T = 2, 32
-
-    input = torch.randn(batch_size, n_sources, in_channels, T)
-    target = torch.randn(batch_size, n_sources, in_channels, T)
-
-    criterion = NegWeightedSDR()
-    combination_criterion = CombinationLoss(criterion, min_pair=1, max_pair=n_sources-1)
-
-    loss = combination_criterion(input, target, batch_mean=False)
-    print(loss)
-
 if __name__ == '__main__':
-    from criterion.sdr import NegWeightedSDR
-
     torch.manual_seed(111)
-
-    print("="*10, "Combination Loss", "="*10)
-    _test_cl()
-    print()
 
     print("="*10, "Multi-Domain Loss", "="*10)
     _test_mdl()
