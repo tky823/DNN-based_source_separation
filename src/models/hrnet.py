@@ -1,4 +1,4 @@
-
+import yaml
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -8,7 +8,7 @@ from models.resnet import ResidualBlock2d
 EPS = 1e-12
 
 class HRNet(nn.Module):
-    def __init__(self, in_channels, hidden_channels, bottleneck_channels, kernel_size=(3,3), scale=(2,2), upsample='bilinear', downsample='conv', nonlinear='relu', mask_nonlinear='relu', num_stacks=1, eps=EPS):
+    def __init__(self, in_channels, hidden_channels, bottleneck_channels, kernel_size=(3,3), scale=(2,2), upsample='bilinear', downsample='conv', nonlinear='relu', mask_nonlinear='relu', num_stacks=1, in_num_stacks=2, out_num_stacks=2, eps=EPS):
         super().__init__()
 
         if type(num_stacks) is int:
@@ -16,9 +16,9 @@ class HRNet(nn.Module):
         else:
             assert len(num_stacks) == len(hidden_channels), "Inavalid length of num_stacks."
 
-        self.conv2d_in = StackedResidualBlock2d(in_channels, hidden_channels[0], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=1)
+        self.conv2d_in = StackedResidualBlock2d(in_channels, hidden_channels[0], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=in_num_stacks)
         self.backbone = HRNetBackbone(hidden_channels, bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks, eps=eps)
-        self.conv2d_out = StackedResidualBlock2d(sum(hidden_channels), in_channels, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=1)
+        self.conv2d_out = StackedResidualBlock2d(sum(hidden_channels), in_channels, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=out_num_stacks)
         self.mask_nonlinear2d = choose_nonlinear(mask_nonlinear)
 
         self.in_channels, self.hidden_channels, self.bottleneck_channels = hidden_channels, bottleneck_channels, bottleneck_channels
@@ -27,6 +27,7 @@ class HRNet(nn.Module):
         self.upsample, self.downsample = upsample, downsample
         self.nonlinear, self.mask_nonlinear = nonlinear, mask_nonlinear
         self.num_stacks = num_stacks
+        self.in_num_stacks, self.out_num_stacks = in_num_stacks, out_num_stacks
 
         self.eps = eps
 
@@ -52,6 +53,7 @@ class HRNet(nn.Module):
         upsample, downsample = self.upsample, self.downsample
         nonlinear, mask_nonlinear = self.nonlinear, self.mask_nonlinear
         num_stacks = self.num_stacks
+        in_num_stacks, out_num_stacks = self.in_num_stacks, self.out_num_stacks
 
         eps = self.eps
 
@@ -63,6 +65,7 @@ class HRNet(nn.Module):
             'upsample': upsample, 'downsample': downsample,
             'nonlinear': nonlinear, 'mask_nonlinear': mask_nonlinear,
             'num_stacks': num_stacks,
+            'in_num_stacks': in_num_stacks, 'out_num_stacks': out_num_stacks,
             'eps': eps
         }
 
@@ -79,6 +82,7 @@ class HRNet(nn.Module):
         upsample, downsample = config['upsample'], config['downsample']
         nonlinear, mask_nonlinear = config['nonlinear'], config['mask_nonlinear']
         num_stacks = config['num_stacks']
+        in_num_stacks, out_num_stacks = config['in_num_stacks'], config['out_num_stacks']
 
         eps = config['eps']
         
@@ -90,12 +94,43 @@ class HRNet(nn.Module):
             upsample=upsample, downsample=downsample,
             nonlinear=nonlinear, mask_nonlinear=mask_nonlinear,
             num_stacks=num_stacks,
+            in_num_stacks=in_num_stacks, out_num_stacks=out_num_stacks,
             eps=eps
         )
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+    
+    @classmethod
+    def build_from_config(cls, config_path):
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        in_channels = config['in_channels']
+        hidden_channels, bottleneck_channels = config['hidden_channels'], config['bottleneck_channels']
+        kernel_size = config['kernel_size']
+        scale = config['scale']
+        upsample, downsample = config['upsample'], config['downsample']
+        nonlinear, mask_nonlinear = config['nonlinear'], config['mask_nonlinear']
+        num_stacks = config['num_stacks']
+        in_num_stacks, out_num_stacks = config['in_num_stacks'], config['out_num_stacks']
+
+        eps = config.get('eps') or EPS
+
+        model = cls(
+            in_channels,
+            hidden_channels=hidden_channels, bottleneck_channels=bottleneck_channels,
+            kernel_size=kernel_size,
+            scale=scale,
+            upsample=upsample, downsample=downsample,
+            nonlinear=nonlinear, mask_nonlinear=mask_nonlinear,
+            num_stacks=num_stacks,
+            in_num_stacks=in_num_stacks, out_num_stacks=out_num_stacks,
+            eps=eps
+        )
+
         return model
 
     @property
@@ -484,6 +519,19 @@ def _test_hrnet_paper():
 
     print(output.size())
 
+def _test_hrnet_from_config():
+    batch_size = 6
+    H, W = 64, 129
+    in_channels = 2
+
+    input = torch.randn(batch_size, in_channels, H, W)
+    input = torch.abs(input)
+
+    model = HRNet.build_from_config("./data/hrnet/baseline.yaml")
+    output = model(input)
+
+    print(output.size())
+
 if __name__ == '__main__':
     import torch
 
@@ -508,3 +556,6 @@ if __name__ == '__main__':
     print("="*10, "HRNet (paper)", "="*10)
     _test_hrnet_paper()
     print()
+
+    print("="*10, "HRNet (from config)", "="*10)
+    _test_hrnet_from_config()
