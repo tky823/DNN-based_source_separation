@@ -153,6 +153,7 @@ class AdhocSchedulerTrainer(TrainerBase):
             estimated_sources_amplitude = self.model(mixture_amplitude)
             
             loss = self.criterion(estimated_sources_amplitude, sources)
+            print("1", loss.size())
 
             if self.combination:
                 mean_loss = loss
