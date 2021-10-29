@@ -177,6 +177,7 @@ class AdhocSchedulerTrainer(TrainerBase):
                 mixture_amplitude = torch.abs(mixture)
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude)
+                print(estimated_sources_amplitude.size(), sources.size())
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=False)
                 print(loss.size())
                 loss = loss.mean(dim=0)
