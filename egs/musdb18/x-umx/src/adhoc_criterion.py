@@ -3,9 +3,6 @@ import itertools
 import torch
 import torch.nn as nn
 
-from criterion.distance import SquaredError
-from criterion.sdr import NegWeightedSDR
-
 EPS = 1e-12
 
 class MultiDomainLoss(nn.Module):
@@ -65,6 +62,8 @@ class MultiDomainLoss(nn.Module):
 
         loss_time = self.criterion_time(input_time, target_time, batch_mean=batch_mean)
         loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
+
+        print(loss_frequency)
 
         if batch_mean:
             loss_time = loss_time.mean(dim=0)
@@ -167,6 +166,8 @@ def _test_cl():
     print(loss)
 
 if __name__ == '__main__':
+    from criterion.sdr import NegWeightedSDR
+
     torch.manual_seed(111)
 
     print("="*10, "Combination Loss", "="*10)
