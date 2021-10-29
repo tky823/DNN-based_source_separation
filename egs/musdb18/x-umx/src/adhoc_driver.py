@@ -175,6 +175,8 @@ class AdhocSchedulerTrainer(TrainerBase):
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
+            self.optimizer.step()
+            
             if self.combination:
                 train_loss += mean_loss.item()
             else:
