@@ -302,11 +302,12 @@ class WeightedSDR(nn.Module):
         return True
 
 class NegWeightedSDR(nn.Module):
-    def __init__(self, source_dim=1, reduction='mean', eps=EPS):
+    def __init__(self, source_dim=1, reduction='mean', reduction_dim=None, eps=EPS):
         super().__init__()
 
         self.source_dim = source_dim
         self.reduction = reduction
+        self.reduction_dim = reduction_dim
 
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
@@ -321,23 +322,19 @@ class NegWeightedSDR(nn.Module):
         Returns:
             loss <torch.Tensor>: (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics) if batch_mean=False
         """
-        n_dims = target.dim()
-
-        assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dims)
-
         loss = - weighted_sdr(input, target, source_dim=self.source_dim, eps=self.eps)
 
         if self.reduction:
-            if n_dims == 3:
-                if self.reduction == 'mean':
-                    loss = loss.mean(dim=1)
-                elif self.reduction == 'sum':
-                    loss = loss.sum(dim=1)
-            elif n_dims == 4:
-                if self.reduction == 'mean':
-                    loss = loss.mean(dim=(1, 2))
-                elif self.reduction == 'sum':
-                    loss = loss.sum(dim=(1, 2))
+            if self.reduction_dim:
+                reduction_dim = self.reduction_dim
+            else:
+                n_dims = loss.dim()
+                reduction_dim = tuple(range(1, n_dims))
+            
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=reduction_dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=reduction_dim)
 
         if batch_mean:
             loss = loss.mean(dim=0)
