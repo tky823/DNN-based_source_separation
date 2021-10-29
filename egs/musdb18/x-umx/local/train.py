@@ -135,7 +135,10 @@ def main(args):
     
     # Criterion
     if args.criterion_time == 'wsdr':
-        criterion_time = NegWeightedSDR(source_dim=1, reduction='mean') # (batch_size, n_sources, in_channels, T)
+        if args.combination:
+            criterion_time = NegWeightedSDR(source_dim=1, reduction='mean') # (batch_size, n_sources, in_channels, T)
+        else:
+            criterion_time = NegWeightedSDR(source_dim=1, reduction='mean', reduction_dim=(2,3)) # (batch_size, n_sources, in_channels, T)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
