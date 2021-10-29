@@ -15,7 +15,7 @@ __pretrained_model_ids__ = {
     },
     "musdb18hq": {
         SAMPLE_RATE_MUSDB18: {
-            "paper": "1N2pZBRL5R7tIEEryPY3iCWTVgw27dXEx"
+            "paper": "18pj2ubYnZPSQWPpHaREAcbmrNzEihNHO"
         }
     }
 }

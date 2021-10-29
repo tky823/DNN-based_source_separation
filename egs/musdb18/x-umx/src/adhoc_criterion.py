@@ -108,8 +108,7 @@ class CombinationLoss(nn.Module):
         input = torch.unbind(input, dim=source_dim)
         target = torch.unbind(target, dim=source_dim)
 
-        loss = 0
-        total_pairs = 0
+        loss = []
 
         for _n_sources in range(min_pair, max_pair + 1):
             for pair_indices in itertools.combinations(range(n_sources), _n_sources):
@@ -120,11 +119,15 @@ class CombinationLoss(nn.Module):
                 _input, _target = torch.stack(_input, dim=0), torch.stack(_target, dim=0)
                 _input, _target = _input.sum(dim=0), _target.sum(dim=0)
 
-                loss = loss + self.criterion(_input, _target, batch_mean=batch_mean)
-                total_pairs += 1
+                loss_pair = self.criterion(_input, _target, batch_mean=batch_mean)
+                loss.append(loss_pair)
+
+        loss = torch.stack(loss, dim=0)
 
         if combination_mean:
-            loss = loss / total_pairs
+            loss = loss.mean(dim=0)
+        else:
+            loss = loss.sum(dim=0)
         
         return loss
 

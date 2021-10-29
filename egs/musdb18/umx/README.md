@@ -61,8 +61,8 @@ cd <REPOSITORY_ROOT>/egs/musdb18/umx/
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | UMX | 5.02 | 6.06 | 4.00 | 6.14 | 12.18 | 5.30 | Epoch is chosen by validation loss. |
 | UMX | 5.00 | 6.15 | 4.04 | 5.75 | 12.35 | 5.23 | After training. |
-| UMX-HQ | - | - | - | - | - | - | Epoch is chosen by validation loss. |
-| UMX-HQ | - | - | - | - | - | - | After training. |
+| UMX-HQ | 4.85 | 5.94 | 4.01 | 6.08 | 12.05 | 5.22 | Epoch is chosen by validation loss. |
+| UMX-HQ | 4.90 | 6.12 | 3.99 | 5.92 | 12.19 | 5.23 | After training. |
 | UMX | 5.23 | 5.73 | 4.02 | 6.32 | - | 5.33 | Official report. |
 | UMX-HQ | - | - | - | - | - | - | Official report. |
 
