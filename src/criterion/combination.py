@@ -9,27 +9,27 @@ class CombinationLoss(nn.Module):
     """
     Combination Loss for Multi Sources
     """
-    def __init__(self, criterion, source_dim=1, min_pair=1, max_pair=None):
+    def __init__(self, criterion, combination_dim=1, min_pair=1, max_pair=None):
         super().__init__()
 
         self.criterion = criterion
 
-        self.source_dim = source_dim
+        self.combination_dim = combination_dim
         self.min_pair, self.max_pair = min_pair, max_pair
 
     def forward(self, input, target, reduction='mean', batch_mean=True):
         assert target.size() == input.size(), "input.size() are expected same."
 
-        source_dim = self.source_dim
+        combination_dim = self.combination_dim
         min_pair, max_pair = self.min_pair, self.max_pair
 
-        n_sources = input.size(source_dim)
+        n_sources = input.size(combination_dim)
 
         if max_pair is None:
             max_pair = n_sources - 1
         
-        input = torch.unbind(input, dim=source_dim)
-        target = torch.unbind(target, dim=source_dim)
+        input = torch.unbind(input, dim=combination_dim)
+        target = torch.unbind(target, dim=combination_dim)
 
         loss = []
 

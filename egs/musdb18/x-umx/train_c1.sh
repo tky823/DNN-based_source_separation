@@ -54,6 +54,11 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
+if [ ${combination} -ne 0 ]; then
+    echo "comination must be 0."
+    exit 1
+fi
+
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/comb${combination}/${criterion_time}${weight_time}-${criterion_frequency}${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/bridge${bridge}/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
     if [ ${samples_per_epoch} -gt 0 ]; then

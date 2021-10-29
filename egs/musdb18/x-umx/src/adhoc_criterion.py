@@ -8,12 +8,14 @@ from criterion.combination import CombinationLoss
 EPS = 1e-12
 
 class MultiDomainLoss(nn.Module):
-    def  __init__(self, criterion_time, criterion_frequency, weight_time=10, weight_frequency=1, combination=True, fft_size=None, hop_size=None, window=None, normalize=False):
+    def  __init__(self, criterion_time, criterion_frequency, weight_time=10, weight_frequency=1, combination=True, fft_size=None, hop_size=None, window=None, normalize=False, **kwargs):
         super().__init__()
 
         if combination:
-            self.criterion_time = CombinationLoss(criterion_time)
-            self.criterion_frequency = CombinationLoss(criterion_frequency)
+            source_dim = kwargs['source_dim']
+            min_pair, max_pair = kwargs['min_pair'], kwargs['max_pair']
+            self.criterion_time = CombinationLoss(criterion_time, combination_dim=source_dim, min_pair=min_pair, max_pair=max_pair)
+            self.criterion_frequency = CombinationLoss(criterion_frequency, combination_dim=source_dim, min_pair=min_pair, max_pair=max_pair)
         else:
             self.criterion_time = criterion_time
             self.criterion_frequency = criterion_frequency

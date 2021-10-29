@@ -39,6 +39,8 @@ parser.add_argument('--criterion_time', type=str, default='wsdr', choices=['wsdr
 parser.add_argument('--criterion_frequency', type=str, default='mse', choices=['mse'], help='Criterion in time-frequency domain')
 parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
 parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')
+parser.add_argument('--min_pair', type=int, default=1, help='Minimum pair for combination loss')
+parser.add_argument('--max_pair', type=int, default=None, help='Maximum pair for combination loss. If you set None, max_pair is regarded as len(sources) - 1.')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -150,12 +152,21 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
-    criterion = MultiDomainLoss(
-        criterion_time, criterion_frequency,
-        combination=args.combination,
-        weight_time=args.weight_time, weight_frequency=args.weight_frequency,
-        fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
-    )
+    if args.combination:
+        criterion = MultiDomainLoss(
+            criterion_time, criterion_frequency,
+            combination=True,
+            weight_time=args.weight_time, weight_frequency=args.weight_frequency,
+            fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize,
+            source_dim=1, min_pair=args.min_pair, max_pair=args.max_pair # for combination loss
+        )
+    else:
+        criterion = MultiDomainLoss(
+            criterion_time, criterion_frequency,
+            combination=False,
+            weight_time=args.weight_time, weight_frequency=args.weight_frequency,
+            fft_size=args.fft_size, hop_size=args.hop_size, window=train_dataset.window, normalize=train_dataset.normalize
+        )
     
     trainer = AdhocSchedulerTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()
