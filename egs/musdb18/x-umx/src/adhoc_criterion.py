@@ -69,8 +69,6 @@ class MultiDomainLoss(nn.Module):
             print("time", input_time.size(), target_time.size(), end='->')
             loss_time = self.criterion_time(input_time, target_time, batch_mean=batch_mean)
             print(loss_time.size(), flush=True)
-            if batch_mean:
-                loss_time = loss_time.mean(dim=0)
 
         if weight_frequency == 0:
             loss_frequency = 0
@@ -78,8 +76,6 @@ class MultiDomainLoss(nn.Module):
             print("frequency", input_amplitude.size(), target_amplitude.size(), end='->')
             loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
             print(loss_frequency.size(), flush=True)
-            if batch_mean:
-                loss_frequency = loss_frequency.mean(dim=0)
 
         if per_domain:
             raise NotImplementedError("Not support return_separately=True.")
