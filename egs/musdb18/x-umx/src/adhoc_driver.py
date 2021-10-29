@@ -48,12 +48,8 @@ class AdhocSchedulerTrainer(TrainerBase):
         
         self.combination = args.combination
 
-        if self.combination:
-            self.train_loss = torch.empty(self.epochs)
-            self.valid_loss = torch.empty(self.epochs)
-        else:
-            self.train_loss = torch.empty(self.epochs, len(self.sources))
-            self.valid_loss = torch.empty(self.epochs, len(self.sources))
+        self.train_loss = torch.empty(self.epochs)
+        self.valid_loss = torch.empty(self.epochs)
         
         self.use_cuda = args.use_cuda
         self.use_norbert = args.use_norbert
@@ -94,46 +90,27 @@ class AdhocSchedulerTrainer(TrainerBase):
             end = time.time()
             
             s = "[Epoch {}/{}] loss (train):".format(epoch + 1, self.epochs)
-
-            if self.combination:
-                s += " {:.5f}".format(train_loss)
-            else:
-                for target, loss in zip(self.sources, train_loss):
-                    s += " ({}) {:.5f}".format(target, loss.item())
+            s += " {:.5f}".format(train_loss)
             s += ", loss (valid):"
-            if self.combination:
-                s += " {:.5f}".format(valid_loss)
-            else:
-                for target, loss in zip(self.sources, valid_loss):
-                    s += " ({}) {:.5f}".format(target, loss.item())
+            s += " {:.5f}".format(valid_loss)
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
+
+            self.scheduler.step(valid_loss)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
-
-            if self.combination:
-                mean_valid_loss = valid_loss
-            else:
-                mean_valid_loss = valid_loss.mean(dim=0).item()
             
-            self.scheduler.step(mean_valid_loss)
-            
-            if mean_valid_loss < self.best_loss:
-                self.best_loss = mean_valid_loss
+            if valid_loss < self.best_loss:
+                self.best_loss = valid_loss
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
             
-            if self.combination:
-                save_path = os.path.join(self.loss_dir, "loss.png")
-                draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
-            else:
-                for source_idx, target in enumerate(self.sources):
-                    save_path = os.path.join(self.loss_dir, "{}.png".format(target))
-                    draw_loss_curve(train_loss=self.train_loss[:epoch + 1, source_idx], valid_loss=self.valid_loss[:epoch + 1, source_idx], save_path=save_path)
+            save_path = os.path.join(self.loss_dir, "loss.png")
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
         
     def run_one_epoch_train(self, epoch):
         # Override
@@ -158,32 +135,19 @@ class AdhocSchedulerTrainer(TrainerBase):
 
             estimated_sources_amplitude = self.model(mixture_amplitude)
             
-            loss = self.criterion(estimated_sources_amplitude, sources) # () if combination loss, else (n_sources,)
-
-            if self.combination:
-                loss_mean = loss
-            else:
-                loss_mean = loss.mean(dim=0)
+            loss = self.criterion(estimated_sources_amplitude, sources)
 
             self.optimizer.zero_grad()
-            loss_mean.backward()
+            loss.backward()
             
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
-            if self.combination:
-                train_loss += loss.item() # ()
-            else:
-                train_loss += loss.detach() # (n_sources,)
+            train_loss += loss.item()
 
             if (idx + 1) % 100 == 0:
                 s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
-
-                if self.combination:
-                    s += " {:.5f}".format(loss.item())
-                else:
-                    for target, loss_target in zip(self.sources, loss):
-                        s += " ({}) {:.5f}".format(target, loss_target.item())
+                s += " {:.5f}".format(loss.item())
                 
                 print(s, flush=True)
         
@@ -216,12 +180,8 @@ class AdhocSchedulerTrainer(TrainerBase):
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude)
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=False)
-                loss = loss.mean(dim=0) # () if combination loss, else (n_sources,)
-
-                if self.combination:
-                    valid_loss += loss.item()
-                else:
-                    valid_loss += loss.detach()
+                loss = loss.mean(dim=0)
+                valid_loss += loss.item()
 
                 batch_size, n_sources, n_mics, n_bins, n_frames = estimated_sources_amplitude.size()
 
