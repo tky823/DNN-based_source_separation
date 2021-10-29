@@ -84,6 +84,10 @@ subsets=( "train" "validation" "test" )
 
 for subset in "${subsets[@]}" ; do
     if [ ! -e "${musdb18_root}/${subset}.txt" ]; then
-        cp "../../../dataset/MUSDB18/${subset}.txt" "${musdb18_root}"
+        if [ ${is_7s} -eq 0 ]; then
+            cp "../../../dataset/MUSDB18/${subset}.txt" "${musdb18_root}"
+        else
+            cp "../../../dataset/MUSDB18-7s/${subset}.txt" "${musdb18_root}"
+        fi
     fi
 done
