@@ -1,0 +1,12 @@
+in_channels: 2
+hidden_channels: [16, 32, 64, 128]
+bottleneck_channels: 16
+kernel_size: [3, 3]
+scale: [2, 2]
+upsample: 'bilinear'
+downsample: 'conv'
+nonlinear: 'relu'
+mask_nonlinear: 'relu'
+num_stacks: [1, 1, 4, 3]
+in_num_stacks: 2
+out_num_stacks: 2
