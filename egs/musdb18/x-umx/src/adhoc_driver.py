@@ -231,6 +231,9 @@ class AdhocSchedulerTrainer(TrainerBase):
                 estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames)
 
                 if idx < 5:
+                    mixture = mixture.cpu()
+                    estimated_sources_amplitude = estimated_sources_amplitude.cpu()
+
                     estimated_sources = self.apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
                     
                     mixture_channels = mixture.size()[:-2]
