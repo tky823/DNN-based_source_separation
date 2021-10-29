@@ -40,8 +40,7 @@ class AdhocTrainer(TrainerBase):
         os.makedirs(self.loss_dir, exist_ok=True)
         os.makedirs(self.sample_dir, exist_ok=True)
         
-        self.epochs, self.anneal_epoch = args.epochs, args.anneal_epoch
-        self.anneal_lr = args.anneal_lr
+        self.epochs = args.epochs
         
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
@@ -91,14 +90,6 @@ class AdhocTrainer(TrainerBase):
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
-
-            if self.anneal_epoch is not None and epoch + 1 == self.anneal_epoch - 1:
-                # From the next epoch, learning rate is channged.
-                anneal_lr = self.anneal_lr
-                for param_group in self.optimizer.param_groups:
-                    prev_lr = param_group['lr']
-                    print("Learning rate: {} -> {}".format(prev_lr, anneal_lr))
-                    param_group['lr'] = anneal_lr
             
             if valid_loss < self.best_loss:
                 self.best_loss = valid_loss
