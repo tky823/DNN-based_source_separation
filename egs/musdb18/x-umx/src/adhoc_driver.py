@@ -46,8 +46,15 @@ class AdhocSchedulerTrainer(TrainerBase):
         
         self.epochs = args.epochs
 
-        self.train_loss = torch.empty(self.epochs)
-        self.valid_loss = torch.empty(self.epochs)
+        self.combination = args.combination
+
+        if self.combination:
+            self.train_loss = torch.empty(self.epochs)
+            self.valid_loss = torch.empty(self.epochs)
+        else:
+            n_sources = len(self.sources)
+            self.train_loss = torch.empty(self.epochs, n_sources)
+            self.valid_loss = torch.empty(self.epochs, n_sources)
         
         self.use_cuda = args.use_cuda
         self.use_norbert = args.use_norbert
@@ -88,9 +95,21 @@ class AdhocSchedulerTrainer(TrainerBase):
             end = time.time()
             
             s = "[Epoch {}/{}] loss (train):".format(epoch + 1, self.epochs)
-            s += " {:.5f}".format(train_loss)
+            if self.combination:
+                s += " {:.5f}".format(train_loss)
+            else:
+                for idx, target in enumerate(self.sources):
+                    loss_target = train_loss[idx]
+                    s += " ({}) {:.5f}".format(target, loss_target.item())
+
             s += ", loss (valid):"
-            s += " {:.5f}".format(valid_loss)
+            if self.combination:
+                s += " {:.5f}".format(valid_loss)
+            else:
+                for idx, target in enumerate(self.sources):
+                    loss_target = valid_loss[idx]
+                    s += " ({}) {:.5f}".format(target, loss_target.item())
+
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
@@ -135,17 +154,30 @@ class AdhocSchedulerTrainer(TrainerBase):
             
             loss = self.criterion(estimated_sources_amplitude, sources)
 
+            if self.combination:
+                mean_loss = loss
+            else:
+                mean_loss = loss.mean(dim=0)
+
             self.optimizer.zero_grad()
-            loss.backward()
+            mean_loss.backward()
             
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
-            train_loss += loss.item()
+            if self.combination:
+                train_loss += mean_loss.item()
+            else:
+                train_loss += mean_loss.detach()
 
             if (idx + 1) % 100 == 0:
                 s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
-                s += " {:.5f}".format(loss.item())
+                if self.combination:
+                    s += " {:.5f}".format(mean_loss.item())
+                else:
+                    for idx, target in enumerate(self.sources):
+                        loss_target = loss[idx]
+                        s += " ({}) {:.5f}".format(target, loss_target.item())
                 
                 print(s, flush=True)
         
@@ -173,20 +205,20 @@ class AdhocSchedulerTrainer(TrainerBase):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                
-                batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
 
                 mixture_amplitude = torch.abs(mixture)
 
                 estimated_sources_amplitude = self.model(mixture_amplitude) # (batch_size, n_sources, n_mics, n_bins, n_frames)
 
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=False)
-                
-                loss = loss.view(batch_size, n_sources)
-                loss = loss.mean()
-                valid_loss += loss.item()
 
-                estimated_sources_amplitude = estimated_sources_amplitude.view(batch_size, n_sources, n_mics, n_bins, n_frames)
+                if self.combination:
+                    valid_loss += loss.mean(dim=0).item()
+                else:
+                    valid_loss += loss.mean(dim=0).detach() # (n_sources,)
+
+                batch_size, n_sources, n_mics, n_bins, n_frames = estimated_sources_amplitude.size()
+
                 mixture = mixture.permute(1, 2, 3, 0, 4) # (1, n_mics, n_bins, batch_size, n_frames)
                 estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4) # (n_sources, n_mics, n_bins, batch_size, n_frames)
                 mixture = mixture.reshape(n_mics, n_bins, batch_size * n_frames)

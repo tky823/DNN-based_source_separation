@@ -140,7 +140,10 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
     if args.criterion_frequency == 'mse':
-        criterion_frequency = MeanSquaredError(dim=(1,2,3)) # (batch_size, in_channels, n_bins, n_frames) for combination loss, be careful.
+        if args.combination:
+            criterion_frequency = MeanSquaredError(dim=(2,3,4)) # (batch_size, n_sources, in_channels, n_bins, n_frames)
+        else:
+            criterion_frequency = MeanSquaredError(dim=(1,2,3)) # (batch_size, in_channels, n_bins, n_frames) for combination loss, be careful.
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
