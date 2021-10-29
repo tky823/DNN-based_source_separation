@@ -45,8 +45,6 @@ class AdhocSchedulerTrainer(TrainerBase):
         os.makedirs(self.sample_dir, exist_ok=True)
         
         self.epochs = args.epochs
-        
-        self.combination = args.combination
 
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
