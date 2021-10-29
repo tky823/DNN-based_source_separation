@@ -66,16 +66,12 @@ class MultiDomainLoss(nn.Module):
         if weight_time == 0:
             loss_time = 0
         else:
-            print("time", input_time.size(), target_time.size(), end='->')
             loss_time = self.criterion_time(input_time, target_time, batch_mean=batch_mean)
-            print(loss_time.size(), flush=True)
 
         if weight_frequency == 0:
             loss_frequency = 0
         else:
-            print("frequency", input_amplitude.size(), target_amplitude.size(), end='->')
             loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
-            print(loss_frequency.size(), flush=True)
 
         if per_domain:
             raise NotImplementedError("Not support return_separately=True.")
@@ -97,7 +93,7 @@ class CombinationLoss(nn.Module):
         self.source_dim = source_dim
         self.min_pair, self.max_pair = min_pair, max_pair
 
-    def forward(self, input, target, combination_mean=True, batch_mean=True):
+    def forward(self, input, target, reduction='mean', batch_mean=True):
         assert target.size() == input.size(), "input.size() are expected same."
 
         source_dim = self.source_dim
@@ -125,12 +121,12 @@ class CombinationLoss(nn.Module):
                 loss_pair = self.criterion(_input, _target, batch_mean=batch_mean)
                 loss.append(loss_pair)
 
-        loss = torch.stack(loss, dim=0)
+        loss = torch.stack(loss, dim=1)
 
-        if combination_mean:
-            loss = loss.mean(dim=0)
-        else:
-            loss = loss.sum(dim=0)
+        if reduction == 'mean':
+            loss = loss.mean(dim=1)
+        elif reduction == 'sum':
+            loss = loss.sum(dim=1)
         
         return loss
 
