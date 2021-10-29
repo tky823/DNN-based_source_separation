@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(description="Training of Open-Unmix")
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
 parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
-parser.add_argument('--duration', type=float, default=6, help='Duration')
+parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
@@ -49,10 +49,8 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_samples = int(args.duration * args.sr)
     max_samples = int(args.valid_duration * args.sr)
-    padding = 2 * (args.fft_size // 2)
-    patch_size = (patch_samples + padding - args.fft_size) // args.hop_size + 1
+    patch_samples = args.hop_size * (args.patch_size - 1) + args.fft_size - 2 * (args.fft_size // 2)
 
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
