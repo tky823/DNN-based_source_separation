@@ -60,12 +60,19 @@ class MultiDomainLoss(nn.Module):
         input_time = torch.istft(input, n_fft=fft_size, hop_length=hop_size, window=window, normalized=normalize, return_complex=False)
         input_time = input_time.view(batch_size, n_sources, n_mics, -1) # (batch_size, n_sources, n_mics, T)
 
-        loss_time = self.criterion_time(input_time, target_time, batch_mean=batch_mean)
-        loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
+        if weight_time == 0:
+            loss_time = 0
+        else:
+            loss_time = self.criterion_time(input_time, target_time, batch_mean=batch_mean)
+            if batch_mean:
+                loss_time = loss_time.mean(dim=0)
 
-        if batch_mean:
-            loss_time = loss_time.mean(dim=0)
-            loss_frequency = loss_frequency.mean(dim=0)
+        if weight_frequency == 0:
+            loss_frequency = 0
+        else:
+            loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
+            if batch_mean:
+                loss_frequency = loss_frequency.mean(dim=0)
 
         if per_domain:
             raise NotImplementedError("Not support return_separately=True.")
