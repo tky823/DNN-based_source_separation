@@ -113,6 +113,9 @@ class AdhocSchedulerTrainer(TrainerBase):
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
+            if not self.combination:
+                valid_loss = valid_loss.mean(dim=0).item()
+            
             self.scheduler.step(valid_loss)
             
             self.train_loss[epoch] = train_loss
@@ -153,7 +156,6 @@ class AdhocSchedulerTrainer(TrainerBase):
             estimated_sources_amplitude = self.model(mixture_amplitude)
             
             loss = self.criterion(estimated_sources_amplitude, sources)
-            print("1", loss.size())
 
             if self.combination:
                 mean_loss = loss
@@ -170,7 +172,6 @@ class AdhocSchedulerTrainer(TrainerBase):
                 train_loss += mean_loss.item()
             else:
                 train_loss += loss.detach()
-                print(loss.size(), train_loss.size())
 
             if (idx + 1) % 100 == 0:
                 s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
