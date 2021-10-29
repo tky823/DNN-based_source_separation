@@ -29,7 +29,7 @@ augmentation_path="./config/paper/augmentation.yaml"
 # Criterion
 combination=1
 criterion_time='wsdr' # time domain loss
-criterion_frequency='se' # time-frequency domain loss
+criterion_frequency='mse' # time-frequency domain loss
 weight_time=1e+0
 weight_frequency=1e+1
 

@@ -13,7 +13,7 @@ from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocSchedulerTrainer
 from models.xumx import CrossNetOpenUnmix
-from criterion.distance import SquaredError
+from criterion.distance import MeanSquaredError
 from criterion.sdr import NegWeightedSDR
 from adhoc_criterion import MultiDomainLoss
 
@@ -36,7 +36,7 @@ parser.add_argument('--bridge', type=int, default=1, help='Bridging network.')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--combination', type=int, default=1, help='Combination Loss.')
 parser.add_argument('--criterion_time', type=str, default='wsdr', choices=['wsdr'], help='Criterion in time domain')
-parser.add_argument('--criterion_frequency', type=str, default='se', choices=['se'], help='Criterion in time-frequency domain')
+parser.add_argument('--criterion_frequency', type=str, default='mse', choices=['mse'], help='Criterion in time-frequency domain')
 parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
 parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -135,12 +135,12 @@ def main(args):
     
     # Criterion
     if args.criterion_time == 'wsdr':
-        criterion_time = NegWeightedSDR(source_dim=1, reduction='sum')
+        criterion_time = NegWeightedSDR(source_dim=1, reduction='mean')
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
-    if args.criterion_frequency == 'se':
-        criterion_frequency = SquaredError(reduction='sum') # (batch_size, in_channels, n_bins, n_frames) for combination loss, be careful.
+    if args.criterion_frequency == 'mse':
+        criterion_frequency = MeanSquaredError(dim=(1,2,3)) # (batch_size, in_channels, n_bins, n_frames) for combination loss, be careful.
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_time))
     
