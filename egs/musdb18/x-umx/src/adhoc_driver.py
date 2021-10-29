@@ -188,8 +188,7 @@ class AdhocSchedulerTrainer(TrainerBase):
                 loss = loss.mean()
                 valid_loss += loss.item()
 
-                batch_size, n_sources, n_mics, n_bins, n_frames = estimated_sources_amplitude.size()
-
+                estimated_sources_amplitude = estimated_sources_amplitude.view(batch_size, n_sources, n_mics, n_bins, n_frames)
                 mixture = mixture.permute(1, 2, 3, 0, 4) # (1, n_mics, n_bins, batch_size, n_frames)
                 estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4) # (n_sources, n_mics, n_bins, batch_size, n_frames)
                 mixture = mixture.reshape(n_mics, n_bins, batch_size * n_frames)
