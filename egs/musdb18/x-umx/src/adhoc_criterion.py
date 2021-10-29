@@ -35,7 +35,7 @@ class MultiDomainLoss(nn.Module):
         """
         weight_time, weight_frequency = self.weight_time, self.weight_frequency
         fft_size, hop_size = self.fft_size, self.hop_size
-        window = self.window
+        window = self.window.to(target.device)
         normalize = self.normalize
         
         if torch.is_complex(input):
@@ -45,8 +45,6 @@ class MultiDomainLoss(nn.Module):
             raise ValueError("target should be complex.")
         
         batch_size, n_sources, n_mics, n_bins, n_frames = target.size()
-        
-        window = window.to(target.device)
 
         target_amplitude = torch.abs(target)
         target = target.view(batch_size * n_sources * n_mics, n_bins, n_frames)
