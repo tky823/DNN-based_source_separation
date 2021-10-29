@@ -60,6 +60,9 @@ class MultiDomainLoss(nn.Module):
         input_time = torch.istft(input, n_fft=fft_size, hop_length=hop_size, window=window, normalized=normalize, return_complex=False)
         input_time = input_time.view(batch_size, n_sources, n_mics, -1) # (batch_size, n_sources, n_mics, T)
 
+        if weight_time == 0 and weight_frequency == 0:
+            raise NotImplementedError("Specify weight.")
+
         if weight_time == 0:
             loss_time = 0
         else:
