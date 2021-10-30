@@ -9,8 +9,8 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
-from dataset import TrainDataLoader
-from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
+from dataset import AugmentationSpectrogramTrainDataset, TrainDataLoader
+from adhoc_dataset import SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.umx import OpenUnmix
 from criterion.distance import MeanSquaredError
@@ -68,7 +68,14 @@ def main(args):
     for name in config_augmentation['augmentation']:
         augmentation.append(choose_augmentation(name, **config_augmentation[name]))
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
+    train_dataset = AugmentationSpectrogramTrainDataset(
+        args.musdb18_root,
+        fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn,
+        sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch,
+        sources=args.sources, target=args.target,
+        include_valid=True,
+        augmentation=augmentation
+    )
     valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
