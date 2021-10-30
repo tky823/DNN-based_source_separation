@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import argparse
 
 import torch
@@ -10,7 +9,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from adhoc_dataset import SpectrogramTestDataset, TestDataLoader
 from adhoc_driver import AdhocTester
-from models.umx import CrossNetOpenUnmix
+from models.xumx import CrossNetOpenUnmix
 from criterion.distance import MeanSquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of CrossNet-Open-Unmix")
