@@ -404,11 +404,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
 
-        names = []
         with open(valid_txt_path, 'r') as f:
-            for line in f:
-                name = line.strip()
-                names.append(name)
+            names = [line.strip() for line in f]
 
         self.max_samples = max_samples
 
