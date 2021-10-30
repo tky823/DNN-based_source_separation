@@ -32,6 +32,8 @@ criterion_time='wsdr' # time domain loss
 criterion_frequency='mse' # time-frequency domain loss
 weight_time=0 # turn off time domain loss for C4
 weight_frequency=1e+0
+min_pair=0
+max_pair=0
 
 # Optimizer
 optimizer='adam'
@@ -60,7 +62,13 @@ if [ ${combination} -ne 0 ]; then
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec/comb${combination}/${criterion_time}${weight_time}-${criterion_frequency}${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/bridge${bridge}/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
+    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec"
+    if [ ${combination} -eq 1 ]; then
+        save_dir="${save_dir}/comb${combination}_${min_pair}-${max_pair}"
+    else
+        save_dir="${save_dir}/comb${combination}"
+    fi
+    save_dir="${save_dir}/${criterion_time}${weight_time}-${criterion_frequency}${weight_frequency}/stft${fft_size}-${hop_size}_${window_fn}-window/bridge${bridge}/H${hidden_channels}_N${num_layers}_dropout${dropout}_causal${causal}"
     if [ ${samples_per_epoch} -gt 0 ]; then
         save_dir="${save_dir}/b${batch_size}_e${epochs}-s${samples_per_epoch}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     else
@@ -123,6 +131,8 @@ train.py \
 --criterion_frequency ${criterion_frequency} \
 --weight_time ${weight_time} \
 --weight_frequency ${weight_frequency} \
+--min_pair ${min_pair} \
+--max_pair ${max_pair} \
 --optimizer ${optimizer} \
 --lr ${lr} \
 --weight_decay ${weight_decay} \
