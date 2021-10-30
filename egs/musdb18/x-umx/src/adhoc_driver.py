@@ -113,11 +113,8 @@ class AdhocSchedulerTrainer(TrainerBase):
 
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
-
-            if not self.combination:
-                valid_loss = valid_loss.mean(dim=0).item()
             
-            self.scheduler.step(valid_loss)
+            self.scheduler.step(valid_loss.mean(dim=0).item())
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
@@ -139,6 +136,9 @@ class AdhocSchedulerTrainer(TrainerBase):
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "loss.png")
                     draw_loss_curve(train_loss=self.train_loss[:epoch + 1, idx], valid_loss=self.valid_loss[:epoch + 1, idx], save_path=save_path)
+                
+                save_path = os.path.join(self.loss_dir, "loss.png")
+                draw_loss_curve(train_loss=self.train_loss[:epoch + 1].mean(dim=-1), valid_loss=self.valid_loss[:epoch + 1, idx].mean(dim=-1), save_path=save_path)
         
     def run_one_epoch_train(self, epoch):
         # Override
