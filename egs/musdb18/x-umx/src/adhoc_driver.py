@@ -109,6 +109,7 @@ class AdhocSchedulerTrainer(TrainerBase):
                 for idx, target in enumerate(self.sources):
                     loss_target = valid_loss[idx]
                     s += " ({}) {:.5f}".format(target, loss_target.item())
+                s += " (mean) {:.5f}".format(valid_loss.mean().item())
 
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
@@ -190,6 +191,7 @@ class AdhocSchedulerTrainer(TrainerBase):
                     for idx, target in enumerate(self.sources):
                         loss_target = loss[idx]
                         s += " ({}) {:.5f}".format(target, loss_target.item())
+                    s += " (mean) {:.5f}".format(mean_loss.item())
                 
                 print(s, flush=True)
         
