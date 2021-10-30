@@ -379,7 +379,6 @@ class AdhocTester(TesterBase):
                 batch_size, n_sources, n_mics, n_bins, n_frames = sources.size()
                 
                 mixture_amplitude = torch.abs(mixture)
-                sources_amplitude = torch.abs(sources)
                 
                 estimated_sources_amplitude = []
 
@@ -403,13 +402,6 @@ class AdhocTester(TesterBase):
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=True) # () or (n_sources,)
                 loss_improvement = loss_mixture - loss # () or (n_sources,)
 
-                if self.combination:
-                    mean_loss = loss.item()
-                    mean_loss_improvement = loss_improvement.item()
-                else:
-                    mean_loss = loss.mean(dim=0) # (n_sources,)
-                    mean_loss_improvement = loss_improvement.mean(dim=0) # (n_sources,)
-
                 mixture = mixture.squeeze(dim=0).cpu()
                 estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=0).cpu()
 
@@ -429,8 +421,8 @@ class AdhocTester(TesterBase):
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 
-                test_loss += mean_loss # () or (n_sources,)
-                test_loss_improvement += mean_loss_improvement # () or (n_sources,)
+                test_loss += loss # () or (n_sources,)
+                test_loss_improvement += loss_improvement # () or (n_sources,)
 
         test_loss /= n_test
         test_loss_improvement /= n_test
