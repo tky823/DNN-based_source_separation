@@ -13,7 +13,7 @@ NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_umx(model_path, file_paths, out_dirs):
+def separate_by_xumx(model_path, file_paths, out_dirs):
     use_cuda = torch.cuda.is_available()
 
     model = load_pretrained_xumx(model_path)
