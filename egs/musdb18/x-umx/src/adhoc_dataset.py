@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
+from dataset import assert_sample_rate
 from dataset import SpectrogramDataset
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
@@ -251,6 +252,3 @@ def test_collate_fn(batch):
     mixture, sources, samples, name = batch[0]
     
     return mixture, sources, samples, name
-
-def assert_sample_rate(sr):
-    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
