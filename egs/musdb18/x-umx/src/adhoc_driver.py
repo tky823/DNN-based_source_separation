@@ -125,7 +125,7 @@ class AdhocSchedulerTrainer(TrainerBase):
             self.valid_loss[epoch] = valid_loss
             
             if mean_valid_loss < self.best_loss:
-                self.best_loss = valid_loss
+                self.best_loss = mean_valid_loss
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
             
