@@ -142,9 +142,7 @@ def load_pretrained_umx(model_paths):
 
     for source in __sources__:
         model_path = model_paths[source]
-        modules[source] = OpenUnmix.build_model(model_path)
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)
-        modules[source].load_state_dict(package['state_dict'])
+        modules[source] = OpenUnmix.build_model(model_path, load_state_dict=True)
 
     model = ParallelOpenUnmix(modules)
     

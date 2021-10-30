@@ -131,11 +131,11 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
                 _estimated_paths[source] = path
             
             estimated_paths.append(_estimated_paths)
-            
+    
     return estimated_paths
 
 def load_pretrained_xumx(model_path):
-    model = CrossNetOpenUnmix.build_model(model_path)
+    model = CrossNetOpenUnmix.build_model(model_path, load_state_dict=True)
     
     return model
 
