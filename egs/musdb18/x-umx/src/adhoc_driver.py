@@ -332,6 +332,8 @@ class AdhocTester(TesterBase):
             self.json_dir = os.path.abspath(args.json_dir)
             os.makedirs(self.json_dir, exist_ok=True)
         
+        self.combination = args.combination
+
         self.use_estimate_all, self.use_evaluate_all = args.estimate_all, args.evaluate_all
         
         self.use_cuda = args.use_cuda
@@ -392,13 +394,20 @@ class AdhocTester(TesterBase):
                 estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4)
                 estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
 
-                mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, batch_size * n_frames)
-                mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, batch_size * n_frames)
-                sources_amplitude = sources_amplitude.permute(1, 2, 3, 0, 4).reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+                mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
+                mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
+                sources_amplitude = sources_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_sources, n_mics, n_bins, batch_size * n_frames) # (1, n_sources, n_mics, n_bins, batch_size * n_frames)
 
-                loss_mixture = self.criterion(mixture_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
-                loss = self.criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False) # (n_sources,)
-                loss_improvement = loss_mixture - loss # (n_sources,)
+                loss_mixture = self.criterion(mixture_amplitude, sources, batch_mean=True) # () or (n_sources,)
+                loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=True) # () or (n_sources,)
+                loss_improvement = loss_mixture - loss # () or (n_sources,)
+
+                if self.combination:
+                    mean_loss = loss.item()
+                    mean_loss_improvement = loss_improvement.item()
+                else:
+                    mean_loss = loss.mean(dim=0) # (n_sources,)
+                    mean_loss_improvement = loss_improvement.mean(dim=0) # (n_sources,)
 
                 mixture = mixture.cpu()
                 estimated_sources_amplitude = estimated_sources_amplitude.cpu()
@@ -419,19 +428,24 @@ class AdhocTester(TesterBase):
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 
-                test_loss += loss # (n_sources,)
-                test_loss_improvement += loss_improvement # (n_sources,)
+                test_loss += mean_loss # () or (n_sources,)
+                test_loss_improvement += mean_loss_improvement # () or (n_sources,)
 
         test_loss /= n_test
         test_loss_improvement /= n_test
         
         s = "Loss:"
-        for idx, target in enumerate(self.sources):
-            s += " ({}) {:.3f}".format(target, test_loss[idx].item())
-        
+        if self.combination:
+            s += " {:.3f}".format(test_loss)
+        else:
+            for idx, target in enumerate(self.sources):
+                s += " ({}) {:.3f}".format(target, test_loss[idx].item())
         s += ", loss improvement:"
-        for idx, target in enumerate(self.sources):
-            s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
+        if self.combination:
+            s += " {:.3f}".format(test_loss_improvement)
+        else:
+            for idx, target in enumerate(self.sources):
+                s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
 
         print(s, flush=True)
     
