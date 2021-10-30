@@ -396,7 +396,7 @@ class AdhocTester(TesterBase):
 
                 mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
                 mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
-                sources_amplitude = sources_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_sources, n_mics, n_bins, batch_size * n_frames) # (1, n_sources, n_mics, n_bins, batch_size * n_frames)
+                sources = sources.permute(1, 2, 3, 0, 4).reshape(1, n_sources, n_mics, n_bins, batch_size * n_frames) # (1, n_sources, n_mics, n_bins, batch_size * n_frames)
 
                 loss_mixture = self.criterion(mixture_amplitude, sources, batch_mean=True) # () or (n_sources,)
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=True) # () or (n_sources,)
