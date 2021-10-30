@@ -1,0 +1,278 @@
+import torch
+import torch.nn as nn
+
+from utils.utils_audio import build_window
+from utils.utils_model import choose_rnn
+from models.umx import TransformBlock1d
+
+
+__sources__ = ['bass', 'drums', 'other', 'vocals']
+SAMPLE_RATE_MUSDB18 = 44100
+EPS = 1e-12
+
+class MultiResolutionCrossNet(nn.Module):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, fft_sizes=None, hop_size=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', sources=__sources__, eps=EPS):
+        """
+        Args:
+            in_channels <int>: Input channels
+            hidden_channels <int>: Hidden channels in LSTM
+            num_layers <int>: # of LSTM layers
+            fft_sizes <list<int>>: FFT samples
+            hop_size <int>: Hop length
+            window_fn <str>
+            dropout <float>: Dropout rate in LSTM
+            causal <bool>: Causality
+            rnn_type <str>: 'lstm'
+            bridge <bool>: Bridging network.
+            sources <list<str>>: Target sources
+            eps <float>: Small value for numerical stability
+        """
+        super().__init__()
+
+        if dropout is None:
+            dropout = 0.4 if num_layers > 1 else 0
+
+        encoder_blocks, decoder_blocks = [], {}
+
+        for idx, fft_size in enumerate(fft_sizes):
+            block = EncoderBlock(in_channels, hidden_channels, num_layers=num_layers, dropout=dropout, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, causal=causal, rnn_type=rnn_type, eps=eps)
+            encoder_blocks.append(block)
+
+        for source in sources:
+            blocks = []
+            for idx, fft_size in enumerate(fft_sizes):
+                block = DecoderBlock(2 * hidden_channels, in_channels, hidden_channels, fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)
+                blocks.append(block)
+            decoder_blocks[source] = nn.ModuleList(blocks)
+        
+        self.encoder_blocks = nn.ModuleList(encoder_blocks)
+        self.decoder_blocks = nn.ModuleDict(decoder_blocks)
+
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.fft_sizes = fft_sizes
+
+        self.sources = sources
+
+        self.eps = eps
+    
+    def forward(self, input):
+        in_channels = self.in_channels
+        hidden_channels = self.hidden_channels
+
+        latent, x_ffts = [], []
+
+        for idx, fft_size in enumerate(self.fft_sizes):
+            n_bins = fft_size // 2 + 1
+            x_latent = self.encoder_blocks[idx].stft(input)
+            batch_size, _, _, n_frames = x_latent.size()
+            latent.append(x_latent)
+            x = torch.abs(x_latent)
+            x = x.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, in_channels, n_bins)
+            x = x.view(-1, in_channels * n_bins) # (batch_size * n_frames, in_channels * n_bins)
+            x = self.encoder_blocks[idx].block(x)
+            x = x.view(batch_size, n_frames, hidden_channels)
+            x_ffts.append(x)
+
+        x_fft_blocks = torch.stack(x_ffts, dim=0) # (len(fft_sizes), batch_size, n_frames, hidden_channels)
+        x_mean = x_fft_blocks.mean(dim=0) # (batch_size, n_frames, hidden_channels)
+
+        x_ffts = []
+        
+        for idx, fft_size in enumerate(self.fft_sizes):
+            x_fft = x_fft_blocks[idx]
+            x_rnn = self.encoder_blocks[idx].forward_rnn(x_mean) # (batch_size, n_frames, out_channels), where out_channels = hidden_channels
+            x = torch.cat([x_fft, x_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
+            x = x.view(batch_size * n_frames, 2 * hidden_channels)
+            x_ffts.append(x)
+
+        x_ffts = torch.stack(x_ffts, dim=0) # (len(fft_sizes), batch_size * n_frames, hidden_channels + out_channels)
+        x_ffts = x_ffts.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
+        output = []
+        
+        for source in self.sources:
+            x_source = []
+
+            for idx, fft_size in enumerate(self.fft_sizes):
+                n_bins = fft_size // 2 + 1
+                x_source_fft = self.decoder_blocks[source][idx].net(x_ffts) # (batch_size * n_frames, n_bins)
+                x_source_fft = x_source_fft.view(batch_size, n_frames, in_channels, n_bins)
+                x_source_fft = x_source_fft.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
+                x_source_fft = self.decoder_blocks[source][idx].transform_affine(x_source_fft)
+                mask = self.decoder_blocks[source][idx].relu2d(x_source_fft)
+                x_source_fft = mask * latent[idx]
+                x_source_fft = self.decoder_blocks[source][idx].istft(x_source_fft)
+                x_source.append(x_source_fft)
+            
+            x_source = torch.stack(x_source, dim=0)
+            x_source = x_source.sum(dim=0)
+            output.append(x_source)
+        
+        output = torch.stack(output, dim=1)
+
+        return output
+
+class EncoderBlock(nn.Module):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, fft_size=None, hop_size=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', eps=EPS):
+        super().__init__()
+
+        n_bins = fft_size // 2 + 1
+
+        self.stft = STFT(fft_size, hop_size=hop_size, window_fn=window_fn)
+        self.block = TransformBlock1d(in_channels * n_bins, hidden_channels, bias=False, nonlinear='tanh')
+
+        if causal:
+            bidirectional = False
+            rnn_hidden_channels = hidden_channels
+        else:
+            assert hidden_channels % 2 == 0, "hidden_channels is expected even number, but given {}.".format(hidden_channels)
+
+            bidirectional = True
+            rnn_hidden_channels = hidden_channels // 2
+
+        self.rnn = choose_rnn(rnn_type, input_size=hidden_channels, hidden_size=rnn_hidden_channels, num_layers=num_layers, bidirectional=bidirectional, batch_first=True, dropout=dropout)
+        
+        self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
+
+        self.eps = eps
+
+    def forward(self, input):
+        raise NotImplementedError
+    
+    def transform_affine(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, n_bins, n_frames)
+        Returns:
+            output: (batch_size, n_channels, n_bins, n_frames)
+        """
+        eps = self.eps
+
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, n_bins, n_frames)
+
+        return output
+    
+    def forward_rnn(self, input):
+        """
+        Args:
+            input: (batch_size, n_frames, in_channels)
+        Returns:
+            output: (batch_size, n_frames, out_channels)
+        """
+        self.rnn.flatten_parameters()
+
+        output, _ = self.rnn(input) # (batch_size, n_frames, out_channels)
+
+        return output
+
+class DecoderBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, hidden_channels, fft_size=None, hop_size=None, window_fn='hann', nonlinear='relu', eps=EPS):
+        super().__init__()
+
+        n_bins = fft_size // 2 + 1
+
+        net = []
+        net.append(TransformBlock1d(in_channels, hidden_channels, bias=False, nonlinear=nonlinear))
+        net.append(TransformBlock1d(hidden_channels, out_channels * n_bins, bias=False))
+
+        self.net = nn.Sequential(*net)
+        self.relu2d = nn.ReLU()
+        self.istft = iSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
+
+        self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
+    
+    def forward(self, input):
+        raise NotImplementedError
+
+    def transform_affine(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, n_bins, n_frames)
+        Returns:
+            output: (batch_size, n_channels, n_bins, n_frames)
+        """
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
+
+        return output
+
+class STFT(nn.Module):
+    def __init__(self, fft_size, hop_size=None, window_fn='hann'):
+        super().__init__()
+
+        self.fft_size, self.hop_size = fft_size, hop_size
+
+        if hop_size == fft_size:
+            window = torch.ones(fft_size)
+        else:
+            window = build_window(fft_size, window_fn=window_fn)
+        
+        self.window = nn.Parameter(window, requires_grad=False)
+    
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, *, T)
+        Returns:
+            output: (batch_size, *, n_bins, n_frames)
+        """
+        fft_size, hop_size = self.fft_size, self.hop_size
+
+        channels = input.size()[:-1]
+
+        input = input.view(-1, input.size(-1))
+        x = torch.stft(input, n_fft=fft_size, hop_length=hop_size, window=self.window, onesided=True, return_complex=True)
+        output = x.view(*channels, *x.size()[-2:])
+
+        return output
+
+class iSTFT(nn.Module):
+    def __init__(self, fft_size, hop_size=None, window_fn='hann'):
+        super().__init__()
+
+        self.fft_size, self.hop_size = fft_size, hop_size
+
+        if hop_size == fft_size:
+            window = torch.ones(fft_size)
+        else:
+            window = build_window(fft_size, window_fn=window_fn)
+        
+        self.window = nn.Parameter(window, requires_grad=False)
+    
+    def forward(self, input, length=None):
+        """
+        Args:
+            input: (batch_size, *, n_bins, n_frames)
+        Returns:
+            output: (batch_size, *, T)
+        """
+        fft_size, hop_size = self.fft_size, self.hop_size
+
+        channels = input.size()[:-2]
+
+        input = input.view(-1, *input.size()[-2:])
+        x = torch.istft(input, n_fft=fft_size, hop_length=hop_size, window=self.window, onesided=True, return_complex=False)
+        output = x.view(*channels, -1)
+
+        if length is not None:
+            output = output[..., length]
+
+        return output
+
+def _test_mrx():
+    batch_size = 6
+    in_channels = 2
+    T = 1024
+    fft_sizes, hop_size = [32, 64, 128], 32
+
+    model = MultiResolutionCrossNet(in_channels, fft_sizes=fft_sizes, hop_size=hop_size)
+
+    input = torch.randn(batch_size, in_channels, T)
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
+if __name__ == '__main__':
+    torch.manual_seed(111)
+
+    _test_mrx()

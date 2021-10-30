@@ -166,7 +166,7 @@ class OpenUnmix(nn.Module):
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
 
-        x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+        x = self.transform_affine_in(x_valid) # (batch_size, n_channels, max_bin, n_frames)
         x = x.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
         x = x.view(batch_size * n_frames, in_channels * max_bin)
         x = self.block(x) # (batch_size * n_frames, hidden_channels)
@@ -178,10 +178,34 @@ class OpenUnmix(nn.Module):
         x_full = x_full.view(batch_size, n_frames, in_channels, n_bins)
         x_full = x_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
 
-        x_full = self.scale_out.unsqueeze(dim=1) * x_full + self.bias_out.unsqueeze(dim=1)
+        x_full = self.transform_affine_out(x_full)
         x_full = self.relu2d(x_full)
 
         output = x_full * input
+
+        return output
+    
+    def transform_affine_in(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, max_bin, n_frames)
+        Rreturns:
+            output: (batch_size, n_channels, max_bin, n_frames)
+        """
+        eps = self.eps
+
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+
+        return output
+
+    def transform_affine_out(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, n_bins, n_frames)
+        Rreturns:
+            output: (batch_size, n_channels, n_bins, n_frames)
+        """
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
 
         return output
 
@@ -316,6 +340,12 @@ class TransformBlock1d(nn.Module):
             self.nonlinear1d = choose_nonlinear(nonlinear)
     
     def forward(self, input):
+        """
+        Args:
+            input: (batch_size, in_channels)
+        Returns:
+            output: (batch_size, out_channels)
+        """
         x = self.fc(input)
         x = self.norm1d(x)
 

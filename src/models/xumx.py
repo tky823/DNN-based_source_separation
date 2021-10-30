@@ -81,6 +81,9 @@ class CrossNetOpenUnmix(nn.Module):
         else:
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
+        
+        for source in self.sources:
+            self.backbone[source].rnn.flatten_parameters()
 
         if self.bridge:
             output = self.forward_bridge(input, x_valid)
@@ -143,7 +146,7 @@ class CrossNetOpenUnmix(nn.Module):
         x_sources = []
 
         for source in self.sources:
-            x_source = (x_valid - self.backbone[source].bias_in.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+            x_source = (x_valid - self.backbone[source].bias_in.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].scale_in.unsqueeze(dim=1)) + eps) # TODO: # (batch_size, n_channels, max_bin, n_frames)
             x_source = x_source.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
             x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
@@ -169,7 +172,7 @@ class CrossNetOpenUnmix(nn.Module):
             x_source_full = self.backbone[source].net(x) # (batch_size * n_frames, n_bins)
             x_source_full = x_source_full.view(batch_size, n_frames, in_channels, n_bins)
             x_source_full = x_source_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
-            x_source_full = self.backbone[source].scale_out.unsqueeze(dim=1) * x_source_full + self.backbone[source].bias_out.unsqueeze(dim=1)
+            x_source_full = self.backbone[source].scale_out.unsqueeze(dim=1) * x_source_full + self.backbone[source].bias_out.unsqueeze(dim=1) # TODO: # (batch_size, in_channels, n_bins, n_frames)
             x_source_full = self.backbone[source].relu2d(x_source_full)
             x_source = x_source_full * input
             output.append(x_source)
