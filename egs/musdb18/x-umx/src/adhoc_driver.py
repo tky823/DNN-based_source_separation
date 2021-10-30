@@ -392,7 +392,7 @@ class AdhocTester(TesterBase):
                 
                 estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (batch_size, n_sources, n_mics, n_bins, n_frames)
                 estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4)
-                estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+                estimated_sources_amplitude = estimated_sources_amplitude.reshape(1, n_sources, n_mics, n_bins, batch_size * n_frames) # (1, n_sources, n_mics, n_bins, batch_size * n_frames)
 
                 mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
                 mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
@@ -410,8 +410,8 @@ class AdhocTester(TesterBase):
                     mean_loss = loss.mean(dim=0) # (n_sources,)
                     mean_loss_improvement = loss_improvement.mean(dim=0) # (n_sources,)
 
-                mixture = mixture.cpu()
-                estimated_sources_amplitude = estimated_sources_amplitude.cpu()
+                mixture = mixture.squeeze(dim=0).cpu()
+                estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=0).cpu()
 
                 estimated_sources = self.apply_multichannel_wiener_filter(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
                 estimated_sources_channels = estimated_sources.size()[:-2]
