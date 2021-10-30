@@ -45,7 +45,7 @@ class CombinationLoss(nn.Module):
                 loss_pair = self.criterion(_input, _target, batch_mean=batch_mean)
                 loss.append(loss_pair)
 
-        dim = 0 if batch_mean else 1
+        dim = combination_dim - 1 if batch_mean else combination_dim
         loss = torch.stack(loss, dim=dim)
 
         if reduction == 'mean':
