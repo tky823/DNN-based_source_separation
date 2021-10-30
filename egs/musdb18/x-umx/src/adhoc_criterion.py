@@ -58,11 +58,12 @@ class MultiDomainLoss(nn.Module):
         mixture_phase = torch.angle(mixture) # (batch_size * n_mics, n_bins, n_frames)
         mixture_phase = mixture_phase.view(batch_size, 1, n_mics, n_bins, n_frames)
 
+        _, n_sources_in, _, _, _ = input.size() # To avoid error if input is mixture (i.e. n_sources_in=1 != n_sources)
         input_amplitude = input
         input = input_amplitude * torch.exp(1j * mixture_phase) # To complex spectrogram
-        input = input.view(batch_size * n_sources * n_mics, n_bins, n_frames)
+        input = input.view(batch_size * n_sources_in * n_mics, n_bins, n_frames)
         input_time = torch.istft(input, n_fft=fft_size, hop_length=hop_size, window=window, normalized=normalize, return_complex=False)
-        input_time = input_time.view(batch_size, n_sources, n_mics, -1) # (batch_size, n_sources, n_mics, T)
+        input_time = input_time.view(batch_size, n_sources_in, n_mics, -1) # (batch_size, n_sources, n_mics, T)
 
         if weight_time == 0 and weight_frequency == 0:
             raise NotImplementedError("Specify weight.")
