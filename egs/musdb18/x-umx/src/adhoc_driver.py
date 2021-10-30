@@ -398,7 +398,8 @@ class AdhocTester(TesterBase):
                 mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
                 sources = sources.permute(1, 2, 3, 0, 4).reshape(1, n_sources, n_mics, n_bins, batch_size * n_frames) # (1, n_sources, n_mics, n_bins, batch_size * n_frames)
 
-                loss_mixture = self.criterion(mixture_amplitude, sources, batch_mean=True) # () or (n_sources,)
+                repeated_mixture_amplitude = torch.tile(mixture_amplitude, (1, n_sources, 1, 1, 1))
+                loss_mixture = self.criterion(repeated_mixture_amplitude, sources, batch_mean=True) # () or (n_sources,)
                 loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=True) # () or (n_sources,)
                 loss_improvement = loss_mixture - loss # () or (n_sources,)
 
