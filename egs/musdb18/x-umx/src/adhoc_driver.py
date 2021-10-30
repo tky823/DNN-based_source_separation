@@ -113,13 +113,18 @@ class AdhocSchedulerTrainer(TrainerBase):
 
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
+
+            if self.combination:
+                mean_valid_loss = valid_loss
+            else:
+                mean_valid_loss = valid_loss.mean(dim=0).item()
             
-            self.scheduler.step(valid_loss.mean(dim=0).item())
+            self.scheduler.step(mean_valid_loss)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
             
-            if valid_loss < self.best_loss:
+            if mean_valid_loss < self.best_loss:
                 self.best_loss = valid_loss
                 model_path = os.path.join(self.model_dir, "best.pth")
                 self.save_model(epoch, model_path)
