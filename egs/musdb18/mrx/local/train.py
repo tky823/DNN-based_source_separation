@@ -46,8 +46,6 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_samples = int(args.duration * args.sr)
-    max_samples = int(args.valid_duration * args.sr)
     
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
@@ -61,12 +59,12 @@ def main(args):
     
     train_dataset = AugmentationWaveTrainDataset(
         args.musdb18_root,
-        sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch,
+        sr=args.sr, duration=args.duration, samples_per_epoch=args.samples_per_epoch,
         sources=args.sources, target=args.sources,
         include_valid=True,
         augmentation=augmentation
     )
-    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, patch_samples=patch_samples, max_samples=max_samples, sources=args.sources, target=args.target)
+    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, patch_duration=args.duration, max_duration=args.valid_duration, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
