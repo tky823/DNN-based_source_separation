@@ -78,7 +78,7 @@ class MultiDomainLoss(nn.Module):
             loss_frequency = self.criterion_frequency(input_amplitude, target_amplitude, batch_mean=batch_mean)
 
         if per_domain:
-            raise NotImplementedError("Not support return_separately=True.")
+            raise NotImplementedError("Not support per_domain=True.")
             return loss_time, loss_frequency
         else:
             loss = weight_time * loss_time + weight_frequency * loss_frequency

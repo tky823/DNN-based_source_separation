@@ -89,36 +89,64 @@ class AdhocSchedulerTrainer(TrainerBase):
             self.best_loss = float('infinity')
     
     def run(self):
+        if self.combination:
+            self.run_combination()
+        else:
+            self.run_no_combination()
+    
+    def run_combination(self):
         for epoch in range(self.start_epoch, self.epochs):
             start = time.time()
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
             s = "[Epoch {}/{}] loss (train):".format(epoch + 1, self.epochs)
-            if self.combination:
-                s += " {:.5f}".format(train_loss)
-            else:
-                for idx, target in enumerate(self.sources):
-                    loss_target = train_loss[idx]
-                    s += " ({}) {:.5f}".format(target, loss_target.item())
+            s += " {:.5f}".format(train_loss)
+            s += ", loss (valid):"
+            s += " {:.5f}".format(valid_loss)
+            s += ", {:.3f} [sec]".format(end - start)
+            print(s, flush=True)
+            
+            self.scheduler.step(valid_loss)
+            
+            self.train_loss[epoch] = train_loss
+            self.valid_loss[epoch] = valid_loss
+            
+            if valid_loss < self.best_loss:
+                self.best_loss = valid_loss
+                model_path = os.path.join(self.model_dir, "best.pth")
+                self.save_model(epoch, model_path)
+            
+            model_path = os.path.join(self.model_dir, "last.pth")
+            self.save_model(epoch, model_path)
+            
+            save_path = os.path.join(self.loss_dir, "loss.png")
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
+
+    def run_no_combination(self):
+        for epoch in range(self.start_epoch, self.epochs):
+            start = time.time()
+            train_loss, valid_loss = self.run_one_epoch(epoch)
+            end = time.time()
+            
+            s = "[Epoch {}/{}] loss (train):".format(epoch + 1, self.epochs)
+            
+            for idx, target in enumerate(self.sources):
+                loss_target = train_loss[idx]
+                s += " ({}) {:.5f}".format(target, loss_target.item())
 
             s += ", loss (valid):"
-            if self.combination:
-                s += " {:.5f}".format(valid_loss)
-            else:
-                for idx, target in enumerate(self.sources):
-                    loss_target = valid_loss[idx]
-                    s += " ({}) {:.5f}".format(target, loss_target.item())
-                s += " (mean) {:.5f}".format(valid_loss.mean().item())
+
+            for idx, target in enumerate(self.sources):
+                loss_target = valid_loss[idx]
+                s += " ({}) {:.5f}".format(target, loss_target.item())
+            s += " (mean) {:.5f}".format(valid_loss.mean().item())
 
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
-            if self.combination:
-                mean_valid_loss = valid_loss
-            else:
-                mean_valid_loss = valid_loss.mean(dim=0).item()
-            
+            mean_valid_loss = valid_loss.mean(dim=0).item()
+
             self.scheduler.step(mean_valid_loss)
             
             self.train_loss[epoch] = train_loss
@@ -131,79 +159,23 @@ class AdhocSchedulerTrainer(TrainerBase):
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
+
+            for idx, target in enumerate(self.sources):
+                save_dir = os.path.join(self.loss_dir, target)
+                os.makedirs(save_dir, exist_ok=True)
+                save_path = os.path.join(save_dir, "loss.png")
+                draw_loss_curve(train_loss=self.train_loss[:epoch + 1, idx], valid_loss=self.valid_loss[:epoch + 1, idx], save_path=save_path)
             
-            if self.combination:
-                save_path = os.path.join(self.loss_dir, "loss.png")
-                draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
-            else:
-                for idx, target in enumerate(self.sources):
-                    save_dir = os.path.join(self.loss_dir, target)
-                    os.makedirs(save_dir, exist_ok=True)
-                    save_path = os.path.join(save_dir, "loss.png")
-                    draw_loss_curve(train_loss=self.train_loss[:epoch + 1, idx], valid_loss=self.valid_loss[:epoch + 1, idx], save_path=save_path)
-                
-                save_path = os.path.join(self.loss_dir, "loss.png")
-                draw_loss_curve(train_loss=self.train_loss[:epoch + 1].mean(dim=-1), valid_loss=self.valid_loss[:epoch + 1].mean(dim=-1), save_path=save_path)
-        
+            save_path = os.path.join(self.loss_dir, "loss.png")
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1].mean(dim=-1), valid_loss=self.valid_loss[:epoch + 1].mean(dim=-1), save_path=save_path)
+
     def run_one_epoch_train(self, epoch):
         # Override
-        """
-        Training
-        """
-        self.model.train()
-        
-        train_loss = 0
-        n_train_batch = len(self.train_loader)
+        if self.combination:
+            self.run_one_epoch_train_combination(epoch)
+        else:
+            self.run_one_epoch_train_no_combination(epoch)
 
-        for idx, (mixture, sources) in enumerate(self.train_loader):
-            """
-                mixture: (batch_size, 1, n_mics, n_bins, n_frames)
-                sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
-            """
-            if self.use_cuda:
-                mixture = mixture.cuda()
-                sources = sources.cuda()
-            
-            mixture_amplitude = torch.abs(mixture)
-
-            estimated_sources_amplitude = self.model(mixture_amplitude)
-            
-            loss = self.criterion(estimated_sources_amplitude, sources)
-
-            if self.combination:
-                mean_loss = loss
-            else:
-                mean_loss = loss.mean(dim=0)
-
-            self.optimizer.zero_grad()
-            mean_loss.backward()
-            
-            if self.max_norm:
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
-            
-            self.optimizer.step()
-            
-            if self.combination:
-                train_loss += mean_loss.item()
-            else:
-                train_loss += loss.detach()
-
-            if (idx + 1) % 100 == 0:
-                s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
-                if self.combination:
-                    s += " {:.5f}".format(mean_loss.item())
-                else:
-                    for idx, target in enumerate(self.sources):
-                        loss_target = loss[idx]
-                        s += " ({}) {:.5f}".format(target, loss_target.item())
-                    s += " (mean) {:.5f}".format(mean_loss.item())
-                
-                print(s, flush=True)
-        
-        train_loss /= n_train_batch
-        
-        return train_loss
-    
     def run_one_epoch_eval(self, epoch):
         # Override
         """
@@ -279,6 +251,102 @@ class AdhocSchedulerTrainer(TrainerBase):
         
         return valid_loss
     
+    def run_one_epoch_train_combination(self, epoch):
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+
+        for idx, (mixture, sources) in enumerate(self.train_loader):
+            """
+                mixture: (batch_size, 1, n_mics, n_bins, n_frames)
+                sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
+            """
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+            
+            mixture_amplitude = torch.abs(mixture)
+
+            estimated_sources_amplitude = self.model(mixture_amplitude)
+            
+            loss = self.criterion(estimated_sources_amplitude, sources)
+
+            mean_loss = loss
+
+            self.optimizer.zero_grad()
+            mean_loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            train_loss += mean_loss.item()
+
+            if (idx + 1) % 100 == 0:
+                s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
+                s += " {:.5f}".format(mean_loss.item())
+                
+                print(s, flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
+
+    def run_one_epoch_train_no_combination(self, epoch):
+        """
+        Training
+        """
+        self.model.train()
+        
+        train_loss = 0
+        n_train_batch = len(self.train_loader)
+
+        for idx, (mixture, sources) in enumerate(self.train_loader):
+            """
+                mixture: (batch_size, 1, n_mics, n_bins, n_frames)
+                sources: (batch_size, n_sources, n_mics, n_bins, n_frames)
+            """
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+            
+            mixture_amplitude = torch.abs(mixture)
+
+            estimated_sources_amplitude = self.model(mixture_amplitude)
+            
+            loss = self.criterion(estimated_sources_amplitude, sources)
+
+            mean_loss = loss.mean(dim=0)
+
+            self.optimizer.zero_grad()
+            mean_loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            train_loss += loss.detach()
+
+            if (idx + 1) % 100 == 0:
+                s = "[Epoch {}/{}] iter {}/{} loss:".format(epoch + 1, self.epochs, idx + 1, n_train_batch)
+
+                for idx, target in enumerate(self.sources):
+                    loss_target = loss[idx]
+                    s += " ({}) {:.5f}".format(target, loss_target.item())
+                s += " (mean) {:.5f}".format(mean_loss.item())
+                
+                print(s, flush=True)
+        
+        train_loss /= n_train_batch
+        
+        return train_loss
+
     def apply_multichannel_wiener_filter(self, mixture, estimated_sources_amplitude, channels_first=True, eps=EPS):
         if self.use_norbert:
             estimated_sources = apply_multichannel_wiener_filter_norbert(mixture, estimated_sources_amplitude, channels_first=channels_first, eps=eps)
