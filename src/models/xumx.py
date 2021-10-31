@@ -10,7 +10,7 @@ EPS = 1e-12
 __pretrained_model_ids__ = {
     "musdb18": {
         SAMPLE_RATE_MUSDB18: {
-            "paper": None
+            "paper": "1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj"
         }
     },
     "musdb18hq": {

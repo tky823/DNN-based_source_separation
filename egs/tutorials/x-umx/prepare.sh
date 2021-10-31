@@ -10,7 +10,7 @@ file="model"
 echo "Download CrossNet-Open-Unmix. (Dataset: MUSDB18, sampling frequency 44.1kHz)"
 
 declare -A model_ids=(
-    ["musdb18"]="1FXy6KiVb99rrklJ89-FFW3M_E2xEWWq3"
+    ["musdb18"]="1yQC00DFvHgs4U012Wzcg69lvRxw5K9J"
 )
 
 if [ -z "${model_id}" ] ; then
