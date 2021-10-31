@@ -263,6 +263,12 @@ class EncoderBlock(nn.Module):
 
         self.eps = eps
 
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        self.scale_in.data.fill_(1)
+        self.bias_in.data.zero_()
+
     def forward(self, input):
         raise NotImplementedError
     
@@ -308,6 +314,13 @@ class DecoderBlock(nn.Module):
 
         self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
     
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        self.scale_out.data.fill_(1)
+        self.bias_out.data.zero_()
+
+
     def forward(self, input):
         raise NotImplementedError
 
