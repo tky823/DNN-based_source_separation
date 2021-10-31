@@ -28,7 +28,7 @@ max_norm=0 # 0 is handled as no clipping
 
 batch_size=16
 samples_per_epoch=6400
-epochs=1000
+epochs=300
 
 use_norbert=0
 use_cuda=1
