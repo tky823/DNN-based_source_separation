@@ -64,7 +64,7 @@ def main(args):
         include_valid=True,
         augmentation=augmentation
     )
-    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, patch_duration=args.duration, max_duration=args.valid_duration, sources=args.sources, target=args.target)
+    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, patch_duration=args.duration, max_duration=args.valid_duration, sources=args.sources, target=args.sources)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
