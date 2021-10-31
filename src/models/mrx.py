@@ -320,7 +320,6 @@ class DecoderBlock(nn.Module):
         self.scale_out.data.fill_(1)
         self.bias_out.data.zero_()
 
-
     def forward(self, input):
         raise NotImplementedError
 
