@@ -7,11 +7,14 @@ from utils.utils_model import choose_rnn
 from models.umx import TransformBlock1d
 
 
-__sources__ = ['bass', 'drums', 'other', 'vocals']
+__sources__ = ['music', 'speech', 'effects'] # ['bass', 'drums', 'other', 'vocals'] for MUSDB18
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 
 class MultiResolutionCrossNet(nn.Module):
+    """
+    Reference "The Cocktail Fork Problem: Three-Stem Audio Separation for Real-World Soundtracks"
+    """
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, fft_size=None, hop_size=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', sources=__sources__, eps=EPS):
         """
         Args:

@@ -1,0 +1,6 @@
+augmentation: [random_gain, random_flip]
+random_gain:
+  min: 0.25
+  max: 1.25
+random_flip:
+  flip_rate: 0.5
