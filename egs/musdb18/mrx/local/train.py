@@ -46,6 +46,7 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
+    args.n_sources = len(args.sources)
     
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
