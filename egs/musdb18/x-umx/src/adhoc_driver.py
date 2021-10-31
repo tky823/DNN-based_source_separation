@@ -172,9 +172,11 @@ class AdhocSchedulerTrainer(TrainerBase):
     def run_one_epoch_train(self, epoch):
         # Override
         if self.combination:
-            self.run_one_epoch_train_combination(epoch)
+            train_loss = self.run_one_epoch_train_combination(epoch)
         else:
-            self.run_one_epoch_train_no_combination(epoch)
+            train_loss = self.run_one_epoch_train_no_combination(epoch)
+        
+        return train_loss
 
     def run_one_epoch_eval(self, epoch):
         # Override
