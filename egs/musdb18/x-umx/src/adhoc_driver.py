@@ -267,11 +267,11 @@ class AdhocSchedulerTrainer(TrainerBase):
                     signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
                     torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
 
+                    epoch_dir = os.path.join(track_dir, "epoch{}".format(epoch + 1))
+                    os.makedirs(epoch_dir, exist_ok=True)
+
                     for target, estimated_source in zip(self.sources, estimated_sources):
-                        save_dir = os.path.join(track_dir, target)
-                        os.makedirs(save_dir, exist_ok=True)
-                        
-                        save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
+                        save_path = os.path.join(epoch_dir, "{}.wav".format(target))
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                         torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
