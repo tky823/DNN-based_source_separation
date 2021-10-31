@@ -23,7 +23,7 @@ criterion='sisdr'
 # Optimizer
 optimizer='adam'
 lr=1e-3
-weight_decay=1e-5
+weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
 batch_size=16
