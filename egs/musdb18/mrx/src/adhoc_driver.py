@@ -68,9 +68,14 @@ class AdhocTrainer(TrainerBase):
 
                 estimated_sources = self.model(mixture)
 
-                mixture = mixture.permute(1, 2, 0, 3).view(*mixture.size()[:-2], -1) # (1, n_mics, batch_size * patch_samples)
-                sources = sources.permute(1, 2, 0, 3).view(*sources.size()[:-2], -1) # (n_sources, n_mics, batch_size * patch_samples)
-                estimated_sources = estimated_sources.permute(1, 2, 0, 3).view(*estimated_sources.size()[:-2], -1) # (n_sources, n_mics, batch_size * patch_samples)
+                mixture = mixture.permute(1, 2, 0, 3) # (1, n_mics, batch_size * patch_samples)
+                mixture = mixture.reshape(*mixture.size()[:-2], -1) # (1, n_mics, batch_size * patch_samples)
+
+                sources = sources.permute(1, 2, 0, 3) # (n_sources, n_mics, batch_size * patch_samples)
+                sources = sources.reshape(*sources.size()[:-2], -1) # (n_sources, n_mics, batch_size * patch_samples)
+
+                estimated_sources = estimated_sources.permute(1, 2, 0, 3) # (n_sources, n_mics, batch_size * patch_samples)
+                estimated_sources = estimated_sources.reshape(*estimated_sources.size()[:-2], -1) # (n_sources, n_mics, batch_size * patch_samples)
 
                 loss = self.criterion(estimated_sources, sources, batch_mean=True)
                 valid_loss += loss.item()
