@@ -61,9 +61,8 @@ def main(args):
     
     train_dataset = AugmentationWaveTrainDataset(
         args.musdb18_root,
-        fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn,
         sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch,
-        sources=args.sources, target=args.target,
+        sources=args.sources, target=args.sources,
         include_valid=True,
         augmentation=augmentation
     )
