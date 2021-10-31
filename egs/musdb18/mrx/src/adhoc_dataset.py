@@ -23,6 +23,7 @@ class WaveEvalDataset(WaveDataset):
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
+        self.sr = sr
         self.patch_duration = patch_duration
         max_samples = int(sr * max_duration)
 
