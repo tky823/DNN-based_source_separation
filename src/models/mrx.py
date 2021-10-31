@@ -1,3 +1,4 @@
+import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,7 +6,6 @@ import torch.nn.functional as F
 from utils.utils_audio import build_window
 from utils.utils_model import choose_rnn
 from models.umx import TransformBlock1d
-
 
 __sources__ = ['music', 'speech', 'effects'] # ['bass', 'drums', 'other', 'vocals'] for MUSDB18
 SAMPLE_RATE_MUSDB18 = 44100
@@ -71,7 +71,14 @@ class MultiResolutionCrossNet(nn.Module):
 
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
-        self.fft_size = fft_size
+
+        self.fft_size, self.hop_size = fft_size, hop_size
+        self.window_fn = window_fn
+        
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.causal = causal
+        self.rnn_type = rnn_type
 
         self.sources = sources
 
@@ -134,6 +141,103 @@ class MultiResolutionCrossNet(nn.Module):
         output = torch.stack(output, dim=1)
 
         return output
+
+    def get_config(self):
+        config = {
+            'in_channels': self.in_channels,
+            'hidden_channels': self.hidden_channels,
+            'num_layers': self.num_layers,
+            'fft_size': self.fft_size, 'hop_size': self.hop_size,
+            'window_fn': self.window_fn,
+            'dropout': self.dropout,
+            'causal': self.causal,
+            'rnn_type': self.rnn_type,
+            'sources': self.sources,
+            'eps': self.eps
+        }
+        
+        return config
+    
+    @classmethod
+    def build_from_config(cls, config_path):
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+
+        in_channels = config['in_channels']
+
+        hidden_channels = config['hidden_channels']
+        num_layers = config['num_layers']
+        
+        fft_size, hop_size = config['fft_size'], config['hop_size']
+        window_fn = config['window_fn']
+
+        dropout = config['dropout']
+        causal = config['causal']
+        rnn_type = config['rnn_type']
+
+        sources = config['sources']
+
+        eps = config.get('eps') or EPS
+
+        model = cls(
+            in_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn,
+            dropout=dropout,
+            causal=causal,
+            rnn_type=rnn_type,
+            sources=sources,
+            eps=eps
+        )
+        
+        return model
+
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+    
+        in_channels = config['in_channels']
+        hidden_channels = config['hidden_channels']
+        num_layers = config['num_layers']
+
+        fft_size, hop_size = config['fft_size'], config['hop_size']
+        window_fn = config['window_fn']
+
+        dropout = config['dropout']
+        causal = config['causal']
+        rnn_type = config['rnn_type']
+
+        sources = config['sources']
+
+        eps = config.get('eps') or EPS
+        
+        model = cls(
+            in_channels,
+            hidden_channels=hidden_channels,
+            num_layers=num_layers,
+            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn,
+            dropout=dropout,
+            causal=causal,
+            rnn_type=rnn_type,
+            sources=sources,
+            eps=eps
+        )
+        
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        
+        return model
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+        
+        return _num_parameters
 
 class EncoderBlock(nn.Module):
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, fft_size=None, hop_size=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', eps=EPS):
