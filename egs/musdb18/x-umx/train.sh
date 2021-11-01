@@ -39,7 +39,7 @@ max_pair=3 # len(sources) - 1
 optimizer='adam'
 lr=1e-3
 weight_decay=1e-5
-max_norm=0 # 0 is handled as no clipping
+max_norm=5 # 0 is handled as no clipping
 scheduler_path="./config/paper/scheduler.yaml"
 
 batch_size=16
