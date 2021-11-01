@@ -430,8 +430,6 @@ class AdhocTester(TesterBase):
     def estimate_all(self):
         self.model.eval()
         
-        test_loss = 0
-        test_loss_improvement = 0
         n_test = len(self.loader.dataset)
         
         with torch.no_grad():
@@ -467,11 +465,6 @@ class AdhocTester(TesterBase):
                 mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, 1, n_mics, n_bins, batch_size * n_frames) # (1, 1, n_mics, n_bins, batch_size * n_frames)
                 sources = sources.permute(1, 2, 3, 0, 4).reshape(1, n_sources, n_mics, n_bins, batch_size * n_frames) # (1, n_sources, n_mics, n_bins, batch_size * n_frames)
 
-                repeated_mixture_amplitude = torch.tile(mixture_amplitude, (1, n_sources, 1, 1, 1))
-                loss_mixture = self.criterion(repeated_mixture_amplitude, sources, batch_mean=True) # () or (n_sources,)
-                loss = self.criterion(estimated_sources_amplitude, sources, batch_mean=True) # () or (n_sources,)
-                loss_improvement = loss_mixture - loss # () or (n_sources,)
-
                 mixture = mixture.squeeze(dim=0).cpu()
                 estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=0).cpu()
 
@@ -490,27 +483,8 @@ class AdhocTester(TesterBase):
                     estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
-                
-                test_loss += loss # () or (n_sources,)
-                test_loss_improvement += loss_improvement # () or (n_sources,)
 
-        test_loss /= n_test
-        test_loss_improvement /= n_test
-        
-        s = "Loss:"
-        if self.combination:
-            s += " {:.3f}".format(test_loss)
-        else:
-            for idx, target in enumerate(self.sources):
-                s += " ({}) {:.3f}".format(target, test_loss[idx].item())
-        s += ", loss improvement:"
-        if self.combination:
-            s += " {:.3f}".format(test_loss_improvement)
-        else:
-            for idx, target in enumerate(self.sources):
-                s += " ({}) {:.3f}".format(target, test_loss_improvement[idx].item())
-
-        print(s, flush=True)
+        print("{} / {}".format(idx + 1, n_test), name, flush=True)
     
     def evaluate_all(self):
         mus = musdb.DB(root=self.musdb18_root, subsets='test', is_wav=True)
