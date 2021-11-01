@@ -484,7 +484,7 @@ class AdhocTester(TesterBase):
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
                     torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
 
-        print("{} / {}".format(idx + 1, n_test), name, flush=True)
+                print("{} / {}".format(idx + 1, n_test), name, flush=True)
     
     def evaluate_all(self):
         mus = musdb.DB(root=self.musdb18_root, subsets='test', is_wav=True)
