@@ -1,12 +1,14 @@
 import os
 import time
 
+import musdb
+import museval
 import torch
 import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from driver import TrainerBase
+from driver import TrainerBase, TesterBase
 
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
@@ -204,3 +206,151 @@ class AdhocTrainer(TrainerBase):
         valid_loss /= n_valid
         
         return valid_loss
+
+class SingleTargetTester(TesterBase):
+    def __init__(self, model, loader, criterion, args):
+        super().__init__(model, loader, criterion, args)
+
+    def _reset(self, args):
+        self.sr = args.sr
+        self.target = args.target
+
+        self.musdb18_root = args.musdb18_root
+
+        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.window = self.loader.dataset.window
+        self.normalize = self.loader.dataset.normalize
+        
+        self.model_dir = args.model_dir
+        self.estimates_dir = args.estimates_dir
+        self.json_dir = args.json_dir
+        
+        if self.estimates_dir is not None:
+            self.estimates_dir = os.path.abspath(args.estimates_dir)
+            os.makedirs(self.estimates_dir, exist_ok=True)
+        
+        if self.json_dir is not None:
+            self.json_dir = os.path.abspath(args.json_dir)
+            os.makedirs(self.json_dir, exist_ok=True)
+        
+        self.use_estimate_all, self.use_evaluate_all = args.estimate_all, args.evaluate_all
+        
+        self.use_cuda = args.use_cuda
+        is_data_parallel = isinstance(self.model, nn.DataParallel)
+        
+        model_path = os.path.join(self.model_dir, self.target, "{}.pth".format(args.model_choice))
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+
+        if is_data_parallel:
+            self.model.module.load_state_dict(config['state_dict'])
+        else:
+            self.model.load_state_dict(config['state_dict'])
+    
+    def run(self):
+        if self.use_estimate_all:
+            self.estimate_all()
+        
+        if self.use_evaluate_all:
+            self.evaluate_all()
+
+    def estimate_all(self):
+        self.model.eval()
+        
+        target = self.target
+        test_loss = 0
+        test_loss_improvement = 0
+        n_test = len(self.loader.dataset)
+        
+        with torch.no_grad():
+            for idx, (mixture, source, samples, name) in enumerate(self.loader):
+                """
+                    mixture: (batch_size, n_mics, n_bins, n_frames)
+                    sources: (batch_size, n_mics, n_bins, n_frames)
+                    sample <int>: Length in time domain
+                    name <str>: Artist and title of song
+                """
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    source = source.cuda()
+                
+                batch_size, n_mics, n_bins, n_frames = source.size()
+                
+                mixture_amplitude = torch.abs(mixture)
+                source_amplitude = torch.abs(source)
+                
+                estimated_source_amplitude = []
+
+                # Serial operation
+                for _mixture_amplitude in mixture_amplitude:
+                    # _mixture_amplitude: (n_mics, n_bins, n_frames)
+                    _estimated_source_amplitude = self.model(_mixture_amplitude)
+                    estimated_source_amplitude.append(_estimated_source_amplitude)
+                
+                estimated_source_amplitude = torch.cat(estimated_source_amplitude, dim=0) # (batch_size, n_mics, n_bins, n_frames)
+                estimated_source_amplitude = estimated_source_amplitude.permute(1, 2, 0, 3)
+                estimated_source_amplitude = estimated_source_amplitude.reshape(n_mics, n_bins, batch_size * n_frames) # (n_mics, n_bins, T_pad)
+
+                mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                mixture_amplitude = mixture_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+                source_amplitude = source_amplitude.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, T_pad)
+
+                loss_mixture = self.criterion(mixture_amplitude, source_amplitude, batch_mean=True) # ()
+                loss = self.criterion(estimated_source_amplitude, source_amplitude, batch_mean=True) # ()
+                loss_improvement = loss_mixture - loss # ()
+
+                mixture = mixture.cpu()
+                estimated_source_amplitude = estimated_source_amplitude.cpu()
+
+                mixture_phase = torch.angle(mixture)
+                estimated_source = estimated_source_amplitude * torch.exp(1j * mixture_phase)
+                estimated_source_channels = estimated_source.size()[:-2]
+
+                estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:])
+                estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (n_mics, T_pad)
+
+                track_dir = os.path.join(self.estimates_dir, name)
+                os.makedirs(track_dir, exist_ok=True)
+
+                estimated_path = os.path.join(track_dir, "{}.wav".format(target))
+                estimated_source = estimated_source[:, :samples] # -> (n_mics, T)
+                signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+            
+                test_loss += loss.item() # ()
+                test_loss_improvement += loss_improvement.item() # ()
+
+        test_loss /= n_test
+        test_loss_improvement /= n_test
+        
+        s = "Loss:"
+        s += " ({}) {:.3f}".format(target, test_loss)
+        s += ", loss improvement:"
+        s += " ({}) {:.3f}".format(target, test_loss_improvement)
+
+        print(s, flush=True)
+    
+    def evaluate_all(self):
+        mus = musdb.DB(root=self.musdb18_root, subsets='test', is_wav=True)
+        results = museval.EvalStore(frames_agg='median', tracks_agg='median')
+
+        target = self.target
+
+        for track in mus.tracks:
+            name = track.name
+            
+            estimated_path = os.path.join(self.estimates_dir, name, "{}.wav".format(target))
+            estimated, _ = torchaudio.load(estimated_path)
+            estimated = estimated.numpy().transpose(1, 0)
+            estimates = {
+                target: estimated
+            }
+
+            # Evaluate using museval
+            scores = museval.eval_mus_track(track, estimates, output_dir=self.json_dir)
+            results.add_track(scores)
+
+            print(name)
+            print(scores, flush=True)
+
+        print(results)
