@@ -160,7 +160,7 @@ class MMDenseRNN(nn.Module):
 
         self.in_channels, self.num_features = in_channels, num_features
         self.growth_rate = growth_rate
-        self.hidden_channels = hidden_channels,
+        self.hidden_channels = hidden_channels
         self.kernel_size = kernel_size
         self.scale = scale
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
