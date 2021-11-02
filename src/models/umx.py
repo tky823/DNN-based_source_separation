@@ -154,7 +154,6 @@ class OpenUnmix(nn.Module):
         """
         n_bins, max_bin = self.n_bins, self.max_bin
         in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
-        eps = self.eps
 
         batch_size, _, _, n_frames = input.size()
 

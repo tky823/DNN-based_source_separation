@@ -158,8 +158,8 @@ class CrossNetOpenUnmix(nn.Module):
 
         for idx, source in enumerate(self.sources):
             x_source = x_sources_block[idx]
-            x_source_lstm, _ = self.backbone[source].rnn(x_mean) # (batch_size, n_frames, out_channels)
-            x_source = torch.cat([x_source, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
+            x_source_rnn, _ = self.backbone[source].rnn(x_mean) # (batch_size, n_frames, out_channels)
+            x_source = torch.cat([x_source, x_source_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
             x_sources.append(x_source)
         
