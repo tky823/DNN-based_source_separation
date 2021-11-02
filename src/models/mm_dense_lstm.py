@@ -198,6 +198,7 @@ class MMDenseLSTM(MMDenseRNN):
         depth = config['depth']
 
         growth_rate_final = config['growth_rate_final']
+        hidden_channels_final = config['hidden_channels_final']
         kernel_size_final = config['kernel_size_final']
         dilated_final = config['dilated_final']
         depth_final = config['depth_final']
@@ -216,7 +217,7 @@ class MMDenseLSTM(MMDenseRNN):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
-            growth_rate_final=growth_rate_final,
+            growth_rate_final=growth_rate_final, hidden_channels_final=hidden_channels_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
             depth_final=depth_final,
