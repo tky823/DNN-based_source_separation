@@ -244,12 +244,12 @@ def weighted_sdr(input, target, source_dim=1, eps=EPS):
     """
     mixture = target.sum(dim=source_dim, keepdim=True) # (*, 1, *, T)
     
-    input_power, target_power = torch.sum(input**2, dim=-1), torch.sum(target**2, dim=-1)
-    loss = (torch.sum(target * input, dim=-1) + eps) / (torch.sqrt(target_power) * torch.sqrt(input_power) + eps)
+    target_power = torch.sum(target**2, dim=-1)
+    loss = (torch.sum(target * input, dim=-1) + eps) / (torch.linalg.vector_norm(target, dim=-1) * torch.linalg.vector_norm(input, dim=-1) + eps)
 
     residual_input, residual_target = mixture - input, mixture - target
-    residual_input_power, residual_target_power = torch.sum(residual_input**2, dim=-1), torch.sum(residual_target**2, dim=-1)
-    loss_residual = (torch.sum(residual_target * residual_input, dim=-1) + eps) / (torch.sqrt(residual_target_power) * torch.sqrt(residual_input_power) + eps)
+    residual_target_power = torch.sum(residual_target**2, dim=-1)
+    loss_residual = (torch.sum(residual_target * residual_input, dim=-1) + eps) / (torch.linalg.vector_norm(residual_target, dim=-1) * torch.linalg.vector_norm(residual_input, dim=-1) + eps)
 
     rho = (target_power + eps) / (target_power + residual_target_power + eps)
     loss = rho * loss + (1 - rho) * loss_residual
