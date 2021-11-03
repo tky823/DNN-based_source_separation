@@ -82,32 +82,43 @@ class WaveSplit(WaveSplitBase):
 
         self.spk_criterion = spk_criterion
     
-    def forward(self, input, speaker_id=None, return_all=False, return_speaker_vector=False, stack_dim=1):
+    def forward(self, mixture, speaker_id=None, return_all=False, return_speaker_vector=False, return_speaker_embedding=False, return_all_speaker_embedding=False, stack_dim=1):
         """
         Only supports training time
         Args:
-            input (batch_size, 1, T)
+            mixture: (batch_size, 1, T)
         Returns:
-            output (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
+            estimated_sources: (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
             sorted_speaker_vector: (batch_size, n_sources, latent_dim, T)
         """
-        output, sorted_speaker_vector = self.extract_latent(input, speaker_id=speaker_id, return_all=return_all, stack_dim=stack_dim)
+        estimated_sources, sorted_speaker_vector = self.extract_latent(mixture, speaker_id=speaker_id, return_all=return_all, stack_dim=stack_dim)
+
+        output = []
+        output.append(estimated_sources)
 
         if return_speaker_vector:
-            return output, sorted_speaker_vector
+            output.append(sorted_speaker_vector)
+        
+        if return_speaker_embedding:
+            speaker_embedding = self.embed_sources(speaker_id) # (batch_size, n_sources, latent_dim)
+            output.append(speaker_embedding)
+        
+        if return_all_speaker_embedding:
+            all_speaker_embedding = self.embed_sources(self.all_speaker_id) # (n_training_sources, latent_dim)
+            output.append(all_speaker_embedding)
 
         return output
     
-    def extract_latent(self, input, speaker_id=None, return_all=False, stack_dim=1):
+    def extract_latent(self, mixture, speaker_id=None, return_all=False, stack_dim=1):
         """
         Only supports training time
         Args:
-            input: (batch_size, 1, T)
+            mixture: (batch_size, 1, T)
         Returns:
-            output: (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
+            estimated_sources: (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
             sorted_speaker_vector: (batch_size, n_sources, latent_dim, T)
         """
-        speaker_vector = self.speaker_stack(input) # (batch_size, n_sources, latent_dim, T)
+        speaker_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
 
         batch_size, n_sources, latent_dim, T = speaker_vector.size()
         speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
@@ -131,9 +142,9 @@ class WaveSplit(WaveSplitBase):
         else:
             raise NotImplementedError("Not support test time process.")
         
-        output = self.sepatation_stack(input, speaker_centroids, return_all=return_all, stack_dim=stack_dim)
+        estimated_sources = self.sepatation_stack(mixture, speaker_centroids, return_all=return_all, stack_dim=stack_dim)
 
-        return output, sorted_speaker_vector
+        return estimated_sources, sorted_speaker_vector
     
     def compute_pit_speaker_loss(self, speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=True):
         """
