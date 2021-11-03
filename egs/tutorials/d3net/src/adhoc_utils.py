@@ -16,14 +16,14 @@ BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
 def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
-    patch_size = 256
-    fft_size, hop_size = 4096, 1024
-    window = torch.hann_window(fft_size)
-
     use_cuda = torch.cuda.is_available()
 
     model = load_pretrained_d3net(model_paths, jit=jit)
     config = load_experiment_config(model_paths)
+
+    patch_size = config['patch_size']
+    fft_size, hop_size = config['fft_size'], config['hop_size']
+    window = torch.hann_window(fft_size)
     
     if use_cuda:
         model.cuda()
@@ -170,6 +170,9 @@ def load_pretrained_d3net_jit(model_paths, in_channels=2, n_bins=2049, patch_siz
 
 def load_experiment_config(config_paths):
     sample_rate = None
+    patch_size = None
+    fft_size, hop_size = None, None
+
     for source in __sources__:
         config_path = config_paths[source]
         config = torch.load(config_path, map_location=lambda storage, loc: storage)
@@ -180,8 +183,33 @@ def load_experiment_config(config_paths):
             if sample_rate is not None:
                 assert sample_rate == config['sr'], "Invalid sampling rate."
             sample_rate = config['sr']
+        
+        if patch_size is None:
+            patch_size = config.get('patch_size')
+        elif config.get('patch_size') is not None:
+            if patch_size is not None:
+                assert patch_size == config['patch_size'], "Invalid patch_size."
+            patch_size = config['patch_size']
+        
+        if fft_size is None:
+            fft_size = config.get('fft_size')
+        elif config.get('fft_size') is not None:
+            if fft_size is not None:
+                assert fft_size == config['fft_size'], "Invalid fft_size."
+            fft_size = config['fft_size']
+
+        if hop_size is None:
+            hop_size = config.get('hop_size')
+        elif config.get('hop_size') is not None:
+            if hop_size is not None:
+                assert hop_size == config['hop_size'], "Invalid hop_size."
+            hop_size = config['hop_size']
+
     config = {
-        'sr': sample_rate or SAMPLE_RATE_MUSDB18
+        'sr': sample_rate or SAMPLE_RATE_MUSDB18,
+        'patch_size': patch_size or 256,
+        'fft_size': fft_size or 4096,
+        'hop_size': hop_size or 1024
     }
 
     return config
