@@ -10,11 +10,16 @@ from models.film import FiLM1d
 EPS = 1e-12
 
 class WaveSplitBase(nn.Module):
-    def __init__(self, in_channels, latent_dim=512, kernel_size=3, sep_num_blocks=4, sep_num_layers=10, spk_num_layers=14, dilated=True, separable=True, causal=False, nonlinear=None, norm=True, n_sources=2, n_training_sources=None, eps=EPS):
+    def __init__(
+        self, in_channels, latent_dim=512,
+        kernel_size=3, sep_num_blocks=4, sep_num_layers=10, spk_num_layers=14,
+        dilated=True, separable=True, causal=False, nonlinear=None, norm=True,
+        n_sources=2, n_training_sources=None,
+        eps=EPS
+    ):
         super().__init__()
 
         self.embed_sources = nn.Embedding(n_training_sources, latent_dim)
-        self.mask = nn.Parameter(1 - torch.eye(n_sources), requires_grad=False)
 
         self.speaker_stack = SpeakerStack(
             in_channels, latent_dim=latent_dim,
@@ -57,7 +62,14 @@ class WaveSplitBase(nn.Module):
         return _num_parameters
 
 class WaveSplit(WaveSplitBase):
-    def __init__(self, in_channels, latent_dim=512, kernel_size=3, sep_num_blocks=4, sep_num_layers=10, spk_num_layers=14, dilated=True, separable=True, causal=False, nonlinear=None, norm=True, n_sources=2, n_training_sources=None, eps=EPS):
+    def __init__(
+        self,
+        in_channels, latent_dim=512,
+        kernel_size=3, sep_num_blocks=4, sep_num_layers=10, spk_num_layers=14,
+        dilated=True, separable=True, causal=False, nonlinear=None, norm=True,
+        n_sources=2, n_training_sources=None,
+        spk_criterion=None,
+        eps=EPS):
         super().__init__(
             in_channels, latent_dim=latent_dim,
             kernel_size=kernel_size,
@@ -68,14 +80,7 @@ class WaveSplit(WaveSplitBase):
             eps=eps
         )
 
-        zero_dim_size = ()
-        self.scale, self.bias = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True), nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
-
-        self._reset_parameters()
-    
-    def _reset_parameters(self):
-        self.scale.data.fill_(1)
-        self.bias.data.fill_(0)
+        self.spk_criterion = spk_criterion
     
     def forward(self, input, speaker_id=None, return_all=False, return_speaker_vector=False, stack_dim=1):
         """
@@ -104,16 +109,15 @@ class WaveSplit(WaveSplitBase):
         """
         speaker_vector = self.speaker_stack(input) # (batch_size, n_sources, latent_dim, T)
 
+        batch_size, n_sources, latent_dim, T = speaker_vector.size()
         speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
 
         if self.training:
-            batch_size, T, n_sources, latent_dim = speaker_vector.size()
-
             with torch.no_grad():
                 speaker_embedding = self.embed_sources(speaker_id) # (batch_size, n_sources, latent_dim)
                 all_speaker_embedding = self.embed_sources(self.all_speaker_id) # (n_training_sources, latent_dim)
 
-                _, sorted_idx = self.compute_pit_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, batch_mean=False) # (batch_size, T, n_sources)
+                _, sorted_idx = self.compute_pit_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=False) # (batch_size, T, n_sources)
 
                 sorted_idx = sorted_idx.view(batch_size * T, n_sources)
                 flatten_sorted_idx = sorted_idx + torch.arange(0, batch_size * T * n_sources, n_sources).long().unsqueeze(dim=-1)
@@ -130,93 +134,6 @@ class WaveSplit(WaveSplitBase):
         output = self.sepatation_stack(input, speaker_centroids, return_all=return_all, stack_dim=stack_dim)
 
         return output, sorted_speaker_vector
-    
-    def compute_euclid_distance(self, input, target, dim=-1, keepdim=False, rescale=False):
-        distance = torch.sum((input - target)**2, dim=dim, keepdim=keepdim)
-
-        if rescale:
-            distance = torch.abs(self.scale) * distance + self.bias
-        
-        return distance
-    
-    def compute_speaker_loss(self, speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=True):
-        """
-        Args:
-            speaker_vector: (batch_size, T, n_sources, latent_dim)
-            speaker_embedding: (batch_size, n_sources, latent_dim)
-            all_speaker_embedding: (n_training_sources, latent_dim)
-        Returns:
-            loss: (batch_size, T) or (T,)
-        """
-        assert feature_last, "feature_last should be True."
-
-        loss_distance = self.compute_speaker_distance(speaker_vector, speaker_embedding, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
-
-        rescaled_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1, rescale=True) # (batch_size, T, n_sources)
-        rescaled_all_distance = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), all_speaker_embedding, dim=-1, rescale=True) # (batch_size, T, n_sources, n_training_sources)
-
-        loss_local = self.compute_local_classification(rescaled_distance, batch_mean=False) # (batch_size, T, n_sources)
-        loss_global = self.compute_global_classification(rescaled_distance, rescaled_all_distance, batch_mean=False) # (batch_size, T, n_sources)
-        loss = torch.sum(loss_distance + loss_local + loss_global, dim=2)
-
-        if batch_mean:
-            loss = loss.mean(dim=0)
-
-        return loss
-    
-    def compute_speaker_distance(self, speaker_vector, speaker_embedding, feature_last=True, batch_mean=True):
-        """
-        Args:
-            speaker_vector: (batch_size, T, n_sources, latent_dim)
-            speaker_embedding: (batch_size, n_sources, latent_dim)
-        Returns:
-            loss: (batch_size, T, n_sources)
-        """
-        assert feature_last, "feature_last should be True."
-
-        mask = self.mask # (n_sources, n_sources)
-
-        loss_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1, rescale=False) # (batch_size, T, n_sources)
-
-        distance_table = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), speaker_vector.unsqueeze(dim=2), dim=-1, rescale=False) # (batch_size, T, n_sources, n_sources)
-        loss_hinge = F.relu(1 - distance_table) # (batch_size, T, n_sources, n_sources)
-        loss_hinge = torch.sum(mask * loss_hinge, dim=2) # (batch_size, T, n_sources)
-
-        loss = loss_distance + loss_hinge
-
-        if batch_mean:
-            loss = loss.mean(dim=0)
-
-        return loss
-
-    def compute_local_classification(self, distance, batch_mean=True):
-        """
-        Args:
-            distance: (batch_size, T, n_sources)
-        Returns:
-            loss: (batch_size, T, n_sources)
-        """
-        loss = distance + torch.logsumexp(- distance, dim=2, keepdim=True) # (batch_size, T, n_sources)
-
-        if batch_mean:
-            loss = loss.mean(dim=0)
-
-        return loss
-
-    def compute_global_classification(self, distance, all_distance, batch_mean=True):
-        """
-        Args:
-            distance: (batch_size, T, n_sources)
-            all_distance: (batch_size, T, n_sources, n_training_sources)
-        Returns:
-            loss: (batch_size, T, n_sources)
-        """
-        loss = distance + torch.logsumexp(- all_distance, dim=3) # (batch_size, T, n_sources)
-
-        if batch_mean:
-            loss = loss.mean(dim=0)
-
-        return loss
     
     def compute_pit_speaker_loss(self, speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=True):
         """
@@ -237,7 +154,7 @@ class WaveSplit(WaveSplitBase):
         
         for idx in range(P):
             pattern = patterns[idx]
-            loss = self.compute_speaker_loss(speaker_vector[:, :, pattern], speaker_embedding, all_speaker_embedding, feature_last=feature_last, batch_mean=False) # (batch_size, T)
+            loss = self.spk_criterion(speaker_vector[:, :, pattern], speaker_embedding, all_speaker_embedding, feature_last=feature_last, batch_mean=False, time_mean=False) # (batch_size, T)
             possible_loss.append(loss)
         
         possible_loss = torch.stack(possible_loss, dim=2) # (batch_size, T, P)
@@ -247,6 +164,24 @@ class WaveSplit(WaveSplitBase):
             loss = loss.mean(dim=0)
         
         return loss, patterns[indices]
+
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+
+        for p in self.embed_sources.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+        
+        for p in self.speaker_stack.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+
+        for p in self.sepatation_stack.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
 class SpeakerStack(nn.Module):
     def __init__(self, in_channels, latent_dim=512, kernel_size=3, num_layers=14, dilated=True, separable=True, causal=False, nonlinear=None, norm=True, n_sources=2, eps=EPS):
@@ -572,6 +507,127 @@ class MultiSourceProjection1d(nn.Module):
 
         return output
 
+class SpeakerLoss(nn.Module):
+    def __init__(self, n_sources):
+        super().__init__()
+
+        self.mask = nn.Parameter(1 - torch.eye(n_sources), requires_grad=False)
+
+        zero_dim_size = ()
+        self.scale, self.bias = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True), nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
+
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        self.scale.data.fill_(1)
+        self.bias.data.fill_(0)
+
+    def forward(self, speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=True, time_mean=True):
+        """
+        Args:
+            speaker_vector: (batch_size, n_sources, latent_dim, T)
+            speaker_embedding: (batch_size, n_sources, latent_dim)
+            all_speaker_embedding: (n_training_sources, latent_dim)
+        Returns:
+            loss: (batch_size,) or ()
+        """
+        loss = self.compute_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, scale=self.scale, bias=self.bias, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
+        
+        loss = loss.mean(dim=-1)
+
+        if time_mean:
+            loss = loss.mean(dim=1)
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+    
+    def compute_speaker_loss(self, speaker_vector, speaker_embedding, all_speaker_embedding, scale=None, bias=None, feature_last=True, batch_mean=True):
+        """
+        Args:
+            speaker_vector: (batch_size, T, n_sources, latent_dim)
+            speaker_embedding: (batch_size, n_sources, latent_dim)
+            all_speaker_embedding: (n_training_sources, latent_dim)
+        Returns:
+            loss: (batch_size, T, n_sources) or (T, n_sources)
+        """
+        assert feature_last, "feature_last should be True."
+
+        loss_distance = self.compute_speaker_distance(speaker_vector, speaker_embedding, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
+
+        rescaled_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources)
+        rescaled_all_distance = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), all_speaker_embedding, dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources, n_training_sources)
+
+        loss_local = self.compute_local_classification(rescaled_distance, batch_mean=False) # (batch_size, T, n_sources)
+        loss_global = self.compute_global_classification(rescaled_distance, rescaled_all_distance, batch_mean=False) # (batch_size, T, n_sources)
+        loss = loss_distance + loss_local + loss_global
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+    
+    def compute_speaker_distance(self, speaker_vector, speaker_embedding, feature_last=True, batch_mean=True):
+        """
+        Args:
+            speaker_vector: (batch_size, T, n_sources, latent_dim)
+            speaker_embedding: (batch_size, n_sources, latent_dim)
+        Returns:
+            loss: (batch_size, T, n_sources)
+        """
+        assert feature_last, "feature_last should be True."
+
+        loss_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1) # (batch_size, T, n_sources)
+
+        distance_table = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), speaker_vector.unsqueeze(dim=2), dim=-1) # (batch_size, T, n_sources, n_sources)
+        loss_hinge = F.relu(1 - distance_table) # (batch_size, T, n_sources, n_sources)
+        loss_hinge = torch.sum(self.mask * loss_hinge, dim=2) # (batch_size, T, n_sources)
+
+        loss = loss_distance + loss_hinge
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+    
+    def compute_local_classification(self, distance, batch_mean=True):
+        """
+        Args:
+            distance: (batch_size, T, n_sources)
+        Returns:
+            loss: (batch_size, T, n_sources)
+        """
+        loss = distance + torch.logsumexp(- distance, dim=2, keepdim=True) # (batch_size, T, n_sources)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+
+    def compute_global_classification(self, distance, all_distance, batch_mean=True):
+        """
+        Args:
+            distance: (batch_size, T, n_sources)
+            all_distance: (batch_size, T, n_sources, n_training_sources)
+        Returns:
+            loss: (batch_size, T, n_sources)
+        """
+        loss = distance + torch.logsumexp(- all_distance, dim=3) # (batch_size, T, n_sources)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+
+    def compute_euclid_distance(self, input, target, dim=-1, keepdim=False, scale=None, bias=None):
+        distance = torch.sum((input - target)**2, dim=dim, keepdim=keepdim)
+
+        if scale is not None or bias is not None:
+            distance = torch.abs(self.scale) * distance + self.bias
+        
+        return distance
+
 def _test():
     in_channels = 3
     input = torch.randn(4, in_channels, 128)
@@ -620,7 +676,8 @@ def _test_wavesplit():
     target = torch.randn(batch_size, n_sources, T)
     speaker_id = torch.randint(0, n_training_sources, (batch_size, n_sources))
 
-    model = WaveSplit(in_channels, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources)
+    spk_criterion = SpeakerLoss(n_sources=n_sources)
+    model = WaveSplit(in_channels, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
     output, sorted_speaker_vector = model(input, speaker_id=speaker_id, return_all=True, return_speaker_vector=True, stack_dim=1)
 
     loss = - sisdr(output, target.unsqueeze(dim=1))
@@ -637,6 +694,7 @@ if __name__ == '__main__':
 
     print("="*10, "Modules for WaveSplit", "="*10)
     _test()
+    print()
 
     print("="*10, "WaveSplit", "="*10)
     _test_wavesplit()
