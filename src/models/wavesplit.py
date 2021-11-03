@@ -44,6 +44,16 @@ class WaveSplitBase(nn.Module):
             output (batch_size, 1, T)
         """
         raise NotImplementedError("Implement forward.")
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
 class WaveSplit(WaveSplitBase):
     def __init__(self, in_channels, latent_dim=512, kernel_size=3, sep_num_blocks=4, sep_num_layers=10, spk_num_layers=14, dilated=True, separable=True, causal=False, nonlinear=None, norm=True, n_sources=2, n_training_sources=None, eps=EPS):
@@ -96,12 +106,12 @@ class WaveSplit(WaveSplitBase):
         speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
 
         if self.training:
-            speaker_embedding = self.embed_sources(speaker_id) # (batch_size, n_sources, latent_dim)
-            all_speaker_embedding = self.embed_sources(self.all_speaker_id) # (n_training_sources, latent_dim)
-
             batch_size, T, n_sources, latent_dim = speaker_vector.size()
 
             with torch.no_grad():
+                speaker_embedding = self.embed_sources(speaker_id) # (batch_size, n_sources, latent_dim)
+                all_speaker_embedding = self.embed_sources(self.all_speaker_id) # (n_training_sources, latent_dim)
+
                 _, sorted_idx = self.compute_pit_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, batch_mean=False) # (batch_size, T, n_sources)
 
                 sorted_idx = sorted_idx.view(batch_size * T, n_sources)
@@ -116,7 +126,7 @@ class WaveSplit(WaveSplitBase):
         else:
             raise NotImplementedError("Not support test time process.")
         
-        output = self.sepatation_stack(input, speaker_centroids, return_all=True, stack_dim=stack_dim)
+        output = self.sepatation_stack(input, speaker_centroids, return_all=return_all, stack_dim=stack_dim)
 
         return output, sorted_speaker_vector
     
