@@ -150,7 +150,6 @@ class D3Net(nn.Module):
         """
         bands, sections = self.bands, self.sections
         n_bins = input.size(2)
-        eps = self.eps
 
         if sum(sections) == n_bins:
             x_valid, x_invalid = input, None
@@ -158,14 +157,14 @@ class D3Net(nn.Module):
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x_valid = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
-
+        x_valid = self.transform_affine_in(x_valid)
         x = self.band_split(x_valid)
-
         x_bands = []
+
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
+        
         x_bands = torch.cat(x_bands, dim=2)
     
         x_full = self.net[FULL](x_valid)
@@ -175,7 +174,7 @@ class D3Net(nn.Module):
         x = self.d2block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
+        x = self.transform_affine_out(x)
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
@@ -191,6 +190,17 @@ class D3Net(nn.Module):
         else:
             output = torch.cat([x, x_invalid], dim=2)
 
+        return output
+    
+    def transform_affine_in(self, input):
+        eps = self.eps
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
+
+        return output
+
+    def transform_affine_out(self, input):
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
+        
         return output
     
     def _reset_parameters(self):
