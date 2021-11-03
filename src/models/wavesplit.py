@@ -82,7 +82,7 @@ class WaveSplit(WaveSplitBase):
 
         self.spk_criterion = spk_criterion
     
-    def forward(self, mixture, speaker_id=None, return_all=False, return_speaker_vector=False, return_speaker_embedding=False, return_all_speaker_embedding=False, stack_dim=1):
+    def forward(self, mixture, speaker_id=None, return_all=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
         """
         Only supports training time
         Args:
@@ -96,14 +96,14 @@ class WaveSplit(WaveSplitBase):
         output = []
         output.append(estimated_sources)
 
-        if return_speaker_vector:
+        if return_spk_vector:
             output.append(sorted_speaker_vector)
         
-        if return_speaker_embedding:
+        if return_spk_embedding:
             speaker_embedding = self.embed_sources(speaker_id) # (batch_size, n_sources, latent_dim)
             output.append(speaker_embedding)
         
-        if return_all_speaker_embedding:
+        if return_all_spk_embedding:
             all_speaker_embedding = self.embed_sources(self.all_speaker_id) # (n_training_sources, latent_dim)
             output.append(all_speaker_embedding)
 
@@ -689,7 +689,7 @@ def _test_wavesplit():
 
     spk_criterion = SpeakerLoss(n_sources=n_sources)
     model = WaveSplit(in_channels, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
-    output, sorted_speaker_vector = model(input, speaker_id=speaker_id, return_all=True, return_speaker_vector=True, stack_dim=1)
+    output, sorted_speaker_vector = model(input, speaker_id=speaker_id, return_all=True, return_spk_vector=True, stack_dim=1)
 
     loss = - sisdr(output, target.unsqueeze(dim=1))
     loss = loss.mean()
