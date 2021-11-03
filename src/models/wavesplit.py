@@ -518,7 +518,7 @@ class MultiSourceProjection1d(nn.Module):
 
         return output
 
-class SpeakerLoss(nn.Module):
+class _SpeakerLoss(nn.Module):
     def __init__(self, n_sources):
         super().__init__()
 
@@ -536,14 +536,18 @@ class SpeakerLoss(nn.Module):
     def forward(self, speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=True, time_mean=True):
         """
         Args:
-            speaker_vector: (batch_size, n_sources, latent_dim, T)
+            speaker_vector:
+                (batch_size, T, n_sources, latent_dims) if feature_last=True
+                (batch_size, n_sources, latent_dims, T) otherwise
             speaker_embedding: (batch_size, n_sources, latent_dim)
             all_speaker_embedding: (n_training_sources, latent_dim)
         Returns:
             loss: (batch_size,) or ()
         """
-        loss = self.compute_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, scale=self.scale, bias=self.bias, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
+        if not feature_last:
+            speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dims)
         
+        loss = self.compute_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, scale=self.scale, bias=self.bias, feature_last=True, batch_mean=False) # (batch_size, T, n_sources)
         loss = loss.mean(dim=-1)
 
         if time_mean:
@@ -687,7 +691,7 @@ def _test_wavesplit():
     target = torch.randn(batch_size, n_sources, T)
     speaker_id = torch.randint(0, n_training_sources, (batch_size, n_sources))
 
-    spk_criterion = SpeakerLoss(n_sources=n_sources)
+    spk_criterion = _SpeakerLoss(n_sources=n_sources)
     model = WaveSplit(in_channels, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
     output, sorted_speaker_vector = model(input, speaker_id=speaker_id, return_all=True, return_spk_vector=True, stack_dim=1)
 
