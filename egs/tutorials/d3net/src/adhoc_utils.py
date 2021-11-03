@@ -2,10 +2,11 @@ import os
 
 import torch
 import torchaudio
+import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filter
-from models.d3net import D3Net, ParallelD3Net
+from models.d3net import D3Net
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
@@ -14,14 +15,14 @@ NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(model_paths, file_paths, out_dirs):
+def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
     patch_size = 256
     fft_size, hop_size = 4096, 1024
     window = torch.hann_window(fft_size)
 
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_d3net(model_paths)
+    model = load_pretrained_d3net(model_paths, jit=jit)
     config = load_experiment_config(model_paths)
     
     if use_cuda:
@@ -139,12 +140,29 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
             
     return estimated_paths
 
-def load_pretrained_d3net(model_paths):
+def load_pretrained_d3net(model_paths, jit=False):
+    if jit:
+        model = load_pretrained_d3net_jit(model_paths)
+    else:
+        modules = {}
+
+        for source in __sources__:
+            model_path = model_paths[source]
+            modules[source] = D3Net.build_model(model_path, load_state_dict=True)
+
+        model = ParallelD3Net(modules)
+    
+    return model
+
+def load_pretrained_d3net_jit(model_paths, in_channels=2, n_bins=2049, patch_size=256):
+    batch_size = 1
+    input = torch.abs(torch.randn(batch_size, in_channels, n_bins, patch_size))
     modules = {}
 
     for source in __sources__:
         model_path = model_paths[source]
-        modules[source] = D3Net.build_model(model_path, load_state_dict=True)
+        module = D3Net.build_model(model_path, load_state_dict=True)
+        modules[source] = torch.jit.trace(module, example_inputs=input)
 
     model = ParallelD3Net(modules)
     
@@ -180,3 +198,24 @@ def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude,
         eps <float>: small value for numerical stability
     """
     return multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=iteration, channels_first=channels_first, eps=eps)
+
+class ParallelD3Net(nn.Module):
+    def __init__(self, modules):
+        super().__init__()
+
+        if isinstance(modules, nn.ModuleDict):
+            pass
+        elif isinstance(modules, dict):
+            modules = nn.ModuleDict(modules)
+        else:
+            raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
+        
+        self.net = modules
+
+    def forward(self, input, target=None):
+        if type(target) is not str:
+            raise TypeError("`target` is expected str, but given {}".format(type(target)))
+        
+        output = self.net[target](input)
+
+        return output
