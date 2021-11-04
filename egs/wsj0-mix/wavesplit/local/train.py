@@ -6,7 +6,8 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from adhoc_dataset import WaveTrainDataset
+from dataset import WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import Trainer
 from models.wavesplit import WaveSplit
 from criterion.sdr import NegSISDR
