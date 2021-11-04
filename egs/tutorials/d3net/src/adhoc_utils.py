@@ -18,7 +18,7 @@ EPS = 1e-12
 def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_d3net(model_paths, jit=jit)
+    model = load_pretrained_model(model_paths, jit=jit)
     config = load_experiment_config(model_paths)
 
     patch_size = config['patch_size']
@@ -140,9 +140,9 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
             
     return estimated_paths
 
-def load_pretrained_d3net(model_paths, jit=False):
+def load_pretrained_model(model_paths, jit=False):
     if jit:
-        model = load_pretrained_d3net_jit(model_paths)
+        model = load_pretrained_model_jit(model_paths)
     else:
         modules = {}
 
@@ -154,7 +154,7 @@ def load_pretrained_d3net(model_paths, jit=False):
     
     return model
 
-def load_pretrained_d3net_jit(model_paths, in_channels=2, n_bins=2049, patch_size=256):
+def load_pretrained_model_jit(model_paths, in_channels=2, n_bins=2049, patch_size=256):
     batch_size = 1
     input = torch.abs(torch.randn(batch_size, in_channels, n_bins, patch_size))
     modules = {}

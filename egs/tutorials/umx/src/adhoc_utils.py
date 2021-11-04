@@ -16,7 +16,7 @@ EPS = 1e-12
 def separate_by_umx(model_paths, file_paths, out_dirs):
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_umx(model_paths)
+    model = load_pretrained_model(model_paths)
     config = load_experiment_config(model_paths)
 
     patch_size = config['patch_size']
@@ -138,7 +138,7 @@ def separate_by_umx(model_paths, file_paths, out_dirs):
             
     return estimated_paths
 
-def load_pretrained_umx(model_paths):
+def load_pretrained_model(model_paths):
     modules = {}
 
     for source in __sources__:

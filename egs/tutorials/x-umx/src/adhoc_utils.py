@@ -16,7 +16,7 @@ EPS = 1e-12
 def separate_by_xumx(model_path, file_paths, out_dirs):
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_xumx(model_path)
+    model = load_pretrained_model(model_path)
     config = load_experiment_config(model_path)
     
     sources = config['sources']
@@ -134,7 +134,7 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
     
     return estimated_paths
 
-def load_pretrained_xumx(model_path):
+def load_pretrained_model(model_path):
     model = CrossNetOpenUnmix.build_model(model_path, load_state_dict=True)
     
     return model
