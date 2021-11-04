@@ -1,5 +1,3 @@
-from adhoc_utils import create_spk_to_idx
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -24,16 +22,18 @@ parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--kernel_size', type=int, default=3, help='Kernel size')
-parser.add_argument('--latent_dim', type=int, default=512, help='Bottleneck channels of separator')
-parser.add_argument('--sep_num_layers', type=int, default=10, help='# layers of separator')
-parser.add_argument('--sep_num_blocks', type=int, default=4, help='# blocks of separator.')
+parser.add_argument('--latent_dim', type=int, default=512, help='Latent dimension')
+parser.add_argument('--spk_num_layers', type=int, default=14, help='# layers of speaker stack')
+parser.add_argument('--sep_num_layers', type=int, default=10, help='# layers of separation stack')
+parser.add_argument('--sep_num_blocks', type=int, default=4, help='# blocks of separation stack.')
 parser.add_argument('--dilated', type=int, default=1, help='Dilated convolution')
 parser.add_argument('--separable', type=int, default=1, help='Depthwise-separable convolution')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--norm', type=int, default=1, help='Normalization')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion_reconst', type=str, default='sisdr', choices=['sisdr'], help='Criterion for reconstruction')
+parser.add_argument('--criterion_speaker', type=str, default='spkloss', choices=['spkloss'], help='Criterion for speaker loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -86,7 +86,7 @@ def main(args):
         in_channels, args.latent_dim,
         kernel_size=args.kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
         dilated=args.dilated, separable=args.separable, causal=args.causal, nonlinear=args.nonlinear, norm=args.norm,
-        n_sources=args.n_sources, n_training_sources=len(train_dataset.spk_to_idx),
+        n_sources=args.n_sources, n_training_sources=len(train_dataset.spk_to_idx.table),
         spk_criterion=criterion_speaker
     )
     print(model)

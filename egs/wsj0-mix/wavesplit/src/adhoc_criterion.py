@@ -56,7 +56,14 @@ class SpeakerLoss(nn.Module):
         loss_distance = self.compute_speaker_distance(speaker_vector, speaker_embedding, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
 
         rescaled_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources)
-        rescaled_all_distance = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), all_speaker_embedding, dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources, n_training_sources)
+        
+        rescaled_all_distance = []
+
+        for spk_embedding in all_speaker_embedding:
+            d = self.compute_euclid_distance(speaker_vector, spk_embedding, dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources)
+            rescaled_all_distance.append(d)
+        
+        rescaled_all_distance = torch.stack(rescaled_all_distance, dim=3) # (batch_size, T, n_sources, n_training_sources)
 
         loss_local = self.compute_local_classification(rescaled_distance, batch_mean=False) # (batch_size, T, n_sources)
         loss_global = self.compute_global_classification(rescaled_distance, rescaled_all_distance, batch_mean=False) # (batch_size, T, n_sources)
@@ -126,3 +133,19 @@ class SpeakerLoss(nn.Module):
             distance = torch.abs(self.scale) * distance + self.bias
         
         return distance
+
+class MultiDomainLoss(nn.Module):
+    def __init__(self, criterion_reconst, criterion_speaker):
+        super().__init__()
+
+        self.criterion_reconst, self.criterion_speaker = criterion_reconst, criterion_speaker
+    
+    def forward(self, input, target, spk_vector=None, spk_embedding=None, all_spk_embedding=None, batch_mean=True):
+        loss_reconst = self.criterion_reconst(input, target, batch_mean=False)
+        loss_speaker = self.criterion_speaker(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=False)
+        loss = loss_reconst + loss_speaker
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        
+        return loss

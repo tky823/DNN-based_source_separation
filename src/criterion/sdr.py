@@ -5,7 +5,7 @@ EPS = 1e-12
 
 def sdr(input, target, eps=EPS):
     """
-    Scale-invariant-SDR (source-to-distortion ratio)
+    Source-to-distortion ratio (SDR)
     Args:
         input (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
         target (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)

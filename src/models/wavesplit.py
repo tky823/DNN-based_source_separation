@@ -37,12 +37,12 @@ class WaveSplitBase(nn.Module):
             eps=eps
         )
 
-        all_speaker_idx = torch.arange(n_training_sources).long()
-        self.all_speaker_idx = nn.Parameter(all_speaker_idx, requires_grad=False)
+        all_spk_idx = torch.arange(n_training_sources).long()
+        self.all_spk_idx = nn.Parameter(all_spk_idx, requires_grad=False)
 
         self.n_sources, self.n_training_sources = n_sources, n_training_sources
     
-    def forward(self, input, speaker_idx=None):
+    def forward(self, input, spk_idx=None):
         """
         Args:
             input (batch_size, 1, T)
@@ -82,7 +82,7 @@ class WaveSplit(WaveSplitBase):
 
         self.spk_criterion = spk_criterion
     
-    def forward(self, mixture, speaker_idx=None, return_all=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
+    def forward(self, mixture, spk_idx=None, return_all=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
         """
         Only supports training time
         Args:
@@ -91,7 +91,7 @@ class WaveSplit(WaveSplitBase):
             estimated_sources: (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
             sorted_speaker_vector: (batch_size, n_sources, latent_dim, T)
         """
-        estimated_sources, sorted_speaker_vector = self.extract_latent(mixture, speaker_idx=speaker_idx, return_all=return_all, stack_dim=stack_dim)
+        estimated_sources, sorted_speaker_vector = self.extract_latent(mixture, spk_idx=spk_idx, return_all=return_all, stack_dim=stack_dim)
 
         output = []
         output.append(estimated_sources)
@@ -100,16 +100,16 @@ class WaveSplit(WaveSplitBase):
             output.append(sorted_speaker_vector)
         
         if return_spk_embedding:
-            speaker_embedding = self.embed_sources(speaker_idx) # (batch_size, n_sources, latent_dim)
+            speaker_embedding = self.embed_sources(spk_idx) # (batch_size, n_sources, latent_dim)
             output.append(speaker_embedding)
         
         if return_all_spk_embedding:
-            all_speaker_embedding = self.embed_sources(self.all_speaker_idx) # (n_training_sources, latent_dim)
+            all_speaker_embedding = self.embed_sources(self.all_spk_idx) # (n_training_sources, latent_dim)
             output.append(all_speaker_embedding)
 
         return output
     
-    def extract_latent(self, mixture, speaker_idx=None, return_all=False, stack_dim=1):
+    def extract_latent(self, mixture, spk_idx=None, return_all=False, stack_dim=1):
         """
         Only supports training time
         Args:
@@ -125,8 +125,8 @@ class WaveSplit(WaveSplitBase):
 
         if self.training:
             with torch.no_grad():
-                speaker_embedding = self.embed_sources(speaker_idx) # (batch_size, n_sources, latent_dim)
-                all_speaker_embedding = self.embed_sources(self.all_speaker_idx) # (n_training_sources, latent_dim)
+                speaker_embedding = self.embed_sources(spk_idx) # (batch_size, n_sources, latent_dim)
+                all_speaker_embedding = self.embed_sources(self.all_spk_idx) # (n_training_sources, latent_dim)
 
                 _, sorted_idx = self.compute_pit_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=False) # (batch_size, T, n_sources)
 
@@ -200,6 +200,7 @@ class SpeakerStack(nn.Module):
         
         self.num_layers = num_layers
         self.n_sources = n_sources
+        self.eps = eps
         
         net = []
         
@@ -218,7 +219,7 @@ class SpeakerStack(nn.Module):
             elif idx == num_layers - 1:
                 residual = False
                 _in_channels = latent_dim
-                _out_channels = latent_dim * n_sources
+                _out_channels = n_sources * latent_dim
             else:
                 residual = True
                 _in_channels = latent_dim
@@ -236,7 +237,13 @@ class SpeakerStack(nn.Module):
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
+        """
+        Args:
+            input: (batch_size, 1, T)
+            output: (batch_size, n_sources, latent_dim, T)
+        """
         n_sources = self.n_sources
+        eps = self.eps
         x = input
         
         for idx in range(self.num_layers):
@@ -244,6 +251,7 @@ class SpeakerStack(nn.Module):
         
         batch_size, _, T = x.size()
         output = x.view(batch_size, n_sources, -1, T)
+        output = output / (torch.linalg.vector_norm(output, dim=2, keepdim=True) + eps)
 
         return output
 
@@ -689,11 +697,11 @@ def _test_wavesplit():
     T = 1024
     input = torch.randn(batch_size, in_channels, T)
     target = torch.randn(batch_size, n_sources, T)
-    speaker_idx = torch.randint(0, n_training_sources, (batch_size, n_sources))
+    spk_idx = torch.randint(0, n_training_sources, (batch_size, n_sources))
 
     spk_criterion = _SpeakerLoss(n_sources=n_sources)
     model = WaveSplit(in_channels, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
-    output, sorted_speaker_vector = model(input, speaker_idx=speaker_idx, return_all=True, return_spk_vector=True, stack_dim=1)
+    output, sorted_speaker_vector = model(input, spk_idx=spk_idx, return_all=True, return_spk_vector=True, stack_dim=1)
 
     loss = - sisdr(output, target.unsqueeze(dim=1))
     loss = loss.mean()
