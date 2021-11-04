@@ -137,7 +137,7 @@ class Trainer:
                 spk_idx = spk_idx.cuda()
             
             self.optimizer.zero_grad()
-            sorted_idx = self.model(mixture, spk_idx=spk_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+            sorted_idx = self.model(mixture, spk_idx=spk_idx)
             
             self.optimizer.zero_grad()
             estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)

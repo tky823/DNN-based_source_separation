@@ -109,7 +109,8 @@ class WaveSplit(WaveSplitBase):
             output.append(speaker_embedding)
         
         if return_all_spk_embedding:
-            all_speaker_embedding = self.embed_sources(self.all_spk_idx) # (n_training_sources, latent_dim)
+            random_idx = torch.randint(0, len(self.all_spk_idx), (100,), dtype=torch.long) # 100 for experimentally to avoid OOM error
+            all_speaker_embedding = self.embed_sources(self.all_spk_idx[random_idx]) # (n_training_sources, latent_dim)
             output.append(all_speaker_embedding)
 
         return output
