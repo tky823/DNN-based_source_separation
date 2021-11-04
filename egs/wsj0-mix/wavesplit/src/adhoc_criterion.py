@@ -141,11 +141,8 @@ class MultiDomainLoss(nn.Module):
         self.criterion_reconst, self.criterion_speaker = criterion_reconst, criterion_speaker
     
     def forward(self, input, target, spk_vector=None, spk_embedding=None, all_spk_embedding=None, batch_mean=True):
-        loss_reconst = self.criterion_reconst(input, target, batch_mean=False)
-        loss_speaker = self.criterion_speaker(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=False)
+        loss_reconst = self.criterion_reconst(input, target, batch_mean=batch_mean)
+        loss_speaker = self.criterion_speaker(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=batch_mean)
         loss = loss_reconst + loss_speaker
-
-        if batch_mean:
-            loss = loss.mean(dim=0)
         
         return loss
