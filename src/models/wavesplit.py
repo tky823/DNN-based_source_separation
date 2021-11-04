@@ -82,7 +82,7 @@ class WaveSplit(WaveSplitBase):
 
         self.spk_criterion = spk_criterion
     
-    def forward(self, mixture, spk_idx=None, return_all=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
+    def forward(self, mixture, spk_idx=None, sorted_idx=None, return_all=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
         """
         Only supports training time
         Args:
@@ -91,7 +91,12 @@ class WaveSplit(WaveSplitBase):
             estimated_sources: (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
             sorted_speaker_vector: (batch_size, n_sources, latent_dim, T)
         """
-        estimated_sources, sorted_speaker_vector = self.extract_latent(mixture, spk_idx=spk_idx, return_all=return_all, stack_dim=stack_dim)
+        if sorted_idx is None:
+            sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx)
+
+            return sorted_idx # (batch_size, T, n_sources)
+        
+        estimated_sources, sorted_speaker_vector = self.extract_latent(mixture, sorted_idx, return_all=return_all, stack_dim=stack_dim)
 
         output = []
         output.append(estimated_sources)
@@ -109,7 +114,26 @@ class WaveSplit(WaveSplitBase):
 
         return output
     
-    def extract_latent(self, mixture, spk_idx=None, return_all=False, stack_dim=1):
+    def solve_permutation(self, mixture, spk_idx):
+        """
+        Args:
+            mixture: (batch_size, 1, T)
+            spk_idx: (batch_size, n_sources)
+        Returns:
+            sorted_speaker_vector: (batch_size, T, n_sources)
+        """
+        speaker_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
+        speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
+            
+        with torch.no_grad():
+            speaker_embedding = self.embed_sources(spk_idx) # (batch_size, n_sources, latent_dim)
+            all_speaker_embedding = self.embed_sources(self.all_spk_idx) # (n_training_sources, latent_dim)
+
+            _, sorted_idx = self.compute_pit_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=False) # (batch_size, T, n_sources)
+        
+        return sorted_idx
+    
+    def extract_latent(self, mixture, sorted_idx, return_all=False, stack_dim=1):
         """
         Only supports training time
         Args:
@@ -124,19 +148,9 @@ class WaveSplit(WaveSplitBase):
         speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
 
         if self.training:
-            with torch.no_grad():
-                speaker_embedding = self.embed_sources(spk_idx) # (batch_size, n_sources, latent_dim)
-                all_speaker_embedding = self.embed_sources(self.all_spk_idx) # (n_training_sources, latent_dim)
-
-                _, sorted_idx = self.compute_pit_speaker_loss(speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=False) # (batch_size, T, n_sources)
-
-                sorted_idx = sorted_idx.view(batch_size * T, n_sources)
-                flatten_sorted_idx = sorted_idx + torch.arange(0, batch_size * T * n_sources, n_sources).long().unsqueeze(dim=-1)
-                flatten_sorted_idx = flatten_sorted_idx.view(batch_size * T * n_sources)
-
-                del speaker_embedding
-                del all_speaker_embedding
-
+            sorted_idx = sorted_idx.view(batch_size * T, n_sources)
+            flatten_sorted_idx = sorted_idx + torch.arange(0, batch_size * T * n_sources, n_sources).long().unsqueeze(dim=-1)
+            flatten_sorted_idx = flatten_sorted_idx.view(batch_size * T * n_sources)
             flatten_speaker_vector = speaker_vector.view(batch_size * T * n_sources, latent_dim)
             flatten_speaker_vector = flatten_speaker_vector[flatten_sorted_idx]
             sorted_speaker_vector = flatten_speaker_vector.view(batch_size, T, n_sources, latent_dim)
