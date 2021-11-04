@@ -7,7 +7,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
-from adhoc_driver import AdhocTrainer
+from adhoc_driver import Trainer
 from models.wavesplit import WaveSplit
 from criterion.sdr import NegSISDR
 from adhoc_criterion import SpeakerLoss, MultiDomainLoss
@@ -112,7 +112,7 @@ def main(args):
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
-    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
+    trainer = Trainer(model, loader, criterion, optimizer, args)
     trainer.run()
     
 if __name__ == '__main__':
