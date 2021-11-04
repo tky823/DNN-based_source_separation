@@ -148,7 +148,7 @@ class WaveSplit(WaveSplitBase):
         speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
 
         if self.training:
-            sorted_idx = sorted_idx.view(batch_size * T, n_sources)
+            sorted_idx = sorted_idx.view(batch_size * T, n_sources).cpu()
             flatten_sorted_idx = sorted_idx + torch.arange(0, batch_size * T * n_sources, n_sources).long().unsqueeze(dim=-1)
             flatten_sorted_idx = flatten_sorted_idx.view(batch_size * T * n_sources)
             flatten_speaker_vector = speaker_vector.view(batch_size * T * n_sources, latent_dim)
