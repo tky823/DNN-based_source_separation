@@ -127,7 +127,6 @@ class Trainer:
         """
         self.model.train()
         
-        stack_dim = 1
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
@@ -137,8 +136,8 @@ class Trainer:
                 sources = sources.cuda()
                 spk_idx = spk_idx.cuda()
             
-            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, return_all=True, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True, stack_dim=stack_dim)
-            loss = self.criterion(estimated_sources, sources.unsqueeze(dim=stack_dim), spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+            loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
             
             self.optimizer.zero_grad()
             loss.backward()
