@@ -5,7 +5,15 @@ import torch.nn as nn
 from models.mm_dense_rnn import MMDenseRNN
 
 FULL = 'full'
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
+__pretrained_model_ids__ = {
+    "musdb18": {
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV"
+        }
+    },
+}
 
 class ParallelMMDenseLSTM(nn.Module):
     def __init__(self, modules):
