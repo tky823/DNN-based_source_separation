@@ -134,6 +134,9 @@ class WaveSplit(WaveSplitBase):
                 flatten_sorted_idx = sorted_idx + torch.arange(0, batch_size * T * n_sources, n_sources).long().unsqueeze(dim=-1)
                 flatten_sorted_idx = flatten_sorted_idx.view(batch_size * T * n_sources)
 
+                del speaker_embedding
+                del all_speaker_embedding
+
             flatten_speaker_vector = speaker_vector.view(batch_size * T * n_sources, latent_dim)
             flatten_speaker_vector = flatten_speaker_vector[flatten_sorted_idx]
             sorted_speaker_vector = flatten_speaker_vector.view(batch_size, T, n_sources, latent_dim)
