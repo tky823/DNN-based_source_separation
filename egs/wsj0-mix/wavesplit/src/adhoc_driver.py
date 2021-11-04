@@ -140,7 +140,7 @@ class Trainer:
             sorted_idx = self.model(mixture, spk_idx=spk_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
             
             self.optimizer.zero_grad()
-            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, sorted_idx=sorted_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
             loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
             loss.backward()
             
