@@ -2,6 +2,72 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class GlobalClassificationLoss(nn.Module):
+    def __init__(self, n_sources, source_reduction='mean'):
+        super().__init__()
+
+        self.mask = nn.Parameter(1 - torch.eye(n_sources), requires_grad=False)
+
+        zero_dim_size = ()
+        self.scale, self.bias = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True), nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
+
+        self.source_reduction = source_reduction
+
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        self.scale.data.fill_(1)
+        self.bias.data.fill_(0)
+
+    def forward(self, speaker_vector, speaker_embedding, all_speaker_embedding, feature_last=True, batch_mean=True, time_mean=True):
+        """
+        Args:
+            speaker_vector:
+                (batch_size, T, n_sources, latent_dims) if feature_last=True
+                (batch_size, n_sources, latent_dims, T) otherwise
+            speaker_embedding: (batch_size, n_sources, latent_dim)
+            all_speaker_embedding: (n_training_sources, latent_dim)
+        Returns:
+            loss: (batch_size,) or ()
+        """
+        if not feature_last:
+            speaker_vector = speaker_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dims)
+
+        rescaled_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1, scale=self.scale, bias=self.bias) # (batch_size, T, n_sources)
+        
+        rescaled_all_distance = []
+
+        for spk_embedding in all_speaker_embedding:
+            d = self.compute_euclid_distance(speaker_vector, spk_embedding, dim=-1, scale=self.scale, bias=self.bias) # (batch_size, T, n_sources)
+            rescaled_all_distance.append(d)
+        
+        rescaled_all_distance = torch.stack(rescaled_all_distance, dim=3) # (batch_size, T, n_sources, n_training_sources)
+        
+        loss = rescaled_distance + torch.logsumexp(- rescaled_all_distance, dim=3) # (batch_size, T, n_sources)
+
+        if self.source_reduction == 'mean':
+            loss = loss.mean(dim=-1)
+        elif self.source_reduction == 'sum':
+            loss = loss.sum(dim=-1)
+        else:
+            raise NotImplementedError("Specify source_reduction.")
+
+        if time_mean:
+            loss = loss.mean(dim=1)
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+
+    def compute_euclid_distance(self, input, target, dim=-1, keepdim=False, scale=None, bias=None):
+        distance = torch.sum((input - target)**2, dim=dim, keepdim=keepdim)
+
+        if scale is not None or bias is not None:
+            distance = torch.abs(self.scale) * distance + self.bias
+        
+        return distance
+
 class SpeakerLoss(nn.Module):
     def __init__(self, n_sources):
         super().__init__()

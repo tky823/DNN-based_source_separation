@@ -11,7 +11,7 @@ from dataset import WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import Trainer
 from models.wavesplit import WaveSplit
 from criterion.sdr import NegSISDR
-from adhoc_criterion import SpeakerLoss, MultiDomainLoss
+from adhoc_criterion import GlobalClassificationLoss, MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Training of WaveSplit")
 
@@ -34,7 +34,7 @@ parser.add_argument('--nonlinear', type=str, default=None, help='Non-linear func
 parser.add_argument('--norm', type=int, default=1, help='Normalization')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion_reconst', type=str, default='sisdr', choices=['sisdr'], help='Criterion for reconstruction')
-parser.add_argument('--criterion_speaker', type=str, default='spkloss', choices=['spkloss'], help='Criterion for speaker loss')
+parser.add_argument('--criterion_speaker', type=str, default='global', choices=['spkloss', 'global'], help='Criterion for speaker loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -71,8 +71,8 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_reconst))
 
-    if args.criterion_speaker == 'spkloss':
-        criterion_speaker = SpeakerLoss(n_sources=args.n_sources)
+    if args.criterion_speaker == 'global':
+        criterion_speaker = GlobalClassificationLoss(n_sources=args.n_sources, source_reduction='mean')
     else:
         raise ValueError("Not support criterion {}".format(args.criterion_speaker))
     

@@ -33,7 +33,7 @@ norm=1
 
 # Criterion
 criterion_reconst='sisdr'
-criterion_speaker='spkloss'
+criterion_speaker='global'
 
 # Optimizer
 optimizer='adam'
