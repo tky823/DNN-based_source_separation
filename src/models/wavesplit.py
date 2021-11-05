@@ -135,6 +135,39 @@ class WaveSplitBase(nn.Module):
                 
         return _num_parameters
 
+    def get_config(self):
+        config = {
+            'base': {
+                'n_sources': self.n_sources,
+                'n_training_sources': self.n_training_sources
+            },
+            'spk_stack': self.speaker_stack.get_config(),
+            'sep_stack': self.sepatation_stack.get_config()
+        }
+
+        return config
+
+    @classmethod
+    def build_model(cls, model_path, spk_stack_cls, sep_stack_cls, spk_criterion, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+
+        speaker_stack = spk_stack_cls(
+            **config['spk_stack']
+        )
+
+        separation_stack = sep_stack_cls(
+            **config['sep_stack']
+        )
+
+        n_sources, n_training_sources = config['base']['n_sources'], config['base']['n_training_sources']
+
+        model = cls(speaker_stack, separation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+
+        return model
+
 class WaveSplit(WaveSplitBase):
     def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None):
         super().__init__(speaker_stack, sepatation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
@@ -208,6 +241,15 @@ class SpeakerStack(nn.Module):
         
         self.num_layers = num_layers
         self.n_sources = n_sources
+
+        self.in_channels = in_channels
+        self.latent_dim = latent_dim
+        self.kernel_size = kernel_size
+        self.num_layers = num_layers
+
+        self.dilated, self.separable, self.causal = dilated, separable, causal
+        self.nonlinear, self.norm = nonlinear, norm
+
         self.eps = eps
         
         net = []
@@ -259,24 +301,74 @@ class SpeakerStack(nn.Module):
 
         return output
 
+    def get_config(self):
+        config = {}
+
+        config['in_channels'] = self.in_channels
+        config['latent_dim'] = self.latent_dim
+        config['kernel_size'] = self.kernel_size
+        config['num_layers'] = self.num_layers
+
+        config['dilated'], config['separable'], config['causal'] = self.dilated, self.separable, self.causal
+        config['nonlinear'], config['norm'] = self.nonlinear, self.norm
+
+        config['n_sources'] = self.n_sources
+
+        config['eps'] = self.eps
+
+        return config
+
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+
+        in_channels, latent_dim = config['in_channels'], config['latent_dim']
+        kernel_size = config['kernel_size']
+        num_layers = config['num_layers']
+        dilated, separable, causal = config['dilated'], config['separable'], config['causal']
+        nonlinear, norm = config['nonlinear'], config['norm']
+        n_sources = config['n_sources']
+        eps = config['eps']
+
+        model = cls(
+            in_channels, latent_dim, kernel_size=kernel_size,
+            num_layers=num_layers,
+            dilated=dilated, separable=separable, causal=causal,
+            nonlinear=nonlinear, norm=norm, n_sources=n_sources,
+            eps=eps
+        )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+
+        return model
+
 class SeparationStack(nn.Module):
-    def __init__(self, in_channels, latent_dim=512, kernel_size=4, sep_kernel_size=3, sep_num_blocks=4, sep_num_layers=10, dilated=True, separable=True, causal=False, nonlinear=None, norm=True, n_sources=2, eps=EPS):
+    def __init__(self, in_channels, latent_dim=512, kernel_size_in=4, kernel_size=3, num_blocks=4, num_layers=10, dilated=True, separable=True, causal=False, nonlinear=None, norm=True, n_sources=2, eps=EPS):
         super().__init__()
         
-        self.kernel_size = kernel_size
-        self.sep_num_blocks, self.sep_num_layers = sep_num_blocks, sep_num_layers
+        self.in_channels = in_channels
+        self.latent_dim = latent_dim
+        self.kernel_size_in, self.kernel_size = kernel_size_in, kernel_size
+        self.num_blocks, self.num_layers = num_blocks, num_layers
+
+        self.dilated, self.separable, self.causal = dilated, separable, causal
+        self.nonlinear, self.norm = nonlinear, norm
+
         self.n_sources = n_sources
 
-        self.conv1d = nn.Conv1d(in_channels, latent_dim, kernel_size)
+        self.eps = eps
+
+        self.conv1d = nn.Conv1d(in_channels, latent_dim, kernel_size=kernel_size_in, stride=1)
         
         net = []
         fc_weights, fc_biases = [], []
 
-        for block_idx in range(sep_num_blocks):
+        for block_idx in range(num_blocks):
             subnet = []
             sub_fc_weights, sub_fc_biases = [], []
 
-            for layer_idx in range(sep_num_layers):
+            for layer_idx in range(num_layers):
                 if dilated:
                     dilation = 2**layer_idx
                     stride = 1
@@ -284,14 +376,14 @@ class SeparationStack(nn.Module):
                     dilation = 1
                     stride = 2
 
-                if block_idx == sep_num_blocks - 1 and layer_idx == sep_num_layers - 1:
+                if block_idx == num_blocks - 1 and layer_idx == num_layers - 1:
                     dual_head = False
                 else:
                     dual_head = True
                 
                 block = FiLMResidualBlock1d(
                     latent_dim, latent_dim, skip_channels=n_sources,
-                    kernel_size=sep_kernel_size, stride=stride, dilation=dilation,
+                    kernel_size=kernel_size, stride=stride, dilation=dilation,
                     separable=separable, causal=causal, nonlinear=nonlinear, norm=norm,
                     dual_head=dual_head,
                     eps=eps
@@ -326,7 +418,7 @@ class SeparationStack(nn.Module):
                 (batch_size, num_blocks*num_layers, n_sources, T) if return_all
                 (batch_size, n_sources, T) otherwise
         """
-        padding = self.kernel_size - 1
+        padding = self.kernel_size_in - 1
         padding_left = padding // 2
         padding_right = padding - padding_left
 
@@ -335,11 +427,11 @@ class SeparationStack(nn.Module):
 
         skip_connection = []
         
-        for block_idx in range(self.sep_num_blocks):
+        for block_idx in range(self.num_blocks):
             fc_weights_block = self.fc_weights[block_idx]
             fc_biases_block = self.fc_biases[block_idx]
             net_block = self.net[block_idx]
-            for layer_idx in range(self.sep_num_layers):
+            for layer_idx in range(self.num_layers):
                 gamma = fc_weights_block[layer_idx](speaker_centroids)
                 beta = fc_biases_block[layer_idx](speaker_centroids)
                 x, skip = net_block[layer_idx](x, gamma, beta)
@@ -351,6 +443,52 @@ class SeparationStack(nn.Module):
             output = skip_connection[-1]
 
         return output
+    
+    def get_config(self):
+        config = {}
+
+        config['in_channels'] = self.in_channels
+        config['latent_dim'] = self.latent_dim
+        config['kernel_size_in'], config['kernel_size'] = self.kernel_size_in, self.kernel_size
+        config['num_blocks'], config['num_layers'] = self.num_blocks, self.num_layers
+
+        config['dilated'], config['separable'], config['causal'] = self.dilated, self.separable, self.causal
+        config['nonlinear'], config['norm'] = self.nonlinear, self.norm
+
+        config['n_sources'] = self.n_sources
+        config['eps'] = self.eps
+
+        return config
+    
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=True):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+
+        in_channels = config['in_channels']
+        latent_dim = config['latent_dim']
+        kernel_size_in, kernel_size = config['kernel_size_in'], config['kernel_size']
+
+        num_blocks, num_layers = config['num_blocks'], config['num_layers']
+
+        dilated, separable, causal = config['dilated'], config['separable'], config['causal']
+        nonlinear, norm = config['nonlinear'], config['norm']
+
+        n_sources = config['n_sources']
+
+        eps = config['eps']
+
+        model = cls(
+            in_channels, latent_dim, kernel_size_in=kernel_size_in, kernel_size=kernel_size,
+            num_blocks=num_blocks, num_layers=num_layers,
+            dilated=dilated, separable=separable, causal=causal,
+            nonlinear=nonlinear, norm=norm, n_sources=n_sources,
+            eps=eps
+        )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+
+        return model
 
 class ResidualBlock1d(nn.Module):
     def __init__(self, in_channels, out_channels=512, kernel_size=3, stride=1, dilation=1, separable=True, causal=False, nonlinear=None, norm=True, eps=EPS):
@@ -804,7 +942,7 @@ def _test_wavesplit():
     spk_criterion = _SpeakerLoss(n_sources=n_sources)
 
     speaker_stack = SpeakerStack(in_channels, latent_dim, num_layers=5, separable=False, n_sources=n_sources)
-    separation_stack = SeparationStack(in_channels, latent_dim, sep_num_layers=5, separable=False, n_sources=n_sources)
+    separation_stack = SeparationStack(in_channels, latent_dim, num_layers=5, separable=False, n_sources=n_sources)
     model = WaveSplit(speaker_stack, separation_stack, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
 
     with torch.no_grad():
@@ -834,7 +972,7 @@ def _test_wavesplit_spk_distance():
     spk_criterion = _SpeakerDistance(n_sources=n_sources)
 
     speaker_stack = SpeakerStack(in_channels, latent_dim, num_layers=5, separable=False, n_sources=n_sources)
-    separation_stack = SeparationStack(in_channels, latent_dim, sep_num_layers=5, separable=False, n_sources=n_sources)
+    separation_stack = SeparationStack(in_channels, latent_dim, num_layers=5, separable=False, n_sources=n_sources)
     model = WaveSplit(speaker_stack, separation_stack, latent_dim, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
 
     with torch.no_grad():

@@ -170,12 +170,14 @@ class Trainer:
         return valid_loss
     
     def save_model(self, epoch, model_path='./tmp.pth'):
+        config = {}
+        
         if isinstance(self.model, nn.DataParallel):
-            config = self.model.module.get_config()
-            config['state_dict'] = self.model.module.state_dict()
+            config['base'] = self.model.module.get_config()
+            config['base']['state_dict'] = self.model.module.state_dict()
         else:
-            config = self.model.get_config()
-            config['state_dict'] = self.model.state_dict()
+            config['base'] = self.model.get_config()
+            config['base']['state_dict'] = self.model.state_dict()
             
         config['optim_dict'] = self.optimizer.state_dict()
         
