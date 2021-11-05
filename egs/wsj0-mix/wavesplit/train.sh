@@ -22,7 +22,7 @@ latent_dim=512
 
 spk_kernel_size=3
 spk_num_layers=14
-kernel_size=3
+sep_kernel_size_in=4
 sep_kernel_size=3
 sep_num_layers=10
 sep_num_blocks=4
@@ -56,7 +56,7 @@ gpu_id="0"
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${reconst_criterion}-${spk_criterion}"
-    save_dir="${save_dir}/latent${latent_dim}/${spk_kernel_size}_${spk_num_layers}-/kernel${kernel_size}-${sep_kernel_size}_sep${sep_num_blocks}-${sep_num_layers}"
+    save_dir="${save_dir}/latent${latent_dim}/${spk_kernel_size}_${spk_num_layers}-/kernel${sep_kernel_size_in}-${sep_kernel_size}_sep${sep_num_blocks}-${sep_num_layers}"
     save_dir="${save_dir}/dilated${dilated}_separable${separable}_causal${causal}_${nonlinear}_norm${norm}"
     save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
@@ -87,7 +87,7 @@ train.py \
 --latent_dim ${latent_dim} \
 --spk_kernel_size ${spk_kernel_size} \
 --spk_num_layers ${spk_num_layers} \
---kernel_size ${kernel_size} \
+--sep_kernel_size_in ${sep_kernel_size_in} \
 --sep_kernel_size ${sep_kernel_size} \
 --sep_num_layers ${sep_num_layers} \
 --sep_num_blocks ${sep_num_blocks} \

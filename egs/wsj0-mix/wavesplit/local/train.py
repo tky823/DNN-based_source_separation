@@ -25,7 +25,7 @@ parser.add_argument('--valid_duration', type=float, default=4, help='Duration fo
 parser.add_argument('--latent_dim', type=int, default=512, help='Latent dimension')
 parser.add_argument('--spk_kernel_size', type=int, default=3, help='Kernel size of speaker stack.')
 parser.add_argument('--spk_num_layers', type=int, default=14, help='# layers of speaker stack')
-parser.add_argument('--kernel_size', type=int, default=4, help='Kernel size')
+parser.add_argument('--sep_kernel_size_in', type=int, default=4, help='Kernel size')
 parser.add_argument('--sep_kernel_size', type=int, default=3, help='Kernel size of separation stack.')
 parser.add_argument('--sep_num_layers', type=int, default=10, help='# layers of separation stack')
 parser.add_argument('--sep_num_blocks', type=int, default=4, help='# blocks of separation stack.')
@@ -96,7 +96,7 @@ def main(args):
 
     separation_stack = SeparationStack(
         args.in_channels, args.latent_dim,
-        kernel_size=args.kernel_size, sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
+        kernel_size_in=args.sep_kernel_size_in, kernel_size=args.sep_kernel_size, num_blocks=args.sep_num_blocks, num_layers=args.sep_num_layers,
         dilated=args.dilated, separable=args.separable, causal=args.causal, nonlinear=args.nonlinear, norm=args.norm,
         n_sources=args.n_sources
     )
