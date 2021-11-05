@@ -74,7 +74,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.reconst_criterion))
 
     if args.spk_criterion == 'distance':
-        spk_criterion = SpeakerDistance()
+        spk_criterion = SpeakerDistance(n_sources=args.n_sources)
     elif args.spk_criterion == 'global':
         spk_criterion = GlobalClassificationLoss(n_sources=args.n_sources, source_reduction='mean')
     else:
