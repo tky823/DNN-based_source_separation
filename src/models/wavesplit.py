@@ -363,7 +363,7 @@ class ResidualBlock1d(nn.Module):
         if separable:
             self.separable_conv1d = DepthwiseSeparableConv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, eps=eps)
         else:            
-            self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, dilation=dilation)
+            self.conv1d = ConvBlock1d(in_channels, out_channels, kernel_size=kernel_size, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, eps=eps)
 
     def forward(self, input):
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
@@ -406,7 +406,7 @@ class FiLMResidualBlock1d(nn.Module):
         if separable:
             self.output_conv1d = FiLMDepthwiseSeparableConv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, eps=eps)
         else:
-            self.output_conv1d = FiLMConv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, eps=eps)
+            self.output_conv1d = FiLMConvBlock1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, causal=causal, nonlinear=nonlinear, norm=norm, eps=eps)
         
         self.skip_conv1d = nn.Conv1d(out_channels, skip_channels, kernel_size=1, stride=1, dilation=1)
 
@@ -440,7 +440,44 @@ class FiLMResidualBlock1d(nn.Module):
         
         return output, skip
 
-class FiLMConv1d(nn.Module):
+class ConvBlock1d(nn.Module):
+    def __init__(self, in_channels, out_channels=512, kernel_size=3, stride=1, dilation=1, causal=False, nonlinear=None, norm=True, eps=EPS):
+        super().__init__()
+        
+        self.norm = norm
+        self.eps = eps
+        
+        self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=in_channels)
+
+        if nonlinear is not None:
+            if nonlinear == 'prelu':
+                self.nonlinear1d = nn.PReLU()
+            else:
+                raise ValueError("Not support {}".format(nonlinear))
+            self.nonlinear = True
+        else:
+            self.nonlinear = False
+        
+        if norm:
+            norm_name = 'cLN' if causal else 'gLN'
+            self.norm1d = choose_layer_norm(norm_name, out_channels, causal=causal, eps=eps)
+        
+    def forward(self, input):
+        nonlinear, norm = self.nonlinear, self.norm
+        
+        x = self.conv1d(input)
+
+        if nonlinear:
+            x = self.nonlinear1d(x)
+        
+        if norm:
+            x = self.norm1d(x)
+        
+        output = x
+        
+        return output
+
+class FiLMConvBlock1d(nn.Module):
     def __init__(self, in_channels, out_channels=512, kernel_size=3, stride=1, dilation=1, causal=False, nonlinear=None, norm=True, eps=EPS):
         super().__init__()
         
