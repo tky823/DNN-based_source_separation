@@ -172,11 +172,11 @@ class WaveSplit(WaveSplitBase):
             output.append(sorted_spk_vector)
         
         if return_spk_embedding:
-            spk_embedding = self.embed_sources(spk_idx) # (batch_size, n_sources, latent_dim)
+            spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
             output.append(spk_embedding)
         
         if return_all_spk_embedding:
-            all_spk_embedding = self.embed_sources(self.all_spk_idx) # (n_training_sources, latent_dim)
+            all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
             output.append(all_spk_embedding)
         
         if len(output) == 1:
