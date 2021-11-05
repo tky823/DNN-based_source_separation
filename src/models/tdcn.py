@@ -138,6 +138,7 @@ class ResidualBlock1d(nn.Module):
                 output = self.output_conv1d(x)
             else:
                 output = None
+            
             skip = self.skip_conv1d(x)
         
         if output is not None:
@@ -181,12 +182,15 @@ class DepthwiseSeparableConv1d(nn.Module):
         
         if nonlinear:
             x = self.nonlinear1d(x)
+        
         if norm:
             x = self.norm1d(x)
+        
         if dual_head:
             output = self.output_pointwise_conv1d(x)
         else:
             output = None
+        
         skip = self.skip_pointwise_conv1d(x)
         
         return output, skip

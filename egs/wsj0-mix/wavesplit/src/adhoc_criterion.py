@@ -2,6 +2,74 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class SpeakerDistance(nn.Module):
+    def __init__(self, n_sources, scale=None, bias=None):
+        super().__init__()
+
+        self.mask = nn.Parameter(1 - torch.eye(n_sources), requires_grad=False)
+
+        zero_dim_size = ()
+
+        if scale is None:
+            self.scale = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
+        else:
+            if not isinstance(scale, nn.Parameter):
+                raise TypeError("`scale` should be nn.Parameter.")
+            
+            self.scale = scale
+
+        if bias is None:
+            self.bias = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
+        else:
+            if not isinstance(bias, nn.Parameter):
+                raise TypeError("`bias` should be nn.Parameter.")
+            
+            self.bias = bias
+
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        self.scale.data.fill_(1)
+        self.bias.data.fill_(0)
+
+    def forward(self, spk_vector, spk_embedding, _, feature_last=True, batch_mean=True, time_mean=True):
+        """
+        Args:
+            spk_vector:
+                (batch_size, T, n_sources, latent_dim) if feature_last
+                (batch_size, n_sources, latent_dim, T) otherwise
+            spk_embedding: (batch_size, n_sources, latent_dim)
+            _: All speaker embedding (n_training_sources, latent_dim)
+        Returns:
+            loss: (batch_size, T) or (T,)
+        """
+        if not feature_last:
+            spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dims)
+
+        loss_euclid = self.compute_euclid_distance(spk_vector, spk_embedding.unsqueeze(dim=1), dim=-1) # (batch_size, T, n_sources)
+
+        distance_table = self.compute_euclid_distance(spk_vector.unsqueeze(dim=3), spk_vector.unsqueeze(dim=2), dim=-1) # (batch_size, T, n_sources, n_sources)
+        loss_hinge = F.relu(1 - distance_table) # (batch_size, T, n_sources, n_sources)
+        loss_hinge = torch.sum(self.mask * loss_hinge, dim=2) # (batch_size, T, n_sources)
+
+        loss = loss_euclid + loss_hinge
+        loss = loss.mean(dim=-1)
+
+        if time_mean:
+            loss = loss.mean(dim=1)
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        return loss
+    
+    def compute_euclid_distance(self, input, target, dim=-1, keepdim=False, scale=None, bias=None):
+        distance = torch.sum((input - target)**2, dim=dim, keepdim=keepdim)
+
+        if scale is not None or bias is not None:
+            distance = torch.abs(self.scale) * distance + self.bias
+        
+        return distance
+
 class GlobalClassificationLoss(nn.Module):
     def __init__(self, n_sources, source_reduction='mean'):
         super().__init__()

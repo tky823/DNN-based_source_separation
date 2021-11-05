@@ -9,9 +9,9 @@ from utils.utils import set_seed
 from adhoc_dataset import WaveTrainDataset
 from dataset import WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import Trainer
-from models.wavesplit import WaveSplit
+from models.wavesplit import SpeakerStack, SeparationStack, WaveSplit
 from criterion.sdr import NegSISDR
-from adhoc_criterion import GlobalClassificationLoss, MultiDomainLoss
+from adhoc_criterion import SpeakerDistance, GlobalClassificationLoss, MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Training of WaveSplit")
 
@@ -22,9 +22,11 @@ parser.add_argument('--valid_list_path', type=str, default=None, help='Path for 
 parser.add_argument('--sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=0.75, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
-parser.add_argument('--kernel_size', type=int, default=3, help='Kernel size')
 parser.add_argument('--latent_dim', type=int, default=512, help='Latent dimension')
+parser.add_argument('--spk_kernel_size', type=int, default=3, help='Kernel size of speaker stack.')
 parser.add_argument('--spk_num_layers', type=int, default=14, help='# layers of speaker stack')
+parser.add_argument('--kernel_size', type=int, default=4, help='Kernel size')
+parser.add_argument('--sep_kernel_size', type=int, default=3, help='Kernel size of separation stack.')
 parser.add_argument('--sep_num_layers', type=int, default=10, help='# layers of separation stack')
 parser.add_argument('--sep_num_blocks', type=int, default=4, help='# blocks of separation stack.')
 parser.add_argument('--dilated', type=int, default=1, help='Dilated convolution')
@@ -33,8 +35,8 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--norm', type=int, default=1, help='Normalization')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion_reconst', type=str, default='sisdr', choices=['sisdr'], help='Criterion for reconstruction')
-parser.add_argument('--criterion_speaker', type=str, default='global', choices=['spkloss', 'global'], help='Criterion for speaker loss')
+parser.add_argument('--reconst_criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion for reconstruction')
+parser.add_argument('--spk_criterion', type=str, default='distance', choices=['distance', 'global'], help='Criterion for speaker loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -66,29 +68,44 @@ def main(args):
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
 
     # Criterion
-    if args.criterion_reconst == 'sisdr':
-        criterion_reconst = NegSISDR()
+    if args.reconst_criterion == 'sisdr':
+        reconst_criterion = NegSISDR()
     else:
-        raise ValueError("Not support criterion {}".format(args.criterion_reconst))
+        raise ValueError("Not support criterion {}".format(args.reconst_criterion))
 
-    if args.criterion_speaker == 'global':
-        criterion_speaker = GlobalClassificationLoss(n_sources=args.n_sources, source_reduction='mean')
+    if args.spk_criterion == 'distance':
+        spk_criterion = SpeakerDistance()
+    elif args.spk_criterion == 'global':
+        spk_criterion = GlobalClassificationLoss(n_sources=args.n_sources, source_reduction='mean')
     else:
-        raise ValueError("Not support criterion {}".format(args.criterion_speaker))
+        raise ValueError("Not support criterion {}".format(args.spk_criterion))
     
-    criterion = MultiDomainLoss(criterion_reconst, criterion_speaker)
+    criterion = MultiDomainLoss(reconst_criterion, spk_criterion)
     
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
     
-    in_channels = 1
+    args.in_channels = 1
+
+    speaker_stack = SpeakerStack(
+        args.in_channels, args.latent_dim,
+        kernel_size=args.spk_kernel_size, num_layers=args.spk_num_layers,
+        dilated=args.dilated, separable=args.separable, causal=args.causal, nonlinear=args.nonlinear, norm=args.norm,
+        n_sources=args.n_sources
+    )
+
+    separation_stack = SeparationStack(
+        args.in_channels, args.latent_dim,
+        kernel_size=args.kernel_size, sep_kernel_size=args.sep_kernel_size, num_blocks=args.sep_num_blocks, num_layers=args.sep_num_layers,
+        dilated=args.dilated, separable=args.separable, causal=args.causal, nonlinear=args.nonlinear, norm=args.norm,
+        n_sources=args.n_sources
+    )
 
     model = WaveSplit(
-        in_channels, args.latent_dim,
-        kernel_size=args.kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,
-        dilated=args.dilated, separable=args.separable, causal=args.causal, nonlinear=args.nonlinear, norm=args.norm,
+        speaker_stack, separation_stack,
+        latent_dim=args.latent_dim,
         n_sources=args.n_sources, n_training_sources=len(train_dataset.spk_to_idx.table),
-        spk_criterion=criterion_speaker
+        spk_criterion=spk_criterion
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
