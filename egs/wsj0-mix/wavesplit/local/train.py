@@ -60,7 +60,7 @@ def main(args):
     
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
     valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
-    print("Training dataset includes {} samples.".format(len(train_dataset)))
+    print("Training dataset includes {} samples. {} speakers.".format(len(train_dataset)), len(train_dataset.spk_to_idx.table))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
