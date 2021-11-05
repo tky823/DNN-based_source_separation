@@ -5,7 +5,20 @@ import torch.nn as nn
 from utils.utils_model import choose_nonlinear, choose_rnn
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
+__pretrained_model_ids__ = {
+    "musdb18": {
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "1sqlK26fLJ6ns-NOxCrxhwI92wv45QPCB"
+        }
+    },
+    "musdb18hq": {
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "18pj2ubYnZPSQWPpHaREAcbmrNzEihNHO"
+        }
+    }
+}
 
 """
 Reference: https://github.com/sigsep/open-unmix-pytorch
@@ -141,7 +154,6 @@ class OpenUnmix(nn.Module):
         """
         n_bins, max_bin = self.n_bins, self.max_bin
         in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
-        eps = self.eps
 
         batch_size, _, _, n_frames = input.size()
 
@@ -153,12 +165,10 @@ class OpenUnmix(nn.Module):
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
 
-        x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+        x = self.transform_affine_in(x_valid) # (batch_size, n_channels, max_bin, n_frames)
         x = x.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
         x = x.view(batch_size * n_frames, in_channels * max_bin)
-
         x = self.block(x) # (batch_size * n_frames, hidden_channels)
-
         x = x.view(batch_size, n_frames, hidden_channels)
         x_rnn, _ = self.rnn(x) # (batch_size, n_frames, out_channels)
         x = torch.cat([x, x_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
@@ -167,10 +177,34 @@ class OpenUnmix(nn.Module):
         x_full = x_full.view(batch_size, n_frames, in_channels, n_bins)
         x_full = x_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
 
-        x_full = self.scale_out.unsqueeze(dim=1) * x_full + self.bias_out.unsqueeze(dim=1)
+        x_full = self.transform_affine_out(x_full)
         x_full = self.relu2d(x_full)
 
         output = x_full * input
+
+        return output
+    
+    def transform_affine_in(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, max_bin, n_frames)
+        Rreturns:
+            output: (batch_size, n_channels, max_bin, n_frames)
+        """
+        eps = self.eps
+
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+
+        return output
+
+    def transform_affine_out(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, n_bins, n_frames)
+        Rreturns:
+            output: (batch_size, n_channels, n_bins, n_frames)
+        """
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
 
         return output
 
@@ -250,179 +284,36 @@ class OpenUnmix(nn.Module):
         
         return model
     
-    @property
-    def num_parameters(self):
-        _num_parameters = 0
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
+        import os
         
-        for p in self.parameters():
-            if p.requires_grad:
-                _num_parameters += p.numel()
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
         
-        return _num_parameters
+        if task in ['musdb18', 'musdb18hq']:
+            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            config = kwargs.get('config') or "paper"
+            model_choice = kwargs.get('model_choice') or 'best'
 
-"""
-CrossNet-Open-Unmix
-    Reference: "All for One and One for All: Improving Music Separation by Bridging Networks"
-    See https://arxiv.org/abs/2010.04228
-"""
-class CrossNetOpenUnmix(nn.Module):
-    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, sources=__sources__, eps=EPS):
-        """
-        Args:
-            in_channels <int>: Input channels
-            hidden_channels <int>: Hidden channels in LSTM
-            num_layers <int>: # of LSTM layers
-            n_bins <int>: # of frequency bins
-            max_bin <int>: If none, max_bin = n_bins
-            dropout <float>: Dropout rate in LSTM
-            causal <bool>: Causality
-            sources <list<str>>: Target sources
-            eps <float>: Small value for numerical stability
-        """
-        super().__init__()
-        
-        net = {}
-        for source in sources:
-            net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, eps=eps)
-
-        self.backbone = nn.ModuleDict(net)
-
-        # Hyperparameters
-        self.in_channels, self.n_bins = in_channels, n_bins
-        self.hidden_channels, self.out_channels = hidden_channels, hidden_channels
-        self.num_layers = num_layers
-        self.max_bin = max_bin
-
-        self.dropout = dropout
-        self.causal = causal
-
-        self.sources = sources
-
-        self.eps = eps
-        
-    def forward(self, input):
-        """
-        Args:
-            input <torch.Tensor>: (batch_size, 1, in_channels, n_bins, n_frames)
-        Returns:
-            output <torch.Tensor>: (batch_size, n_sources, in_channels, n_bins, n_frames)
-        """
-        n_bins, max_bin = self.n_bins, self.max_bin
-        in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
-        eps = self.eps
-
-        input = input.squeeze(dim=1)
-        batch_size, _, _, n_frames = input.size()
-
-        if max_bin == n_bins:
-            x_valid = input
+            model_id = pretrained_model_ids_task[sr][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
         else:
-            sections = [max_bin, n_bins - max_bin]
-            x_valid, _ = torch.split(input, sections, dim=2)
-    
-        x_sum = 0
-        for source in self.sources:
-            x_source = (x_valid - self.backbone[source].in_bias.unsqueeze(dim=1)) / (torch.abs(self.backbone[source].in_scale.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
-            x_source = x_source.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, n_channels, max_bin)
-            x_source = x_source.view(batch_size * n_frames, in_channels * max_bin)
-            x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
-            x_source = x_source.view(batch_size, n_frames, hidden_channels)
-            x_sum = x_sum + x_source
-        x = x_sum / len(self.sources)
-
-        x_sum = 0
-        for source in self.sources:
-            x_source_lstm, (_, _) = self.backbone[source].rnn(x) # (batch_size, n_frames, out_channels)
-            x_source = torch.cat([x, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
-            x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
-            x_sum = x_sum + x_source
-        x = x_sum / len(self.sources)
-
-        x_sum = 0
-        output = []
-        for source in self.sources:
-            x_source_full = self.backbone[source].net(x) # (batch_size * n_frames, n_bins)
-            x_source_full = x_source_full.view(batch_size, n_frames, in_channels, n_bins)
-            x_source_full = x_source_full.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
-            x_source_full = self.backbone[source].out_scale.unsqueeze(dim=1) * x_source_full + self.backbone[source].out_bias.unsqueeze(dim=1)
-            x_source_full = self.backbone[source].relu2d(x_source_full)
-            x_source = x_source_full * input
-            output.append(x_source.unsqueeze(dim=1))
-        output = torch.cat(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
-
-        return output
-    
-    def get_config(self):
-        config = {
-            'in_channels': self.in_channels,
-            'hidden_channels': self.hidden_channels,
-            'num_layers': self.num_layers,
-            'n_bins': self.n_bins,
-            'max_bin': self.max_bin,
-            'dropout': self.dropout,
-            'causal': self.causal,
-            'sources': self.sources,
-            'eps': self.eps
-        }
+            raise NotImplementedError("Not support task={}.".format(task))
         
-        return config
-    
-    @classmethod
-    def build_from_config(cls, config_path):
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
+        model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
 
-        in_channels = config['in_channels']
-
-        hidden_channels = config['hidden_channels']
-        num_layers = config['num_layers']
-        n_bins, max_bin = config['n_bins'], config['max_bin']
-        dropout = config['dropout']
-        causal = config['causal']
-
-        sources = config['sources']
-
-        eps = config.get('eps') or EPS
-
-        model = cls(
-            in_channels,
-            hidden_channels=hidden_channels,
-            num_layers=num_layers,
-            n_bins=n_bins, max_bin=max_bin,
-            dropout=dropout,
-            causal=causal,
-            sources=sources,
-            eps=eps
-        )
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
-        return model
-    
-    @classmethod
-    def build_model(cls, model_path):
-        config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
-        in_channels = config['in_channels']
-        hidden_channels = config['hidden_channels']
-        num_layers = config['num_layers']
-        n_bins, max_bin = config['n_bins'], config['max_bin']
-        dropout = config['dropout']
-        causal = config['causal']
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
-        sources = config['sources']
-
-        eps = config.get('eps') or EPS
-        
-        model = cls(
-            in_channels,
-            hidden_channels=hidden_channels,
-            num_layers=num_layers,
-            n_bins=n_bins, max_bin=max_bin,
-            dropout=dropout,
-            causal=causal,
-            sources=sources,
-            eps=eps
-        )
-        
         return model
     
     @property
@@ -432,7 +323,7 @@ class CrossNetOpenUnmix(nn.Module):
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+        
         return _num_parameters
 
 class TransformBlock1d(nn.Module):
@@ -448,6 +339,12 @@ class TransformBlock1d(nn.Module):
             self.nonlinear1d = choose_nonlinear(nonlinear)
     
     def forward(self, input):
+        """
+        Args:
+            input: (batch_size, in_channels)
+        Returns:
+            output: (batch_size, out_channels)
+        """
         x = self.fc(input)
         x = self.norm1d(x)
 
@@ -467,7 +364,6 @@ def _test_openunmix():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
 
-    print('='*10, "OpenUnmix", '='*10)
     print('-'*10, "Non causal", '-'*10)
     causal = False
     model = OpenUnmix(in_channels=in_channels, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal)
@@ -485,28 +381,8 @@ def _test_openunmix():
     print(model)
     print(input.size(), output.size())
 
-def _test_crossnet_openunmix():
-    batch_size = 6
-    in_channels = 2
-    n_bins, max_bin = 2049, 1487
-    n_frames = 100
-    dropout = 0.4
-
-    input = torch.randn(batch_size, 1, in_channels, n_bins, n_frames)
-
-    print('='*10, "CrossNetOpenUnmix", '='*10)
-    print('-'*10, "Non causal", '-'*10)
-    causal = False
-    model = CrossNetOpenUnmix(in_channels=in_channels, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal)
-    output = model(input)
-
-    print(model)
-    print(input.size(), output.size())
-
 if __name__ == '__main__':
     torch.manual_seed(111)
 
+    print("="*10, "Open-Unmix (UMX)", "="*10)
     _test_openunmix()
-    print()
-
-    _test_crossnet_openunmix()

@@ -158,7 +158,6 @@ class MMDenseNet(nn.Module):
         """
         bands, sections = self.bands, self.sections
         n_bins = input.size(2)
-        eps = self.eps
 
         if sum(sections) == n_bins:
             x_valid, x_invalid = input, None
@@ -166,7 +165,7 @@ class MMDenseNet(nn.Module):
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x_valid = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
+        x_valid = self.transform_afffine_out(x_valid)
 
         x = self.band_split(x_valid)
 
@@ -183,7 +182,7 @@ class MMDenseNet(nn.Module):
         x = self.dense_block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
+        x = self.transform_afffine_out(x)
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
@@ -199,6 +198,16 @@ class MMDenseNet(nn.Module):
         else:
             output = torch.cat([x, x_invalid], dim=2)
 
+        return output
+    
+    def transform_affine_in(self, input):
+        eps= self.eps
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
+
+        return output
+    
+    def transform_afffine_out(self, input):
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
         return output
     
     def _reset_parameters(self):

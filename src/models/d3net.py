@@ -16,6 +16,15 @@ See https://arxiv.org/abs/2010.01733
 
 FULL = 'full'
 EPS = 1e-12
+SAMPLE_RATE_MUSDB18 = 44100
+__pretrained_model_ids__ = {
+    "musdb18": {
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
+            "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
+        }
+    }
+}
 
 class ParallelD3Net(nn.Module):
     def __init__(self, modules):
@@ -141,7 +150,6 @@ class D3Net(nn.Module):
         """
         bands, sections = self.bands, self.sections
         n_bins = input.size(2)
-        eps = self.eps
 
         if sum(sections) == n_bins:
             x_valid, x_invalid = input, None
@@ -149,14 +157,14 @@ class D3Net(nn.Module):
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x_valid = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
-
+        x_valid = self.transform_affine_in(x_valid)
         x = self.band_split(x_valid)
-
         x_bands = []
+
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
+        
         x_bands = torch.cat(x_bands, dim=2)
     
         x_full = self.net[FULL](x_valid)
@@ -166,7 +174,7 @@ class D3Net(nn.Module):
         x = self.d2block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
+        x = self.transform_affine_out(x)
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
@@ -182,6 +190,17 @@ class D3Net(nn.Module):
         else:
             output = torch.cat([x, x_invalid], dim=2)
 
+        return output
+    
+    def transform_affine_in(self, input):
+        eps = self.eps
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
+
+        return output
+
+    def transform_affine_out(self, input):
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
+        
         return output
     
     def _reset_parameters(self):
@@ -316,6 +335,38 @@ class D3Net(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+    
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task == 'musdb18':
+            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            config = kwargs.get('config') or "nnabla"
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sr][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
         return model
     
     @property

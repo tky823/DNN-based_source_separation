@@ -9,8 +9,8 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
-from dataset import TrainDataLoader, EvalDataLoader
-from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
+from dataset import AugmentationWaveTrainDataset, TrainDataLoader, EvalDataLoader
+from adhoc_dataset import WaveEvalDataset
 from adhoc_driver import AdhocTrainer
 from models.conv_tasnet import ConvTasNet
 from criterion.distance import MeanAbsoluteError, MeanSquaredError
@@ -78,7 +78,13 @@ def main(args):
     for name in config_augmentation['augmentation']:
         augmentation.append(choose_augmentation(name, **config_augmentation[name]))
     
-    train_dataset = WaveTrainDataset(args.musdb18_root, sr=args.sr, duration=args.duration, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.sources, augmentation=augmentation)
+    train_dataset = AugmentationWaveTrainDataset(
+        args.musdb18_root,
+        sr=args.sr, duration=args.duration, samples_per_epoch=args.samples_per_epoch,
+        sources=args.sources, target=args.sources,
+        include_valid=True,
+        augmentation=augmentation
+    )
     valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
@@ -93,6 +99,7 @@ def main(args):
         args.enc_nonlinear = None
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
+    
     model = ConvTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, in_channels=2, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
         window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,

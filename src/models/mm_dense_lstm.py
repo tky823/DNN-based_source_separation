@@ -5,7 +5,15 @@ import torch.nn as nn
 from models.mm_dense_rnn import MMDenseRNN
 
 FULL = 'full'
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
+__pretrained_model_ids__ = {
+    "musdb18": {
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV"
+        }
+    },
+}
 
 class ParallelMMDenseLSTM(nn.Module):
     def __init__(self, modules):
@@ -198,6 +206,7 @@ class MMDenseLSTM(MMDenseRNN):
         depth = config['depth']
 
         growth_rate_final = config['growth_rate_final']
+        hidden_channels_final = config['hidden_channels_final']
         kernel_size_final = config['kernel_size_final']
         dilated_final = config['dilated_final']
         depth_final = config['depth_final']
@@ -216,7 +225,7 @@ class MMDenseLSTM(MMDenseRNN):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
-            growth_rate_final=growth_rate_final,
+            growth_rate_final=growth_rate_final, hidden_channels_final=hidden_channels_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
             depth_final=depth_final,

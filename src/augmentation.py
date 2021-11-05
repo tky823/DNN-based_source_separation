@@ -1,4 +1,5 @@
 import random
+import warnings
 
 import torch
 
@@ -34,7 +35,17 @@ class RandomFlip:
 
         return output
 
-def apply_random_scaling(input, min=MINSCALE, max=MAXSCALE):
+class RandomScaling:
+    def __init__(self, min=MINSCALE, max=MAXSCALE):
+        warnings.warn("Use RandomGain instead.", DeprecationWarning)
+        self.min, self.max = min, max
+    
+    def __call__(self, input):
+        output = apply_random_gain(input, min=self.min, max=self.max)
+        
+        return output
+
+def apply_random_gain(input, min=MINSCALE, max=MAXSCALE):
     """
     Args:
         input <torch.Tensot>: (*)
@@ -46,12 +57,12 @@ def apply_random_scaling(input, min=MINSCALE, max=MAXSCALE):
 
     return output
 
-class RandomScaling:
+class RandomGain:
     def __init__(self, min=MINSCALE, max=MAXSCALE):
         self.min, self.max = min, max
     
     def __call__(self, input):
-        output = apply_random_scaling(input, min=self.min, max=self.max)
+        output = apply_random_gain(input, min=self.min, max=self.max)
         
         return output
 

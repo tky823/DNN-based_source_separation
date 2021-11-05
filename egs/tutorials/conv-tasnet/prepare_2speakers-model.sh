@@ -10,7 +10,7 @@ file="model"
 echo "Download Conv-TasNet. (Dataset: LibriSpeech, sampling frequency 16kHz)"
 
 declare -A model_ids=(
-    ["sr16000_L16_librispeech"]="1dVTNcmmpdh-5IL8NGViVR6lE6QQhaKQo"
+    ["sr16000_L16_librispeech"]="1NI6Q_WZHiTKkgkNTEcZE1yHskHgYUHpy"
 )
 
 if [ -z "${model_id}" ] ; then

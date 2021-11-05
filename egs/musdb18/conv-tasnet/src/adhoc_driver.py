@@ -124,6 +124,7 @@ class AdhocTrainer(TrainerBase):
         
         config['epoch'] = epoch + 1
         config['sr'] = self.train_loader.dataset.sr
+        config['sources'] = self.train_loader.dataset.sources
         
         torch.save(config, model_path)
 

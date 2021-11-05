@@ -1,4 +1,4 @@
-from augmentation import RandomFlip, RandomScaling
+from augmentation import RandomFlip, RandomGain
 
 class SequentialAugmentation:
     def __init__(self, *args):
@@ -21,6 +21,8 @@ def choose_augmentation(name, **kwargs):
     if name == 'random_flip':
         return RandomFlip(**kwargs)
     elif name == 'random_scaling':
-        return RandomScaling(**kwargs)
+        return RandomGain(**kwargs)
+    elif name == 'random_gain':
+        return RandomGain(**kwargs)
     else:
         raise NotImplementedError("Not support {}.".format(name))

@@ -5,7 +5,7 @@ EPS = 1e-12
 
 def sdr(input, target, eps=EPS):
     """
-    Scale-invariant-SDR (source-to-distortion ratio)
+    Source-to-distortion ratio (SDR)
     Args:
         input (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
         target (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
@@ -234,67 +234,62 @@ class NegSISDR(nn.Module):
     Weighted SDR (signal-to-distortion ratio)
     See "Phase-Aware Speech Enhancement with Deep Complex U-Net"
 """
-def weighted_sdr(mixture, input, target, eps=EPS):
+def weighted_sdr(input, target, source_dim=1, eps=EPS):
     """
     Args:
-        mixture <torch.Tensor>: (*, 1, *, T)
         input <torch.Tensor>: (*, n_sources, *, T)
         target <torch.Tensor>: (*, n_sources, *, T)
     Returns:
         loss <torch.Tensor>: (*, n_sources, *)
     """
-    mixture, input, target
-
+    mixture = target.sum(dim=source_dim, keepdim=True) # (*, 1, *, T)
+    
     target_power = torch.sum(target**2, dim=-1)
-    loss = torch.sum(target * input, dim=-1) / (target_power * torch.sum(input**2, dim=-1) + eps)
+    loss = (torch.sum(target * input, dim=-1) + eps) / (torch.linalg.vector_norm(target, dim=-1) * torch.linalg.vector_norm(input, dim=-1) + eps)
 
     residual_input, residual_target = mixture - input, mixture - target
     residual_target_power = torch.sum(residual_target**2, dim=-1)
-    loss_residual = torch.sum(residual_target * residual_input, dim=-1) / (torch.sum(residual_target**2, dim=-1) * torch.sum(residual_input**2, dim=-1) + eps)
+    loss_residual = (torch.sum(residual_target * residual_input, dim=-1) + eps) / (torch.linalg.vector_norm(residual_target, dim=-1) * torch.linalg.vector_norm(residual_input, dim=-1) + eps)
 
-    rho = target_power / (target_power + residual_target_power + eps)
-
+    rho = (target_power + eps) / (target_power + residual_target_power + eps)
     loss = rho * loss + (1 - rho) * loss_residual
 
     return loss
 
 class WeightedSDR(nn.Module):
-    def __init__(self, reduction='mean', eps=EPS):
+    def __init__(self, source_dim=1, reduction='mean', reduction_dim=None, eps=EPS):
         super().__init__()
 
+        self.source_dim = source_dim
         self.reduction = reduction
+        self.reduction_dim = reduction_dim
 
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
 
         self.eps = eps
     
-    def forward(self, mixture, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            mixture <torch.Tensor>: (batch_size, T) or (batch_size, 1, T), or (batch_size, 1, n_mics, T)
             input <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
             target <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
         Returns:
             loss <torch.Tensor>: (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics) if batch_mean=False
         """
-        n_dims = mixture.dim()
-
-        assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dims)
-
-        loss = weighted_sdr(mixture, input, target, eps=self.eps)
+        loss = weighted_sdr(input, target, source_dim=self.source_dim, eps=self.eps)
 
         if self.reduction:
-            if n_dims == 3:
-                if self.reduction == 'mean':
-                    loss = loss.mean(dim=1)
-                elif self.reduction == 'sum':
-                    loss = loss.sum(dim=1)
-            elif n_dims == 4:
-                if self.reduction == 'mean':
-                    loss = loss.mean(dim=(1, 2))
-                elif self.reduction == 'sum':
-                    loss = loss.sum(dim=(1, 2))
+            if self.reduction_dim:
+                reduction_dim = self.reduction_dim
+            else:
+                n_dims = loss.dim()
+                reduction_dim = tuple(range(1, n_dims))
+            
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=reduction_dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=reduction_dim)
 
         if batch_mean:
             loss = loss.mean(dim=0)
@@ -306,42 +301,39 @@ class WeightedSDR(nn.Module):
         return True
 
 class NegWeightedSDR(nn.Module):
-    def __init__(self, reduction='mean', eps=EPS):
+    def __init__(self, source_dim=1, reduction='mean', reduction_dim=None, eps=EPS):
         super().__init__()
 
+        self.source_dim = source_dim
         self.reduction = reduction
+        self.reduction_dim = reduction_dim
 
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
 
         self.eps = eps
     
-    def forward(self, mixture, input, target, batch_mean=True):
+    def forward(self, input, target, batch_mean=True):
         """
         Args:
-            mixture <torch.Tensor>: (batch_size, T) or (batch_size, 1, T), or (batch_size, 1, n_mics, T)
             input <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T), or (batch_size, n_sources, n_mics, T)
             target <torch.Tensor>: (batch_size, T) or (batch_size, n_sources, T) or (batch_size, n_sources, n_mics, T)
         Returns:
             loss <torch.Tensor>: (batch_size,) or (batch_size, n_sources) or (batch_size, n_sources, n_mics) if batch_mean=False
         """
-        n_dims = mixture.dim()
-
-        assert n_dims in [2, 3, 4], "Only 2D or 3D or 4D tensor is acceptable, but given {}D tensor.".format(n_dims)
-
-        loss = - weighted_sdr(mixture, input, target, eps=self.eps)
+        loss = - weighted_sdr(input, target, source_dim=self.source_dim, eps=self.eps)
 
         if self.reduction:
-            if n_dims == 3:
-                if self.reduction == 'mean':
-                    loss = loss.mean(dim=1)
-                elif self.reduction == 'sum':
-                    loss = loss.sum(dim=1)
-            elif n_dims == 4:
-                if self.reduction == 'mean':
-                    loss = loss.mean(dim=(1, 2))
-                elif self.reduction == 'sum':
-                    loss = loss.sum(dim=(1, 2))
+            if self.reduction_dim:
+                reduction_dim = self.reduction_dim
+            else:
+                n_dims = loss.dim()
+                reduction_dim = tuple(range(1, n_dims))
+            
+            if self.reduction == 'mean':
+                loss = loss.mean(dim=reduction_dim)
+            elif self.reduction == 'sum':
+                loss = loss.sum(dim=reduction_dim)
 
         if batch_mean:
             loss = loss.mean(dim=0)
@@ -356,18 +348,34 @@ def _test_sisdr():
     pass
 
 def _test_weighted_sdr():
+    batch_size = 3
+    n_sources = 4
+    in_channels, T = 2, 32
+
     print("-"*10, "weighted SDR", "-"*10)
+    input = torch.randn(batch_size, n_sources, in_channels, T)
+    target = input.clone()
+
     criterion = WeightedSDR()
+    loss = criterion(input, target)
 
     print(criterion.maximize)
+    print(loss)
     print()
 
     print("-"*10, "Negative weighted SDR", "-"*10)
+    input = torch.randn(batch_size, n_sources, in_channels, T)
+    target = torch.randn(batch_size, n_sources, in_channels, T)
+
     criterion = NegWeightedSDR()
+    loss = criterion(input, target)
 
     print(criterion.maximize)
+    print(loss)
 
 if __name__ == '__main__':
+    print("="*10, "SI-SDR", "="*10)
     _test_sisdr()
 
+    print("="*10, "Weighted SDR", "="*10)
     _test_weighted_sdr()
