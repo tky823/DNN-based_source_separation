@@ -129,7 +129,7 @@ class WaveSplitBase(nn.Module):
                 _num_parameters += p.numel()
         
         # Ignore parameters of spk_criterion
-        for p in self.spk_crterion.parameters():
+        for p in self.spk_criterion.parameters():
             if p.requires_grad:
                 _num_parameters -= p.numel()
                 
@@ -848,6 +848,7 @@ def _test_wavesplit_spk_distance():
     loss = loss.mean()
 
     print(model)
+    print(model.num_parameters)
     print(input.size(), estimated_sources.size(), sorted_idx.size(), sorted_spk_vector.size())
 
 if __name__ == '__main__':
