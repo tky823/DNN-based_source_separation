@@ -167,7 +167,7 @@ class Trainer:
         valid_loss = 0
         n_valid_batch = len(self.valid_loader)
 
-        for idx, (mixture, sources, spk_idx, segment_id) in enumerate(self.train_loader):
+        for idx, (mixture, sources, spk_idx, segment_id) in enumerate(self.valid_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
