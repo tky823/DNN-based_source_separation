@@ -33,18 +33,40 @@ class WaveSplitBase(nn.Module):
             spk_idx: (batch_size, n_sources)
         Returns:
             estimated_sources: (batch_size, num_blocks * num_layers, 1, T) if stack_dim=1.
-            sorted_speaker_vector: (batch_size, n_sources, latent_dim, T)
+            sorted_spk_vector: (batch_size, n_sources, latent_dim, T)
         """
-        if sorted_idx is None:    
-            sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx)
+        if self.training:
+            if sorted_idx is None:
+                if return_all_layers or return_spk_vector:
+                    raise ValueError("Set return_all_layers=False, return_spk_vector=False.")
+                
+                sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, T, n_sources)
 
-            return sorted_idx # (batch_size, T, n_sources)
+                return sorted_idx
         
-        estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+            # If sorted_idx is given.
+            estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+        else:
+            if spk_idx is not None:
+                if sorted_idx is None:
+                    if return_all_layers or return_spk_vector:
+                        raise ValueError("Set return_all_layers=False, return_spk_vector=False.")
+                    
+                    sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, T, n_sources)
 
+                    return sorted_idx
+
+                # If sorted_idx is given.
+                estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+            else:
+                spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
+                sorted_spk_vector = self.apply_kmeans(spk_vector, feature_last=False) # (batch_size, n_sources, latent_dim, T)
+                spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
+                estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+        
         if return_spk_vector:
             return estimated_sources, sorted_spk_vector
-        
+            
         return estimated_sources
 
     def extract_latent(self, mixture, sorted_idx, return_all_layers=False, stack_dim=1):
@@ -61,20 +83,12 @@ class WaveSplitBase(nn.Module):
         """
         spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
 
-        batch_size, n_sources, latent_dim, T = spk_vector.size()
         spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
 
-        if self.training:
-            sorted_idx = sorted_idx.view(batch_size * T, n_sources).cpu()
-            flatten_sorted_idx = sorted_idx + torch.arange(0, batch_size * T * n_sources, n_sources).long().unsqueeze(dim=-1)
-            flatten_sorted_idx = flatten_sorted_idx.view(batch_size * T * n_sources)
-            flatten_speaker_vector = spk_vector.view(batch_size * T * n_sources, latent_dim)
-            flatten_speaker_vector = flatten_speaker_vector[flatten_sorted_idx]
-            sorted_spk_vector = flatten_speaker_vector.view(batch_size, T, n_sources, latent_dim)
-            sorted_spk_vector = sorted_spk_vector.permute(0, 2, 3, 1).contiguous() # (batch_size, n_sources, latent_dim, T)
-            spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
-        else:
-            raise NotImplementedError("Not support test time process.")
+        # Use oracle sorted_idx during training. You can use oracle sorted_idx during evaluation if speakers in validation set are equal to training one.
+        mask = torch.eye(self.n_sources)[sorted_idx] # (batch_size, T, n_sources, n_sources)
+        sorted_spk_vector = torch.sum(mask.unsqueeze(dim=4) * spk_vector.unsqueeze(dim=3), dim=3) # (batch_size, T, n_sources, latent_dim)
+        spk_centroids = sorted_spk_vector.mean(dim=1) # (batch_size, n_sources, latent_dim)
         
         estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
 
@@ -120,6 +134,30 @@ class WaveSplitBase(nn.Module):
         
         return loss, patterns[indices]
     
+    def apply_kmeans(self, spk_vector, feature_last=False, iter_clustering=100):
+        """
+        Args:
+            spk_vector: (batch_size, n_sources, latent_dim, T) or (batch_size, T, n_sources, latent_dim)
+        Returns:
+            spk_vector: (batch_size, n_sources, latent_dim, T)
+        """
+        if not feature_last:
+            spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
+
+        n_sources = self.n_sources
+
+        for idx in range(iter_clustering):
+            centroids = spk_vector.mean(dim=1, keepdim=True) # (batch_size, 1, n_clusters, latent_dim)
+            distance = torch.norm(spk_vector.unsqueeze(dim=3) - centroids.unsqueeze(dim=2), dim=4) # (batch_size, T, n_sources, n_clusters)
+            cluster_idx = torch.argmin(distance, dim=3) # (batch_size, T, n_sources)
+            mask = torch.eye(n_sources)[cluster_idx] # (batch_size, T, n_sources, n_clusters)
+            spk_vector = torch.sum(mask.unsqueeze(dim=4) * spk_vector.unsqueeze(dim=3), dim=3) # (batch_size, T, n_sources, latent_dim)
+
+        if not feature_last:    
+            spk_vector = spk_vector.permute(0, 2, 3, 1).contiguous() # (batch_size, n_sources, latent_dim, T)
+        
+        return spk_vector
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -174,7 +212,7 @@ class WaveSplit(WaveSplitBase):
     
         self.embedding = nn.Embedding(n_training_sources, latent_dim)
 
-    def forward(self, mixture, spk_idx, sorted_idx=None, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
+    def forward(self, mixture, spk_idx=None, sorted_idx=None, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
         """
         Args:
             mixture: (batch_size, 1, T)
@@ -188,16 +226,40 @@ class WaveSplit(WaveSplitBase):
             spk_embedding: (batch_size, n_sources, latent_dim)
             all_spk_embedding: (n_training_sources, latent_dim)
         """
-        if sorted_idx is None:
-            if return_all_layers or return_spk_vector or return_spk_embedding or return_all_spk_embedding:
-                raise ValueError("Set return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False.")
-            
-            sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, T, n_sources)
+        if self.training:
+            if sorted_idx is None:
+                if return_all_layers or return_spk_vector or return_spk_embedding or return_all_spk_embedding:
+                    raise ValueError("Set return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False.")
+                
+                sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, T, n_sources)
 
-            return sorted_idx
+                return sorted_idx
         
-        estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+            estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+            
+            if return_spk_embedding:
+                spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
+        else:
+            if spk_idx is not None:
+                if sorted_idx is None:
+                    if return_all_layers or return_spk_vector:
+                        raise ValueError("Set return_all_layers=False, return_spk_vector=False.")
+                    
+                    sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, T, n_sources)
 
+                    return sorted_idx
+
+                # If sorted_idx is given.
+                estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+
+                if return_spk_embedding:
+                    spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
+            else:
+                spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
+                sorted_spk_vector = self.apply_kmeans(spk_vector, feature_last=False) # (batch_size, n_sources, latent_dim, T)
+                spk_embedding = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim), works as centroids
+                estimated_sources = self.sepatation_stack(mixture, spk_embedding, return_all=return_all_layers, stack_dim=stack_dim)
+        
         output = []
         output.append(estimated_sources)
 
@@ -205,17 +267,18 @@ class WaveSplit(WaveSplitBase):
             output.append(sorted_spk_vector)
         
         if return_spk_embedding:
-            spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
             output.append(spk_embedding)
         
-        if return_all_spk_embedding:
+        if return_all_spk_embedding:    
             all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
             output.append(all_spk_embedding)
         
         if len(output) == 1:
-            return output[0]
+            output = output[0]
+        else:
+            output = tuple(output)
 
-        return tuple(output)
+        return output
 
     def solve_permutation(self, mixture, spk_idx):
         """
@@ -988,6 +1051,13 @@ def _test_wavesplit_spk_distance():
     print(model)
     print(model.num_parameters)
     print(input.size(), estimated_sources.size(), sorted_idx.size(), sorted_spk_vector.size())
+    print()
+
+    model.eval()
+    estimated_sources, sorted_spk_vector = model(input, return_all_layers=False, return_spk_vector=True)
+
+    print(input.size(), estimated_sources.size(), sorted_idx.size(), sorted_spk_vector.size())
+    print()
 
 if __name__ == '__main__':
     import torch

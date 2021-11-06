@@ -167,29 +167,35 @@ class Trainer:
         valid_loss = 0
         n_valid_batch = len(self.valid_loader)
 
-        for idx, (mixture, sources, spk_idx, segment_id) in enumerate(self.valid_loader):
-            if self.use_cuda:
-                mixture = mixture.cuda()
-                sources = sources.cuda()
-                spk_idx = spk_idx.cuda()
-            
-            self.optimizer.zero_grad()
-            sorted_idx = self.model(mixture, spk_idx=spk_idx)
-            
-            self.optimizer.zero_grad()
-            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
-            loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
-            loss.backward()
-            
-            if self.max_norm:
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
-            
-            self.optimizer.step()
-            
-            valid_loss += loss.item()
-            
-            if (idx + 1) % 100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+        with torch.no_grad():
+            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                
+                estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, return_all_layers=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+                loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=False)
+                loss = loss.sum(dim=0)
+                valid_loss += loss.item()
+
+                if idx < 5:
+                    mixture = mixture[0].squeeze(dim=0).cpu()
+                    estimated_sources = estimated_sources[0].cpu()
+                    
+                    save_dir = os.path.join(self.sample_dir, segment_IDs[0])
+                    os.makedirs(save_dir, exist_ok=True)
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    norm = torch.abs(mixture).max()
+                    mixture = mixture / norm
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    
+                    for source_idx, estimated_source in enumerate(estimated_sources):
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
+                        norm = torch.abs(estimated_source).max()
+                        estimated_source = estimated_source / norm
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
         
         valid_loss /= n_valid_batch
         
