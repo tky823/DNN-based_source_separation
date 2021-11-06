@@ -210,10 +210,12 @@ class WaveSplitBase(nn.Module):
         return model
 
 class WaveSplit(WaveSplitBase):
-    def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None):
+    def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
         super().__init__(speaker_stack, sepatation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
     
         self.embedding = nn.Embedding(n_training_sources, latent_dim)
+
+        self.eps = eps
 
     def forward(self, mixture, spk_idx=None, sorted_idx=None, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
         """
@@ -229,6 +231,8 @@ class WaveSplit(WaveSplitBase):
             spk_embedding: (batch_size, n_sources, latent_dim)
             all_spk_embedding: (n_training_sources, latent_dim)
         """
+        eps = self.eps
+
         if self.training:
             if sorted_idx is None:
                 if return_all_layers or return_spk_vector or return_spk_embedding or return_all_spk_embedding:
@@ -242,6 +246,7 @@ class WaveSplit(WaveSplitBase):
             
             if return_spk_embedding:
                 spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
+                spk_embedding = spk_embedding / (torch.linalg.vector_norm(spk_embedding, dim=2, keepdim=True) + eps)
         else:
             if spk_idx is not None:
                 if sorted_idx is None:
@@ -257,11 +262,13 @@ class WaveSplit(WaveSplitBase):
 
                 if return_spk_embedding:
                     spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
+                    spk_embedding = spk_embedding / (torch.linalg.vector_norm(spk_embedding, dim=2, keepdim=True) + eps)
             else:
                 spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
                 sorted_spk_vector = self.apply_kmeans(spk_vector, feature_last=False) # (batch_size, n_sources, latent_dim, T)
-                spk_embedding = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim), works as centroids
-                estimated_sources = self.sepatation_stack(mixture, spk_embedding, return_all=return_all_layers, stack_dim=stack_dim)
+                spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim), works as centroids
+                spk_embedding = spk_centroids / (torch.linalg.vector_norm(spk_centroids, dim=2, keepdim=True) + eps)
+                estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
         
         output = []
         output.append(estimated_sources)
@@ -274,6 +281,7 @@ class WaveSplit(WaveSplitBase):
         
         if return_all_spk_embedding:    
             all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
+            all_spk_embedding = all_spk_embedding / (torch.linalg.vector_norm(all_spk_embedding, dim=1, keepdim=True) + eps)
             output.append(all_spk_embedding)
         
         if len(output) == 1:
@@ -291,11 +299,16 @@ class WaveSplit(WaveSplitBase):
         Returns:
             sorted_idx: (batch_size, T, n_sources)
         """
+        eps = self.eps
+
         spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
         spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
         
         spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
         all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
+
+        spk_embedding = spk_embedding / (torch.linalg.vector_norm(spk_embedding, dim=2, keepdim=True) + eps)
+        all_spk_embedding = all_spk_embedding / (torch.linalg.vector_norm(all_spk_embedding, dim=1, keepdim=True) + eps)
 
         _, sorted_idx = self.compute_pit_speaker_loss(spk_vector, spk_embedding, all_spk_embedding, feature_last=True, batch_mean=False) # (batch_size, T, n_sources)
     
@@ -474,11 +487,11 @@ class SeparationStack(nn.Module):
 
         self.net = nn.Sequential(*net)
 
-    def forward(self, input, speaker_centroids, return_all=False, stack_dim=1):
+    def forward(self, input, spk_centroids, return_all=False, stack_dim=1):
         """
         Args:
             input (batch_size, in_channels, T)
-            speaker_centroids (batch_size, n_sources, latent_dim)
+            spk_centroids (batch_size, n_sources, latent_dim)
         Returns:
             output:
                 (batch_size, num_blocks*num_layers, n_sources, T) if return_all
@@ -498,8 +511,8 @@ class SeparationStack(nn.Module):
             fc_biases_block = self.fc_biases[block_idx]
             net_block = self.net[block_idx]
             for layer_idx in range(self.num_layers):
-                gamma = fc_weights_block[layer_idx](speaker_centroids)
-                beta = fc_biases_block[layer_idx](speaker_centroids)
+                gamma = fc_weights_block[layer_idx](spk_centroids)
+                beta = fc_biases_block[layer_idx](spk_centroids)
                 x, skip = net_block[layer_idx](x, gamma, beta)
                 skip_connection.append(skip)
         
@@ -909,21 +922,21 @@ class _SpeakerLoss(nn.Module):
 
         return loss
     
-    def compute_speaker_loss(self, speaker_vector, speaker_embedding, all_speaker_embedding, scale=None, bias=None, feature_last=True, batch_mean=True):
+    def compute_speaker_loss(self, spk_vector, spk_embedding, all_spk_embedding, scale=None, bias=None, feature_last=True, batch_mean=True):
         """
         Args:
-            speaker_vector: (batch_size, T, n_sources, latent_dim)
-            speaker_embedding: (batch_size, n_sources, latent_dim)
-            all_speaker_embedding: (n_training_sources, latent_dim)
+            spk_vector: (batch_size, T, n_sources, latent_dim)
+            spk_embedding: (batch_size, n_sources, latent_dim)
+            all_spk_embedding: (n_training_sources, latent_dim)
         Returns:
             loss: (batch_size, T, n_sources) or (T, n_sources)
         """
         assert feature_last, "feature_last should be True."
 
-        loss_distance = self.compute_speaker_distance(speaker_vector, speaker_embedding, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
+        loss_distance = self.compute_speaker_distance(spk_vector, spk_embedding, feature_last=feature_last, batch_mean=False) # (batch_size, T, n_sources)
 
-        rescaled_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources)
-        rescaled_all_distance = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), all_speaker_embedding, dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources, n_training_sources)
+        rescaled_distance = self.compute_euclid_distance(spk_vector, spk_embedding.unsqueeze(dim=1), dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources)
+        rescaled_all_distance = self.compute_euclid_distance(spk_vector.unsqueeze(dim=3), all_spk_embedding, dim=-1, scale=scale, bias=bias) # (batch_size, T, n_sources, n_training_sources)
 
         loss_local = self.compute_local_classification(rescaled_distance, batch_mean=False) # (batch_size, T, n_sources)
         loss_global = self.compute_global_classification(rescaled_distance, rescaled_all_distance, batch_mean=False) # (batch_size, T, n_sources)
@@ -934,19 +947,19 @@ class _SpeakerLoss(nn.Module):
 
         return loss
     
-    def compute_speaker_distance(self, speaker_vector, speaker_embedding, feature_last=True, batch_mean=True):
+    def compute_speaker_distance(self, spk_vector, spk_embedding, feature_last=True, batch_mean=True):
         """
         Args:
-            speaker_vector: (batch_size, T, n_sources, latent_dim)
-            speaker_embedding: (batch_size, n_sources, latent_dim)
+            spk_vector: (batch_size, T, n_sources, latent_dim)
+            spk_embedding: (batch_size, n_sources, latent_dim)
         Returns:
             loss: (batch_size, T, n_sources)
         """
         assert feature_last, "feature_last should be True."
 
-        loss_distance = self.compute_euclid_distance(speaker_vector, speaker_embedding.unsqueeze(dim=1), dim=-1) # (batch_size, T, n_sources)
+        loss_distance = self.compute_euclid_distance(spk_vector, spk_embedding.unsqueeze(dim=1), dim=-1) # (batch_size, T, n_sources)
 
-        distance_table = self.compute_euclid_distance(speaker_vector.unsqueeze(dim=3), speaker_vector.unsqueeze(dim=2), dim=-1) # (batch_size, T, n_sources, n_sources)
+        distance_table = self.compute_euclid_distance(spk_vector.unsqueeze(dim=3), spk_vector.unsqueeze(dim=2), dim=-1) # (batch_size, T, n_sources, n_sources)
         loss_hinge = F.relu(1 - distance_table) # (batch_size, T, n_sources, n_sources)
         loss_hinge = torch.sum(self.mask * loss_hinge, dim=2) # (batch_size, T, n_sources)
 
