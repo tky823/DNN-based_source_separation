@@ -11,7 +11,7 @@ from adhoc_dataset import WaveTrainDataset
 from dataset import WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import Trainer
 from models.wavesplit import SpeakerStack, SeparationStack, WaveSplit
-from criterion.sdr import NegSISDR
+from criterion.sdr import NegSDR, NegSISDR
 from adhoc_criterion import SpeakerDistance, GlobalClassificationLoss, MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Training of WaveSplit")
@@ -36,7 +36,7 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--nonlinear', type=str, default=None, help='Non-linear function of separator')
 parser.add_argument('--norm', type=int, default=1, help='Normalization')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--reconst_criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion for reconstruction')
+parser.add_argument('--reconst_criterion', type=str, default='sdr', choices=['sdr','sisdr'], help='Criterion for reconstruction')
 parser.add_argument('--spk_criterion', type=str, default='distance', choices=['distance', 'global'], help='Criterion for speaker loss')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
@@ -70,7 +70,9 @@ def main(args):
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
 
     # Criterion
-    if args.reconst_criterion == 'sisdr':
+    if args.reconst_criterion == 'sdr':
+        reconst_criterion = NegSDR()
+    elif args.reconst_criterion == 'sisdr':
         reconst_criterion = NegSISDR()
     else:
         raise ValueError("Not support criterion {}".format(args.reconst_criterion))

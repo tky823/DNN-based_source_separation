@@ -34,7 +34,7 @@ nonlinear='prelu'
 norm=1
 
 # Criterion
-reconst_criterion='sisdr'
+reconst_criterion='sdr' # or 'sisdr'
 spk_criterion='distance'
 
 # Optimizer
