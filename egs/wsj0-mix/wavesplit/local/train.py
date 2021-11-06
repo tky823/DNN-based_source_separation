@@ -7,8 +7,8 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from adhoc_utils import create_spk_to_idx
-from adhoc_dataset import WaveTrainDataset
-from dataset import WaveEvalDataset, TrainDataLoader, EvalDataLoader
+from adhoc_dataset import WaveTrainDataset, WaveEvalDataset
+from dataset import TrainDataLoader, EvalDataLoader
 from adhoc_driver import Trainer
 from models.wavesplit import SpeakerStack, SeparationStack, WaveSplit
 from criterion.sdr import NegSISDR
