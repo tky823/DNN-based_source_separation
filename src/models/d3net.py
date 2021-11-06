@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_d3net import choose_layer_norm
+from utils.d3net import choose_layer_norm
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.d2net import D2Block, D2BlockFixedDilation
