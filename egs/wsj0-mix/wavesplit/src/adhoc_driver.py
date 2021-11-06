@@ -6,6 +6,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from criterion.pit import pit as pit_wrapper
 
 BITS_PER_SAMPLE_WSJ0 = 16
 
@@ -181,9 +182,9 @@ class Trainer:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
-                estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, return_all_layers=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+                estimated_sources = self.model(mixture, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False)
                 
-                loss = self.criterion(estimated_sources, sources.unsqueeze(dim=1), spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=False)
+                loss = pit_wrapper(self.criterion.reconst_criterion, estimated_sources, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
 

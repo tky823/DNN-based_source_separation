@@ -269,14 +269,14 @@ class SpeakerLoss(nn.Module):
         return distance
 
 class MultiDomainLoss(nn.Module):
-    def __init__(self, criterion_reconst, criterion_speaker):
+    def __init__(self, reconst_criterion, speaker_criterion):
         super().__init__()
 
-        self.criterion_reconst, self.criterion_speaker = criterion_reconst, criterion_speaker
+        self.reconst_criterion, self.speaker_criterion = reconst_criterion, speaker_criterion
     
     def forward(self, input, target, spk_vector=None, spk_embedding=None, all_spk_embedding=None, batch_mean=True):
-        loss_reconst = self.criterion_reconst(input, target, batch_mean=batch_mean)
-        loss_speaker = self.criterion_speaker(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=batch_mean)
+        loss_reconst = self.reconst_criterion(input, target, batch_mean=batch_mean)
+        loss_speaker = self.speaker_criterion(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=batch_mean)
         loss = loss_reconst + loss_speaker
         
         return loss
