@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_filterbank import choose_filterbank
-from utils.utils_tasnet import choose_layer_norm
+from utils.filterbank import choose_filterbank
+from utils.tasnet import choose_layer_norm
 from models.tdcn import TimeDilatedConvNet
 
 SAMPLE_RATE_MUSDB18 = 44100

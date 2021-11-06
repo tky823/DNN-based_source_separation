@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_filterbank import choose_filterbank, compute_valid_basis
+from utils.filterbank import choose_filterbank, compute_valid_basis
 from models.filterbank import FourierEncoder, FourierDecoder
 
 EPS = 1e-12
