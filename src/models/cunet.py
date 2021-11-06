@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_cunet import choose_nonlinear, choose_rnn
+from utils.cunet import choose_nonlinear, choose_rnn
 from conv import DepthwiseSeparableConv1d, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
 from models.film import FiLM2d
 from models.pocm import PoCM2d, GPoCM2d
