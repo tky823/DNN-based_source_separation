@@ -57,6 +57,7 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
+task='separate-noisy'
 prefix=""
 
 if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pinv' ]; then
