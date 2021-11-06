@@ -83,7 +83,7 @@ class ContrastiveLoss(nn.Module):
         """
         margin = self.margin
 
-        loss = is_same * distance**2 + (1 - is_same) * torch.relu(margin - distance) ** 2
+        loss = is_same * (distance ** 2) + (1 - is_same) * (torch.relu(margin - distance) ** 2)
 
         if batch_mean:
             loss = loss.mean(dim=0)
@@ -114,7 +114,7 @@ class ContrastiveWithDistanceLoss(nn.Module):
         margin = self.margin
 
         distance = self.distance_fn(input_left, input_right, batch_mean=False)
-        loss = is_same * distance**2 + (1 - is_same) * torch.relu(margin - distance) ** 2
+        loss = is_same * (distance ** 2) + (1 - is_same) * (torch.relu(margin - distance) ** 2)
 
         if batch_mean:
             loss = loss.mean(dim=0)
