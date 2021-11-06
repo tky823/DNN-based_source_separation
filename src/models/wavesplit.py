@@ -87,6 +87,7 @@ class WaveSplitBase(nn.Module):
 
         # Use oracle sorted_idx during training. You can use oracle sorted_idx during evaluation if speakers in validation set are equal to training one.
         mask = torch.eye(self.n_sources)[sorted_idx] # (batch_size, T, n_sources, n_sources)
+        mask = mask.to(spk_vector.device)
         sorted_spk_vector = torch.sum(mask.unsqueeze(dim=4) * spk_vector.unsqueeze(dim=3), dim=2) # (batch_size, T, n_sources, latent_dim)
         sorted_spk_vector = sorted_spk_vector.permute(0, 2, 3, 1).contiguous() # (batch_size, n_sources, latent_dim, T)
         spk_centroids = sorted_spk_vector.mean(dim=3) # (batch_size, n_sources, latent_dim)
@@ -152,6 +153,7 @@ class WaveSplitBase(nn.Module):
             distance = torch.norm(spk_vector.unsqueeze(dim=3) - centroids.unsqueeze(dim=2), dim=4) # (batch_size, T, n_sources, n_clusters)
             cluster_idx = torch.argmin(distance, dim=3) # (batch_size, T, n_sources)
             mask = torch.eye(n_sources)[cluster_idx] # (batch_size, T, n_sources, n_clusters)
+            mask = mask.to(spk_vector.device)
             spk_vector = torch.sum(mask.unsqueeze(dim=4) * spk_vector.unsqueeze(dim=3), dim=2) # (batch_size, T, n_clusters, latent_dim)
 
         if not feature_last:    
