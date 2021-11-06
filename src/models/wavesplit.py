@@ -88,7 +88,8 @@ class WaveSplitBase(nn.Module):
         # Use oracle sorted_idx during training. You can use oracle sorted_idx during evaluation if speakers in validation set are equal to training one.
         mask = torch.eye(self.n_sources)[sorted_idx] # (batch_size, T, n_sources, n_sources)
         sorted_spk_vector = torch.sum(mask.unsqueeze(dim=4) * spk_vector.unsqueeze(dim=3), dim=3) # (batch_size, T, n_sources, latent_dim)
-        spk_centroids = sorted_spk_vector.mean(dim=1) # (batch_size, n_sources, latent_dim)
+        sorted_spk_vector = sorted_spk_vector.permute(0, 2, 3, 1).contiguous() # (batch_size, n_sources, latent_dim, T)
+        spk_centroids = sorted_spk_vector.mean(dim=3) # (batch_size, n_sources, latent_dim)
         
         estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
 
