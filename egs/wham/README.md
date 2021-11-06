@@ -23,7 +23,17 @@ cd <REPOSITORY_ROOT>/egs/wham/common/
 --create_from "scratch"
 ```
 
-## How to train and evaluate DNN model
-See each subdirectory.
-
 ## Results
+### Enhance Both
+
+| Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| LSTM-TasNet | - | - | - |
+| Conv-TasNet | 12.7 | 13.1 | 2.39 |
+
+### Separate Noisy
+
+| Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| LSTM-TasNet | - | - | - |
+| Conv-TasNet | 12.3 | 12.7 | 2.36 |
