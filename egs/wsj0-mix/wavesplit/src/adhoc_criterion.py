@@ -290,14 +290,14 @@ class EntropyRegularizationLoss(nn.Module):
             distance = 2 * torch.max(distance) * torch.eye(n_training_sources).to(distance.device) + distance
             distance, _ = torch.min(distance, dim=1) # (n_sources,)
             loss = torch.log(distance + eps)
-            loss = loss.sum(dim=0)
+            loss = - loss.sum(dim=0)
         elif speaker_embedding.dim() == 3:
             n_sources = speaker_embedding.size(1)
             distance = torch.linalg.vector_norm(speaker_embedding.unsqueeze(dim=2) - speaker_embedding.unsqueeze(dim=1), dim=3) # (batch_size, n_sources, n_sources)
             distance = 2 * torch.max(distance) * torch.eye(n_sources).to(distance.device) + distance
             distance, _ = torch.min(distance, dim=2) # (batch_size, n_sources)
             loss = torch.log(distance + eps)
-            loss = loss.sum(dim=1)
+            loss = - loss.sum(dim=1)
             if batch_mean:
                 loss = loss.mean(dim=0)
         else:
