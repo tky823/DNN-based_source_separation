@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+EPS= 1e-12
+
 class SpeakerDistance(nn.Module):
     def __init__(self, n_sources, scale=None, bias=None):
         super().__init__()
@@ -267,6 +269,41 @@ class SpeakerLoss(nn.Module):
             distance = torch.abs(self.scale) * distance + self.bias
         
         return distance
+
+class EntropyRegularizationLoss(nn.Module):
+    def __init__(self, eps=EPS):
+        super().__init__()
+
+        self.eps = eps
+    
+    def forward(self, speaker_embedding, batch_mean=True):
+        """
+        Args:
+            speaker_embedding: (batch_size, n_sources, latent_dim) or (n_training_sources, latent_dim)
+        """
+        eps = self.eps
+
+        if speaker_embedding.dim() == 2:
+            n_training_sources = speaker_embedding.size(0)
+
+            distance = torch.linalg.vector_norm(speaker_embedding.unsqueeze(dim=1) - speaker_embedding.unsqueeze(dim=0), dim=2) # (n_training_sources, n_training_sources)
+            distance = 2 * torch.max(distance) * torch.eye(n_training_sources).to(distance.device) + distance
+            distance, _ = torch.min(distance, dim=1) # (n_sources,)
+            loss = torch.log(distance + eps)
+            loss = loss.sum(dim=0)
+        elif speaker_embedding.dim() == 3:
+            n_sources = speaker_embedding.size(1)
+            distance = torch.linalg.vector_norm(speaker_embedding.unsqueeze(dim=2) - speaker_embedding.unsqueeze(dim=1), dim=3) # (batch_size, n_sources, n_sources)
+            distance = 2 * torch.max(distance) * torch.eye(n_sources).to(distance.device) + distance
+            distance, _ = torch.min(distance, dim=2) # (batch_size, n_sources)
+            loss = torch.log(distance + eps)
+            loss = loss.sum(dim=1)
+            if batch_mean:
+                loss = loss.mean(dim=0)
+        else:
+            raise ValueError("Invalid dimension.")
+        
+        return loss
 
 class MultiDomainLoss(nn.Module):
     def __init__(self, reconst_criterion, speaker_criterion):
