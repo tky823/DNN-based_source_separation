@@ -162,10 +162,36 @@ class Trainer:
         """
         Validation
         """
-        # TODO:
         self.model.eval()
-        
+
         valid_loss = 0
+        n_valid_batch = len(self.valid_loader)
+
+        for idx, (mixture, sources, spk_idx, segment_id) in enumerate(self.train_loader):
+            if self.use_cuda:
+                mixture = mixture.cuda()
+                sources = sources.cuda()
+                spk_idx = spk_idx.cuda()
+            
+            self.optimizer.zero_grad()
+            sorted_idx = self.model(mixture, spk_idx=spk_idx)
+            
+            self.optimizer.zero_grad()
+            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+            loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            loss.backward()
+            
+            if self.max_norm:
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
+            
+            self.optimizer.step()
+            
+            valid_loss += loss.item()
+            
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+        
+        valid_loss /= n_valid_batch
         
         return valid_loss
     

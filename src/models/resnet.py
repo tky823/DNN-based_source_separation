@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_model import choose_nonlinear
+from utils.model import choose_nonlinear
 
 EPS = 1e-12
 

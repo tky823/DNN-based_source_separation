@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
+from utils.augmentation import SequentialAugmentation, choose_augmentation
 from dataset import AugmentationWaveTrainDataset, TrainDataLoader
 from adhoc_dataset import WaveEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer

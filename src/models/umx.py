@@ -2,7 +2,7 @@ import yaml
 import torch
 import torch.nn as nn
 
-from utils.utils_model import choose_nonlinear, choose_rnn
+from utils.model import choose_nonlinear, choose_rnn
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100

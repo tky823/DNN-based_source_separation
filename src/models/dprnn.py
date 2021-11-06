@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utils.utils_model import choose_rnn
+from utils.model import choose_rnn
 from utils.utils_tasnet import choose_layer_norm
 
 EPS=1e-12
