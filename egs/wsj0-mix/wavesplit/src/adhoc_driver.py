@@ -184,7 +184,7 @@ class Trainer:
                 
                 estimated_sources = self.model(mixture, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False)
                 
-                loss = pit_wrapper(self.criterion.reconst_criterion, estimated_sources, sources, batch_mean=False)
+                loss, _ = pit_wrapper(self.criterion.reconst_criterion, estimated_sources, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
 
