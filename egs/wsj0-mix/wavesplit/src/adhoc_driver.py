@@ -38,6 +38,7 @@ class Trainer:
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
         
+        self.return_all_layers = True
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
@@ -137,11 +138,18 @@ class Trainer:
                 spk_idx = spk_idx.cuda()
             
             self.optimizer.zero_grad()
-            sorted_idx = self.model(mixture, spk_idx=spk_idx)
+
+            with torch.no_grad():
+                sorted_idx = self.model(mixture, spk_idx=spk_idx)
             
             self.optimizer.zero_grad()
-            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
-            loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=self.return_all_layers, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+            
+            if self.return_all_layers:
+                loss = self.criterion(estimated_sources, sources.unsqueeze(dim=1), spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            else:
+                loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            
             loss.backward()
             
             if self.max_norm:
@@ -174,7 +182,8 @@ class Trainer:
                     sources = sources.cuda()
                 
                 estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, return_all_layers=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
-                loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=False)
+                
+                loss = self.criterion(estimated_sources, sources.unsqueeze(dim=1), spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
 
