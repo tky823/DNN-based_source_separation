@@ -5,7 +5,7 @@ tag=""
 
 n_sources=2
 
-sr=16000
+sample_rate=16000
 
 window_fn='hamming'
 fft_size=256
@@ -54,7 +54,7 @@ num_chunk=256
 duration=5
 
 demo.py \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --window_fn ${window_fn} \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \

@@ -8,18 +8,18 @@ def read_wav(path):
     from scipy.io import wavfile
     warnings.warn("Use torchaudio.load instead.", DeprecationWarning)
 
-    sr, signal = wavfile.read(path)
+    sample_rate, signal = wavfile.read(path)
     signal = signal / 32768
     
-    return signal, sr
+    return signal, sample_rate
 
-def write_wav(path, signal, sr):
+def write_wav(path, signal, sample_rate):
     from scipy.io import wavfile
     warnings.warn("Use torchaudio.save instead.", DeprecationWarning)
 
     signal = signal * 32768
     signal = np.clip(signal, -32768, 32767).astype(np.int16)
-    wavfile.write(path, sr, signal)
+    wavfile.write(path, sample_rate, signal)
 
 def mu_law_compand(x, mu=255):
     return np.sign(x) * np.log(1 + mu * np.abs(x)) / np.log(1 + mu)

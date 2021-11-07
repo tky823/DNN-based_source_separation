@@ -8,7 +8,7 @@ n_sources=2
 wav_root="../../../dataset/LibriSpeech"
 test_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.json"
 
-sr=16000
+sample_rate=16000
 
 window_fn='hamming'
 fft_size=256
@@ -68,7 +68,7 @@ export CUDA_VISIBLE_DEVICES="0"
 test.py \
 --wav_root ${wav_root} \
 --test_json_path ${test_json_path} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --window_fn ${window_fn} \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \

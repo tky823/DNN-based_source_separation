@@ -8,7 +8,7 @@ n_sources=2
 wav_root="../../../dataset/LibriSpeech"
 test_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.json"
 
-sr=16000
+sample_rate=16000
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
@@ -84,7 +84,7 @@ export CUDA_VISIBLE_DEVICES="0"
 test.py \
 --wav_root ${wav_root} \
 --test_json_path ${test_json_path} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
