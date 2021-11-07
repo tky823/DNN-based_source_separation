@@ -4,7 +4,7 @@ exp_dir="./exp"
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
-sr=${sr_k}000
+sample_rate=${sr_k}000
 duration=4
 max_or_min='min'
 
@@ -75,7 +75,7 @@ num_chunk=256
 duration=5
 
 demo.py \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --num_chunk ${num_chunk} \
 --duration ${duration} \
 --model_path "${model_path}" \

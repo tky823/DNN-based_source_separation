@@ -18,7 +18,7 @@ parser.add_argument('--train_wav_root', type=str, default=None, help='Path for t
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
 parser.add_argument('--train_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tr_mix')
 parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier','trainableFourierTrainablePhase'], help='Encoder type')
@@ -44,7 +44,7 @@ parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'ad
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate. Default: 0.001')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
+parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 4')
 parser.add_argument('--epochs', type=int, default=5, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -57,9 +57,9 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = int(args.sr * args.duration)
+    samples = int(args.sample_rate * args.duration)
     overlap = samples // 2
-    max_samples = int(args.sr * args.valid_duration)
+    max_samples = int(args.sample_rate * args.valid_duration)
     
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
     valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)

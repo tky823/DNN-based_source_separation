@@ -6,7 +6,7 @@ tag=""
 
 n_sources='2+3'
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
-sr=${sr_k}000
+sample_rate=${sr_k}000
 duration=4
 valid_duration=4
 max_or_min='min'
@@ -95,7 +95,7 @@ train.py \
 --valid_wav_root ${valid_wav_root} \
 --train_list_path ${train_list_path} \
 --valid_list_path ${valid_list_path} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --enc_basis ${enc_basis} \
