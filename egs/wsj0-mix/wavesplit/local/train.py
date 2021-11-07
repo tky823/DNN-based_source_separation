@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -10,7 +11,8 @@ from adhoc_utils import create_spk_to_idx
 from adhoc_dataset import WaveTrainDataset
 from dataset import WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import Trainer
-from models.wavesplit import SpeakerStack, SeparationStack, WaveSplit
+from models.wavesplit import SpeakerStack, SeparationStack
+from adhoc_model import WaveSplit
 from criterion.sdr import NegSDR, NegSISDR
 from adhoc_criterion import SpeakerDistance, GlobalClassificationLoss, MultiDomainLoss
 
