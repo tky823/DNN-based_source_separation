@@ -114,6 +114,7 @@ class WaveSplitBase(nn.Module):
             all_spk_embedding: (batch_size, n_training_sources, latent_dim)
         Returns:
             loss: (batch_size, T) or (T,)
+            pattern: (batch_size, T, P)
         """
         assert feature_last, "feature_last should be True."
 
