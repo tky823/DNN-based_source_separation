@@ -13,19 +13,19 @@ SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, patch_duration=6, max_duration=None, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, patch_duration=6, max_duration=None, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
         
-        assert_sample_rate(sr)
+        assert_sample_rate(sample_rate)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
-        self.sr = sr
+        self.sample_rate = sample_rate
         self.patch_duration = patch_duration
-        max_samples = int(sr * max_duration)
+        max_samples = int(sample_rate * max_duration)
 
         self.tracks = []
         self.json_data = []
@@ -33,7 +33,7 @@ class WaveEvalDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
             samples = min(max_samples, track_samples)
 
@@ -64,7 +64,7 @@ class WaveEvalDataset(WaveDataset):
             target <torch.Tensor>: Complex tensor with shape (batch_size, len(target), n_mics, patch_samples) if `target` is list, otherwise (batch_size, n_mics, patch_samples)
             name <str>: Artist and title of track
         """
-        patch_samples = int(self.sr * self.patch_duration)
+        patch_samples = int(self.sample_rate * self.patch_duration)
         track_data = self.json_data[idx]
 
         trackID = track_data['trackID']

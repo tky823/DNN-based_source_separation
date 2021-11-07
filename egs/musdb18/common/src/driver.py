@@ -25,7 +25,7 @@ class TrainerBase:
         self._reset(args)
     
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         self.max_norm = args.max_norm
         
@@ -196,7 +196,7 @@ class TrainerBase:
                         norm = torch.abs(mixture).max()
                         mixture = mixture / norm
                     
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_dir = os.path.join(self.sample_dir, titles[0], "epoch{}".format(epoch + 1))
                     os.makedirs(save_dir, exist_ok=True)
@@ -209,7 +209,7 @@ class TrainerBase:
                             norm = torch.abs(estimated_source).max()
                             estimated_source = estimated_source / norm
                         
-                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        torchaudio.save(save_path, estimated_source, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         
@@ -246,7 +246,7 @@ class TesterBase:
         self._reset(args)
         
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         
         self.out_dir = args.out_dir
@@ -278,7 +278,7 @@ class EvaluaterBase:
         self._reset(args)
 
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.sources = args.sources
 
         self.musdb18_root = args.musdb18_root

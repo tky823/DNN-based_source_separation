@@ -18,7 +18,7 @@ from criterion.distance import MeanSquaredError
 parser = argparse.ArgumentParser(description="Training of Open-Unmix")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=6, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -53,8 +53,8 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_samples = int(args.duration * args.sr)
-    max_samples = int(args.valid_duration * args.sr)
+    patch_samples = int(args.duration * args.sample_rate)
+    max_samples = int(args.valid_duration * args.sample_rate)
     padding = 2 * (args.fft_size // 2)
     patch_size = (patch_samples + padding - args.fft_size) // args.hop_size + 1
 
@@ -71,12 +71,12 @@ def main(args):
     train_dataset = AugmentationSpectrogramTrainDataset(
         args.musdb18_root,
         fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn,
-        sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch,
+        sample_rate=args.sample_rate, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch,
         sources=args.sources, target=args.target,
         include_valid=True,
         augmentation=augmentation
     )
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

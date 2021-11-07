@@ -8,46 +8,35 @@ EPS = 1e-12
 def compute_ideal_binary_mask(input, source_dim=-3):
     """
     Args:
-        input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Complex or nonnegative tensor.
+        source_dim <int>: Source dimension.
+            e.g.) If shapf of input is
+                (n_sources, n_bins, n_frames): Set source_dim=0.
+                (batch_size, n_sources, n_bins, n_frames): Set source_dim=1.
+                (n_sources, n_channels, n_bins, n_frames): Set source_dim=0.
+                (batch_size, n_sources, n_channels, n_bins, n_frames): Set source_dim=1.
     Returns:
-        mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        mask <torch.Tensor>: Nonnegative tensor.
     """
     if torch.is_complex(input):
         input = torch.abs(input)
-
+    
     n_dims = input.dim()
+
+    if source_dim < 0:
+        source_dim = n_dims + source_dim
     
-    if n_dims == 3:
-        assert source_dim == -3 or source_dim == 0, "Invalid source_dim."
-        n_sources, n_bins, n_frames = input.size()
-        
-        input = input.permute(1, 2, 0).contiguous()
-        flatten_input = input.view(n_bins*n_frames, n_sources)
-        flatten_idx = torch.arange(0, n_bins*n_frames*n_sources, n_sources)
-        flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
-        flatten_mask = torch.zeros(n_bins*n_frames*n_sources)
-        flatten_mask[flatten_idx] = 1
-        
-        mask = flatten_mask.view(n_bins, n_frames, n_sources)
-        mask = mask.permute(2, 0, 1).contiguous()
-    elif n_dims == 4:
-        assert source_dim == -3 or source_dim == 1, "Invalid source_dim."
-        batch_size, n_sources, n_bins, n_frames = input.size()
-        
-        input = input.permute(0, 2, 3, 1).contiguous()
-        flatten_input = input.view(batch_size*n_bins*n_frames, n_sources)
-        flatten_idx = torch.arange(0, batch_size*n_bins*n_frames*n_sources, n_sources)
-        flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
-        flatten_mask = torch.zeros(batch_size*n_bins*n_frames*n_sources)
-        flatten_mask[flatten_idx] = 1
-        
-        mask = flatten_mask.view(batch_size, n_bins, n_frames, n_sources)
-        mask = mask.permute(0, 3, 1, 2).contiguous()
-    else:
-        raise ValueError("Not support {}-dimension".format(n_dims))
-    
+    n_sources = input.size(dim=source_dim)
+
+    permutation_dims = tuple(range(0, source_dim)) + (n_dims - 1,) + tuple(range(source_dim, n_dims - 1))
+    max_idx = torch.argmax(input, dim=source_dim)
+
+    mask = torch.eye(n_sources)[max_idx]
+    mask = mask.permute(*permutation_dims).contiguous()
+    mask = mask.to(input.device)
+
     return mask
-   
+
 def compute_ideal_ratio_mask(input, source_dim=None, eps=EPS):
     """
     Args:

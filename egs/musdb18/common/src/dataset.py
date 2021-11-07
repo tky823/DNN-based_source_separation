@@ -13,17 +13,17 @@ EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         """
         Args:
             musdb18_root <str>: Path to MUSDB18 root.
-            sr <int>: Sampling rate.
+            sample_rate <int>: Sampling rate.
             sources <list<str>>: Sources for mixture. Default: ['bass', 'drums', 'other', 'vocals']
             target <str> or <list<str>>: Target source(s). If None is given, `sources` is used by default.
         """
         super().__init__()
 
-        assert_sample_rate(sr)
+        assert_sample_rate(sample_rate)
 
         if target is not None:
             if type(target) is list:
@@ -41,15 +41,15 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         self.target = target
 
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
         """
         Args:
             musdb18_root <int>: Path to MUSDB or MUSDB-HQ
-            sr: Sampling frequency. Default: 44100
+            sample_rate: Sampling frequency. Default: 44100
             sources <list<str>>: Sources included in mixture
             target <str> or <list<str>>: Target source(s)
         """
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
 
         self.json_data = None
 
@@ -97,12 +97,12 @@ class WaveDataset(MUSDB18Dataset):
         return len(self.json_data)
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, include_valid=False):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, include_valid=False):
         """
         Args:
             include_valid <bool>: Include validation data for training.
         """
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
@@ -130,7 +130,7 @@ class WaveTrainDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -167,8 +167,8 @@ class WaveTrainDataset(WaveDataset):
         return mixture, target
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_samples=4*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, max_samples=4*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
 
@@ -186,7 +186,7 @@ class WaveEvalDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -229,8 +229,8 @@ class WaveEvalDataset(WaveDataset):
         return mixture, target
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
 
         test_txt_path = os.path.join(musdb18_root, 'test.txt')
 
@@ -246,7 +246,7 @@ class WaveTestDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -271,8 +271,8 @@ class WaveTestDataset(WaveDataset):
             self.json_data.append(data)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
 
         if hop_size is None:
             hop_size = fft_size // 2
@@ -331,10 +331,10 @@ class SpectrogramDataset(WaveDataset):
         return mixture, target, T, name
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, include_valid=False):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, include_valid=False):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
         
-        assert_sample_rate(sr)
+        assert_sample_rate(sample_rate)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
@@ -362,7 +362,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -399,8 +399,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
 
@@ -415,7 +415,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -460,8 +460,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return mixture, sources, T, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
 
         test_txt_path = os.path.join(musdb18_root, 'test.txt')
 
@@ -479,7 +479,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -527,17 +527,17 @@ class SpectrogramTestDataset(SpectrogramDataset):
     Augmentation dataset
 """
 class AugmentationWaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, include_valid=False, augmentation=None):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, include_valid=False, augmentation=None):
         """
         Args:
             musdb18_root <int>: Path to MUSDB or MUSDB-HQ
-            sr: Sampling frequency. Default: 44100
+            sample_rate: Sampling frequency. Default: 44100
             sources <list<str>>: Sources included in mixture
             target <str> or <list<str>>: Target source(s)
         """
         super().__init__(
             musdb18_root,
-            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources,
             target=target
         )
@@ -559,8 +559,8 @@ class AugmentationWaveTrainDataset(WaveDataset):
                 
                 names.append(name)
 
-        self.sr = sr
-        self.samples = int(duration * sr)
+        self.sample_rate = sample_rate
+        self.samples = int(duration * sample_rate)
         self.augmentation = augmentation
 
         self.tracks = []
@@ -571,7 +571,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                track_sr = audio_info.sample_rate
+                track_sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -587,7 +587,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
                 
                 self.tracks.append(track)
 
-                track_duration = track_samples / track_sr
+                track_duration = track_samples / track_sample_rate
                 total_duration += track_duration
 
             if samples_per_epoch is None:
@@ -596,7 +596,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
-            samples_original = int(self.samples * SAMPLE_RATE_MUSDB18 / sr)
+            samples_original = int(self.samples * SAMPLE_RATE_MUSDB18 / sample_rate)
 
             if overlap is None:
                 overlap = samples_original // 2
@@ -605,7 +605,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                track_sr = audio_info.sample_rate
+                track_sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -630,8 +630,8 @@ class AugmentationWaveTrainDataset(WaveDataset):
                     }
                     self.json_data.append(data)
 
-        if sr != SAMPLE_RATE_MUSDB18:
-            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        if sample_rate != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
         else:
             self.pre_resampler = None
 
@@ -709,8 +709,8 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
     """
     Training dataset that returns randomly selected mixture spectrograms.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_samples=6*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, include_valid=False, augmentation=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_samples=6*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, include_valid=False, augmentation=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
         
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
@@ -736,13 +736,13 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
         self.tracks = []
 
         if augmentation:
-            duration = patch_samples / sr
+            duration = patch_samples / sample_rate
             total_duration = 0
 
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                sr = audio_info.sample_rate
+                sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -758,7 +758,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
                 
                 self.tracks.append(track)
 
-                track_duration = track_samples / sr
+                track_duration = track_samples / sample_rate
                 total_duration += track_duration
 
             if samples_per_epoch is None:
@@ -775,7 +775,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                sr = audio_info.sample_rate
+                sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -935,8 +935,8 @@ def test_collate_fn(batch):
     
     return batched_mixture, batched_sources, batched_segment_ID
 
-def assert_sample_rate(sr):
-    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
+def assert_sample_rate(sample_rate):
+    assert sample_rate == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sample_rate)
 
 def _test_train_dataset():
     torch.manual_seed(111)
@@ -950,7 +950,7 @@ def _test_train_dataset():
         print(mixture.size(), sources.size())
         break
 
-    dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sr=8000, duration=4, sources=__sources__)
+    dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sample_rate=8000, duration=4, sources=__sources__)
     loader = TrainDataLoader(dataset, batch_size=6, shuffle=True)
     
     for mixture, sources in loader:

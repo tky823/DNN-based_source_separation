@@ -92,7 +92,7 @@ class AdhocTrainer(TrainerBase):
                         norm = torch.abs(mixture).max()
                         mixture = mixture / norm
                     
-                    torchaudio.save(save_path, mixture, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    torchaudio.save(save_path, mixture, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_dir = os.path.join(self.sample_dir, titles, "epoch{}".format(epoch + 1))
                     os.makedirs(save_dir, exist_ok=True)
@@ -105,7 +105,7 @@ class AdhocTrainer(TrainerBase):
                             norm = torch.abs(estimated_source).max()
                             estimated_source = estimated_source / norm
                         
-                        torchaudio.save(save_path, estimated_source, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        torchaudio.save(save_path, estimated_source, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         
@@ -128,7 +128,7 @@ class AdhocTrainer(TrainerBase):
         config['valid_loss'] = self.valid_loss
         
         config['epoch'] = epoch + 1
-        config['sr'] = self.train_loader.dataset.sr
+        config['sample_rate'] = self.train_loader.dataset.sample_rate
         config['sources'] = self.train_loader.dataset.sources
         
         torch.save(config, model_path)

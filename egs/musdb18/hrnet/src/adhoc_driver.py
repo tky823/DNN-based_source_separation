@@ -26,7 +26,7 @@ class AdhocTrainer(TrainerBase):
         
     def _reset(self, args):
         # Override
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.valid_loader.dataset.window
@@ -110,7 +110,7 @@ class AdhocTrainer(TrainerBase):
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
     
     def run_one_epoch_train(self, epoch):
         # Override
@@ -197,11 +197,11 @@ class AdhocTrainer(TrainerBase):
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
-                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                     
                     save_path = os.path.join(save_dir, "epoch{}.wav".format(epoch + 1))
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         
@@ -212,7 +212,7 @@ class SingleTargetTester(TesterBase):
         super().__init__(model, loader, criterion, args)
 
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.target = args.target
 
         self.musdb18_root = args.musdb18_root
@@ -315,7 +315,7 @@ class SingleTargetTester(TesterBase):
                 estimated_path = os.path.join(track_dir, "{}.wav".format(target))
                 estimated_source = estimated_source[:, :samples] # -> (n_mics, T)
                 signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                torchaudio.save(estimated_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             
                 test_loss += loss.item() # ()
                 test_loss_improvement += loss_improvement.item() # ()
