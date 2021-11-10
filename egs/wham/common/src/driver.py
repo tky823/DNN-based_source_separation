@@ -289,8 +289,7 @@ class TesterBase:
                 perm_idx = perm_idx[0] # -> (n_sources,)
                 segment_IDs = segment_IDs[0] # -> <str>
 
-                repeat = sources.size(0)
-                repeated_mixture = torch.tile(mixture, (repeat, 1))
+                repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(
                     reference_sources=sources,
                     estimated_sources=estimated_sources
