@@ -4,13 +4,12 @@ import subprocess
 import time
 import uuid
 
-import numpy as np
-from mir_eval.separation import bss_eval_sources
 import torch
 import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from utils.bss import bss_eval_sources
 
 BITS_PER_SAMPLE_WSJ0 = 16
 MIN_PESQ = -0.5
@@ -295,17 +294,17 @@ class TesterBase:
 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(
-                    reference_sources=sources.numpy(),
-                    estimated_sources=estimated_sources.numpy()
+                    reference_sources=sources,
+                    estimated_sources=estimated_sources
                 )
                 result_mixed = bss_eval_sources(
-                    reference_sources=sources.numpy(),
-                    estimated_sources=repeated_mixture.numpy()
+                    reference_sources=sources,
+                    estimated_sources=repeated_mixture
                 )
         
-                sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
-                sir_improvement = np.mean(result_estimated[1] - result_mixed[1])
-                sar = np.mean(result_estimated[2])
+                sdr_improvement = torch.mean(result_estimated[0] - result_mixed[0])
+                sir_improvement = torch.mean(result_estimated[1] - result_mixed[1])
+                sar = torch.mean(result_estimated[2])
                 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
@@ -366,13 +365,13 @@ class TesterBase:
                     subprocess.call("rm {}".format(estimated_path), shell=True)
                 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, sdr_improvement, sir_improvement, sar, pesq), flush=True)
+                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq), flush=True)
                 
                 test_loss += loss.item()
                 test_loss_improvement += loss_improvement
-                test_sdr_improvement += sdr_improvement
-                test_sir_improvement += sir_improvement
-                test_sar += sar
+                test_sdr_improvement += sdr_improvement.item()
+                test_sir_improvement += sir_improvement.item()
+                test_sar += sar.item()
                 test_pesq += pesq
         
         os.chdir("../") # back to the original directory
