@@ -1,4 +1,5 @@
 import itertools
+import warnings
 
 import torch
 import torch.nn as nn
@@ -213,6 +214,8 @@ class WaveSplitBase(nn.Module):
 class WaveSplit(WaveSplitBase):
     def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
         super().__init__(speaker_stack, sepatation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
+
+        warnings.warn("Implementation of WaveSplit has not finished.", UserWarning)
     
         self.embedding = nn.Embedding(n_training_sources, latent_dim)
 

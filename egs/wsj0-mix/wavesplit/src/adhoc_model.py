@@ -6,6 +6,8 @@ import torch.nn.functional as F
 
 from models.wavesplit import WaveSplitBase
 
+EPS = 1e-12
+
 class WaveSplit(WaveSplitBase):
     def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
         super().__init__(speaker_stack, sepatation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
@@ -19,14 +21,34 @@ class WaveSplit(WaveSplitBase):
         Args:
             mixture: (batch_size, 1, T)
             spk_idx: (batch_size, n_sources)
+            sorted_idx: (batch_size, n_sources)
         Returns:
-            sorted_idx: (batch_size, n_sources) if sorted_idx is None.
-            estimated_sources:
-                (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
-                (batch_size, n_sources, T) if return_all_layers=False.
-            sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
-            spk_embedding: (batch_size, n_sources, latent_dim)
-            all_spk_embedding: (n_training_sources, latent_dim)
+            forward returns different values depending on inputs.
+            case 1: sorted_idx is None during training.
+                sorted_idx: (batch_size, n_sources) if sorted_idx is None.
+            case 2: sorted_idx is given during training.
+                estimated_sources:
+                    (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
+                    (batch_size, n_sources, T) if return_all_layers=False.
+                sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
+                spk_embedding: (batch_size, n_sources, latent_dim)
+                all_spk_embedding: (n_training_sources, latent_dim)
+            case 3: spk_idx is given and sorted_idx is None during evaluation.
+                sorted_idx: (batch_size, n_sources) if sorted_idx is None.
+            case 4: spk_idx is given and sorted_idx is given during evaluation.
+                estimated_sources:
+                    (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
+                    (batch_size, n_sources, T) if return_all_layers=False.
+                sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
+                spk_embedding: (batch_size, n_sources, latent_dim)
+                all_spk_embedding: (n_training_sources, latent_dim)
+            case 5: spk_idx is None during evaluation.
+                estimated_sources:
+                    (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
+                    (batch_size, n_sources, T) if return_all_layers=False.
+                sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
+                spk_embedding: (batch_size, n_sources, latent_dim)
+                all_spk_embedding: (n_training_sources, latent_dim)
         """
         eps = self.eps
 
@@ -89,7 +111,6 @@ class WaveSplit(WaveSplitBase):
 
     def extract_latent(self, mixture, sorted_idx, return_all_layers=False, stack_dim=1):
         """
-        Only supports training time
         Args:
             mixture: (batch_size, 1, T)
             sorted_idx: (batch_size, n_sources)
@@ -103,7 +124,7 @@ class WaveSplit(WaveSplitBase):
         batch_size, n_sources, latent_dim, T = spk_vector.size()
         sorted_idx = sorted_idx + torch.arange(0, batch_size * n_sources, n_sources).unsqueeze(dim=1)
         flatten_spk_vector = spk_vector.view(batch_size * n_sources, latent_dim, T)
-        flatten_sorted_idx = sorted_idx.view(batch_size*n_sources)
+        flatten_sorted_idx = sorted_idx.view(batch_size * n_sources)
         flatten_sorted_spk_vector = flatten_spk_vector[flatten_sorted_idx]
         sorted_spk_vector = flatten_sorted_spk_vector.view(batch_size, n_sources, latent_dim, T)
         spk_centroids = sorted_spk_vector.mean(dim=3) # (batch_size, n_sources, latent_dim)
