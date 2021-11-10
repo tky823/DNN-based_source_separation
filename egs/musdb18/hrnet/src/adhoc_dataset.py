@@ -19,7 +19,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 tracks.
     """
     def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
+        super().__init__(
+            musdb18_root,
+            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize,
+            sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
+            sources=sources, target=target
+        )
         
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
