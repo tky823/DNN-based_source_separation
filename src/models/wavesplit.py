@@ -369,6 +369,7 @@ class SpeakerStack(nn.Module):
         """
         Args:
             input: (batch_size, 1, T)
+        Returns:
             output: (batch_size, n_sources, latent_dim, T)
         """
         n_sources = self.n_sources

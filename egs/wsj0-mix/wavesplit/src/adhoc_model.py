@@ -23,83 +23,67 @@ class WaveSplit(WaveSplitBase):
             spk_idx: (batch_size, n_sources)
             sorted_idx: (batch_size, n_sources)
         Returns:
-            forward returns different values depending on inputs.
-            case 1: sorted_idx is None during training.
-                sorted_idx: (batch_size, n_sources) if sorted_idx is None.
-            case 2: sorted_idx is given during training.
-                estimated_sources:
-                    (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
-                    (batch_size, n_sources, T) if return_all_layers=False.
-                sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
-                spk_embedding: (batch_size, n_sources, latent_dim)
-                all_spk_embedding: (n_training_sources, latent_dim)
-            case 3: spk_idx is given and sorted_idx is None during evaluation.
-                sorted_idx: (batch_size, n_sources) if sorted_idx is None.
-            case 4: spk_idx is given and sorted_idx is given during evaluation.
-                estimated_sources:
-                    (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
-                    (batch_size, n_sources, T) if return_all_layers=False.
-                sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
-                spk_embedding: (batch_size, n_sources, latent_dim)
-                all_spk_embedding: (n_training_sources, latent_dim)
-            case 5: spk_idx is None during evaluation.
-                estimated_sources:
-                    (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
-                    (batch_size, n_sources, T) if return_all_layers=False.
-                sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss. If return_spk_vector=True, sorted_spk_vector is returned.
-                spk_embedding: (batch_size, n_sources, latent_dim)
-                all_spk_embedding: (n_training_sources, latent_dim)
+
         """
+        if self.training:
+            output = self.training_forward(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=return_all_layers, return_spk_vector=return_spk_vector, return_spk_embedding=return_spk_embedding, return_all_spk_embedding=return_all_spk_embedding, stack_dim=stack_dim)
+        else:
+            if spk_idx is not None or sorted_idx is not None or not return_spk_embedding:
+                raise NotImplementedError
+            
+            output = self.evaluation_forward(mixture, return_all_layers=return_all_layers, return_spk_vector=return_spk_vector, return_all_spk_embedding=return_all_spk_embedding, stack_dim=stack_dim)
+
+        return output
+    
+    def training_forward(self, mixture, spk_idx=None, sorted_idx=None, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False, stack_dim=1):
+        """
+        Args:
+            mixture: (batch_size, 1, T)
+            spk_idx: (batch_size, n_sources)
+            sorted_idx: (batch_size, n_sources)
+        Returns:
+
+        """
+        n_sources = self.n_sources
         eps = self.eps
 
-        if self.training:
-            if sorted_idx is None:
-                if return_all_layers or return_spk_vector or return_spk_embedding or return_all_spk_embedding:
-                    raise ValueError("Set return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False.")
+        spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
+        
+        all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
+        all_spk_embedding = all_spk_embedding / (torch.linalg.vector_norm(all_spk_embedding, dim=1, keepdim=True) + eps)
+        spk_embedding = all_spk_embedding[spk_idx] # (batch_size, n_sources, latent_dim)
+
+        if sorted_idx is None:
+            if return_all_layers or return_spk_vector or return_spk_embedding or return_all_spk_embedding:
+                raise ValueError("Set return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False.")
                 
-                sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, n_sources)
+            spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
+            _, sorted_idx = self.compute_pit_speaker_loss(spk_vector, spk_embedding, all_spk_embedding, feature_last=True)
 
-                return sorted_idx
+            return sorted_idx
         
-            estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
-            
-            if return_spk_embedding:
-                spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
-                spk_embedding = spk_embedding / (torch.linalg.vector_norm(spk_embedding, dim=2, keepdim=True) + eps)
-        else:
-            if spk_idx is not None:
-                if sorted_idx is None:
-                    if return_all_layers or return_spk_vector:
-                        raise ValueError("Set return_all_layers=False, return_spk_vector=False.")
-                    
-                    sorted_idx = self.solve_permutation(mixture, spk_idx=spk_idx) # (batch_size, n_sources)
+        # Reorder speaker vector using sorted_idx.
+        batch_size, _, latent_dim, T = spk_vector.size()
 
-                    return sorted_idx
+        sorted_idx = sorted_idx + torch.arange(0, batch_size * n_sources, n_sources).unsqueeze(dim=1)
+        flatten_spk_vector = spk_vector.view(batch_size * n_sources, latent_dim, T)
+        flatten_sorted_idx = sorted_idx.view(batch_size * n_sources)
+        flatten_sorted_spk_vector = flatten_spk_vector[flatten_sorted_idx]
+        sorted_spk_vector = flatten_sorted_spk_vector.view(batch_size, n_sources, latent_dim, T)
+        spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
 
-                # If sorted_idx is given.
-                estimated_sources, sorted_spk_vector = self.extract_latent(mixture, sorted_idx, return_all_layers=return_all_layers, stack_dim=stack_dim)
+        estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
 
-                if return_spk_embedding:
-                    spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
-                    spk_embedding = spk_embedding / (torch.linalg.vector_norm(spk_embedding, dim=2, keepdim=True) + eps)
-            else:
-                sorted_spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
-                spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim), works as centroids
-                spk_embedding = spk_centroids / (torch.linalg.vector_norm(spk_centroids, dim=2, keepdim=True) + eps)
-                estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
-        
         output = []
         output.append(estimated_sources)
 
-        if return_spk_vector:
+        if return_spk_vector:    
             output.append(sorted_spk_vector)
         
         if return_spk_embedding:
             output.append(spk_embedding)
         
         if return_all_spk_embedding:    
-            all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
-            all_spk_embedding = all_spk_embedding / (torch.linalg.vector_norm(all_spk_embedding, dim=1, keepdim=True) + eps)
             output.append(all_spk_embedding)
         
         if len(output) == 1:
@@ -108,53 +92,33 @@ class WaveSplit(WaveSplitBase):
             output = tuple(output)
 
         return output
-
-    def extract_latent(self, mixture, sorted_idx, return_all_layers=False, stack_dim=1):
-        """
-        Args:
-            mixture: (batch_size, 1, T)
-            sorted_idx: (batch_size, n_sources)
-        Returns:
-            estimated_sources:
-                (batch_size, num_blocks * num_layers, n_sources, T) if return_all_layers=True and stack_dim=1.
-                (batch_size, n_sources, T) if return_all_layers=False.
-            sorted_spk_vector: Speaker vector with shape of (batch_size, n_sources, latent_dim, T), sorted by speaker loss.
-        """
-        spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
-        batch_size, n_sources, latent_dim, T = spk_vector.size()
-        sorted_idx = sorted_idx + torch.arange(0, batch_size * n_sources, n_sources).unsqueeze(dim=1)
-        flatten_spk_vector = spk_vector.view(batch_size * n_sources, latent_dim, T)
-        flatten_sorted_idx = sorted_idx.view(batch_size * n_sources)
-        flatten_sorted_spk_vector = flatten_spk_vector[flatten_sorted_idx]
-        sorted_spk_vector = flatten_sorted_spk_vector.view(batch_size, n_sources, latent_dim, T)
-        spk_centroids = sorted_spk_vector.mean(dim=3) # (batch_size, n_sources, latent_dim)
-        
-        estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
-
-        return estimated_sources, sorted_spk_vector
-
-    def solve_permutation(self, mixture, spk_idx):
-        """
-        Args:
-            mixture: (batch_size, 1, T)
-            spk_idx: (batch_size, n_sources)
-        Returns:
-            sorted_idx: (batch_size, n_sources)
-        """
+    
+    def evaluation_forward(self, mixture, return_all_layers=False, return_spk_vector=False, return_all_spk_embedding=False, stack_dim=1):
         eps = self.eps
 
-        spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
-        spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dim)
-        
-        spk_embedding = self.embedding(spk_idx) # (batch_size, n_sources, latent_dim)
         all_spk_embedding = self.embedding(self.all_spk_idx) # (n_training_sources, latent_dim)
-
-        spk_embedding = spk_embedding / (torch.linalg.vector_norm(spk_embedding, dim=2, keepdim=True) + eps)
         all_spk_embedding = all_spk_embedding / (torch.linalg.vector_norm(all_spk_embedding, dim=1, keepdim=True) + eps)
+        
+        spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
+        spk_centroids = spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
 
-        _, sorted_idx = self.compute_pit_speaker_loss(spk_vector, spk_embedding, all_spk_embedding, feature_last=True, batch_mean=False) # (batch_size, n_sources)
-    
-        return sorted_idx
+        estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+
+        output = []
+        output.append(estimated_sources)
+
+        if return_spk_vector:    
+            output.append(spk_vector)
+        
+        if return_all_spk_embedding:    
+            output.append(all_spk_embedding)
+        
+        if len(output) == 1:
+            output = output[0]
+        else:
+            output = tuple(output)
+        
+        return output
 
     def compute_pit_speaker_loss(self, spk_vector, spk_embedding, all_spk_embedding, feature_last=True, batch_mean=True):
         """
