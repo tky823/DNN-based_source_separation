@@ -13,8 +13,8 @@ musdb18_root="../../../dataset/MUSDB18"
 sample_rate=16000
 
 window_fn='hann'
-fft_size=4096
-hop_size=1024
+fft_size=1024
+hop_size=512
 
 # Model
 config_path="./config/paper/${target}.yaml"
