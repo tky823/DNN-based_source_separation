@@ -1,4 +1,4 @@
-from mir_eval.separation import bss_eval_sources
+from mir_eval.separation import bss_eval_sources as bss_eval_sources_np
 import torch
 
 def bss_eval_sources(reference_sources: torch.Tensor, estimated_sources: torch.Tensor, **kwargs):
@@ -15,7 +15,7 @@ def bss_eval_sources(reference_sources: torch.Tensor, estimated_sources: torch.T
     reference_sources = reference_sources.numpy()
     estimated_sources = estimated_sources.numpy()
 
-    result = bss_eval_sources(
+    result = bss_eval_sources_np(
         reference_sources=reference_sources,
         estimated_sources=estimated_sources,
         **kwargs
@@ -38,7 +38,7 @@ def _test_bss_eval_sources():
     reference_sources = torch.cat([reference_source_man, reference_source_woman], dim=0)
     estimated_sources = torch.cat([estimated_source_man, estimated_source_woman], dim=0)
 
-    result = bss_eval_sources_torch(reference_sources=reference_sources, estimated_sources=estimated_sources)
+    result = bss_eval_sources(reference_sources=reference_sources, estimated_sources=estimated_sources)
 
     print(result)
 

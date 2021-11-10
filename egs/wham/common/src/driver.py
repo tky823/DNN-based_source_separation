@@ -120,9 +120,6 @@ class TrainerBase:
             draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
     
     def run_one_epoch(self, epoch):
-        """
-        Training
-        """
         train_loss = self.run_one_epoch_train(epoch)
         valid_loss = self.run_one_epoch_eval(epoch)
 
