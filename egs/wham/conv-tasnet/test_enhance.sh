@@ -104,7 +104,7 @@ test_enhance.py \
 --test_wav_root ${wav_root} \
 --test_list_path ${test_list_path} \
 --sample_rate ${sample_rate} \
---n_sources ${n_sources} \
+--n_sources ${n_target_speakers} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
 --model_path "${model_path}" \
