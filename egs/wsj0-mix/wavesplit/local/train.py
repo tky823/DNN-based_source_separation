@@ -90,9 +90,9 @@ def main(args):
     if args.reg_criterion is None or args.reg_criterion == 'none':
         reg_criterion = None
     elif args.reg_criterion == 'entropy':
-        reg_criterion = EntropyRegularizationLoss(n_sources=args.n_sources)
+        reg_criterion = EntropyRegularizationLoss()
     else:
-        raise ValueError("Not support criterion {}".format(args.spk_criterion))
+        raise ValueError("Not support criterion {}".format(args.reg_criterion))
     
     criterion = MultiDomainLoss(reconst_criterion, spk_criterion, reg_criterion=reg_criterion)
     
