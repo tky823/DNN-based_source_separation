@@ -889,17 +889,17 @@ class ORPITTrainer(Trainer):
                     sources = sources.cuda()
                 
                 output_one_and_rest = self.model(mixture)
-                output_one = output_one_and_rest[:,0:1]
-                output_rest = output_one_and_rest[:,1:]
-                output = output_one
+                output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
+                output = []
+                output.append(output_one)
 
-                for source_idx in range(1, self.n_sources-1):
+                for source_idx in range(1, self.n_sources - 1):
                     output_one_and_rest = self.model(output_rest)
-                    output_one = output_one_and_rest[:,0:1]
-                    output_rest = output_one_and_rest[:,1:]
-                    output = torch.cat([output, output_one], dim=1)
+                    output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
+                    output.append(output_one)
                 
-                output = torch.cat([output, output_rest], dim=1)
+                output.append(output_rest)
+                output = torch.cat(output, dim=1)
                 
                 if idx < 5:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu()

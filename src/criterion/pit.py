@@ -122,8 +122,8 @@ class ORPIT(nn.Module):
 
         for batch_idx in range(batch_size):
             n_sources = lens_unpacked[batch_idx] # <int>
-            _input, _target = input[batch_idx: batch_idx+1], target[batch_idx: batch_idx+1, : n_sources] # (1, 2, *), (1, n_sources, *)
-            input_one, input_rest = _input[:, 0], _input[:, 1] # (1, *), (1, *)
+            _input, _target = input[batch_idx: batch_idx + 1], target[batch_idx: batch_idx + 1, : n_sources] # (1, 2, *), (1, n_sources, *)
+            input_one, input_rest = torch.unbind(_input, dim=1) # (1, *), (1, *)
 
             possible_loss = None
     

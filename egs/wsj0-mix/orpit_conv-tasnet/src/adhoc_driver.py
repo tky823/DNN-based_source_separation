@@ -106,14 +106,16 @@ class ORPITTrainer(TrainerBase):
                 
                 output_one_and_rest = self.model(mixture)
                 output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
-                output = output_one
+                output = []
+                output.append(output_one)
 
                 for source_idx in range(1, n_sources[0] - 1):
                     output_one_and_rest = self.model(output_rest)
                     output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
-                    output = torch.cat([output, output_one], dim=1)
+                    output.append(output_one)
                 
-                output = torch.cat([output, output_rest], dim=1)
+                output.append(output_rest)
+                output = torch.cat(output, dim=1)
 
                 if not n_sources[0] in n_sources_count.keys():
                     n_sources_count[n_sources[0]] = 0
@@ -191,14 +193,16 @@ class Tester(TesterBase):
 
                 output_one_and_rest = self.model(mixture)
                 output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
-                output = output_one
+                output = []
+                output.append(output_one)
 
                 for source_idx in range(1, n_sources - 1):
                     output_one_and_rest = self.model(output_rest)
                     output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
-                    output = torch.cat([output, output_one], dim=1)
+                    output.append(output_one)
                 
-                output = torch.cat([output, output_rest], dim=1)
+                output.append(output_rest)
+                output = torch.cat(output, dim=1)
                 loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 loss_improvement = loss_mixture.item() - loss.item()
@@ -457,14 +461,16 @@ class FinetuneTrainer(TrainerBase):
                 
                 output_one_and_rest = self.model(mixture)
                 output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
-                output = output_one
+                output = []
+                output.append(output_one)
 
                 for source_idx in range(1, n_sources - 1):
                     output_one_and_rest = self.model(output_rest)
                     output_one, output_rest = torch.split(output_one_and_rest, [1, 1], dim=1)
-                    output = torch.cat([output, output_one], dim=1)
+                    output.append(output_one)
                 
-                output = torch.cat([output, output_rest], dim=1)
+                output.append(output_rest)
+                output = torch.cat(output, dim=1)
                 loss, _ = pit(self.pit_criterion.criterion, output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
