@@ -28,7 +28,7 @@ class WaveSplit(WaveSplitBase):
         if self.training:
             output = self.training_forward(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=return_all_layers, return_spk_vector=return_spk_vector, return_spk_embedding=return_spk_embedding, return_all_spk_embedding=return_all_spk_embedding, stack_dim=stack_dim)
         else:
-            if spk_idx is not None or sorted_idx is not None or not return_spk_embedding:
+            if spk_idx is not None or sorted_idx is not None or return_spk_embedding:
                 raise NotImplementedError
             
             output = self.evaluation_forward(mixture, return_all_layers=return_all_layers, return_spk_vector=return_spk_vector, return_all_spk_embedding=return_all_spk_embedding, stack_dim=stack_dim)
