@@ -36,6 +36,7 @@ norm=1
 # Criterion
 reconst_criterion='sdr' # or 'sisdr'
 spk_criterion='distance'
+reg_criterion='entropy'
 
 # Optimizer
 optimizer='adam'
@@ -55,7 +56,12 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${reconst_criterion}-${spk_criterion}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec"
+    if [ "${reg_criterion}" = 'none' ]; then
+        save_dir="${save_dir}/${reconst_criterion}-${spk_criterion}-${reg_criterion}"
+    else
+        save_dir="${save_dir}/${reconst_criterion}-${spk_criterion}"
+    fi
     save_dir="${save_dir}/latent${latent_dim}/spk${spk_kernel_size}_${spk_num_layers}/sep${sep_kernel_size_in}-${sep_kernel_size}_${sep_num_blocks}-${sep_num_layers}"
     save_dir="${save_dir}/dilated${dilated}_separable${separable}_causal${causal}_${nonlinear}_norm${norm}"
     save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
@@ -99,6 +105,7 @@ train.py \
 --n_sources ${n_sources} \
 --reconst_criterion ${reconst_criterion} \
 --spk_criterion ${spk_criterion} \
+--reg_criterion ${reg_criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
 --weight_decay ${weight_decay} \

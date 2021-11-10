@@ -14,7 +14,7 @@ from adhoc_driver import Trainer
 from models.wavesplit import SpeakerStack, SeparationStack
 from adhoc_model import WaveSplit
 from criterion.sdr import NegSDR, NegSISDR
-from adhoc_criterion import SpeakerDistance, GlobalClassificationLoss, MultiDomainLoss
+from adhoc_criterion import SpeakerDistance, GlobalClassificationLoss, EntropyRegularizationLoss, MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Training of WaveSplit")
 
@@ -40,6 +40,7 @@ parser.add_argument('--norm', type=int, default=1, help='Normalization')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--reconst_criterion', type=str, default='sdr', choices=['sdr','sisdr'], help='Criterion for reconstruction')
 parser.add_argument('--spk_criterion', type=str, default='distance', choices=['distance', 'global'], help='Criterion for speaker loss')
+parser.add_argument('--reg_criterion', type=str, default='entropy', choices=['entropy', 'none', None], help='Regularization for speaker embedding')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -85,8 +86,15 @@ def main(args):
         spk_criterion = GlobalClassificationLoss(n_sources=args.n_sources, source_reduction='mean')
     else:
         raise ValueError("Not support criterion {}".format(args.spk_criterion))
+
+    if args.reg_criterion is None or args.reg_criterion == 'none':
+        reg_criterion = None
+    elif args.reg_criterion == 'entropy':
+        reg_criterion = EntropyRegularizationLoss(n_sources=args.n_sources)
+    else:
+        raise ValueError("Not support criterion {}".format(args.spk_criterion))
     
-    criterion = MultiDomainLoss(reconst_criterion, spk_criterion)
+    criterion = MultiDomainLoss(reconst_criterion, spk_criterion, reg_criterion=reg_criterion)
     
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None

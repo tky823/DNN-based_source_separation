@@ -306,14 +306,19 @@ class EntropyRegularizationLoss(nn.Module):
         return loss
 
 class MultiDomainLoss(nn.Module):
-    def __init__(self, reconst_criterion, speaker_criterion):
+    def __init__(self, reconst_criterion, speaker_criterion, reg_criterion=None):
         super().__init__()
 
         self.reconst_criterion, self.speaker_criterion = reconst_criterion, speaker_criterion
+        self.reg_criterion = reg_criterion
     
     def forward(self, input, target, spk_vector=None, spk_embedding=None, all_spk_embedding=None, batch_mean=True):
         loss_reconst = self.reconst_criterion(input, target, batch_mean=batch_mean)
         loss_speaker = self.speaker_criterion(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=batch_mean)
         loss = loss_reconst + loss_speaker
+        
+        if self.reg_criterion:
+            loss_reg = self.reg_criterion(all_spk_embedding, batch_mean=batch_mean)
+            loss = loss + loss_reg
         
         return loss
