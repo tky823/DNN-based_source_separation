@@ -65,7 +65,8 @@ class WaveSplit(WaveSplitBase):
         # Reorder speaker vector using sorted_idx.
         batch_size, _, latent_dim, T = spk_vector.size()
 
-        sorted_idx = sorted_idx + torch.arange(0, batch_size * n_sources, n_sources).unsqueeze(dim=1)
+        additional_idx = torch.arange(0, batch_size * n_sources, n_sources).unsqueeze(dim=1)
+        sorted_idx = sorted_idx + additional_idx.to(sorted_idx.device)
         flatten_spk_vector = spk_vector.view(batch_size * n_sources, latent_dim, T)
         flatten_sorted_idx = sorted_idx.view(batch_size * n_sources)
         flatten_sorted_spk_vector = flatten_spk_vector[flatten_sorted_idx]
