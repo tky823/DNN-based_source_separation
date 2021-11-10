@@ -118,7 +118,7 @@ class WaveDataset(WSJ0Dataset):
         start, end = mixture_data['start'], mixture_data['end']
         wav_path = os.path.join(self.wav_root, mixture_data['path'])
         mixture, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end-start)
-            
+        
         segment_ID = self.json_data[idx]['ID'] + '_{}-{}'.format(start, end)
         
         return mixture, sources, noise, segment_ID
@@ -150,9 +150,7 @@ class WaveEvalDataset(WaveDataset):
             for line in f:
                 ID = line.strip()
                 wav_path = os.path.join(wav_root, 'mix_{}'.format(mix_type), '{}.wav'.format(ID))
-
                 wave, _ = torchaudio.load(wav_path)
-                
                 _, T_total = wave.size()
                 
                 if max_samples is None:
@@ -203,7 +201,7 @@ class WaveEvalDataset(WaveDataset):
 class WaveTestDataset(WaveEvalDataset):
     def __init__(self, wav_root, list_path, task='separate-noisy', max_samples=None, n_sources=2):
         super().__init__(wav_root, list_path, task=task, max_samples=max_samples, n_sources=n_sources)
-        
+    
     def __getitem__(self, idx):
         """
         Returns:
