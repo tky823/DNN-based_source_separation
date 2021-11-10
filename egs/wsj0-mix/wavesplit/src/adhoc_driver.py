@@ -9,6 +9,8 @@ from utils.utils import draw_loss_curve
 from criterion.pit import pit as pit_wrapper
 
 BITS_PER_SAMPLE_WSJ0 = 16
+HALVE_LR = 3
+PATIENCE = 10
 
 class Trainer:
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -55,9 +57,9 @@ class Trainer:
             self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
-                self.model.module.load_state_dict(config['state_dict'])
+                self.model.module.load_state_dict(config['base']['state_dict'])
             else:
-                self.model.load_state_dict(config['state_dict'])
+                self.model.load_state_dict(config['base']['state_dict'])
             
             self.optimizer.load_state_dict(config['optim_dict'])
         else:
@@ -94,10 +96,10 @@ class Trainer:
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 10:
+                    if self.no_improvement >= PATIENCE:
                         print("Stop training")
                         break
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr
@@ -217,9 +219,21 @@ class Trainer:
         if isinstance(self.model, nn.DataParallel):
             config['base'] = self.model.module.get_config()
             config['base']['state_dict'] = self.model.module.state_dict()
+
+            config['speaker_stack'] = self.model.module.speaker_stack.get_config()
+            config['separation_stack'] = self.model.module.separation_stack.get_config()
+
+            config['speaker_stack']['state_dict'] = self.model.module.speaker_stack.state_dict()
+            config['separation_stack']['state_dict'] = self.model.module.separation_stack.state_dict()
         else:
             config['base'] = self.model.get_config()
             config['base']['state_dict'] = self.model.state_dict()
+
+            config['speaker_stack'] = self.model.speaker_stack.get_config()
+            config['separation_stack'] = self.model.separation_stack.get_config()
+
+            config['speaker_stack']['state_dict'] = self.model.speaker_stack.state_dict()
+            config['separation_stack']['state_dict'] = self.model.separation_stack.state_dict()
             
         config['optim_dict'] = self.optimizer.state_dict()
         
