@@ -9,8 +9,8 @@ from models.wavesplit import WaveSplitBase
 EPS = 1e-12
 
 class WaveSplit(WaveSplitBase):
-    def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
-        super().__init__(speaker_stack, sepatation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
+    def __init__(self, speaker_stack: nn.Module, separation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
+        super().__init__(speaker_stack, separation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
     
         self.embedding = nn.Embedding(n_training_sources, latent_dim)
 
@@ -72,7 +72,7 @@ class WaveSplit(WaveSplitBase):
         sorted_spk_vector = flatten_sorted_spk_vector.view(batch_size, n_sources, latent_dim, T)
         spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
 
-        estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+        estimated_sources = self.separation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
 
         output = []
         output.append(estimated_sources)
@@ -102,7 +102,7 @@ class WaveSplit(WaveSplitBase):
         spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
         spk_centroids = spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
 
-        estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+        estimated_sources = self.separation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
 
         output = []
         output.append(estimated_sources)

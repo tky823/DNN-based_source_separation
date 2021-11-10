@@ -11,13 +11,13 @@ from models.film import FiLM1d
 EPS = 1e-12
 
 class WaveSplitBase(nn.Module):
-    def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, n_sources=2, n_training_sources=10, spk_criterion=None):
+    def __init__(self, speaker_stack: nn.Module, separation_stack: nn.Module, n_sources=2, n_training_sources=10, spk_criterion=None):
         super().__init__()
 
         assert spk_criterion is not None, "Specify spk_criterion."
 
         self.speaker_stack = speaker_stack
-        self.sepatation_stack = sepatation_stack
+        self.separation_stack = separation_stack
 
         all_spk_idx = torch.arange(n_training_sources).long()
         self.all_spk_idx = nn.Parameter(all_spk_idx, requires_grad=False)
@@ -63,7 +63,7 @@ class WaveSplitBase(nn.Module):
                 spk_vector = self.speaker_stack(mixture) # (batch_size, n_sources, latent_dim, T)
                 sorted_spk_vector = self.apply_kmeans(spk_vector, feature_last=False) # (batch_size, n_sources, latent_dim, T)
                 spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim)
-                estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+                estimated_sources = self.separation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
         
         if return_spk_vector:
             return estimated_sources, sorted_spk_vector
@@ -93,7 +93,7 @@ class WaveSplitBase(nn.Module):
         sorted_spk_vector = sorted_spk_vector.permute(0, 2, 3, 1).contiguous() # (batch_size, n_sources, latent_dim, T)
         spk_centroids = sorted_spk_vector.mean(dim=3) # (batch_size, n_sources, latent_dim)
         
-        estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+        estimated_sources = self.separation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
 
         return estimated_sources, sorted_spk_vector
 
@@ -185,7 +185,7 @@ class WaveSplitBase(nn.Module):
                 'n_training_sources': self.n_training_sources
             },
             'spk_stack': self.speaker_stack.get_config(),
-            'sep_stack': self.sepatation_stack.get_config()
+            'sep_stack': self.separation_stack.get_config()
         }
 
         return config
@@ -212,8 +212,8 @@ class WaveSplitBase(nn.Module):
         return model
 
 class WaveSplit(WaveSplitBase):
-    def __init__(self, speaker_stack: nn.Module, sepatation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
-        super().__init__(speaker_stack, sepatation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
+    def __init__(self, speaker_stack: nn.Module, separation_stack: nn.Module, latent_dim: int, n_sources=2, n_training_sources=10, spk_criterion=None, eps=EPS):
+        super().__init__(speaker_stack, separation_stack, n_sources=n_sources, n_training_sources=n_training_sources, spk_criterion=spk_criterion)
 
         warnings.warn("Implementation of WaveSplit has not finished.", UserWarning)
     
@@ -272,7 +272,7 @@ class WaveSplit(WaveSplitBase):
                 sorted_spk_vector = self.apply_kmeans(spk_vector, feature_last=False) # (batch_size, n_sources, latent_dim, T)
                 spk_centroids = sorted_spk_vector.mean(dim=-1) # (batch_size, n_sources, latent_dim), works as centroids
                 spk_embedding = spk_centroids / (torch.linalg.vector_norm(spk_centroids, dim=2, keepdim=True) + eps)
-                estimated_sources = self.sepatation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
+                estimated_sources = self.separation_stack(mixture, spk_centroids, return_all=return_all_layers, stack_dim=stack_dim)
         
         output = []
         output.append(estimated_sources)
