@@ -318,7 +318,7 @@ class MultiDomainLoss(nn.Module):
         loss = loss_reconst + loss_speaker
         
         if self.reg_criterion:
-            loss_reg = self.reg_criterion(all_spk_embedding, batch_mean=batch_mean)
+            loss_reg = self.reg_criterion(spk_embedding, batch_mean=batch_mean)
             loss = loss + loss_reg
         
         return loss
