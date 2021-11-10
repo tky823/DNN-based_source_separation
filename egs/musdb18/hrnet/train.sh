@@ -6,11 +6,11 @@ tag=""
 
 sources="[bass,drums,other,vocals]"
 target='vocals'
-patch=256
+patch=64
 valid_duration=100
 
 musdb18_root="../../../dataset/MUSDB18"
-sample_rate=44100
+sample_rate=16000
 
 window_fn='hann'
 fft_size=4096
@@ -23,15 +23,15 @@ config_path="./config/paper/${target}.yaml"
 augmentation_path="./config/augmentation.yaml"
 
 # Criterion
-criterion='mse'
+criterion='mae'
 
 # Optimizer
 optimizer='adam'
-lr=1e-3
+lr=1e-4
 weight_decay=1e-5
 max_norm=0 # 0 is handled as no clipping
 
-batch_size=16
+batch_size=5
 samples_per_epoch=6400
 epochs=1000
 

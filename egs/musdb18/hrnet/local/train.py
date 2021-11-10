@@ -13,7 +13,7 @@ from dataset import TrainDataLoader
 from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.hrnet import HRNet
-from criterion.distance import MeanSquaredError
+from criterion.distance import MeanAbsoluteError, MeanSquaredError
 
 parser = argparse.ArgumentParser(description="Training of Open-Unmix")
 
@@ -28,12 +28,12 @@ parser.add_argument('--window_fn', type=str, default='hann', help='Window functi
 parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--target', type=str, default=None, choices=['bass', 'drums', 'other', 'vocals'], help='Target source name')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='mae', choices=['mae','mse'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
-parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
+parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate. Default: 1e-4')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 16')
+parser.add_argument('--batch_size', type=int, default=5, help='Batch size. Default: 5')
 parser.add_argument('--samples_per_epoch', type=int, default=64*100, help='Training samples in one epoch')
 parser.add_argument('--epochs', type=int, default=1000, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
@@ -101,7 +101,10 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
     
     # Criterion
-    if args.criterion == 'mse':
+    if args.criterion == 'mae':
+        criterion = MeanAbsoluteError(dim=(1,2,3))
+        args.save_normalized = False
+    elif args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
         args.save_normalized = False
     else:
