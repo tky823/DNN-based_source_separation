@@ -15,15 +15,15 @@ from adhoc_driver import AdhocTrainer
 from models.hrnet import HRNet
 from criterion.distance import MeanAbsoluteError, MeanSquaredError
 
-parser = argparse.ArgumentParser(description="Training of Open-Unmix")
+parser = argparse.ArgumentParser(description="Training of HRNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
-parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
-parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
+parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
+parser.add_argument('--patch_size', type=int, default=64, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
-parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--fft_size', type=int, default=1024, help='FFT length')
+parser.add_argument('--hop_size', type=int, default=512, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
