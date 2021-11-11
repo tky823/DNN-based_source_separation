@@ -24,6 +24,13 @@ cd <REPOSITORY_ROOT>/egs/wham/common/
 ```
 
 ## Results
+### Enhance Single
+
+| Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| LSTM-TasNet | - | - | - |
+| Conv-TasNet | 13.8 | 14.2 | 2.93 |
+
 ### Enhance Both
 
 | Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
