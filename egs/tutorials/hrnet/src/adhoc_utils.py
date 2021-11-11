@@ -67,7 +67,7 @@ def separate_by_hrnet(model_paths, file_paths, out_dirs):
                     _mixture_amplitude = torch.tile(_mixture_amplitude, (1, NUM_CHANNELS_MUSDB18, 1, 1))
                 elif n_mics == 2:
                     _mixture_amplitude_flipped = torch.flip(_mixture_amplitude, dims=(1,))
-                    _mixture_amplitude = torch.cat([_mixture_amplitude, _mixture_amplitude_flipped], dim=0)
+                    _mixture_amplitude = torch.stack([_mixture_amplitude, _mixture_amplitude_flipped], dim=0)
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
                 
@@ -133,7 +133,7 @@ def load_experiment_config(config_path):
     
     config = {
         'sample_rate': sample_rate or SAMPLE_RATE_MUSDB18_HRNET,
-        'patch_size': patch_size or 256,
+        'patch_size': patch_size or 64,
         'fft_size': fft_size or 1024,
         'hop_size': hop_size or 512
     }
