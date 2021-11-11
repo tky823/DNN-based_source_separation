@@ -10,7 +10,6 @@ __sources__ = ['bass', 'drums', 'other', 'vocals']
 
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-THRESHOLD_POWER = 1e-5
 
 class MUSDB18Dataset(torch.utils.data.Dataset):
     def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, sources=__sources__, target=None):
@@ -130,7 +129,7 @@ class WaveTrainDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -186,7 +185,7 @@ class WaveEvalDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -246,7 +245,7 @@ class WaveTestDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -362,7 +361,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -415,7 +414,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -479,7 +478,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -742,7 +741,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                sample_rate = audio_info.sample_rate
+                track_sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -758,7 +757,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
                 
                 self.tracks.append(track)
 
-                track_duration = track_samples / sample_rate
+                track_duration = track_samples / track_sample_rate
                 total_duration += track_duration
 
             if samples_per_epoch is None:
@@ -775,7 +774,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                sample_rate = audio_info.sample_rate
+                track_sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {

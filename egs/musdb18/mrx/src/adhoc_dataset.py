@@ -33,7 +33,7 @@ class WaveEvalDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
             samples = min(max_samples, track_samples)
 

@@ -29,7 +29,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
             samples = min(self.max_samples, track_samples)
 
@@ -134,7 +134,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sample_rate = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -247,6 +247,3 @@ def test_collate_fn(batch):
     mixture, sources, samples, name = batch[0]
     
     return mixture, sources, samples, name
-
-def assert_sample_rate(sample_rate):
-    assert sample_rate == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sample_rate)
