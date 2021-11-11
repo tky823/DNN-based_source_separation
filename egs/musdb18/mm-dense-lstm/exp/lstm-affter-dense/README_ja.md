@@ -1,8 +1,8 @@
 # 出力結果の例
-UMXを学習させた結果を共有します．ネットワークはランダムスケールを除いて，デフォルトの設定で学習済み．`config/paper/augmentation.yaml`を見てください．
+MMDenseLSTMを学習させた結果を共有します．ネットワークはデフォルトの設定で学習済み
 - `config.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
-- 学習済みモデルは[]()からダウンロードできます．これらは，`drums/last.pth`，`drums/best.pth`，`bass/last.pth`，...，`vocals/best.pth`を含んでいます．
-- 出力されたJSONファイルは[]()からダウンロードできます．
+- 学習済みモデルは[https://drive.google.com/file/d/1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV/view?usp=sharing](https://drive.google.com/file/d/1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV/view?usp=sharing)からダウンロードできます．これらは，`drums/last.pth`，`drums/best.pth`，`bass/last.pth`，...，`vocals/best.pth`を含んでいます．
+- 出力されたJSONファイルは[https://drive.google.com/file/d/1sjlU2QZPVyvBC4Ql8vOvuAAqBibTZQZj/view?usp=sharing](https://drive.google.com/file/d/1sjlU2QZPVyvBC4Ql8vOvuAAqBibTZQZj/view?usp=sharing)からダウンロードできます．
 
 ## 実験結果
 - SDR [dB] (`museval`によって計算された各曲のSDRの中央値の中央値)

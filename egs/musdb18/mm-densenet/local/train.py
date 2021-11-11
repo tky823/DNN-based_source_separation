@@ -9,8 +9,8 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from utils.augmentation import SequentialAugmentation, choose_augmentation
-from dataset import TrainDataLoader
-from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
+from dataset import SpectrogramTrainDataset, TrainDataLoader
+from adhoc_dataset import SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.mm_densenet import MMDenseNet
 from criterion.distance import MeanSquaredError
