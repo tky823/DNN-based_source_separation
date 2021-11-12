@@ -8,7 +8,18 @@ from models.transform import Segment1d, OverlapAdd1d
 from models.dprnn import DPRNN
 
 SAMPLE_RATE_LIBRISPEECH = 16000
+
 __pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: "1-2DOUDi2NImL7akQzTXLpDqJsJL4HyiY",
+            3: "1-5EhjEBiArjFat4gXyNkKyUjAkTvkgU0"
+        },
+        16000: {
+            2: "", # TODO
+            3: "" # TODO
+        }
+    },
     "librispeech": {
         SAMPLE_RATE_LIBRISPEECH: {
             2: "1hTmxhI8JQlNnWVjwWUBGYlC7O_-ykK4H"
@@ -40,11 +51,7 @@ class DPRNNTasNet(nn.Module):
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
-        if 'in_channels' in kwargs:
-            self.in_channels = kwargs['in_channels']
-        else:
-            self.in_channels = 1
-        
+        self.in_channels = kwargs.get('in_channels', 1)
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
@@ -229,7 +236,14 @@ class DPRNNTasNet(nn.Module):
             
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
-        if task == 'librispeech':
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers/{}".format(sample_rate, n_sources))
+        elif task == 'librispeech':
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
             n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
