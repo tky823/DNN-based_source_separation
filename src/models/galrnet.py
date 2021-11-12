@@ -8,7 +8,7 @@ from models.gtu import GTU1d
 from models.transform import Segment1d, OverlapAdd1d
 from models.galr import GALR
 
-EPS=1e-12
+EPS = 1e-12
 
 class GALRNet(nn.Module):
     def __init__(

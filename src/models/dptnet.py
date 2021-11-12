@@ -8,7 +8,7 @@ from models.gtu import GTU1d
 from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 from models.dptransformer import DualPathTransformer
 
-EPS=1e-12
+EPS = 1e-12
 
 class DPTNet(nn.Module):
     """

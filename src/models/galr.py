@@ -4,7 +4,7 @@ import torch.nn as nn
 from utils.tasnet import choose_layer_norm
 from models.dprnn import IntraChunkRNN as LocallyRecurrentBlock
 
-EPS=1e-12
+EPS = 1e-12
 
 class GALR(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=8, norm=True, dropout=0.1, low_dimension=True, causal=False, eps=EPS, **kwargs):

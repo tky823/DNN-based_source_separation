@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from utils.tasnet import choose_layer_norm
 
-EPS=1e-12
+EPS = 1e-12
 
 class DualPathTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
