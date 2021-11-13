@@ -7,6 +7,7 @@ from utils.model import choose_nonlinear
 from utils.tasnet import choose_layer_norm
 from models.transform import Segment1d, OverlapAdd1d
 from models.transformer import PositionalEncoding
+from models.gtu import GTU1d
 
 EPS = 1e-12
 
@@ -263,7 +264,8 @@ class Separator(nn.Module):
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         
         self.prelu = nn.PReLU()
-        self.mask_conv1d = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
+        self.map = nn.Conv1d(bottleneck_channels, n_sources * num_features, kernel_size=1, stride=1)
+        self.gtu = GTU1d(num_features, num_features, kernel_size=1, stride=1)
         
         if mask_nonlinear in ['relu', 'sigmoid']:
             kwargs = {}
@@ -299,8 +301,10 @@ class Separator(nn.Module):
         x = self.overlap_add1d(x)
         x = F.pad(x, (-padding_left, -padding_right))
         x = self.prelu(x)
-        x = self.mask_conv1d(x)
-        x = self.mask_nonlinear(x)
+        x = self.map(x) # (batch_size, n_sources * C, n_frames)
+        x = x.view(batch_size * n_sources, num_features, n_frames) # (batch_size * n_sources, num_features, n_frames)
+        x = self.gtu(x) # (batch_size * n_sources, num_features, n_frames)
+        x = self.mask_nonlinear(x) # (batch_size*n_sources, num_features, n_frames)
         output = x.view(batch_size, n_sources, num_features, n_frames)
         
         return output
