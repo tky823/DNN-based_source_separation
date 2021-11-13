@@ -25,15 +25,15 @@ __pretrained_model_ids__ = {
         }
     },
     "wham/enhance-single": {
-        8000: "", # TODO
+        8000: "1-6oiSK_CEE5Vl4OCy8TinA0cKsFFfGUg",
         16000: "" # TODO
     },
     "wham/enhance-both": {
-        8000: "", # TODO
+        8000: "1-GISUVcWjMeP3GLvojz9b0svw6gkmd2G",
         16000: "" # TODO
     },
     "wham/separate-noisy": {
-        8000: "", # TODO
+        8000: "1-0ckoPjaIiTJwv9Qotz6fkY2xeC77xdi",
         16000: "" # TODO
     },
     "musdb18": {
@@ -269,6 +269,12 @@ class ConvTasNet(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][config]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+        elif task in ['wham/separate-noisy', 'wham/enhance-single', 'wham/enhance-both']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate))
         elif task == 'librispeech':
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
             n_sources = kwargs.get('n_sources') or 2
