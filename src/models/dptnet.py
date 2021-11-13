@@ -10,6 +10,19 @@ from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 
 EPS = 1e-12
 
+__pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: "1QJnJEK8aed7_ED07jD7buyGb37giEDUx",
+            3: "" # TODO
+        },
+        16000: {
+            2: "", # TODO
+            3: "" # TODO
+        }
+    }
+}
+
 class DPTNet(nn.Module):
     """
     Dual-path transformer based network

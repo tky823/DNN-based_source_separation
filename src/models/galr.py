@@ -123,7 +123,7 @@ class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
             x = self.dropout1d(x)
         x = x + residual # -> (S, batch_size*K, num_features)
         x = x.view(S, batch_size, K, num_features)
-        x = x.permute(1,3,0,2).contiguous() # -> (batch_size, num_features, S, K)
+        x = x.permute(1, 3, 0, 2).contiguous() # -> (batch_size, num_features, S, K)
 
         if self.norm:
             x = self.norm2d_out(x) # -> (batch_size, num_features, S, K)
@@ -175,7 +175,7 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
         
         encoding = self.positional_encoding(length=S*Q, dimension=num_features).permute(1,0).view(num_features, S, Q).to(x.device)
         x = x + encoding # -> (batch_size, num_features, S, Q)
-        x = x.permute(2,0,3,1).contiguous() # -> (S, batch_size, Q, num_features)
+        x = x.permute(2, 0, 3, 1).contiguous() # -> (S, batch_size, Q, num_features)
         x = x.view(S, batch_size*Q, num_features) # -> (S, batch_size*Q, num_features)
 
         residual = x # (S, batch_size*Q, num_features)
@@ -185,7 +185,7 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
             x = self.dropout1d(x)
         x = x + residual # -> (S, batch_size*Q, num_features)
         x = x.view(S, batch_size, Q, num_features)
-        x = x.permute(1,3,0,2).contiguous() # -> (batch_size, num_features, S, Q)
+        x = x.permute(1, 3, 0, 2).contiguous() # -> (batch_size, num_features, S, Q)
 
         if self.norm:
             x = self.norm2d_out(x) # -> (batch_size, num_features, S, Q)

@@ -20,7 +20,7 @@ class SepFormer(nn.Module):
         sep_num_blocks=2,
         sep_num_layers_intra=8, sep_num_layers_inter=8, sep_num_heads_intra=8, sep_num_heads_inter=8,
         sep_d_ff_intra=1024, sep_d_ff_inter=1024,
-        sep_norm=True, sep_nonlinear='relu', mask_nonlinear='sigmoid',
+        sep_norm=True, sep_nonlinear='relu', mask_nonlinear='relu',
         causal=True,
         n_sources=2,
         eps=EPS,
@@ -237,7 +237,7 @@ class Separator(nn.Module):
         num_blocks=2, num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu', mask_nonlinear='sigmoid',
+        norm=True, nonlinear='relu', mask_nonlinear='relu',
         causal=False,
         n_sources=2,
         eps=EPS
