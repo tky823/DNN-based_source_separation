@@ -3,9 +3,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.filterbank import choose_filterbank, compute_valid_basis
+from utils.model import choose_rnn
 from models.filterbank import FourierEncoder, FourierDecoder
 
 EPS = 1e-12
+
+__pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: "1kq6WyNygiYDABIx7IoqmyJd3dj5b4Cjv",
+            3: ""
+        }
+    }
+}
 
 class TasNetBase(nn.Module):
     def __init__(self, hidden_channels, kernel_size, stride=None, window_fn='hann', enc_trainable=False, dec_trainable=False, onesided=True, return_complex=True):
@@ -74,6 +84,7 @@ class TasNet(nn.Module):
         sep_num_blocks=2, sep_num_layers=2, sep_hidden_channels=500,
         mask_nonlinear='softmax',
         causal=False,
+        rnn_type='lstm',
         n_sources=2,
         eps=EPS,
         **kwargs
@@ -86,10 +97,7 @@ class TasNet(nn.Module):
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         assert enc_basis in ['trainable', 'trainableGated']  and dec_basis == 'trainable', "enc_basis is expected 'trainable' or 'trainableGated'. dec_basis is expected 'trainable'."
         
-        if 'in_channels' in kwargs:
-            self.in_channels = kwargs['in_channels']
-        else:
-            self.in_channels = 1
+        self.in_channels = kwargs.get('in_channels', 1)
         
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
@@ -98,6 +106,7 @@ class TasNet(nn.Module):
         self.sep_hidden_channels = sep_hidden_channels
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
+        self.rnn_type = rnn_type
         self.n_sources = n_sources
         self.eps = eps
         
@@ -108,6 +117,7 @@ class TasNet(nn.Module):
             n_basis, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels,
             causal=causal,
             mask_nonilnear=mask_nonlinear,
+            rnn_type=rnn_type,
             n_sources=n_sources,
             eps=eps
         )
@@ -192,7 +202,8 @@ class TasNet(nn.Module):
         
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
-        
+        rnn_type = config.get('rnn_type', 'lstm')
+
         n_sources = config['n_sources']
         
         eps = config.get('eps') or EPS
@@ -202,6 +213,7 @@ class TasNet(nn.Module):
             sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
             mask_nonlinear=mask_nonlinear,
             causal=causal,
+            rnn_type=rnn_type,
             n_sources=n_sources,
             eps=eps
         )
@@ -211,6 +223,38 @@ class TasNet(nn.Module):
         
         return model
     
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        return model
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -234,6 +278,7 @@ class TasNet(nn.Module):
             'sep_hidden_channels': self.sep_hidden_channels,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
+            'rnn_type': self.rnn_type,
             'n_sources': self.n_sources,
             'eps': self.eps
         }
@@ -248,7 +293,7 @@ class Separator(nn.Module):
     """
     Default separator of TasNet.
     """
-    def __init__(self, n_basis, num_blocks, num_layers, hidden_channels, causal=False, mask_nonilnear='softmax', n_sources=2, eps=EPS):
+    def __init__(self, n_basis, num_blocks, num_layers, hidden_channels, causal=False, mask_nonilnear='softmax', rnn_type='lstm', n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_blocks, self.num_layers = num_blocks, num_layers
@@ -272,11 +317,13 @@ class Separator(nn.Module):
                 in_channels = n_basis
             else:
                 in_channels = num_directions * hidden_channels
-            # TODO: choose RNN
-            net.append(nn.LSTM(in_channels, hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional))
+            
+            rnn = choose_rnn(rnn_type, input_size=in_channels, hidden_size=hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
+            net.append(rnn)
         
         self.rnn = nn.Sequential(*net)
         self.fc = nn.Linear(num_directions * hidden_channels, n_sources * n_basis)
+
         if mask_nonilnear == 'sigmoid':
             self.mask_nonlinear = nn.Sigmoid()
         elif mask_nonilnear == 'softmax':

@@ -33,6 +33,7 @@ A PyTorch implementation of DNN-based source separation.
 | LaSAFT | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) |  |
 | SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) |  |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
+| HRNet | [Vocal Melody Extraction via HRNet-Based Singing Voice Separation and Encoder-Decoder-Based F0 Estimation](https://www.mdpi.com/2079-9292/10/3/298) | ✔ |
 | MRX | [The Cocktail Fork Problem: Three-Stem Audio Separation for Real-World Soundtracks](https://arxiv.org/abs/2110.09958) |  |
 
 ## Modules
@@ -91,14 +92,14 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 ## Pretrained Models
 You can load pretrained models like
 ```py
-from models import ConvTasNet
+from models.conv_tasnet import ConvTasNet
 
 model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)
 ```
 
 | Model | Dataset | Example |
 |:---:|:---:|:---:|
-| LSTM-TasNet | WSJ0-2mix | `model = TasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| LSTM-TasNet | WSJ0-2mix | `model = LSTMTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | Conv-TasNet | WSJ0-2mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | Conv-TasNet | WSJ0-3mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | Conv-TasNet | MUSDB18 | `model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=8000)` |
@@ -110,4 +111,4 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)
 | Open-Unmix | MUSDB18 | `model = OpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
 | Open-Unmix | MUSDB18-HQ | `model = OpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100, target="vocals")` |
 | CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
-| D3Net | MUSDB18 | `model = OpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
