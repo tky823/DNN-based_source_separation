@@ -24,6 +24,20 @@ __pretrained_model_ids__ = {
             3: "" # TODO
         }
     },
+    "wham": {
+        8000: {
+            2: {
+                "enc_relu": "", # TODO
+            },
+            3: {
+                "enc_relu": "" # TODO
+            }
+        },
+        16000: {
+            2: "", # TODO
+            3: "" # TODO
+        }
+    },
     "musdb18": {
         SAMPLE_RATE_MUSDB18: {
             "4sec_L20": "1A6dIofHZJQCUkyq-vxZ6KbPmEHLcf4WK",

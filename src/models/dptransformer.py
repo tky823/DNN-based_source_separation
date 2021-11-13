@@ -137,7 +137,6 @@ class ImprovedTransformer(nn.Module):
         
         return output
 
-
 class MultiheadAttentionBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, norm=True, dropout=0, causal=False, eps=EPS):
         super().__init__()
@@ -218,7 +217,7 @@ class FeedForwardBlock(nn.Module):
         self.rnn.flatten_parameters()
 
         residual = x
-        x, (_, _) = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
+        x, _ = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
         x = self.nonlinear1d(x) # -> (T, batch_size, num_directions*hidden_channels)
         x = self.fc(x) # (T, batch_size, num_directions*hidden_channels) -> (T, batch_size, num_features)
         x = x + residual

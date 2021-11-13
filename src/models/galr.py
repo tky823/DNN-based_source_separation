@@ -7,7 +7,7 @@ from models.dprnn import IntraChunkRNN as LocallyRecurrentBlock
 EPS = 1e-12
 
 class GALR(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=8, norm=True, dropout=0.1, low_dimension=True, causal=False, eps=EPS, **kwargs):
+    def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=8, norm=True, dropout=1e-1, low_dimension=True, causal=False, eps=EPS, **kwargs):
         super().__init__()
         
         # Network confguration
@@ -30,7 +30,7 @@ class GALR(nn.Module):
         return output
 
 class GALRBlock(nn.Module):
-    def __init__(self, num_features, hidden_channels, num_heads=8, causal=False, norm=True, dropout=0.1, low_dimension=True, eps=EPS, **kwargs):
+    def __init__(self, num_features, hidden_channels, num_heads=8, causal=False, norm=True, dropout=1e-1, low_dimension=True, eps=EPS, **kwargs):
         super().__init__()
         
         self.intra_chunk_block = LocallyRecurrentBlock(num_features, hidden_channels=hidden_channels, norm=norm, eps=eps)
@@ -66,19 +66,19 @@ class GloballyAttentiveBlockBase(nn.Module):
         Returns:
             output (length, dimension): positional encording
         """
-        assert dimension%2 == 0, "dimension is expected even number but given odd number."
+        assert dimension % 2 == 0, "dimension is expected even number but given odd number."
 
         position = torch.arange(length) # (length,)
         position = position.unsqueeze(dim=1) # (length, 1)
-        index = torch.arange(dimension//2) / dimension # (dimension//2,)
-        index = index.unsqueeze(dim=0) # (1, dimension//2)
+        index = torch.arange(dimension//2) / dimension # (dimension // 2,)
+        index = index.unsqueeze(dim=0) # (1, dimension // 2)
         indices = position / base**index
         output = torch.cat([torch.sin(indices), torch.cos(indices)], dim=1)
         
         return output
 
 class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
-    def __init__(self, num_features, num_heads=8, causal=False, norm=True, dropout=0.1, eps=EPS):
+    def __init__(self, num_features, num_heads=8, causal=False, norm=True, dropout=1e-1, eps=EPS):
         super().__init__()
 
         self.norm = norm
@@ -95,7 +95,7 @@ class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
             self.dropout = False
         
         if self.norm:
-            norm_name = 'cLN' if causal else 'gLM'
+            norm_name = 'cLN' if causal else 'gLN'
             self.norm2d_out = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         
     def forward(self, input):
@@ -113,7 +113,7 @@ class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
             x = input
         encoding = self.positional_encoding(length=S*K, dimension=num_features).permute(1,0).view(num_features, S, K).to(x.device)
         x = x + encoding # -> (batch_size, num_features, S, K)
-        x = x.permute(2,0,3,1).contiguous() # -> (S, batch_size, K, num_features)
+        x = x.permute(2, 0, 3, 1).contiguous() # -> (S, batch_size, K, num_features)
         x = x.view(S, batch_size*K, num_features) # -> (S, batch_size*K, num_features)
 
         residual = x # (S, batch_size*K, num_features)
@@ -133,7 +133,7 @@ class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
         return output
 
 class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
-    def __init__(self, num_features, chunk_size=100, down_chunk_size=32, num_heads=8, causal=False, norm=True, dropout=0.1, eps=EPS):
+    def __init__(self, num_features, chunk_size=100, down_chunk_size=32, num_heads=8, causal=False, norm=True, dropout=1e-1, eps=EPS):
         super().__init__()
 
         self.down_chunk_size = down_chunk_size
@@ -153,7 +153,7 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
             self.dropout = False
         
         if self.norm:
-            norm_name = 'cLN' if causal else 'gLM'
+            norm_name = 'cLN' if causal else 'gLN'
             self.norm2d_out = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         
         self.fc_inv = nn.Linear(down_chunk_size, chunk_size)
@@ -212,8 +212,8 @@ class LayerNormAlongChannel(nn.Module):
         Returns:
             output (batch_size, num_features, *)
         """
-        n_dim = input.dim()
-        dims = list(range(n_dim))
+        n_dims = input.dim()
+        dims = list(range(n_dims))
         permuted_dims = dims[0:1] + dims[2:] + dims[1:2]
         x = input.permute(*permuted_dims)
         x = self.norm(x)
