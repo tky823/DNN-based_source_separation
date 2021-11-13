@@ -24,19 +24,17 @@ __pretrained_model_ids__ = {
             3: "" # TODO
         }
     },
-    "wham": {
-        8000: {
-            2: {
-                "enc_relu": "", # TODO
-            },
-            3: {
-                "enc_relu": "" # TODO
-            }
-        },
-        16000: {
-            2: "", # TODO
-            3: "" # TODO
-        }
+    "wham/enhance-single": {
+        8000: "", # TODO
+        16000: "" # TODO
+    },
+    "wham/enhance-both": {
+        8000: "", # TODO
+        16000: "" # TODO
+    },
+    "wham/separate-noisy": {
+        8000: "", # TODO
+        16000: "" # TODO
     },
     "musdb18": {
         SAMPLE_RATE_MUSDB18: {

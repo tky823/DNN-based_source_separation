@@ -250,7 +250,7 @@ class Separator(nn.Module):
         
         norm_name = 'cLN' if causal else 'gLN'
         self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
-        self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
+        self.bottleneck_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.dptransformer = DualPathTransformer(
@@ -266,6 +266,7 @@ class Separator(nn.Module):
         self.prelu = nn.PReLU()
         self.map = nn.Conv1d(bottleneck_channels, n_sources * num_features, kernel_size=1, stride=1)
         self.gtu = GTU1d(num_features, num_features, kernel_size=1, stride=1)
+        self.bottleneck_conv1d_out = nn.Conv1d(num_features, num_features, kernel_size=1, stride=1)
         
         if mask_nonlinear in ['relu', 'sigmoid']:
             kwargs = {}
@@ -294,7 +295,7 @@ class Separator(nn.Module):
         padding_right = padding - padding_left
         
         x = self.norm1d(input)
-        x = self.bottleneck_conv1d(x)
+        x = self.bottleneck_conv1d_in(x)
         x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x)
         x = self.dptransformer(x)
@@ -304,7 +305,8 @@ class Separator(nn.Module):
         x = self.map(x) # (batch_size, n_sources * C, n_frames)
         x = x.view(batch_size * n_sources, num_features, n_frames) # (batch_size * n_sources, num_features, n_frames)
         x = self.gtu(x) # (batch_size * n_sources, num_features, n_frames)
-        x = self.mask_nonlinear(x) # (batch_size*n_sources, num_features, n_frames)
+        x = self.bottleneck_conv1d_out(x) # (batch_size * n_sources, num_features, n_frames)
+        x = self.mask_nonlinear(x) # (batch_size * n_sources, num_features, n_frames)
         output = x.view(batch_size, n_sources, num_features, n_frames)
         
         return output
