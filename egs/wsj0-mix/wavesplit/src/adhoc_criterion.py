@@ -2,6 +2,76 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+EPS= 1e-12
+
+class SpeakerDistance(nn.Module):
+    def __init__(self, n_sources, scale=None, bias=None):
+        super().__init__()
+
+        self.mask = nn.Parameter(1 - torch.eye(n_sources), requires_grad=False)
+
+        zero_dim_size = ()
+
+        if scale is None:
+            self.scale = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
+        else:
+            if not isinstance(scale, nn.Parameter):
+                raise TypeError("`scale` should be nn.Parameter.")
+            
+            self.scale = scale
+
+        if bias is None:
+            self.bias = nn.Parameter(torch.empty(zero_dim_size), requires_grad=True)
+        else:
+            if not isinstance(bias, nn.Parameter):
+                raise TypeError("`bias` should be nn.Parameter.")
+            
+            self.bias = bias
+
+        self._reset_parameters()
+    
+    def _reset_parameters(self):
+        self.scale.data.fill_(1)
+        self.bias.data.fill_(0)
+
+    def forward(self, spk_vector, spk_embedding, _, feature_last=True, batch_mean=True, time_mean=True):
+        """
+        Args:
+            spk_vector:
+                (batch_size, T, n_sources, latent_dim) if feature_last
+                (batch_size, n_sources, latent_dim, T) otherwise
+            spk_embedding: (batch_size, n_sources, latent_dim)
+            _: All speaker embedding (n_training_sources, latent_dim)
+        Returns:
+            loss: (batch_size, T) or (T,)
+        """
+        if not feature_last:
+            spk_vector = spk_vector.permute(0, 3, 1, 2).contiguous() # (batch_size, T, n_sources, latent_dims)
+
+        loss_euclid = self.compute_euclid_distance(spk_vector, spk_embedding.unsqueeze(dim=1), dim=-1) # (batch_size, T, n_sources)
+
+        distance_table = self.compute_euclid_distance(spk_vector.unsqueeze(dim=3), spk_vector.unsqueeze(dim=2), dim=-1) # (batch_size, T, n_sources, n_sources)
+        loss_hinge = F.relu(1 - distance_table) # (batch_size, T, n_sources, n_sources)
+        loss_hinge = torch.sum(self.mask * loss_hinge, dim=2) # (batch_size, T, n_sources)
+
+        loss = loss_euclid + loss_hinge
+        loss = loss.mean(dim=-1)
+
+        if time_mean:
+            loss = loss.mean(dim=1)
+        
+        if batch_mean:
+            loss = loss.mean(dim=0)
+        return loss
+    
+    def compute_euclid_distance(self, input, target, dim=-1, keepdim=False, scale=None, bias=None):
+        distance = torch.sum((input - target)**2, dim=dim, keepdim=keepdim)
+
+        if scale is not None or bias is not None:
+            distance = torch.abs(self.scale) * distance + self.bias
+        
+        return distance
+
 class GlobalClassificationLoss(nn.Module):
     def __init__(self, n_sources, source_reduction='mean'):
         super().__init__()
@@ -200,15 +270,55 @@ class SpeakerLoss(nn.Module):
         
         return distance
 
-class MultiDomainLoss(nn.Module):
-    def __init__(self, criterion_reconst, criterion_speaker):
+class EntropyRegularizationLoss(nn.Module):
+    def __init__(self, eps=EPS):
         super().__init__()
 
-        self.criterion_reconst, self.criterion_speaker = criterion_reconst, criterion_speaker
+        self.eps = eps
+    
+    def forward(self, speaker_embedding, batch_mean=True):
+        """
+        Args:
+            speaker_embedding: (batch_size, n_sources, latent_dim) or (n_training_sources, latent_dim)
+        """
+        eps = self.eps
+
+        if speaker_embedding.dim() == 2:
+            n_training_sources = speaker_embedding.size(0)
+
+            distance = torch.linalg.vector_norm(speaker_embedding.unsqueeze(dim=1) - speaker_embedding.unsqueeze(dim=0), dim=2) # (n_training_sources, n_training_sources)
+            distance = 2 * torch.max(distance) * torch.eye(n_training_sources).to(distance.device) + distance
+            distance, _ = torch.min(distance, dim=1) # (n_sources,)
+            loss = torch.log(distance + eps)
+            loss = - loss.sum(dim=0)
+        elif speaker_embedding.dim() == 3:
+            n_sources = speaker_embedding.size(1)
+            distance = torch.linalg.vector_norm(speaker_embedding.unsqueeze(dim=2) - speaker_embedding.unsqueeze(dim=1), dim=3) # (batch_size, n_sources, n_sources)
+            distance = 2 * torch.max(distance) * torch.eye(n_sources).to(distance.device) + distance
+            distance, _ = torch.min(distance, dim=2) # (batch_size, n_sources)
+            loss = torch.log(distance + eps)
+            loss = - loss.sum(dim=1)
+            if batch_mean:
+                loss = loss.mean(dim=0)
+        else:
+            raise ValueError("Invalid dimension.")
+        
+        return loss
+
+class MultiDomainLoss(nn.Module):
+    def __init__(self, reconst_criterion, speaker_criterion, reg_criterion=None):
+        super().__init__()
+
+        self.reconst_criterion, self.speaker_criterion = reconst_criterion, speaker_criterion
+        self.reg_criterion = reg_criterion
     
     def forward(self, input, target, spk_vector=None, spk_embedding=None, all_spk_embedding=None, batch_mean=True):
-        loss_reconst = self.criterion_reconst(input, target, batch_mean=batch_mean)
-        loss_speaker = self.criterion_speaker(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=batch_mean)
+        loss_reconst = self.reconst_criterion(input, target, batch_mean=batch_mean)
+        loss_speaker = self.speaker_criterion(spk_vector, spk_embedding, all_spk_embedding, feature_last=False, batch_mean=batch_mean)
         loss = loss_reconst + loss_speaker
+        
+        if self.reg_criterion:
+            loss_reg = self.reg_criterion(spk_embedding, batch_mean=batch_mean)
+            loss = loss + loss_reg
         
         return loss

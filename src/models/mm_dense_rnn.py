@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_m_densenet import choose_layer_norm
-from utils.utils_dense_rnn import choose_dense_rnn_block
+from utils.m_densenet import choose_layer_norm
+from utils.dense_rnn import choose_dense_rnn_block
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.m_densenet import DenseBlock

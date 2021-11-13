@@ -2,13 +2,40 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_filterbank import choose_filterbank
-from utils.utils_tasnet import choose_layer_norm
+from utils.filterbank import choose_filterbank
+from utils.tasnet import choose_layer_norm
 from models.tdcn import TimeDilatedConvNet
 
 SAMPLE_RATE_MUSDB18 = 44100
 SAMPLE_RATE_LIBRISPEECH = 16000
+
 __pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: {
+                "enc_relu": "1yy-o7TyS1EcBWZ41rskMAVavtuEi4fMe",
+            },
+            3: {
+                "enc_relu": "1-4Abl7LnEtwqMnAFQOcNLUOaDbgp3NoG"
+            }
+        },
+        16000: {
+            2: "", # TODO
+            3: "" # TODO
+        }
+    },
+    "wham/enhance-single": {
+        8000: "1-6oiSK_CEE5Vl4OCy8TinA0cKsFFfGUg",
+        16000: "" # TODO
+    },
+    "wham/enhance-both": {
+        8000: "1-GISUVcWjMeP3GLvojz9b0svw6gkmd2G",
+        16000: "" # TODO
+    },
+    "wham/separate-noisy": {
+        8000: "1-0ckoPjaIiTJwv9Qotz6fkY2xeC77xdi",
+        16000: "" # TODO
+    },
     "musdb18": {
         SAMPLE_RATE_MUSDB18: {
             "4sec_L20": "1A6dIofHZJQCUkyq-vxZ6KbPmEHLcf4WK",
@@ -44,10 +71,7 @@ class ConvTasNet(nn.Module):
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
-        if 'in_channels' in kwargs:
-            self.in_channels = kwargs['in_channels']
-        else:
-            self.in_channels = 1
+        self.in_channels = kwargs.get('in_channels', 1)
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
@@ -230,20 +254,34 @@ class ConvTasNet(nn.Module):
             
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
-        if task == 'musdb18':
-            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            config = kwargs.get('config') or 'enc_relu'
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers/{}".format(sample_rate, n_sources, config))
+        elif task == 'musdb18':
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or '4sec_L20'
             model_choice = kwargs.get('model_choice') or 'best'
 
-            model_id = pretrained_model_ids_task[sr][config]
-            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
+            model_id = pretrained_model_ids_task[sample_rate][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+        elif task in ['wham/separate-noisy', 'wham/enhance-single', 'wham/enhance-both']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate))
         elif task == 'librispeech':
-            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
             n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
 
-            model_id = pretrained_model_ids_task[sr][n_sources]
-            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sr, n_sources))
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
         else:
             raise NotImplementedError("Not support task={}.".format(task))
 

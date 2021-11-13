@@ -13,10 +13,10 @@ SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
 
-        assert_sample_rate(sr)
+        assert_sample_rate(sample_rate)
         
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         
@@ -32,7 +32,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
             samples = min(self.max_samples, track_samples)
 
@@ -118,8 +118,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return mixture, target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
 
         test_txt_path = os.path.join(musdb18_root, 'test.txt')
 
@@ -137,7 +137,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'test', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {

@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="Evaluation of frequency masking")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--method', type=str, default='ibm', choices=['ibm', 'irm', 'psm'], help='Ideal mask for assignment')
 parser.add_argument('--fft_size', type=int, default=256, help='Window length')

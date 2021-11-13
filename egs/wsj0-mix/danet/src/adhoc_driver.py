@@ -4,13 +4,12 @@ import subprocess
 import time
 import uuid
 
-import numpy as np
-from mir_eval.separation import bss_eval_sources
 import torch
 import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from utils.bss import bss_eval_sources
 from driver import TrainerBase, TesterBase
 from criterion.pit import pit
 
@@ -180,20 +179,20 @@ class AdhocTrainer(TrainerBase):
                     mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # -> (1, T)
                     mixture = mixture.squeeze(dim=0) # -> (T,)
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = torch.abs(mixture).max()
                     mixture = mixture / norm
                     signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
-                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
                         save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
                         norm = torch.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
         
         valid_loss /= n_valid
         
@@ -287,17 +286,17 @@ class AdhocTester(TesterBase):
                 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(
-                    reference_sources=sources.numpy(),
-                    estimated_sources=estimated_sources.numpy()
+                    reference_sources=sources,
+                    estimated_sources=estimated_sources
                 )
                 result_mixed = bss_eval_sources(
-                    reference_sources=sources.numpy(),
-                    estimated_sources=repeated_mixture.numpy()
+                    reference_sources=sources,
+                    estimated_sources=repeated_mixture
                 )
 
-                sdr_improvement = np.mean(result_estimated[0] - result_mixed[0])
-                sir_improvement = np.mean(result_estimated[1] - result_mixed[1])
-                sar = np.mean(result_estimated[2])
+                sdr_improvement = torch.mean(result_estimated[0] - result_mixed[0])
+                sir_improvement = torch.mean(result_estimated[1] - result_mixed[1])
+                sar = torch.mean(result_estimated[2])
 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
@@ -309,7 +308,7 @@ class AdhocTester(TesterBase):
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
                     signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
-                    torchaudio.save(mixture_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(mixture_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                 
                 for order_idx in range(self.n_sources):
                     source, estimated_source = sources[order_idx], estimated_sources[perm_idx[order_idx]]
@@ -320,10 +319,10 @@ class AdhocTester(TesterBase):
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
                         signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
-                        torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        torchaudio.save(source_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
                     signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
-                    torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(source_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     # Estimated source
                     norm = torch.abs(estimated_source).max()
@@ -331,10 +330,10 @@ class AdhocTester(TesterBase):
                     if idx < 10 and  self.out_dir is not None:
                         estimated_path = os.path.join(self.out_dir, "{}_{}-estimated.wav".format(mixture_ID, order_idx + 1))
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                        torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        torchaudio.save(estimated_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     estimated_path = "tmp-{}-estimated_{}.wav".format(order_idx + 1, random_ID)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
 
                 pesq = 0
                     
@@ -342,7 +341,7 @@ class AdhocTester(TesterBase):
                     source_path = "tmp-{}-target_{}.wav".format(source_idx + 1, random_ID)
                     estimated_path = "tmp-{}-estimated_{}.wav".format(source_idx + 1, random_ID)
                     
-                    command = "./PESQ +{} {} {}".format(self.sr, source_path, estimated_path)
+                    command = "./PESQ +{} {} {}".format(self.sample_rate, source_path, estimated_path)
                     command += " | grep Prediction | awk '{print $5}'"
                     pesq_output = subprocess.check_output(command, shell=True)
                     pesq_output = pesq_output.decode().strip()
@@ -358,12 +357,12 @@ class AdhocTester(TesterBase):
                     subprocess.call("rm {}".format(estimated_path), shell=True)
 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement, sir_improvement, sar, pesq), flush=True)
+                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq), flush=True)
                 
                 test_loss += loss.item()
-                test_sdr_improvement += sdr_improvement
-                test_sir_improvement += sir_improvement
-                test_sar += sar
+                test_sdr_improvement += sdr_improvement.item()
+                test_sir_improvement += sir_improvement.item()
+                test_sar += sar.item()
                 test_pesq += pesq
         
         test_loss /= n_test

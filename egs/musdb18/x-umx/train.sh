@@ -9,7 +9,7 @@ duration=6
 valid_duration=100
 
 musdb18_root="../../../dataset/MUSDB18"
-sr=44100
+sample_rate=44100
 
 window_fn='hann'
 fft_size=4096
@@ -57,7 +57,7 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/sr${sr}/${sources}/${duration}sec"
+    save_dir="${exp_dir}/sr${sample_rate}/${sources}/${duration}sec"
     if [ ${combination} -eq 1 ]; then
         save_dir="${save_dir}/comb${combination}_${min_pair}-${max_pair}"
     else
@@ -107,7 +107,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
 --musdb18_root "${musdb18_root}" \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \

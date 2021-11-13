@@ -5,7 +5,7 @@ tag=""
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
-sr=${sr_k}000
+sample_rate=${sr_k}000
 duration=4
 max_or_min='min'
 
@@ -57,6 +57,7 @@ gpu_id="0"
 . ./path.sh
 . parse_options.sh || exit 1
 
+task='separate-noisy'
 prefix=""
 
 if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pinv' ]; then
@@ -68,7 +69,7 @@ if [ ${enc_basis} = 'Fourier' -o ${enc_basis} = 'trainableFourier' -o ${enc_basi
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${task}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${task}/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -91,7 +92,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 test_separate-noisy.py \
 --test_wav_root ${wav_root} \
 --test_list_path ${test_list_path} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \

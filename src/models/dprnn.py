@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 
-from utils.utils_model import choose_rnn
-from utils.utils_tasnet import choose_layer_norm
+from utils.model import choose_rnn
+from utils.tasnet import choose_layer_norm
 
-EPS=1e-12
+EPS = 1e-12
 
 class DPRNN(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, norm=True, causal=False, rnn_type='lstm', eps=EPS):

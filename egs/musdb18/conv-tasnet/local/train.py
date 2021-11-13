@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
+from utils.augmentation import SequentialAugmentation, choose_augmentation
 from dataset import AugmentationWaveTrainDataset, TrainDataLoader, EvalDataLoader
 from adhoc_dataset import WaveEvalDataset
 from adhoc_driver import AdhocTrainer
@@ -19,7 +19,7 @@ from criterion.sdr import NegSDR, NegSISDR
 parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
@@ -80,12 +80,12 @@ def main(args):
     
     train_dataset = AugmentationWaveTrainDataset(
         args.musdb18_root,
-        sr=args.sr, duration=args.duration, samples_per_epoch=args.samples_per_epoch,
+        sample_rate=args.sample_rate, duration=args.duration, samples_per_epoch=args.samples_per_epoch,
         sources=args.sources, target=args.sources,
         include_valid=True,
         augmentation=augmentation
     )
-    valid_dataset = WaveEvalDataset(args.musdb18_root, sr=args.sr, max_duration=args.valid_duration, sources=args.sources)
+    valid_dataset = WaveEvalDataset(args.musdb18_root, sample_rate=args.sample_rate, max_duration=args.valid_duration, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     

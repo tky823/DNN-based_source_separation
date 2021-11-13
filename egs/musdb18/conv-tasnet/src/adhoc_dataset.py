@@ -13,17 +13,17 @@ SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
 
 class WaveTrainDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, duration=4, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
         """
         Args:
             musdb18_root <int>: Path to MUSDB or MUSDB-HQ
-            sr: Sampling frequency. Default: 44100
+            sample_rate: Sampling frequency. Default: 44100
             sources <list<str>>: Sources included in mixture
             target <str> or <list<str>>: Target source(s)
         """
         super().__init__(
             musdb18_root,
-            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources,
             target=target
         )
@@ -33,8 +33,8 @@ class WaveTrainDataset(WaveDataset):
         with open(train_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
-        self.sr = sr
-        self.samples = int(duration * sr)
+        self.sample_rate = sample_rate
+        self.samples = int(duration * sample_rate)
         self.augmentation = augmentation
 
         self.tracks = []
@@ -45,7 +45,7 @@ class WaveTrainDataset(WaveDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                track_sr = audio_info.sample_rate
+                track_sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -61,7 +61,7 @@ class WaveTrainDataset(WaveDataset):
                 
                 self.tracks.append(track)
 
-                track_duration = track_samples / track_sr
+                track_duration = track_samples / track_sample_rate
                 total_duration += track_duration
 
             if samples_per_epoch is None:
@@ -70,7 +70,7 @@ class WaveTrainDataset(WaveDataset):
             self.samples_per_epoch = samples_per_epoch
             self.json_data = None
         else:
-            samples_original = int(self.samples * SAMPLE_RATE_MUSDB18 / sr)
+            samples_original = int(self.samples * SAMPLE_RATE_MUSDB18 / sample_rate)
 
             if overlap is None:
                 overlap = samples_original // 2
@@ -79,7 +79,7 @@ class WaveTrainDataset(WaveDataset):
             for trackID, name in enumerate(names):
                 mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
                 audio_info = torchaudio.info(mixture_path)
-                track_sr = audio_info.sample_rate
+                track_sample_rate = audio_info.sample_rate
                 track_samples = audio_info.num_frames
 
                 track = {
@@ -104,8 +104,8 @@ class WaveTrainDataset(WaveDataset):
                     }
                     self.json_data.append(data)
 
-        if sr != SAMPLE_RATE_MUSDB18:
-            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        if sample_rate != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
         else:
             self.pre_resampler = None
 
@@ -180,10 +180,10 @@ class WaveTrainDataset(WaveDataset):
         return self.samples_per_epoch
 
 class WaveEvalDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, max_duration=60, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, max_duration=60, sources=__sources__, target=None):
         super().__init__(
             musdb18_root,
-            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources,
             target=target
         )
@@ -193,7 +193,7 @@ class WaveEvalDataset(WaveDataset):
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
-        self.max_samples = int(sr * max_duration)
+        self.max_samples = int(sample_rate * max_duration)
 
         self.tracks = []
         self.json_data = []
@@ -201,9 +201,9 @@ class WaveEvalDataset(WaveDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            track_sr = audio_info.sample_rate
+            track_sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
-            samples_original = min(int(self.max_samples * track_sr / sr), track_samples)
+            samples_original = min(int(self.max_samples * track_sample_rate / sample_rate), track_samples)
 
             track = {
                 'name': name,
@@ -225,8 +225,8 @@ class WaveEvalDataset(WaveDataset):
             self.tracks.append(track)
             self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
         
-        if sr != SAMPLE_RATE_MUSDB18:
-            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        if sample_rate != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
         else:
             self.pre_resampler = None
 
@@ -278,10 +278,10 @@ class WaveEvalDataset(WaveDataset):
         return mixture, target, name
 
 class WaveTestDataset(WaveDataset):
-    def __init__(self, musdb18_root, sr=SAMPLE_RATE_MUSDB18, duration=4, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, duration=4, sources=__sources__, target=None):
         super().__init__(
             musdb18_root,
-            sr=SAMPLE_RATE_MUSDB18, # WaveDataset's sr is expected SAMPLE_RATE_MUSDB18
+            sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources, target=target
         )
 
@@ -293,7 +293,7 @@ class WaveTestDataset(WaveDataset):
                 name = line.strip()
                 names.append(name)
         
-        self.samples = int(duration * sr)
+        self.samples = int(duration * sample_rate)
 
         self.tracks = []
         self.json_data = []
@@ -324,8 +324,8 @@ class WaveTestDataset(WaveDataset):
 
             self.json_data.append(data)
 
-        if sr != SAMPLE_RATE_MUSDB18:
-            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr)
+        if sample_rate != SAMPLE_RATE_MUSDB18:
+            self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
         else:
             self.pre_resampler = None
     
@@ -371,5 +371,5 @@ def test_collate_fn(batch):
     
     return mixture, sources, samples, name
 
-def assert_sample_rate(sr):
-    assert sr == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sr)
+def assert_sample_rate(sample_rate):
+    assert sample_rate == SAMPLE_RATE_MUSDB18, "sample rate is expected {}, but given {}".format(SAMPLE_RATE_MUSDB18, sample_rate)

@@ -17,12 +17,12 @@ class Trainer(TrainerBase):
         super().__init__(model, loader, criterion, optimizer, args)
 
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
 
         resamplers = []
 
-        for sr_target in self.sr:
-            resamplers.append(torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sr_target))
+        for sample_rate_target in self.sample_rate:
+            resamplers.append(torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate_target))
 
         self.resamplers = nn.ModuleList(resamplers)
         self.stage = args.stage
@@ -316,7 +316,7 @@ class Trainer(TrainerBase):
                 if idx < 5:
                     for stage_idx in range(self.stage):
                         _mixture_resampled, _estimated_sources = mixture_resampled[stage_idx], estimated_sources[stage_idx]
-                        _sr = self.sr[stage_idx]
+                        _sample_rate = self.sample_rate[stage_idx]
 
                         batch_size, n_sources, T = _estimated_sources.size()
 
@@ -327,19 +327,19 @@ class Trainer(TrainerBase):
                         
                         save_dir = os.path.join(self.sample_dir, titles)
                         os.makedirs(save_dir, exist_ok=True)
-                        save_path = os.path.join(save_dir, "mixture-{}.wav".format(_sr))
+                        save_path = os.path.join(save_dir, "mixture-{}.wav".format(_sample_rate))
                         norm = torch.abs(_mixture_resampled).max()
                         _mixture_resampled = _mixture_resampled / torch.clamp(norm, min=EPS)
                         signal = _mixture_resampled.unsqueeze(dim=0) if _mixture_resampled.dim() == 1 else _mixture_resampled
-                        torchaudio.save(save_path, signal, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        torchaudio.save(save_path, signal, sample_rate=_sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                         
                         for source_idx, _estimated_source in enumerate(_estimated_sources):
                             target = self.valid_loader.dataset.target[source_idx]
-                            save_path = os.path.join(save_dir, "epoch{}-{}-{}.wav".format(epoch + 1, target, _sr))
+                            save_path = os.path.join(save_dir, "epoch{}-{}-{}.wav".format(epoch + 1, target, _sample_rate))
                             norm = torch.abs(_estimated_source).max()
                             _estimated_source = _estimated_source / torch.clamp(norm, min=EPS)
                             signal = _estimated_source.unsqueeze(dim=0) if _estimated_source.dim() == 1 else _estimated_source
-                            torchaudio.save(save_path, signal, sample_rate=_sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                            torchaudio.save(save_path, signal, sample_rate=_sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
             
         valid_loss /= n_valid
         valid_main_loss /= n_valid

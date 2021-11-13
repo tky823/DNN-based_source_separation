@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
 parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--enc_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier','trainableFourierTrainablePhase'], help='Encoder type')
 parser.add_argument('--dec_basis', type=str, default='trainable', choices=['trainable','Fourier','trainableFourier','trainableFourierTrainablePhase', 'pinv'], help='Decoder type')
 parser.add_argument('--enc_nonlinear', type=str, default=None, help='Non-linear function of encoder')
@@ -71,6 +71,7 @@ def main(args):
         args.enc_nonlinear = None
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
+    
     model = ConvTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
         window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,
@@ -112,8 +113,7 @@ def main(args):
     
     trainer = ORPITTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

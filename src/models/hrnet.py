@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_model import choose_nonlinear
+from utils.model import choose_nonlinear
 from models.resnet import ResidualBlock2d
 
 EPS = 1e-12
@@ -15,14 +15,14 @@ class HRNet(nn.Module):
         if type(num_stacks) is int:
             num_stacks = [num_stacks] * len(hidden_channels)
         else:
-            assert len(num_stacks) == len(hidden_channels), "Inavalid length of num_stacks."
+            assert len(num_stacks) == len(hidden_channels), "Invalid length of num_stacks."
 
         self.conv2d_in = StackedResidualBlock2d(in_channels, hidden_channels[0], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=in_num_stacks, eps=eps)
         self.backbone = HRNetBackbone(hidden_channels, bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks, eps=eps)
         self.conv2d_out = StackedResidualBlock2d(sum(hidden_channels), in_channels, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, num_stacks=out_num_stacks, eps=eps)
         self.mask_nonlinear2d = choose_nonlinear(mask_nonlinear)
 
-        self.in_channels, self.hidden_channels, self.bottleneck_channels = hidden_channels, bottleneck_channels, bottleneck_channels
+        self.in_channels, self.hidden_channels, self.bottleneck_channels = in_channels, hidden_channels, bottleneck_channels
         self.kernel_size = kernel_size
         self.scale = scale
         self.upsample, self.downsample = upsample, downsample

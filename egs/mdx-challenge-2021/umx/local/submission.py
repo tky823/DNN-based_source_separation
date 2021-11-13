@@ -8,7 +8,7 @@ from adhoc_predictor import UMXPredictor
 
 parser = argparse.ArgumentParser(description="Evaluation of Open-Unmix")
 
-parser.add_argument('--sr', type=int, default=44100, help='Sampling rate.')
+parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate.')
 parser.add_argument('--duration', type=float, default=256, help='Duration')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
@@ -18,7 +18,7 @@ parser.add_argument('--model_dir', type=str, default='./tmp', help='Path to mode
 
 def main(args):
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_samples = int(args.duration * args.sr)
+    patch_samples = int(args.duration * args.sample_rate)
     args.patch_size = (patch_samples + 2 * (args.fft_size // 2) - args.fft_size) // args.hop_size - 1
 
     submission = UMXPredictor(args)

@@ -31,8 +31,9 @@ A PyTorch implementation of DNN-based source separation.
 | CrossNet-Open-Unmix (X-UMX) | [All for One and One for All: Improving Music Separation by Bridging Networks](https://arxiv.org/abs/2010.04228) | ✔ |
 | D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) | ✔ |
 | LaSAFT | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) |  |
-| SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) |  |
+| SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) | ✔ |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
+| HRNet | [Vocal Melody Extraction via HRNet-Based Singing Voice Separation and Encoder-Decoder-Based F0 Estimation](https://www.mdpi.com/2079-9292/10/3/298) | ✔ |
 | MRX | [The Cocktail Fork Problem: Three-Stem Audio Separation for Real-World Soundtracks](https://arxiv.org/abs/2110.09958) |  |
 
 ## Modules
@@ -60,30 +61,58 @@ LibriSpeech example using [Conv-TasNet](https://arxiv.org/abs/1809.07454)
 You can check other tutorials in `<REPOSITORY_ROOT>/egs/tutorials/`.
 
 ### 0. Preparation
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
 ```
 
 ### 1. Training
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 If you want to resume training,
-```
+```sh
 . ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. Evaluation
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
+
+## Pretrained Models
+You can load pretrained models like
+```py
+from models.conv_tasnet import ConvTasNet
+
+model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)
+```
+
+| Model | Dataset | Example |
+|:---:|:---:|:---:|
+| LSTM-TasNet | WSJ0-2mix | `model = LSTMTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| Conv-TasNet | WSJ0-2mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| Conv-TasNet | WSJ0-3mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
+| Conv-TasNet | MUSDB18 | `model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)` |
+| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/separate-noisy", sample_rate=8000)` |
+| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/enhance-single", sample_rate=8000)` |
+| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/enhance-both", sample_rate=8000)` |
+| Conv-TasNet | LibriSpeech | `model = ConvTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
+| DPRNN-TasNet | WSJ0-2mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DPRNN-TasNet | WSJ0-3mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
+| DPRNN-TasNet | LibriSpeech | `model = DPRNNTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
+| MMDenseLSTM | MUSDB18 | `model = MMDenseLSTM.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| Open-Unmix | MUSDB18 | `model = OpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| Open-Unmix | MUSDB18-HQ | `model = OpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100, target="vocals")` |
+| DPTNet | WSJ0-2mix | `model = DPTNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |

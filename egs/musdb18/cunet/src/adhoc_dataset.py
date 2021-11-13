@@ -14,8 +14,8 @@ EPS = 1e-12
 THRESHOLD_POWER = 1e-5
 
 class WaveDataset(MUSDB18Dataset):
-    def __init__(self, musdb18_root, sr=44100, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, sample_rate=44100, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
 
         self.json_data = None
 
@@ -69,8 +69,8 @@ class WaveDataset(MUSDB18Dataset):
         return len(self.json_data)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, sources=__sources__, target=None):
-        super().__init__(musdb18_root, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=44100, sources=__sources__, target=None):
+        super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
         
         if hop_size is None:
             hop_size = fft_size // 2
@@ -130,8 +130,8 @@ class SpectrogramDataset(WaveDataset):
         return mixture, target, latent, T, title, scale
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=44100, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
         
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
@@ -147,7 +147,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
 
             track = {
@@ -184,8 +184,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target, latent
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sr=44100, patch_size=256, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sr=sr, sources=sources, target=target)
+    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=44100, patch_size=256, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
         
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         
@@ -201,7 +201,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         for trackID, name in enumerate(names):
             mixture_path = os.path.join(musdb18_root, 'train', name, "mixture.wav")
             audio_info = torchaudio.info(mixture_path)
-            sr = audio_info.sample_rate
+            sample_rate = audio_info.sample_rate
             track_samples = audio_info.num_frames
             samples = min(self.max_samples, track_samples)
 
@@ -295,7 +295,7 @@ def _test_train_dataset():
     
     musdb18_root = "../../../../../db/musdb18"
 
-    dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sr=8000, duration=4, target='vocals')
+    dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sample_rate=8000, duration=4, target='vocals')
     
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
@@ -303,7 +303,7 @@ def _test_train_dataset():
 
     dataset.save_as_json('data/tmp.json')
 
-    dataset = SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', fft_size=2048, hop_size=512, sr=44100, target='vocals')
+    dataset = SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', fft_size=2048, hop_size=512, sample_rate=44100, target='vocals')
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break

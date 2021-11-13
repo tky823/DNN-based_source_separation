@@ -280,12 +280,12 @@ class CrossNetOpenUnmix(nn.Module):
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
         if task in ['musdb18', 'musdb18hq']:
-            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
             model_choice = kwargs.get('model_choice') or 'best'
 
-            model_id = pretrained_model_ids_task[sr][config]
-            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
+            model_id = pretrained_model_ids_task[sample_rate][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
         else:
             raise NotImplementedError("Not support task={}.".format(task))
         

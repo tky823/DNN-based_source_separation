@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description="Training of Meta-TasNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--is_wav', type=int, default=0, help='0: extension is wav (MUSDB), 1: extension is not .wav, is expected .mp4 (MUSDB-HQ)')
-parser.add_argument('--sr', type=str, default='[8000,16000,32000]', help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=str, default='[8000,16000,32000]', help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--stage', type=int, default=1, help='Stage')
@@ -78,7 +78,7 @@ def main(args):
     
     args.sources = args.sources.replace('[','').replace(']','').split(',')
     args.n_sources = len(args.sources)
-    args.sr = [int(sr) for sr in args.sr.replace('[', '').replace(']', '').split(',')]
+    args.sample_rate = [int(sample_rate) for sample_rate in args.sample_rate.replace('[', '').replace(']', '').split(',')]
     samples_per_epoch = int(40 * 3000 // args.duration)
     
     train_dataset = WaveTrainDataset(args.musdb18_root, samples_per_epoch=samples_per_epoch, sources=args.sources, is_wav=args.is_wav)
@@ -110,7 +110,7 @@ def main(args):
             warnings.warn("`embed_bottleneck_channels` is NOT used.", UserWarning)
         kwargs = {}
     if args.fft_size is None:
-        args.fft_size = 1024 * (args.sr[0] // 8000)
+        args.fft_size = 1024 * (args.sample_rate[0] // 8000)
     if args.hop_size is None:
         args.hop_size = args.fft_size // 4
     
@@ -124,7 +124,7 @@ def main(args):
         sep_nonlinear=args.sep_nonlinear, mask_nonlinear=args.mask_nonlinear,
         causal=args.causal,
         conv_name=args.conv_name, norm_name=args.norm_name,
-        num_stages=len(args.sr), n_sources=args.n_sources,
+        num_stages=len(args.sample_rate), n_sources=args.n_sources,
         **kwargs
     )
     print(model)

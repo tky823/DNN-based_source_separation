@@ -11,19 +11,19 @@ from utils.utils import set_seed
 from adhoc_dataset import SpectrogramTestDataset, TestDataLoader
 from adhoc_driver import SingleTargetTester
 from models.hrnet import HRNet
-from criterion.distance import MeanSquaredError
+from criterion.distance import MeanAbsoluteError, MeanSquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of HRNet")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
-parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
-parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
+parser.add_argument('--patch_size', type=int, default=64, help='Patch size')
+parser.add_argument('--fft_size', type=int, default=1024, help='FFT length')
+parser.add_argument('--hop_size', type=int, default=512, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
-parser.add_argument('--target', type=str, default="bass", help='Target name')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
+parser.add_argument('--target', type=str, default=None, choices=['bass', 'drums', 'other', 'vocals'], help='Target name')
+parser.add_argument('--criterion', type=str, default='mae', choices=['mae','mse'], help='Criterion')
 parser.add_argument('--model_path', type=str, default=None, help='Path to pretrained model.')
 parser.add_argument('--estimates_dir', type=str, default=None, help='Estimated sources output directory')
 parser.add_argument('--json_dir', type=str, default=None, help='Json directory')
@@ -37,7 +37,7 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     
-    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=args.patch_size, sources=args.sources, target=args.target)
+    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, sources=args.sources, target=args.target)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
@@ -59,7 +59,10 @@ def main(args):
         print("Does NOT use CUDA")
     
     # Criterion
-    if args.criterion == 'mse':
+    if args.criterion == 'mae':
+        criterion = MeanAbsoluteError(dim=(1,2,3))
+        args.save_normalized = False
+    elif args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
         args.save_normalized = False
     else:

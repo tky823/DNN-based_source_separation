@@ -1,7 +1,7 @@
 # 出力結果の例
-UMXを学習させた結果を共有します．ネットワークはランダムスケールを除いて，デフォルトの設定で学習済み．`config/paper/augmentation.yaml`を見てください．
+UMXを学習させた結果を共有します．ネットワークはデフォルトの設定で学習済み．
 - `config.zip`，`log.zip`，`loss.zip`を解凍する必要があります．
-- 学習済みモデルは[]()からダウンロードできます．これらは，`last.pth`，`best.pth`を含んでいます．
+- 学習済みモデルは[https://drive.google.com/file/d/1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj/view?usp=sharing](https://drive.google.com/file/d/1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj/view?usp=sharing)からダウンロードできます．これらは，`last.pth`，`best.pth`を含んでいます．
 - 出力されたJSONファイルは[]()からダウンロードできます．
 
 ## 実験結果

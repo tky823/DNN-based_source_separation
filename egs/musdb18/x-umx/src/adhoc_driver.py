@@ -28,7 +28,7 @@ class AdhocSchedulerTrainer(TrainerBase):
     def _reset(self, args):
         # Override
         self.sources = args.sources
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.valid_loader.dataset.window
@@ -239,7 +239,7 @@ class AdhocSchedulerTrainer(TrainerBase):
 
                     save_path = os.path.join(track_dir, "mixture.wav")
                     signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
-                    torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
 
                     epoch_dir = os.path.join(track_dir, "epoch{}".format(epoch + 1))
                     os.makedirs(epoch_dir, exist_ok=True)
@@ -247,7 +247,7 @@ class AdhocSchedulerTrainer(TrainerBase):
                     for target, estimated_source in zip(self.sources, estimated_sources):
                         save_path = os.path.join(epoch_dir, "{}.wav".format(target))
                         signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                        torchaudio.save(save_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                        torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
         
         valid_loss /= n_valid
         
@@ -381,7 +381,7 @@ class AdhocTester(TesterBase):
         super().__init__(model, loader, criterion, args)
 
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.sources = args.sources
 
         self.musdb18_root = args.musdb18_root
@@ -482,7 +482,7 @@ class AdhocTester(TesterBase):
                     estimated_path = os.path.join(track_dir, "{}.wav".format(target))
                     estimated_source = estimated_sources[source_idx, :, :samples] # -> (n_mics, T)
                     signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                    torchaudio.save(estimated_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                    torchaudio.save(estimated_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
 
                 print("{} / {}".format(idx + 1, n_test), name, flush=True)
     

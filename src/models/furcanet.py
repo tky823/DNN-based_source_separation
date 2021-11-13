@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_layer_norm
+from utils.tasnet import choose_layer_norm
 from models.glu import GLU1d
 
 EPS=1e-12

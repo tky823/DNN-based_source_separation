@@ -37,10 +37,10 @@ def separate_by_mm_dense_lstm(model_paths, file_paths, out_dirs):
         x, sample_rate = torchaudio.load(file_path)
         _, T_original = x.size()
 
-        if sample_rate == config['sr']:
+        if sample_rate == config['sample_rate']:
             pre_resampler, post_resampler = None, None
         else:
-            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sr']), torchaudio.transforms.Resample(config['sr'], sample_rate)
+            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sample_rate']), torchaudio.transforms.Resample(config['sample_rate'], sample_rate)
 
         if pre_resampler is not None:
             x = pre_resampler(x)
@@ -159,11 +159,11 @@ def load_experiment_config(config_paths):
         config = torch.load(config_path, map_location=lambda storage, loc: storage)
 
         if sample_rate is None:
-            sample_rate = config.get('sr')
-        elif config.get('sr') is not None:
+            sample_rate = config.get('sample_rate')
+        elif config.get('sample_rate') is not None:
             if sample_rate is not None:
-                assert sample_rate == config['sr'], "Invalid sampling rate."
-            sample_rate = config['sr']
+                assert sample_rate == config['sample_rate'], "Invalid sampling rate."
+            sample_rate = config['sample_rate']
         
         if patch_size is None:
             patch_size = config.get('patch_size')
@@ -187,7 +187,7 @@ def load_experiment_config(config_paths):
             hop_size = config['hop_size']
     
     config = {
-        'sr': sample_rate or SAMPLE_RATE_MUSDB18,
+        'sample_rate': sample_rate or SAMPLE_RATE_MUSDB18,
         'patch_size': patch_size or 256,
         'fft_size': fft_size or 4096,
         'hop_size': hop_size or 1024

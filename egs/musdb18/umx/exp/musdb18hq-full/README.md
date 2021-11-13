@@ -1,5 +1,5 @@
 # Example of outputs
-I trained UMX and share the outputs. The networks are all trained by default setting except for random scaling. See `config/paper/augmentation.yaml`.
+I trained UMX and share the outputs. The networks are all trained by default setting.
 - You have to unzip `config.zip`, `log.zip`, and `loss.zip`.
 - You can download pretrained models from [https://drive.google.com/file/d/1W0fNeGoqQU6Zj0KHA8n3n6iSonuiaHdQ/view?usp=sharing](https://drive.google.com/file/d/1W0fNeGoqQU6Zj0KHA8n3n6iSonuiaHdQ/view?usp=sharing), which includes `drums/last.pth`, `drums/best.pth`, `bass/last.pth`, ..., `vocals/best.pth`.
 - You can download output JSON files from [https://drive.google.com/file/d/1bAtYVpo0nIkDPMJgCixyhuwdhkOUHI2j/view?usp=sharing](https://drive.google.com/file/d/1bAtYVpo0nIkDPMJgCixyhuwdhkOUHI2j/view?usp=sharing).

@@ -2,13 +2,13 @@ import warnings
 
 import torch.nn as nn
 
-from utils.utils_filterbank import choose_filterbank
+from utils.filterbank import choose_filterbank
 from norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
 EPS = 1e-12
 
 def choose_basis(hidden_channels, kernel_size, stride=None, enc_basis='trainable', dec_basis='trainable', **kwargs):
-    warnings.warn("Use utils.utils_filterbank.choose_filterbank instead.", DeprecationWarning)
+    warnings.warn("Use utils.filterbank.choose_filterbank instead.", DeprecationWarning)
     return choose_filterbank(hidden_channels, kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
 
 def choose_layer_norm(name, num_features, causal=False, eps=EPS, **kwargs):

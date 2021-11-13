@@ -5,7 +5,7 @@ tag=""
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
-sr=${sr_k}000
+sample_rate=${sr_k}000
 duration=4
 max_or_min='min'
 
@@ -91,7 +91,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 test.py \
 --test_wav_root ${wav_root} \
 --test_list_path ${test_list_path} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \

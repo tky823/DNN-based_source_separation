@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.utils_audio import build_window
-from utils.utils_model import choose_rnn
+from utils.model import choose_rnn
 from models.umx import TransformBlock1d
 
 __sources__ = ['music', 'speech', 'effects'] # ['bass', 'drums', 'other', 'vocals'] for MUSDB18

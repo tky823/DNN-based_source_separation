@@ -25,7 +25,7 @@ class WaveDataset(MUSDB18Dataset):
             target <str> or <list<str>>: 
             is_wav <bool>
         """
-        super().__init__(musdb18_root, sr=SAMPLE_RATE_MUSDB18, sources=sources, target=target, is_wav=is_wav)
+        super().__init__(musdb18_root, sample_rate=SAMPLE_RATE_MUSDB18, sources=sources, target=target, is_wav=is_wav)
 
     def __getitem__(self, idx):
         """

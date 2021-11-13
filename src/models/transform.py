@@ -22,9 +22,9 @@ class Segment1d(nn.Module):
         batch_size, num_features, n_frames = input.size()
         
         input = input.view(batch_size, num_features, n_frames, 1)
-        x = F.unfold(input, kernel_size=(chunk_size,1), stride=(hop_size,1)) # -> (batch_size, num_features*chunk_size, S), where S = (n_frames-chunk_size)//hop_size+1
+        x = F.unfold(input, kernel_size=(chunk_size, 1), stride=(hop_size, 1)) # -> (batch_size, num_features*chunk_size, S), where S = (n_frames-chunk_size)//hop_size+1
         x = x.view(batch_size, num_features, chunk_size, -1)
-        output = x.permute(0,1,3,2).contiguous() # -> (batch_size, num_features, S, chunk_size)
+        output = x.permute(0, 1, 3, 2).contiguous() # -> (batch_size, num_features, S, chunk_size)
         
         return output
     
@@ -52,9 +52,9 @@ class OverlapAdd1d(nn.Module):
         batch_size, num_features, S, chunk_size = input.size()
         n_frames = (S - 1) * hop_size + chunk_size
         
-        x = input.permute(0,1,3,2).contiguous() # -> (batch_size, num_features, chunk_size, S)
+        x = input.permute(0, 1, 3, 2).contiguous() # -> (batch_size, num_features, chunk_size, S)
         x = x.view(batch_size, num_features*chunk_size, S) # -> (batch_size, num_features*chunk_size, S)
-        output = F.fold(x, kernel_size=(chunk_size,1), stride=(hop_size,1), output_size=(n_frames,1)) # -> (batch_size, num_features, n_frames, 1)
+        output = F.fold(x, kernel_size=(chunk_size, 1), stride=(hop_size, 1), output_size=(n_frames, 1)) # -> (batch_size, num_features, n_frames, 1)
         output = output.squeeze(dim=3)
         
         return output
@@ -80,8 +80,6 @@ class BandSplit(nn.Module):
     
     def extra_repr(self):
         s = "1-{}, [".format(sum(self.sections))
-
-        
         s += "1-{}".format(self.sections[0])
         start = self.sections[0] + 1
 
@@ -108,7 +106,7 @@ def _test_segment():
 def _test_overlap_add():
     batch_size, num_features, n_frames = 2, 3, 5
     K, P = 3, 2
-    S = (n_frames-K)//P + 1
+    S = (n_frames - K) // P + 1
 
     input = torch.randint(0, 10, (batch_size, num_features, S, K), dtype=torch.float)
     

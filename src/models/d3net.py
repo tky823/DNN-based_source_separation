@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_d3net import choose_layer_norm
+from utils.d3net import choose_layer_norm
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.d2net import D2Block, D2BlockFixedDilation
@@ -351,12 +351,12 @@ class D3Net(nn.Module):
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         
         if task == 'musdb18':
-            sr = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "nnabla"
             model_choice = kwargs.get('model_choice') or 'best'
 
-            model_id = pretrained_model_ids_task[sr][config]
-            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sr), config)
+            model_id = pretrained_model_ids_task[sample_rate][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
         else:
             raise NotImplementedError("Not support task={}.".format(task))
         

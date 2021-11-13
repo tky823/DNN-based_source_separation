@@ -6,8 +6,11 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from criterion.pit import pit as pit_wrapper
 
 BITS_PER_SAMPLE_WSJ0 = 16
+HALVE_LR = 3
+PATIENCE = 10
 
 class Trainer:
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -21,7 +24,7 @@ class Trainer:
         self._reset(args)
     
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         self.max_norm = args.max_norm
         
@@ -38,6 +41,7 @@ class Trainer:
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
         
+        self.return_all_layers = True
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
@@ -53,9 +57,9 @@ class Trainer:
             self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
-                self.model.module.load_state_dict(config['state_dict'])
+                self.model.module.load_state_dict(config['base']['state_dict'])
             else:
-                self.model.load_state_dict(config['state_dict'])
+                self.model.load_state_dict(config['base']['state_dict'])
             
             self.optimizer.load_state_dict(config['optim_dict'])
         else:
@@ -92,10 +96,10 @@ class Trainer:
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 10:
+                    if self.no_improvement >= PATIENCE:
                         print("Stop training")
                         break
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr
@@ -137,11 +141,18 @@ class Trainer:
                 spk_idx = spk_idx.cuda()
             
             self.optimizer.zero_grad()
-            sorted_idx = self.model(mixture, spk_idx=spk_idx)
+
+            with torch.no_grad():
+                sorted_idx = self.model(mixture, spk_idx=spk_idx)
             
             self.optimizer.zero_grad()
-            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all=False, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
-            loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            estimated_sources, spk_vector, spk_embedding, all_spk_embedding = self.model(mixture, spk_idx=spk_idx, sorted_idx=sorted_idx, return_all_layers=self.return_all_layers, return_spk_vector=True, return_spk_embedding=True, return_all_spk_embedding=True)
+            
+            if self.return_all_layers:
+                loss = self.criterion(estimated_sources, sources.unsqueeze(dim=1), spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            else:
+                loss = self.criterion(estimated_sources, sources, spk_vector=spk_vector, spk_embedding=spk_embedding, all_spk_embedding=all_spk_embedding, batch_mean=True)
+            
             loss.backward()
             
             if self.max_norm:
@@ -152,7 +163,7 @@ class Trainer:
             train_loss += loss.item()
             
             if (idx + 1) % 100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -162,20 +173,67 @@ class Trainer:
         """
         Validation
         """
-        # TODO:
         self.model.eval()
-        
+
         valid_loss = 0
+        n_valid_batch = len(self.valid_loader)
+
+        with torch.no_grad():
+            for idx, (mixture, sources, segment_IDs) in enumerate(self.valid_loader):
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    sources = sources.cuda()
+                
+                estimated_sources = self.model(mixture, return_all_layers=False, return_spk_vector=False, return_spk_embedding=False, return_all_spk_embedding=False)
+                
+                loss, _ = pit_wrapper(self.criterion.reconst_criterion, estimated_sources, sources, batch_mean=False)
+                loss = loss.sum(dim=0)
+                valid_loss += loss.item()
+
+                if idx < 5:
+                    mixture = mixture[0].squeeze(dim=0).cpu()
+                    estimated_sources = estimated_sources[0].cpu()
+                    
+                    save_dir = os.path.join(self.sample_dir, segment_IDs[0])
+                    os.makedirs(save_dir, exist_ok=True)
+                    save_path = os.path.join(save_dir, "mixture.wav")
+                    norm = torch.abs(mixture).max()
+                    mixture = mixture / norm
+                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+                    torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    
+                    for source_idx, estimated_source in enumerate(estimated_sources):
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
+                        norm = torch.abs(estimated_source).max()
+                        estimated_source = estimated_source / norm
+                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
+                        torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+        
+        valid_loss /= n_valid_batch
         
         return valid_loss
     
     def save_model(self, epoch, model_path='./tmp.pth'):
+        config = {}
+        
         if isinstance(self.model, nn.DataParallel):
-            config = self.model.module.get_config()
-            config['state_dict'] = self.model.module.state_dict()
+            config['base'] = self.model.module.get_config()
+            config['base']['state_dict'] = self.model.module.state_dict()
+
+            config['speaker_stack'] = self.model.module.speaker_stack.get_config()
+            config['separation_stack'] = self.model.module.separation_stack.get_config()
+
+            config['speaker_stack']['state_dict'] = self.model.module.speaker_stack.state_dict()
+            config['separation_stack']['state_dict'] = self.model.module.separation_stack.state_dict()
         else:
-            config = self.model.get_config()
-            config['state_dict'] = self.model.state_dict()
+            config['base'] = self.model.get_config()
+            config['base']['state_dict'] = self.model.state_dict()
+
+            config['speaker_stack'] = self.model.speaker_stack.get_config()
+            config['separation_stack'] = self.model.separation_stack.get_config()
+
+            config['speaker_stack']['state_dict'] = self.model.speaker_stack.state_dict()
+            config['separation_stack']['state_dict'] = self.model.separation_stack.state_dict()
             
         config['optim_dict'] = self.optimizer.state_dict()
         

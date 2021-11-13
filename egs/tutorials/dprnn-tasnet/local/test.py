@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="Evaluation of DPRNN-TasNet")
 
 parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset ROOT directory')
 parser.add_argument('--test_json_path', type=str, default=None, help='Path for test.json')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')

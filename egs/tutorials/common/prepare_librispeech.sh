@@ -3,7 +3,7 @@
 librispeech_root="../../../dataset"
 n_sources=2
 
-sr=16000
+sample_rate=16000
 train_duration=2
 valid_duration=4
 test_duration=4
@@ -70,7 +70,7 @@ else
     --wav_root "${librispeech_root}" \
     --json_path "${librispeech_root}/${train_dataset}/${train_json}" \
     --n_sources ${n_sources} \
-    --sr ${sr} \
+    --sample_rate ${sample_rate} \
     --duration ${train_duration} \
     --seed ${seed}
 fi
@@ -83,7 +83,7 @@ else
     --wav_root "${librispeech_root}" \
     --json_path "${librispeech_root}/${valid_dataset}/${valid_json}" \
     --n_sources ${n_sources} \
-    --sr ${sr} \
+    --sample_rate ${sample_rate} \
     --duration ${valid_duration} \
     --seed ${seed}
 fi
@@ -96,7 +96,7 @@ else
     --wav_root "${librispeech_root}" \
     --json_path "${librispeech_root}/${test_dataset}/${test_json}" \
     --n_sources ${n_sources} \
-    --sr ${sr} \
+    --sample_rate ${sample_rate} \
     --duration ${test_duration} \
     --seed ${seed}
 fi

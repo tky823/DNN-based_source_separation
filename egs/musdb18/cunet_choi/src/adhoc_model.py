@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_cunet import choose_nonlinear
+from utils.cunet import choose_nonlinear
 from models.film import FiLM2d
 from models.pocm import PoCM2d, GPoCM2d
 from models.cunet import TDF2d, TDC2d

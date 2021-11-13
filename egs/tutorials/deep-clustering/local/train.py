@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser("Speech separation by fully convolutional time-
 
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
-parser.add_argument('--sr', type=int, default=16000, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--save_freq', type=int, default=10, help='Save frequency. Default) Save model per 10 epochs')
 parser.add_argument('--n_sources', type=int, default=2, help='Number of sources')
 parser.add_argument('--samples', type=int, default=16384, help='Number of input samples')

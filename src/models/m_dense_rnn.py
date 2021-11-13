@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_m_densenet import choose_layer_norm
-from utils.utils_dense_rnn import choose_dense_rnn_block
+from utils.m_densenet import choose_layer_norm
+from utils.dense_rnn import choose_dense_rnn_block
 from models.m_densenet import DownSampleDenseBlock, UpSampleDenseBlock, DenseBlock
 from models.dense_rnn import RNNBlock
 

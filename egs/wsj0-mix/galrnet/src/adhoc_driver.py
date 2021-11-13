@@ -43,7 +43,7 @@ class AdhocTrainer(TrainerBase):
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
 
             if self.no_improvement >= 10:
                 print("Stop training")

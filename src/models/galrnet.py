@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_filterbank import choose_filterbank
-from utils.utils_tasnet import choose_layer_norm
+from utils.filterbank import choose_filterbank
+from utils.tasnet import choose_layer_norm
 from models.gtu import GTU1d
 from models.transform import Segment1d, OverlapAdd1d
 from models.galr import GALR
 
-EPS=1e-12
+EPS = 1e-12
 
 class GALRNet(nn.Module):
     def __init__(
