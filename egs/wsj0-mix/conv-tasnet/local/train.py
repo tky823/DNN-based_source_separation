@@ -61,9 +61,9 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    samples = int(args.sr * args.duration)
+    samples = int(args.sample_rate * args.duration)
     overlap = samples // 2
-    max_samples = int(args.sr * args.valid_duration)
+    max_samples = int(args.sample_rate * args.valid_duration)
     
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
     valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)

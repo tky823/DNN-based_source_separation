@@ -57,8 +57,7 @@ def main(args):
     
     tester = Tester(model, loader, pit_criterion, args)
     tester.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
