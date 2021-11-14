@@ -2,10 +2,11 @@ import os
 
 import torch
 import torchaudio
+import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filter
-from models.d3net import D3Net, ParallelD3Net
+from models.d3net import D3Net
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
@@ -14,15 +15,15 @@ NUM_CHANNELS_MUSDB18 = 2
 BITS_PER_SAMPLE_MUSDB18 = 16
 EPS = 1e-12
 
-def separate_by_d3net(model_paths, file_paths, out_dirs):
-    patch_size = 256
-    fft_size, hop_size = 4096, 1024
-    window = torch.hann_window(fft_size)
-
+def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
     use_cuda = torch.cuda.is_available()
 
-    model = load_pretrained_d3net(model_paths)
+    model = load_pretrained_model(model_paths, jit=jit)
     config = load_experiment_config(model_paths)
+
+    patch_size = config['patch_size']
+    fft_size, hop_size = config['fft_size'], config['hop_size']
+    window = torch.hann_window(fft_size)
     
     if use_cuda:
         model.cuda()
@@ -38,10 +39,10 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
         x, sample_rate = torchaudio.load(file_path)
         _, T_original = x.size()
 
-        if sample_rate == config['sr']:
+        if sample_rate == config['sample_rate']:
             pre_resampler, post_resampler = None, None
         else:
-            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sr']), torchaudio.transforms.Resample(config['sr'], sample_rate)
+            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sample_rate']), torchaudio.transforms.Resample(config['sample_rate'], sample_rate)
 
         if pre_resampler is not None:
             x = pre_resampler(x)
@@ -139,12 +140,29 @@ def separate_by_d3net(model_paths, file_paths, out_dirs):
             
     return estimated_paths
 
-def load_pretrained_d3net(model_paths):
+def load_pretrained_model(model_paths, jit=False):
+    if jit:
+        model = load_pretrained_model_jit(model_paths)
+    else:
+        modules = {}
+
+        for source in __sources__:
+            model_path = model_paths[source]
+            modules[source] = D3Net.build_model(model_path, load_state_dict=True)
+
+        model = ParallelD3Net(modules)
+    
+    return model
+
+def load_pretrained_model_jit(model_paths, in_channels=2, n_bins=2049, patch_size=256):
+    batch_size = 1
+    input = torch.abs(torch.randn(batch_size, in_channels, n_bins, patch_size))
     modules = {}
 
     for source in __sources__:
         model_path = model_paths[source]
-        modules[source] = D3Net.build_model(model_path, load_state_dict=True)
+        module = D3Net.build_model(model_path, load_state_dict=True)
+        modules[source] = torch.jit.trace(module, example_inputs=input)
 
     model = ParallelD3Net(modules)
     
@@ -152,18 +170,46 @@ def load_pretrained_d3net(model_paths):
 
 def load_experiment_config(config_paths):
     sample_rate = None
+    patch_size = None
+    fft_size, hop_size = None, None
+
     for source in __sources__:
         config_path = config_paths[source]
         config = torch.load(config_path, map_location=lambda storage, loc: storage)
 
         if sample_rate is None:
-            sample_rate = config.get('sr')
-        elif config.get('sr') is not None:
+            sample_rate = config.get('sample_rate')
+        elif config.get('sample_rate') is not None:
             if sample_rate is not None:
-                assert sample_rate == config['sr'], "Invalid sampling rate."
-            sample_rate = config['sr']
+                assert sample_rate == config['sample_rate'], "Invalid sampling rate."
+            sample_rate = config['sample_rate']
+        
+        if patch_size is None:
+            patch_size = config.get('patch_size')
+        elif config.get('patch_size') is not None:
+            if patch_size is not None:
+                assert patch_size == config['patch_size'], "Invalid patch_size."
+            patch_size = config['patch_size']
+        
+        if fft_size is None:
+            fft_size = config.get('fft_size')
+        elif config.get('fft_size') is not None:
+            if fft_size is not None:
+                assert fft_size == config['fft_size'], "Invalid fft_size."
+            fft_size = config['fft_size']
+
+        if hop_size is None:
+            hop_size = config.get('hop_size')
+        elif config.get('hop_size') is not None:
+            if hop_size is not None:
+                assert hop_size == config['hop_size'], "Invalid hop_size."
+            hop_size = config['hop_size']
+
     config = {
-        'sr': sample_rate or SAMPLE_RATE_MUSDB18
+        'sample_rate': sample_rate or SAMPLE_RATE_MUSDB18,
+        'patch_size': patch_size or 256,
+        'fft_size': fft_size or 4096,
+        'hop_size': hop_size or 1024
     }
 
     return config
@@ -180,3 +226,24 @@ def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude,
         eps <float>: small value for numerical stability
     """
     return multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=iteration, channels_first=channels_first, eps=eps)
+
+class ParallelD3Net(nn.Module):
+    def __init__(self, modules):
+        super().__init__()
+
+        if isinstance(modules, nn.ModuleDict):
+            pass
+        elif isinstance(modules, dict):
+            modules = nn.ModuleDict(modules)
+        else:
+            raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
+        
+        self.net = modules
+
+    def forward(self, input, target=None):
+        if type(target) is not str:
+            raise TypeError("`target` is expected str, but given {}".format(type(target)))
+        
+        output = self.net[target](input)
+
+        return output

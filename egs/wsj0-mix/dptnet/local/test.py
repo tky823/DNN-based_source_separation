@@ -12,11 +12,11 @@ from models.dptnet import DPTNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Evaluation of DPTNet")
+parser = argparse.ArgumentParser(description="Evaluation of Dual-Path trasformer network.")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -57,8 +57,7 @@ def main(args):
     
     tester = Tester(model, loader, pit_criterion, args)
     tester.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

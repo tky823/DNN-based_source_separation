@@ -52,7 +52,7 @@ class FinetuneTrainer(TrainerBase):
         super().__init__(model, loader, pit_criterion, optimizer, args)
 
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         self.max_norm = args.max_norm
         

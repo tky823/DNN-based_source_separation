@@ -9,7 +9,7 @@ duration=8
 valid_duration=100
 
 musdb18_root="../../../dataset/MUSDB18"
-sr=44100
+sample_rate=44100
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
@@ -72,7 +72,7 @@ if [ ${enc_basis} = 'Fourier' -o ${enc_basis} = 'trainableFourier' -o ${enc_basi
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}"
+    save_dir="${exp_dir}/${sources}/sr${sample_rate}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_norm${sep_norm}_mask-${mask_nonlinear}"
     if [ ${samples_per_epoch} -gt 0 ]; then
         save_dir="${save_dir}/b${batch_size}_e${epochs}-s${samples_per_epoch}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     else
@@ -109,7 +109,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
 --musdb18_root ${musdb18_root} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --augmentation_path "${augmentation_path}" \

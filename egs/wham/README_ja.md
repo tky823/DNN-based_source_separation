@@ -23,7 +23,24 @@ cd <REPOSITORY_ROOT>/egs/wham/common/
 --create_from "scratch"
 ```
 
-## DNNの学習と評価
-各サブディレクトリを参照．
-
 ## 結果
+### 1話者音声強調
+
+| Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| LSTM-TasNet | - | - | - |
+| Conv-TasNet | 13.8 | 14.2 | 2.93 |
+
+### 2話者音声強調
+
+| Model | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| LSTM-TasNet | - | - | - |
+| Conv-TasNet | 12.7 | 13.1 | 2.39 |
+
+### 雑音環境下の2話者分離の結果．
+
+| モデル | SI-SDRi [dB] | SDRi [dB] | PESQ |
+| :---: | :---: | :---: | :---: |
+| LSTM-TasNet | - | - | - |
+| Conv-TasNet | 12.3 | 12.7 | 2.36 |

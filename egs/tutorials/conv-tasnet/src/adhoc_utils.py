@@ -33,10 +33,10 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
         x, sample_rate = torchaudio.load(file_path)
         _, T_original = x.size()
 
-        if sample_rate == config['sr']:
+        if sample_rate == config['sample_rate']:
             pre_resampler, post_resampler = None, None
         else:
-            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sr']), torchaudio.transforms.Resample(config['sr'], sample_rate)
+            pre_resampler, post_resampler = torchaudio.transforms.Resample(sample_rate, config['sample_rate']), torchaudio.transforms.Resample(config['sample_rate'], sample_rate)
 
         if pre_resampler is not None:
             x = pre_resampler(x)
@@ -94,13 +94,10 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
             os.makedirs(out_dir, exist_ok=True)
             _estimated_paths = {}
 
-            n_sources = len(__sources__)
-
-            for idx in range(n_sources):
-                source = __sources__[idx]
-                path = os.path.join(out_dir, "{}.wav".format(source))
-                torchaudio.save(path, y[idx], sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
-                _estimated_paths[source] = path
+            for target, estimated_source in zip(config['sources'], y):
+                path = os.path.join(out_dir, "{}.wav".format(target))
+                torchaudio.save(path, estimated_source, sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
+                _estimated_paths[target] = path
             
             estimated_paths.append(_estimated_paths)
             
@@ -114,7 +111,8 @@ def load_pretrained_conv_tasnet(model_path):
 def load_experiment_config(config_path):
     config = torch.load(config_path, map_location=lambda storage, loc: storage)
     config = {
-        'sr': config.get('sr') or SAMPLE_RATE_MUSDB18
+        'sample_rate': config.get('sr') or config.get('sample_rate') or SAMPLE_RATE_MUSDB18,
+        'sources': config.get('sources') or __sources__
     }
 
     return config

@@ -5,7 +5,15 @@ import torch.nn as nn
 from models.mm_dense_rnn import MMDenseRNN
 
 FULL = 'full'
+SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
+__pretrained_model_ids__ = {
+    "musdb18": {
+        SAMPLE_RATE_MUSDB18: {
+            "paper": "1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV"
+        }
+    },
+}
 
 class ParallelMMDenseLSTM(nn.Module):
     def __init__(self, modules):
@@ -198,6 +206,7 @@ class MMDenseLSTM(MMDenseRNN):
         depth = config['depth']
 
         growth_rate_final = config['growth_rate_final']
+        hidden_channels_final = config['hidden_channels_final']
         kernel_size_final = config['kernel_size_final']
         dilated_final = config['dilated_final']
         depth_final = config['depth_final']
@@ -216,7 +225,7 @@ class MMDenseLSTM(MMDenseRNN):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
-            growth_rate_final=growth_rate_final,
+            growth_rate_final=growth_rate_final, hidden_channels_final=hidden_channels_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
             depth_final=depth_final,
@@ -229,6 +238,38 @@ class MMDenseLSTM(MMDenseRNN):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task in ['musdb18']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            config = kwargs.get('config') or "paper"
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
         return model
 
 def _test_mm_dense_lstm():

@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_m_densenet import choose_layer_norm
-from utils.utils_dense_rnn import choose_dense_rnn_block
+from utils.m_densenet import choose_layer_norm
+from utils.dense_rnn import choose_dense_rnn_block
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.m_densenet import DenseBlock
@@ -160,7 +160,7 @@ class MMDenseRNN(nn.Module):
 
         self.in_channels, self.num_features = in_channels, num_features
         self.growth_rate = growth_rate
-        self.hidden_channels = hidden_channels,
+        self.hidden_channels = hidden_channels
         self.kernel_size = kernel_size
         self.scale = scale
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
@@ -190,7 +190,6 @@ class MMDenseRNN(nn.Module):
         """
         bands, sections = self.bands, self.sections
         n_bins = input.size(2)
-        eps = self.eps
 
         if sum(sections) == n_bins:
             x_valid, x_invalid = input, None
@@ -198,14 +197,14 @@ class MMDenseRNN(nn.Module):
             sections = [sum(sections), n_bins - sum(sections)]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x_valid = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
-
+        x_valid = self.transform_affine_in(x_valid)
         x = self.band_split(x_valid)
-
         x_bands = []
+
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
+        
         x_bands = torch.cat(x_bands, dim=2)
     
         x_full = self.net[FULL](x_valid)
@@ -215,7 +214,7 @@ class MMDenseRNN(nn.Module):
         x = self.dense_block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
+        x = self.transform_affine_out(x)
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
@@ -230,6 +229,17 @@ class MMDenseRNN(nn.Module):
             output = x
         else:
             output = torch.cat([x, x_invalid], dim=2)
+
+        return output
+    
+    def transform_affine_in(self, input):
+        eps = self.eps
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
+
+        return output
+
+    def transform_affine_out(self, input):
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
 
         return output
     
@@ -348,6 +358,7 @@ class MMDenseRNN(nn.Module):
         depth = config['depth']
 
         growth_rate_final = config['growth_rate_final']
+        hidden_channels_final = config['hidden_channels_final']
         kernel_size_final = config['kernel_size_final']
         dilated_final = config['dilated_final']
         depth_final = config['depth_final']
@@ -366,7 +377,7 @@ class MMDenseRNN(nn.Module):
             scale=scale,
             dilated=dilated, norm=norm, nonlinear=nonlinear,
             depth=depth,
-            growth_rate_final=growth_rate_final,
+            growth_rate_final=growth_rate_final, hidden_channels_final=hidden_channels_final,
             kernel_size_final=kernel_size_final,
             dilated_final=dilated_final,
             depth_final=depth_final,

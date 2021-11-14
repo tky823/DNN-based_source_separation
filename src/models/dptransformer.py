@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from utils.utils_tasnet import choose_layer_norm
+from utils.tasnet import choose_layer_norm
 
-EPS=1e-12
+EPS = 1e-12
 
 class DualPathTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
@@ -137,7 +137,6 @@ class ImprovedTransformer(nn.Module):
         
         return output
 
-
 class MultiheadAttentionBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, norm=True, dropout=0, causal=False, eps=EPS):
         super().__init__()
@@ -218,7 +217,7 @@ class FeedForwardBlock(nn.Module):
         self.rnn.flatten_parameters()
 
         residual = x
-        x, (_, _) = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
+        x, _ = self.rnn(x) # (T, batch_size, num_features) -> (T, batch_size, num_directions*hidden_channels)
         x = self.nonlinear1d(x) # -> (T, batch_size, num_directions*hidden_channels)
         x = self.fc(x) # (T, batch_size, num_directions*hidden_channels) -> (T, batch_size, num_features)
         x = x + residual

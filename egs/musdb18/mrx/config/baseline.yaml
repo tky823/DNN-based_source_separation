@@ -1,0 +1,10 @@
+in_channels: 2
+hidden_channels: 512
+num_layers: [3, 3, 3]
+fft_size: [1024, 2048, 4096]
+hop_size: 1024
+window_fn: 'hann'
+dropout: [0.4, 0.4, 0.4]
+causal: True
+rnn_type: ['lstm', 'lstm', 'lstm']
+sources: ['bass', 'drums', 'other', 'vocals']

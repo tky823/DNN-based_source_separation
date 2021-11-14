@@ -25,7 +25,7 @@ class AdhocTrainer(TrainerBase):
         
     def _reset(self, args):
         # Override
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size    
         self.window = self.valid_loader.dataset.window
@@ -46,7 +46,7 @@ class AdhocTrainer(TrainerBase):
         self.train_loss = torch.empty(self.epochs)
         self.valid_loss = torch.empty(self.epochs)
         
-        self.resampler = torchaudio.transforms.Resample(self.sr, SAMPLE_RATE_MUSDB18)
+        self.resampler = torchaudio.transforms.Resample(self.sample_rate, SAMPLE_RATE_MUSDB18)
 
         self.use_cuda = args.use_cuda
         

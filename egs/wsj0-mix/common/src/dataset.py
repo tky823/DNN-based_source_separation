@@ -23,7 +23,7 @@ class WaveDataset(WSJ0Dataset):
         list_path = os.path.abspath(list_path)
         
         if overlap is None:
-            overlap = samples//2
+            overlap = samples // 2
         
         self.json_data = []
         

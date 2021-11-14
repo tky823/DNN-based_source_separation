@@ -10,7 +10,7 @@ wav_root="../../../dataset/LibriSpeech"
 train_json_path="../../../dataset/LibriSpeech/train-clean-100/train-100-${n_sources}mix.json"
 valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.json"
 
-sr=16000
+sample_rate=16000
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
@@ -85,7 +85,7 @@ train.py \
 --wav_root ${wav_root} \
 --train_json_path ${train_json_path} \
 --valid_json_path ${valid_json_path} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --enc_basis ${enc_basis} \
 --dec_basis ${dec_basis} \
 --enc_nonlinear "${enc_nonlinear}" \

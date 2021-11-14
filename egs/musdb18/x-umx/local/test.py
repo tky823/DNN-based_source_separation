@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
 import argparse
 
 import torch
@@ -10,19 +9,27 @@ import torch.nn as nn
 from utils.utils import set_seed
 from adhoc_dataset import SpectrogramTestDataset, TestDataLoader
 from adhoc_driver import AdhocTester
-from models.umx import CrossNetOpenUnmix
+from models.xumx import CrossNetOpenUnmix
 from criterion.distance import MeanSquaredError
+from criterion.sdr import NegWeightedSDR
+from adhoc_criterion import MultiDomainLoss
 
 parser = argparse.ArgumentParser(description="Evaluation of CrossNet-Open-Unmix")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
-parser.add_argument('--sr', type=int, default=10, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=6, help='Duration')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
 parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
-parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
+parser.add_argument('--combination', type=int, default=1, help='Combination Loss.')
+parser.add_argument('--criterion_time', type=str, default='wsdr', choices=['wsdr'], help='Criterion in time domain')
+parser.add_argument('--criterion_frequency', type=str, default='mse', choices=['mse'], help='Criterion in time-frequency domain')
+parser.add_argument('--weight_time', type=float, default=1, help='Weight for time domain loss')
+parser.add_argument('--weight_frequency', type=float, default=10, help='Weight for frequency domain loss')
+parser.add_argument('--min_pair', type=int, default=1, help='Minimum pair for combination loss')
+parser.add_argument('--max_pair', type=int, default=None, help='Maximum pair for combination loss. If you set None, max_pair is regarded as len(sources) - 1.')
 parser.add_argument('--model_path', type=str, default=None, help='Path to pretrained model.')
 parser.add_argument('--estimates_dir', type=str, default=None, help='Estimated sources output directory')
 parser.add_argument('--json_dir', type=str, default=None, help='Json directory')
@@ -36,11 +43,11 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    samples = int(args.duration * args.sr)
+    samples = int(args.duration * args.sample_rate)
     padding = 2 * (args.fft_size // 2)
     patch_size = (samples + padding - args.fft_size) // args.hop_size + 1
     
-    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=patch_size, sources=args.sources, target=args.sources)
+    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=patch_size, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
@@ -61,10 +68,37 @@ def main(args):
         print("Does NOT use CUDA")
     
     # Criterion
-    if args.criterion == 'mse':
-        criterion = MeanSquaredError(dim=(1,2,3))
+    if args.criterion_time == 'wsdr':
+        if args.combination:
+            criterion_time = NegWeightedSDR(source_dim=1, reduction='mean') # (batch_size, n_sources, in_channels, T)
+        else:
+            criterion_time = NegWeightedSDR(source_dim=1, reduction='mean', reduction_dim=2) # (batch_size, n_sources, in_channels, T)
     else:
-        raise ValueError("Not support criterion {}".format(args.criterion))
+        raise ValueError("Not support criterion {}".format(args.criterion_time))
+    
+    if args.criterion_frequency == 'mse':
+        if args.combination:
+            criterion_frequency = MeanSquaredError(dim=(1,2,3)) # (batch_size, in_channels, n_bins, n_frames) for combination loss, be careful.
+        else:
+            criterion_frequency = MeanSquaredError(dim=(2,3,4)) # (batch_size, n_sources, in_channels, n_bins, n_frames)
+    else:
+        raise ValueError("Not support criterion {}".format(args.criterion_time))
+    
+    if args.combination:
+        criterion = MultiDomainLoss(
+            criterion_time, criterion_frequency,
+            combination=True,
+            weight_time=args.weight_time, weight_frequency=args.weight_frequency,
+            fft_size=args.fft_size, hop_size=args.hop_size, window=test_dataset.window, normalize=test_dataset.normalize,
+            source_dim=1, min_pair=args.min_pair, max_pair=args.max_pair # for combination loss
+        )
+    else:
+        criterion = MultiDomainLoss(
+            criterion_time, criterion_frequency,
+            combination=False,
+            weight_time=args.weight_time, weight_frequency=args.weight_frequency,
+            fft_size=args.fft_size, hop_size=args.hop_size, window=test_dataset.window, normalize=test_dataset.normalize
+        )
     
     tester = AdhocTester(model, loader, criterion, args)
     tester.run()

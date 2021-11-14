@@ -2,9 +2,53 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_filterbank import choose_filterbank
-from utils.utils_tasnet import choose_layer_norm
-from models.tcn import TemporalConvNet
+from utils.filterbank import choose_filterbank
+from utils.tasnet import choose_layer_norm
+from models.tdcn import TimeDilatedConvNet
+
+SAMPLE_RATE_MUSDB18 = 44100
+SAMPLE_RATE_LIBRISPEECH = 16000
+
+__pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: {
+                "enc_relu": "1yy-o7TyS1EcBWZ41rskMAVavtuEi4fMe",
+            },
+            3: {
+                "enc_relu": "1-4Abl7LnEtwqMnAFQOcNLUOaDbgp3NoG"
+            }
+        },
+        16000: {
+            2: "", # TODO
+            3: "" # TODO
+        }
+    },
+    "wham/enhance-single": {
+        8000: "1-6oiSK_CEE5Vl4OCy8TinA0cKsFFfGUg",
+        16000: "" # TODO
+    },
+    "wham/enhance-both": {
+        8000: "1-GISUVcWjMeP3GLvojz9b0svw6gkmd2G",
+        16000: "" # TODO
+    },
+    "wham/separate-noisy": {
+        8000: "1-0ckoPjaIiTJwv9Qotz6fkY2xeC77xdi",
+        16000: "" # TODO
+    },
+    "musdb18": {
+        SAMPLE_RATE_MUSDB18: {
+            "4sec_L20": "1A6dIofHZJQCUkyq-vxZ6KbPmEHLcf4WK",
+            "8sec_L20": "1C4uv2z0w1s4rudIMaErLyEccNprJQWSZ",
+            "8sec_L64": "1paXNGgH8m0kiJTQnn1WH-jEIurCKXwtw"
+        }
+    },
+    "librispeech": {
+        SAMPLE_RATE_LIBRISPEECH: {
+            2: "1NI6Q_WZHiTKkgkNTEcZE1yHskHgYUHpy"
+        }
+    }
+}
 
 EPS = 1e-12
 
@@ -27,10 +71,7 @@ class ConvTasNet(nn.Module):
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
-        if 'in_channels' in kwargs:
-            self.in_channels = kwargs['in_channels']
-        else:
-            self.in_channels = 1
+        self.in_channels = kwargs.get('in_channels', 1)
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
@@ -199,6 +240,59 @@ class ConvTasNet(nn.Module):
             model.load_state_dict(config['state_dict'])
         
         return model
+
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            config = kwargs.get('config') or 'enc_relu'
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers/{}".format(sample_rate, n_sources, config))
+        elif task == 'musdb18':
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            config = kwargs.get('config') or '4sec_L20'
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][config]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+        elif task in ['wham/separate-noisy', 'wham/enhance-single', 'wham/enhance-both']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate))
+        elif task == 'librispeech':
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        return model
     
     @property
     def num_parameters(self):
@@ -224,7 +318,7 @@ class Separator(nn.Module):
         norm_name = 'cLN' if causal else 'gLN'
         self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
-        self.tcn = TemporalConvNet(
+        self.tdcn = TimeDilatedConvNet(
             bottleneck_channels, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers,
             dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm
         )
@@ -251,7 +345,7 @@ class Separator(nn.Module):
 
         x = self.norm1d(input)
         x = self.bottleneck_conv1d(x)
-        x = self.tcn(x)
+        x = self.tdcn(x)
         x = self.prelu(x)
         x = self.mask_conv1d(x)
         x = self.mask_nonlinear(x)

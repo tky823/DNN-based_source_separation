@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utils.utils_model import choose_rnn
+from utils.model import choose_rnn
 from models.m_densenet import DenseBlock
 
 """

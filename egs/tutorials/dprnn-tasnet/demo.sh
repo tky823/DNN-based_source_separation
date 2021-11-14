@@ -5,7 +5,7 @@ tag=""
 
 n_sources=2
 
-sr=16000
+sample_rate=16000
 
 # Encoder & decoder
 enc_basis='trainable' # choose from 'trainable','Fourier', or 'trainableFourier'
@@ -69,7 +69,7 @@ num_chunk=256
 duration=5
 
 demo.py \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --num_chunk ${num_chunk} \
 --duration ${duration} \
 --model_path "${model_path}" \

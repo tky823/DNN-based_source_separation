@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from models.danet import DANet
 
-EPS=1e-12
+EPS = 1e-12
 
 """
     Anchored DANet

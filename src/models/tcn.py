@@ -1,8 +1,10 @@
+import warnings
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_tasnet import choose_layer_norm
+from utils.tasnet import choose_layer_norm
 
 EPS = 1e-12
 
@@ -15,6 +17,8 @@ EPS = 1e-12
 class TemporalConvNet(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, num_blocks=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear=None, norm=True, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use TimeDilatedConvNet instead.", DeprecationWarning)
         
         self.num_blocks = num_blocks
         

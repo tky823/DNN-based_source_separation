@@ -17,7 +17,7 @@ parser.add_argument('--librispeech_root', type=str, default=None, help='Path for
 parser.add_argument('--wav_root', type=str, default=None, help='Path for wav ROOT directory')
 parser.add_argument('--json_path', type=str, default=None, help='Path for json file')
 parser.add_argument('--n_sources', type=int, default=2, help='Number of mixtures')
-parser.add_argument('--sr', type=int, default=16000, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
 parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
@@ -25,7 +25,7 @@ def main(args):
     set_seed(args.seed)
     
     speakers_path = os.path.join(args.librispeech_root, "SPEAKERS.TXT")
-    samples = int(args.sr*args.duration)
+    samples = int(args.sample_rate * args.duration)
     
     json_data = make_json_data(args.wav_root, args.json_path, speakers_path=speakers_path, samples=samples, n_sources=args.n_sources)
         
@@ -65,7 +65,7 @@ def make_json_data(wav_root, json_path, speakers_path, n_sources=2, samples=3200
                 utterance_ID, _ = os.path.splitext(wav_name)
                 relative_path = os.path.join(folder_name, speaker_ID, speech_ID, "{}.flac".format(utterance_ID))
                 wav_path = os.path.join(wav_root, relative_path)
-                wave, sr = torchaudio.load(wav_path) # wave, sr = sf.read(wav_path)
+                wave, sample_rate = torchaudio.load(wav_path) # wave, sample_rate = sf.read(wav_path)
                 T = wave.size(1)
                 
                 for idx in range(0, T, samples):

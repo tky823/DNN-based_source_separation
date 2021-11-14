@@ -8,9 +8,9 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from utils.utils_augmentation import SequentialAugmentation, choose_augmentation
-from dataset import TrainDataLoader
-from adhoc_dataset import SpectrogramTrainDataset, SpectrogramEvalDataset, EvalDataLoader
+from utils.augmentation import SequentialAugmentation, choose_augmentation
+from dataset import SpectrogramTrainDataset, TrainDataLoader
+from adhoc_dataset import SpectrogramEvalDataset, EvalDataLoader
 from adhoc_driver import AdhocTrainer
 from models.mm_dense_lstm import MMDenseLSTM
 from criterion.distance import MeanSquaredError
@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description="Training of MMDenseLSTM")
 
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--config_path', type=str, default=None, help='Path to model configuration file')
-parser.add_argument('--sr', type=int, default=44100, help='Sampling rate')
+parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
 parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
@@ -50,7 +50,7 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     patch_samples = args.hop_size * (args.patch_size - 1) + args.fft_size - 2 * (args.fft_size // 2)
-    max_samples = int(args.valid_duration * args.sr)
+    max_samples = int(args.valid_duration * args.sample_rate)
     
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
@@ -62,8 +62,8 @@ def main(args):
     for name in config_augmentation['augmentation']:
         augmentation.append(choose_augmentation(name, **config_augmentation[name]))
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sr=args.sr, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

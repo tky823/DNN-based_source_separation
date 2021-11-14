@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.utils_m_densenet import choose_layer_norm, choose_nonlinear
+from utils.m_densenet import choose_layer_norm, choose_nonlinear
 from models.glu import GLU2d
 
 """

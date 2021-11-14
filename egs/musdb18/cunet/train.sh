@@ -9,7 +9,7 @@ patch=128
 valid_duration=30
 
 musdb18_root="../../../dataset/musdb18"
-sr=44100
+sample_rate=44100
 
 window_fn='hann'
 fft_size=1024
@@ -42,7 +42,7 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${sources}/sr${sr}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${sources}/sr${sample_rate}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -63,7 +63,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 train.py \
 --musdb18_root ${musdb18_root} \
 --config_path "${config_path}" \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --patch_size ${patch} \
 --valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \

@@ -14,7 +14,7 @@ class AdhocTrainer(TrainerBase):
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
+            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
@@ -41,7 +41,7 @@ class AdhocTrainer(TrainerBase):
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
 
 class Tester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):

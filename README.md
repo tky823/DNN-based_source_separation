@@ -24,22 +24,25 @@ A PyTorch implementation of DNN-based source separation.
 | DeepCASA | [Divide and Conquer: A Deep Casa Approach to Talker-independent Monaural Speaker Separation](https://arxiv.org/abs/1904.11148) |  |
 | Conditioned-U-Net | [Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations](https://arxiv.org/abs/1907.01277) | ✔ |
 | MMDenseNet | [Multi-scale Multi-band DenseNets for Audio Source Separation](https://arxiv.org/abs/1706.09588) | ✔ |
-| MMDenseLSTM | [MMDenseLSTM: An Efficient Combination of Convolutional and Recurrent Neural Networks for Audio Source Separation](https://arxiv.org/abs/1805.02410) | |
-| UMX (Open-Unmix) | [Open-Unmix - A Reference Implementation for Music Source Separation](https://hal.inria.fr/hal-02293689/document) | ✔ |
+| MMDenseLSTM | [MMDenseLSTM: An Efficient Combination of Convolutional and Recurrent Neural Networks for Audio Source Separation](https://arxiv.org/abs/1805.02410) | ✔ |
+| Open-Unmix (UMX) | [Open-Unmix - A Reference Implementation for Music Source Separation](https://hal.inria.fr/hal-02293689/document) | ✔ |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
-| DPTNet | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
+| Dual-Path Transformer Network (DPTNet) | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
+| CrossNet-Open-Unmix (X-UMX) | [All for One and One for All: Improving Music Separation by Bridging Networks](https://arxiv.org/abs/2010.04228) | ✔ |
 | D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) | ✔ |
 | LaSAFT | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) |  |
-| SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) |  |
+| SepFormer | [Attention is All You Need in Speech Separation](https://arxiv.org/abs/2010.13154) | ✔ |
 | GALR | [Effective Low-Cost Time-Domain Audio Separation Using Globally Attentive Locally Reccurent networks](https://arxiv.org/abs/2101.05014) | ✔ |
+| HRNet | [Vocal Melody Extraction via HRNet-Based Singing Voice Separation and Encoder-Decoder-Based F0 Estimation](https://www.mdpi.com/2079-9292/10/3/298) | ✔ |
+| MRX | [The Cocktail Fork Problem: Three-Stem Audio Separation for Real-World Soundtracks](https://arxiv.org/abs/2110.09958) |  |
 
 ## Modules
 | Module | Reference | Done |
 | :---: | :---: | :---: |
 | Depthwise-separable convolution |  | ✔ |
-| Gated Linear Units |  | ✔ |
-| FiLM (Feature-wise Linear Modulation) | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
-| PoCM (Point-wise Convolutional Modulation) | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) | ✔ |
+| Gated Linear Units (GLU) |  | ✔ |
+| Feature-wise Linear Modulation (FiLM) | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
+| Point-wise Convolutional Modulation (PoCM) | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) | ✔ |
 
 ## Method related to training
 | Method | Reference | Done |
@@ -48,6 +51,7 @@ A PyTorch implementation of DNN-based source separation.
 | One-and-rest PIT | [Recursive Speech Separation for Unknown Number of Speakers](https://arxiv.org/abs/1904.03065) | ✔ |
 | Probabilistic PIT | [Probabilistic Permutation Invariant Training for Speech Separation](https://arxiv.org/abs/1908.01768) |  |
 | Sinkhorn PIT | [Towards Listening to 10 People Simultaneously: An Efficient Permutation Invariant Training of Audio Source Separation Using Sinkhorn's Algorithm](https://arxiv.org/abs/2010.11871) | ✔ |
+| Combination Loss | [All for One and One for All: Improving Music Separation by Bridging Networks](https://arxiv.org/abs/2010.04228) | ✔ |
 
 ## Example
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/train_librispeech.ipynb)
@@ -57,30 +61,67 @@ LibriSpeech example using [Conv-TasNet](https://arxiv.org/abs/1809.07454)
 You can check other tutorials in `<REPOSITORY_ROOT>/egs/tutorials/`.
 
 ### 0. Preparation
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
 ```
 
 ### 1. Training
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./train.sh --exp_dir <OUTPUT_DIR>
 ```
 
 If you want to resume training,
-```
+```sh
 . ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
 ```
 
 ### 2. Evaluation
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./test.sh --exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
+
+## Music Source Separation Example
+- MMDenseLSTM: See `egs/tutorials/mm-dense-lstm/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/mm-dense-lstm/separate_music.ipynb).
+- Conv-TasNet: See `egs/tutorials/conv-tasnet/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/conv-tasnet/separate_music.ipynb).
+- UMX: See `egs/tutorials/umx/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/umx/separate_music.ipynb).
+- X-UMX: See `egs/tutorials/x-umx/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/x-umx/separate_music.ipynb).
+- D3Net: See `egs/tutorials/d3net/separate_music.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/d3net/separate_music.ipynb).
+
+## Pretrained Models
+You can load pretrained models like
+```py
+from models.conv_tasnet import ConvTasNet
+
+model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, target='vocals')
+```
+
+| Model | Dataset | Example |
+|:---:|:---:|:---:|
+| LSTM-TasNet | WSJ0-2mix | `model = LSTMTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| Conv-TasNet | WSJ0-2mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| Conv-TasNet | WSJ0-3mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
+| Conv-TasNet | MUSDB18 | `model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)` |
+| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/separate-noisy", sample_rate=8000)` |
+| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/enhance-single", sample_rate=8000)` |
+| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/enhance-both", sample_rate=8000)` |
+| Conv-TasNet | LibriSpeech | `model = ConvTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
+| DPRNN-TasNet | WSJ0-2mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DPRNN-TasNet | WSJ0-3mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
+| DPRNN-TasNet | LibriSpeech | `model = DPRNNTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
+| MMDenseLSTM | MUSDB18 | `model = MMDenseLSTM.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| Open-Unmix | MUSDB18 | `model = OpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| Open-Unmix | MUSDB18-HQ | `model = OpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100, target="vocals")` |
+| DPTNet | WSJ0-2mix | `model = DPTNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
+| D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+
+See `egs/tutorials/hub/pretrained.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained.ipynb).

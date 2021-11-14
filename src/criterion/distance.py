@@ -172,22 +172,26 @@ class L21Loss(nn.Module):
         return False
 
 class SquaredError(nn.Module):
-    def __init__(self, reduction=None):
+    def __init__(self, reduction=None, reduction_dim=None):
         super().__init__()
 
         self.reduction = reduction
+        self.reduction_dim = reduction_dim
         
     def forward(self, input, target, batch_mean=True):
         loss = (input - target)**2
 
-        n_dims = loss.dim()
-
         if self.reduction:
-            dim = tuple(range(1, n_dims))
+            if self.reduction_dim:
+                reduction_dim = self.reduction_dim
+            else:
+                n_dims = loss.dim()
+                reduction_dim = tuple(range(1, n_dims))
+            
             if self.reduction == 'mean':
-                loss = loss.mean(dim=dim)
+                loss = loss.mean(dim=reduction_dim)
             elif self.reduction == 'sum':
-                loss = loss.sum(dim=dim)
+                loss = loss.sum(dim=reduction_dim)
             else:
                 raise NotImplementedError("Not support self.reduction={}.".format(self.reduction))
 

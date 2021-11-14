@@ -3,10 +3,11 @@ import shutil
 import subprocess
 import uuid
 
-import numpy as np
 from mir_eval.separation import bss_eval_sources
 import torch
 import torchaudio
+
+from utils.bss import bss_eval_sources
 
 BITS_PER_SAMPLE_WSJ0 = 16
 MIN_PESQ = -0.5
@@ -22,7 +23,7 @@ class AdhocTester:
         self._reset(args)
         
     def _reset(self, args):
-        self.sr = args.sr
+        self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         
         self.out_dir = args.out_dir
@@ -65,17 +66,17 @@ class AdhocTester:
 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_oracle = bss_eval_sources(
-                    reference_sources=sources.numpy(),
-                    estimated_sources=oracle_sources.numpy()
+                    reference_sources=sources,
+                    estimated_sources=oracle_sources
                 )
                 result_mixed = bss_eval_sources(
-                    reference_sources=sources.numpy(),
-                    estimated_sources=repeated_mixture.numpy()
+                    reference_sources=sources,
+                    estimated_sources=repeated_mixture
                 )
         
-                sdr_improvement = np.mean(result_oracle[0] - result_mixed[0])
-                sir_improvement = np.mean(result_oracle[1] - result_mixed[1])
-                sar = np.mean(result_oracle[2])
+                sdr_improvement = torch.mean(result_oracle[0] - result_mixed[0])
+                sir_improvement = torch.mean(result_oracle[1] - result_mixed[1])
+                sar = torch.mean(result_oracle[2])
                 
                 mixture_ID = segment_IDs
                 
@@ -85,7 +86,7 @@ class AdhocTester:
                 if idx < 10 and self.out_dir is not None:
                     mixture_path = os.path.join(self.out_dir, "{}.wav".format(mixture_ID))
                     signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
-                    torchaudio.save(mixture_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(mixture_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                 
                 for order_idx in range(self.n_sources):
                     source, oracle_source = sources[order_idx], oracle_sources[order_idx]
@@ -93,19 +94,19 @@ class AdhocTester:
                     if idx < 10 and  self.out_dir is not None:
                         source_path = os.path.join(self.out_dir, "{}_{}-target.wav".format(mixture_ID, order_idx + 1))
                         signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
-                        torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        torchaudio.save(source_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     source_path = "tmp-{}-target_{}.wav".format(order_idx + 1, random_ID)
                     signal = source.unsqueeze(dim=0) if source.dim() == 1 else source
-                    torchaudio.save(source_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(source_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     
                     # Oracle source
                     if idx < 10 and  self.out_dir is not None:
                         oracle_path = os.path.join(self.out_dir, "{}_{}-oracle.wav".format(mixture_ID, order_idx + 1))
                         signal = oracle_source.unsqueeze(dim=0) if oracle_source.dim() == 1 else oracle_source
-                        torchaudio.save(oracle_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                        torchaudio.save(oracle_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                     oracle_path = "tmp-{}-oracle_{}.wav".format(order_idx + 1, random_ID)
                     signal = oracle_source.unsqueeze(dim=0) if oracle_source.dim() == 1 else oracle_source
-                    torchaudio.save(oracle_path, signal, sample_rate=self.sr, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
+                    torchaudio.save(oracle_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
                 
                 pesq = 0
                 
@@ -113,7 +114,7 @@ class AdhocTester:
                     source_path = "tmp-{}-target_{}.wav".format(source_idx + 1, random_ID)
                     oracle_path = "tmp-{}-oracle_{}.wav".format(source_idx + 1, random_ID)
                     
-                    command = "./PESQ +{} {} {}".format(self.sr, source_path, oracle_path)
+                    command = "./PESQ +{} {} {}".format(self.sample_rate, source_path, oracle_path)
                     command += " | grep Prediction | awk '{print $5}'"
                     pesq_output = subprocess.check_output(command, shell=True)
                     pesq_output = pesq_output.decode().strip()
@@ -129,13 +130,13 @@ class AdhocTester:
                     subprocess.call("rm {}".format(oracle_path), shell=True)
                 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, sdr_improvement, sir_improvement, sar, pesq), flush=True)
+                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), loss_improvement, sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq), flush=True)
                 
                 test_loss += loss.item()
                 test_loss_improvement += loss_improvement
-                test_sdr_improvement += sdr_improvement
-                test_sir_improvement += sir_improvement
-                test_sar += sar
+                test_sdr_improvement += sdr_improvement.item()
+                test_sir_improvement += sir_improvement.item()
+                test_sar += sar.item()
                 test_pesq += pesq
         
         os.chdir("../") # back to the original directory

@@ -5,48 +5,39 @@ import torch
 
 EPS = 1e-12
 
-def compute_ideal_binary_mask(input):
+def compute_ideal_binary_mask(input, source_dim=-3):
     """
     Args:
-        input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        input <torch.Tensor>: Complex or nonnegative tensor.
+        source_dim <int>: Source dimension.
+            e.g.) If shapf of input is
+                (n_sources, n_bins, n_frames): Set source_dim=0.
+                (batch_size, n_sources, n_bins, n_frames): Set source_dim=1.
+                (n_sources, n_channels, n_bins, n_frames): Set source_dim=0.
+                (batch_size, n_sources, n_channels, n_bins, n_frames): Set source_dim=1.
     Returns:
-        mask <torch.Tensor>: Nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
+        mask <torch.Tensor>: Nonnegative tensor.
     """
     if torch.is_complex(input):
         input = torch.abs(input)
+    
+    n_dims = input.dim()
 
-    n_dims = input.dim()
+    if source_dim < 0:
+        source_dim = n_dims + source_dim
     
-    if n_dims == 3:
-        n_sources, n_bins, n_frames = input.size()
-        
-        input = input.permute(1, 2, 0).contiguous()
-        flatten_input = input.view(n_bins*n_frames, n_sources)
-        flatten_idx = torch.arange(0, n_bins*n_frames*n_sources, n_sources)
-        flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
-        flatten_mask = torch.zeros(n_bins*n_frames*n_sources)
-        flatten_mask[flatten_idx] = 1
-        
-        mask = flatten_mask.view(n_bins, n_frames, n_sources)
-        mask = mask.permute(2, 0, 1).contiguous()
-    elif n_dims == 4:
-        batch_size, n_sources, n_bins, n_frames = input.size()
-        
-        input = input.permute(0, 2, 3, 1).contiguous()
-        flatten_input = input.view(batch_size*n_bins*n_frames, n_sources)
-        flatten_idx = torch.arange(0, batch_size*n_bins*n_frames*n_sources, n_sources)
-        flatten_idx = flatten_idx + flatten_input.argmax(dim=1)
-        flatten_mask = torch.zeros(batch_size*n_bins*n_frames*n_sources)
-        flatten_mask[flatten_idx] = 1
-        
-        mask = flatten_mask.view(batch_size, n_bins, n_frames, n_sources)
-        mask = mask.permute(0, 3, 1, 2).contiguous()
-    else:
-        raise ValueError("Not support {}-dimension".format(n_dims))
-    
+    n_sources = input.size(dim=source_dim)
+
+    permutation_dims = tuple(range(0, source_dim)) + (n_dims - 1,) + tuple(range(source_dim, n_dims - 1))
+    max_idx = torch.argmax(input, dim=source_dim)
+
+    mask = torch.eye(n_sources)[max_idx]
+    mask = mask.permute(*permutation_dims).contiguous()
+    mask = mask.to(input.device)
+
     return mask
-   
-def compute_ideal_ratio_mask(input, eps=EPS):
+
+def compute_ideal_ratio_mask(input, source_dim=None, eps=EPS):
     """
     Args:
         input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
@@ -59,9 +50,11 @@ def compute_ideal_ratio_mask(input, eps=EPS):
     n_dims = input.dim()
     
     if n_dims == 3:
-        norm = input.sum(dim=0, keepdim=True) # (1, n_bins, n_frames)
+        source_dim = 0 if source_dim is None else source_dim
+        norm = input.sum(dim=source_dim, keepdim=True) # (1, n_bins, n_frames)
     elif n_dims == 4:
-        norm = input.sum(dim=1, keepdim=True) # (batch_size, 1, n_bins, n_frames)
+        source_dim = 1 if source_dim is None else source_dim
+        norm = input.sum(dim=source_dim, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
         raise ValueError("Not support {}-dimension".format(n_dims))
     
@@ -69,7 +62,7 @@ def compute_ideal_ratio_mask(input, eps=EPS):
     
     return mask
 
-def compute_wiener_filter_mask(input, domain=1, eps=EPS):
+def compute_wiener_filter_mask(input, source_dim=None, domain=1, eps=EPS):
     """
     Args:
         input <torch.Tensor>: Complex or nonnegative tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
@@ -84,9 +77,11 @@ def compute_wiener_filter_mask(input, domain=1, eps=EPS):
     power = input**(2 / domain) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
     
     if n_dims == 3:
-        norm = power.sum(dim=0, keepdim=True) # (1, n_bins, n_frames)
+        source_dim = 0 if source_dim is None else source_dim
+        norm = power.sum(dim=source_dim, keepdim=True) # (1, n_bins, n_frames)
     elif n_dims == 4:
-        norm = power.sum(dim=1, keepdim=True) # (batch_size, 1, n_bins, n_frames)
+        source_dim = 1 if source_dim is None else source_dim
+        norm = power.sum(dim=source_dim, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
         raise ValueError("Not support {}-dimension".format(n_dims))
     
@@ -94,7 +89,7 @@ def compute_wiener_filter_mask(input, domain=1, eps=EPS):
 
     return mask
 
-def compute_ideal_amplitude_mask(input, eps=EPS):
+def compute_ideal_amplitude_mask(input, source_dim=None, eps=EPS):
     """
     Args:
         input <torch.Tensor>: Complex tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
@@ -104,9 +99,11 @@ def compute_ideal_amplitude_mask(input, eps=EPS):
     n_dims = input.dim()
 
     if n_dims == 3:
-        mixture = input.sum(dim=0, keepdim=True)
+        source_dim = 0 if source_dim is None else source_dim
+        mixture = input.sum(dim=source_dim, keepdim=True)
     elif n_dims == 4:
-        mixture = input.sum(dim=1, keepdim=True)
+        source_dim = 1 if source_dim is None else source_dim
+        mixture = input.sum(dim=source_dim, keepdim=True)
     else:
         raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
     
@@ -118,7 +115,7 @@ def compute_ideal_amplitude_mask(input, eps=EPS):
 Phase sensitive mask
 See "Phase-Sensitive and Recognition-Boosted Speech Separation using Deep Recurrent Neural Networks"
 """
-def compute_phase_sensitive_mask(input, eps=EPS):
+def compute_phase_sensitive_mask(input, source_dim=None, eps=EPS):
     """
     Args:
         input <torch.Tensor>: Complex tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
@@ -128,9 +125,11 @@ def compute_phase_sensitive_mask(input, eps=EPS):
     n_dims = input.dim()
 
     if n_dims == 3:
-        mixture = input.sum(dim=0, keepdim=True)
+        source_dim = 0 if source_dim is None else source_dim
+        mixture = input.sum(dim=source_dim, keepdim=True)
     elif n_dims == 4:
-        mixture = input.sum(dim=1, keepdim=True)
+        source_dim = 1 if source_dim is None else source_dim
+        mixture = input.sum(dim=source_dim, keepdim=True)
     else:
         raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
     
@@ -141,7 +140,7 @@ def compute_phase_sensitive_mask(input, eps=EPS):
     
     return mask
 
-def compute_ideal_complex_mask(input, eps=EPS):
+def compute_ideal_complex_mask(input, source_dim=None, eps=EPS):
     """
     Args:
         input <torch.Tensor>: Complex tensor with shape of (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
@@ -151,9 +150,11 @@ def compute_ideal_complex_mask(input, eps=EPS):
     n_dims = input.dim()
 
     if n_dims == 3:
-        mixture = input.sum(dim=0, keepdim=True)
+        source_dim = 1 if source_dim is None else source_dim
+        mixture = input.sum(dim=source_dim, keepdim=True)
     elif n_dims == 4:
-        mixture = input.sum(dim=1, keepdim=True)
+        source_dim = 1 if source_dim is None else source_dim
+        mixture = input.sum(dim=source_dim, keepdim=True)
     else:
         raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
     
@@ -163,34 +164,34 @@ def compute_ideal_complex_mask(input, eps=EPS):
 
     return mask
 
-def ideal_binary_mask(input):
+def ideal_binary_mask(input, source_dim=None):
     warnings.warn("Use compute_ideal_binary_mask instead.", DeprecationWarning)
-    mask = compute_ideal_binary_mask(input)
+    mask = compute_ideal_binary_mask(input, source_dim=source_dim)
     return mask
 
-def ideal_ratio_mask(input, eps=EPS):
+def ideal_ratio_mask(input, source_dim=None, eps=EPS):
     warnings.warn("Use compute_ideal_ratio_mask instead.", DeprecationWarning)
-    mask = compute_ideal_ratio_mask(input, eps=eps)
+    mask = compute_ideal_ratio_mask(input, source_dim=source_dim, eps=eps)
     return mask
 
-def wiener_filter_mask(input, domain=1, eps=EPS):
+def wiener_filter_mask(input, source_dim=None, domain=1, eps=EPS):
     warnings.warn("Use compute_wiener_filter_mask instead.", DeprecationWarning)
-    mask = compute_wiener_filter_mask(input, domain=domain, eps=eps)
+    mask = compute_wiener_filter_mask(input, source_dim=source_dim, domain=domain, eps=eps)
     return mask
 
-def ideal_amplitude_mask(input, eps=EPS):
+def ideal_amplitude_mask(input, source_dim=None, eps=EPS):
     warnings.warn("Use compute_ideal_amplitude_mask instead.", DeprecationWarning)
-    mask = compute_ideal_amplitude_mask(input, eps=eps)
+    mask = compute_ideal_amplitude_mask(input, source_dim=source_dim, eps=eps)
     return mask
 
-def phase_sensitive_mask(input, eps=EPS):
+def phase_sensitive_mask(input, source_dim=None, eps=EPS):
     warnings.warn("Use compute_phase_sensitive_mask instead.", DeprecationWarning)
-    mask = compute_phase_sensitive_mask(input, eps=eps)
+    mask = compute_phase_sensitive_mask(input, source_dim=source_dim, eps=eps)
     return mask
 
-def ideal_complex_mask(input, eps=EPS):
+def ideal_complex_mask(input, source_dim=None, eps=EPS):
     warnings.warn("Use compute_ideal_complex_mask instead.", DeprecationWarning)
-    mask = compute_ideal_complex_mask(input, eps=eps)
+    mask = compute_ideal_complex_mask(input, source_dim=source_dim, eps=eps)
     return mask
 
 def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1, channels_first=True, eps=EPS):

@@ -5,6 +5,9 @@ def choose_nonlinear(name, **kwargs):
         nonlinear = nn.ReLU()
     elif name == 'sigmoid':
         nonlinear = nn.Sigmoid()
+    elif name == 'softmax':
+        assert 'dim' in kwargs, "dim is expected for softmax."
+        nonlinear = nn.Softmax(**kwargs)
     elif name == 'tanh':
         nonlinear = nn.Tanh()
     elif name == 'leaky-relu':

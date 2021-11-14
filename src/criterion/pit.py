@@ -23,15 +23,14 @@ def pit(criterion, input, target, n_sources=None, patterns=None, batch_mean=True
         patterns = torch.Tensor(patterns).long()
     
     P = len(patterns)
-    possible_loss = None
+    possible_loss = []
     
     for idx in range(P):
         pattern = patterns[idx]
         loss = criterion(input, target[:, pattern], batch_mean=False)
-        if possible_loss is None:
-            possible_loss = loss.unsqueeze(dim=1)
-        else:
-            possible_loss = torch.cat([possible_loss, loss.unsqueeze(dim=1)], dim=1)
+        possible_loss.append(loss)
+    
+    possible_loss = torch.stack(possible_loss, dim=1)
     
     # possible_loss (batch_size, P)
     if hasattr(criterion, "maximize") and criterion.maximize:
@@ -123,8 +122,8 @@ class ORPIT(nn.Module):
 
         for batch_idx in range(batch_size):
             n_sources = lens_unpacked[batch_idx] # <int>
-            _input, _target = input[batch_idx: batch_idx+1], target[batch_idx: batch_idx+1, : n_sources] # (1, 2, *), (1, n_sources, *)
-            input_one, input_rest = _input[:, 0], _input[:, 1] # (1, *), (1, *)
+            _input, _target = input[batch_idx: batch_idx + 1], target[batch_idx: batch_idx + 1, : n_sources] # (1, 2, *), (1, n_sources, *)
+            input_one, input_rest = torch.unbind(_input, dim=1) # (1, *), (1, *)
 
             possible_loss = None
     

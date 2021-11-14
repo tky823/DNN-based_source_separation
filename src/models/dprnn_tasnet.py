@@ -2,12 +2,32 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_filterbank import choose_filterbank
-from utils.utils_tasnet import choose_layer_norm
+from utils.filterbank import choose_filterbank
+from utils.tasnet import choose_layer_norm
 from models.transform import Segment1d, OverlapAdd1d
 from models.dprnn import DPRNN
 
-EPS=1e-12
+SAMPLE_RATE_LIBRISPEECH = 16000
+
+__pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: "1-2DOUDi2NImL7akQzTXLpDqJsJL4HyiY",
+            3: "1-5EhjEBiArjFat4gXyNkKyUjAkTvkgU0"
+        },
+        16000: {
+            2: "", # TODO
+            3: "" # TODO
+        }
+    },
+    "librispeech": {
+        SAMPLE_RATE_LIBRISPEECH: {
+            2: "1hTmxhI8JQlNnWVjwWUBGYlC7O_-ykK4H"
+        }
+    }
+}
+
+EPS = 1e-12
 
 class DPRNNTasNet(nn.Module):
     def __init__(
@@ -18,6 +38,7 @@ class DPRNNTasNet(nn.Module):
         sep_num_blocks=6,
         sep_norm=True, mask_nonlinear='sigmoid',
         causal=True,
+        rnn_type='lstm',
         n_sources=2,
         eps=EPS,
         **kwargs
@@ -25,15 +46,12 @@ class DPRNNTasNet(nn.Module):
         super().__init__()
         
         if stride is None:
-            stride = kernel_size//2
+            stride = kernel_size // 2
         
-        assert kernel_size%stride == 0, "kernel_size is expected divisible by stride"
+        assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         
         # Encoder-decoder
-        if 'in_channels' in kwargs:
-            self.in_channels = kwargs['in_channels']
-        else:
-            self.in_channels = 1
+        self.in_channels = kwargs.get('in_channels', 1)
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
@@ -58,6 +76,7 @@ class DPRNNTasNet(nn.Module):
         self.causal = causal
         self.sep_norm = sep_norm
         self.mask_nonlinear = mask_nonlinear
+        self.rnn_type = rnn_type
         
         self.n_sources = n_sources
         self.eps = eps
@@ -71,6 +90,7 @@ class DPRNNTasNet(nn.Module):
             chunk_size=sep_chunk_size, hop_size=sep_hop_size,
             num_blocks=sep_num_blocks, norm=sep_norm, mask_nonlinear=mask_nonlinear,
             causal=causal,
+            rnn_type=rnn_type,
             n_sources=n_sources,
             eps=eps
         )
@@ -153,6 +173,7 @@ class DPRNNTasNet(nn.Module):
             'causal': self.causal,
             'sep_norm': self.sep_norm,
             'mask_nonlinear': self.mask_nonlinear,
+            'rnn_type': self.rnn_type,
             'n_sources': self.n_sources,
             'eps': self.eps
         }
@@ -179,6 +200,7 @@ class DPRNNTasNet(nn.Module):
         mask_nonlinear = config['mask_nonlinear']
 
         causal = config['causal']
+        rnn_type = config.get('rnn_type') or 'lstm'
         n_sources = config['n_sources']
         
         eps = config['eps']
@@ -191,6 +213,7 @@ class DPRNNTasNet(nn.Module):
             sep_num_blocks=sep_num_blocks,
             sep_norm=sep_norm, mask_nonlinear=mask_nonlinear,
             causal=causal,
+            rnn_type=rnn_type,
             n_sources=n_sources,
             eps=eps
         )
@@ -198,6 +221,45 @@ class DPRNNTasNet(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+        elif task == 'librispeech':
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
         return model
     
     @property
@@ -218,6 +280,7 @@ class Separator(nn.Module):
         num_blocks=6,
         norm=True, mask_nonlinear='sigmoid',
         causal=True,
+        rnn_type='lstm',
         n_sources=2,
         eps=EPS
     ):
@@ -232,7 +295,7 @@ class Separator(nn.Module):
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.dprnn = DPRNN(bottleneck_channels, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm)
+        self.dprnn = DPRNN(bottleneck_channels, hidden_channels, num_blocks=num_blocks, causal=causal, norm=norm, rnn_type=rnn_type, eps=eps)
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
         
         self.prelu = nn.PReLU()

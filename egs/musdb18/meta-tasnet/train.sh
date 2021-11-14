@@ -9,7 +9,7 @@ valid_duration=10
 
 musdb18_root="../../../dataset/musdb18"
 is_wav=0 # If MUSDB is used, select 0. If MUSDB-HQ is used select 1.
-sr='[8000,16000,32000]'
+sample_rate='[8000,16000,32000]'
 stage=1
 
 # Encoder & decoder
@@ -75,7 +75,7 @@ if [ ${enc_bases} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_bases} != 'pin
     prefix="${preffix}enc-${enc_nonlinear}_"
 fi
 
-save_dir="${exp_dir}/${sources}/sr${sr}/${duration}sec/${enc_bases}-${dec_bases}/${criterion_reconstruction}-${reconstruction}_${criterion_similarity}${similarity}-${dissimilarity}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_mask-${mask_nonlinear}_conv-${conv_name}_norm-${norm_name}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+save_dir="${exp_dir}/${sources}/sr${sample_rate}/${duration}sec/${enc_bases}-${dec_bases}/${criterion_reconstruction}-${reconstruction}_${criterion_similarity}${similarity}-${dissimilarity}/N${N}_L${L}_B${B}_H${H}_Sc${Sc}_P${P}_X${X}_R${R}/${prefix}dilated${dilated}_separable${separable}_causal${causal}_${sep_nonlinear}_mask-${mask_nonlinear}_conv-${conv_name}_norm-${norm_name}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -93,7 +93,7 @@ export CUDA_VISIBLE_DEVICES="${gpu_id}"
 train.py \
 --musdb18_root "${musdb18_root}" \
 --is_wav ${is_wav} \
---sr ${sr} \
+--sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --stage ${stage} \
