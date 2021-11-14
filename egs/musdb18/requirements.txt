@@ -2,5 +2,5 @@ numpy>=1.19.0
 matplotlib
 musdb==0.4.0
 museval==0.4.0
-torch>=1.9.0
-torchaudio>=0.9.0
+torch>=1.10.0
+torchaudio>=0.10.0

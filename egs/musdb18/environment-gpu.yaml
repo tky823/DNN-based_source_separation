@@ -9,8 +9,8 @@ dependencies:
   - python>=3.6,<=3.9
   - numpy>=1.19
   - matplotlib
-  - pytorch>=1.9.0
-  - torchaudio>=0.9.0
+  - pytorch>=1.10.0
+  - torchaudio>=0.10.0
   - cudatoolkit>=10
   - pip
   - pip:

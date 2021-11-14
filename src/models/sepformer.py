@@ -393,7 +393,7 @@ class IntraTransformer(nn.Module):
 
         self.num_features = num_features
 
-        if type(norm) is bool and norm:
+        if isinstance(norm, int) and norm:
             norm_name = 'gLN'
         else:
             norm_name = norm
@@ -431,7 +431,7 @@ class InterTransformer(nn.Module):
 
         self.num_features = num_features
 
-        if type(norm) is bool and norm:
+        if isinstance(norm, int) and norm:
             norm_name = 'cLN' if causal else 'gLN'
         else:
             norm_name = norm
