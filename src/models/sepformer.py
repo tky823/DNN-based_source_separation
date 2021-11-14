@@ -254,7 +254,7 @@ class Separator(nn.Module):
         self.bottleneck_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.dptransformer = DualPathTransformer(
+        self.dptransformer = SepFormerBackbone(
             num_blocks=num_blocks, num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
             num_heads_intra=num_heads_intra, num_heads_inter=num_heads_inter,
             d_intra=bottleneck_channels, d_inter=bottleneck_channels, d_ff_intra=d_ff_intra, d_ff_inter=d_ff_inter,
@@ -312,7 +312,7 @@ class Separator(nn.Module):
         
         return output
 
-class DualPathTransformer(nn.Module):
+class SepFormerBackbone(nn.Module):
     def __init__(
         self,
         num_blocks=2, num_layers_intra=8, num_layers_inter=8,
@@ -327,7 +327,7 @@ class DualPathTransformer(nn.Module):
         net = []
         
         for _ in range(num_blocks):
-            module = DualPathTransformerBlock(
+            module = SepFormerBlock(
                 num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
                 num_heads_intra=num_heads_intra, num_heads_inter=num_heads_inter,
                 d_intra=d_intra, d_inter=d_inter, d_ff_intra=d_ff_intra, d_ff_inter=d_ff_inter,
@@ -350,7 +350,7 @@ class DualPathTransformer(nn.Module):
 
         return output
 
-class DualPathTransformerBlock(nn.Module):
+class SepFormerBlock(nn.Module):
     def __init__(
         self,
         num_layers_intra=8, num_layers_inter=8,
