@@ -101,7 +101,7 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 ```py
 from models.conv_tasnet import ConvTasNet
 
-model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)
+model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, target='vocals')
 ```
 
 | モデル | データセット | ダウンロードの例 |
@@ -123,3 +123,5 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)
 | DPTNet | WSJ0-2mix | `model = DPTNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 | D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+
+`egs/tutorials/hub/pretrained.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained.ipynb)にとんでください．
