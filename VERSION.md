@@ -85,3 +85,7 @@
 # v0.6.3
 - Update results.
 - Add MDX challenge 2021 examples.
+
+# v0.7.0
+- Add new models (`MMDenseLSTM`, `X-UMX`, `HRNet`, `SepFormer`).
+- Add pretrained models.
