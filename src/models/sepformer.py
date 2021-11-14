@@ -20,7 +20,7 @@ class SepFormer(nn.Module):
         sep_num_blocks=2,
         sep_num_layers_intra=8, sep_num_layers_inter=8, sep_num_heads_intra=8, sep_num_heads_inter=8,
         sep_d_ff_intra=1024, sep_d_ff_inter=1024,
-        sep_norm=True, sep_nonlinear='relu', mask_nonlinear='relu',
+        sep_norm=True, sep_nonlinear='relu', sep_dropout=1e-1, mask_nonlinear='relu',
         causal=True,
         n_sources=2,
         eps=EPS,
@@ -64,7 +64,7 @@ class SepFormer(nn.Module):
         self.sep_d_ff_intra, self.sep_d_ff_inter = sep_d_ff_intra, sep_d_ff_inter,
         
         self.causal = causal
-        self.sep_norm = sep_norm
+        self.sep_norm, self.sep_dropout = sep_norm, sep_dropout
         self.sep_nonlinear, self.mask_nonlinear = sep_nonlinear, mask_nonlinear
         
         self.n_sources = n_sources
@@ -80,7 +80,7 @@ class SepFormer(nn.Module):
             num_blocks=sep_num_blocks,
             num_layers_intra=sep_num_layers_intra, num_layers_inter=sep_num_layers_inter, num_heads_intra=sep_num_heads_intra, num_heads_inter=sep_num_heads_inter,
             d_ff_intra=sep_d_ff_intra, d_ff_inter=sep_d_ff_inter,
-            norm=sep_norm, nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+            norm=sep_norm, nonlinear=sep_nonlinear, dropout=sep_dropout, mask_nonlinear=mask_nonlinear,
             causal=causal,
             n_sources=n_sources,
             eps=eps
@@ -159,7 +159,7 @@ class SepFormer(nn.Module):
             'sep_num_layers_intra': self.sep_num_layers_intra, 'sep_num_layers_inter': self.sep_num_layers_inter,
             'sep_num_heads_intra': self.sep_num_heads_intra, 'sep_num_heads_inter': self.sep_num_heads_inter,
             'sep_d_ff_intra': self.sep_d_ff_intra, 'sep_d_ff_inter': self.sep_d_ff_inter,
-            'sep_norm': self.sep_norm, 'sep_nonlinear': self.sep_nonlinear, 'mask_nonlinear': self.mask_nonlinear,
+            'sep_norm': self.sep_norm, 'sep_nonlinear': self.sep_nonlinear, 'sep_dropout': self.sep_dropout, 'mask_nonlinear': self.mask_nonlinear,
             'causal': self.causal,
             'n_sources': self.n_sources,
             'eps': self.eps
@@ -187,6 +187,7 @@ class SepFormer(nn.Module):
         sep_d_ff_intra, sep_d_ff_inter = config['sep_d_ff_intra'], config['sep_d_ff_inter']
         
         sep_norm = config['sep_norm']
+        sep_dropout = config['sep_dropout']
         sep_nonlinear, mask_nonlinear = config['sep_nonlinear'], config['mask_nonlinear']
 
         causal = config['causal']
@@ -204,7 +205,7 @@ class SepFormer(nn.Module):
             sep_num_blocks=sep_num_blocks, sep_num_layers_intra=sep_num_layers_intra, sep_num_layers_inter=sep_num_layers_inter,
             sep_num_heads_intra=sep_num_heads_intra, sep_num_heads_inter=sep_num_heads_inter,
             sep_d_ff_intra=sep_d_ff_intra, sep_d_ff_inter=sep_d_ff_inter,
-            sep_norm=sep_norm, sep_nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+            sep_norm=sep_norm, sep_nonlinear=sep_nonlinear, sep_dropout=sep_dropout, mask_nonlinear=mask_nonlinear,
             causal=causal,
             n_sources=n_sources,
             eps=eps
@@ -237,7 +238,7 @@ class Separator(nn.Module):
         num_blocks=2, num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu', mask_nonlinear='relu',
+        norm=True, nonlinear='relu', dropout=1e-1, mask_nonlinear='relu',
         causal=False,
         n_sources=2,
         eps=EPS
@@ -253,11 +254,11 @@ class Separator(nn.Module):
         self.bottleneck_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         
         self.segment1d = Segment1d(chunk_size, hop_size)
-        self.dptransformer = DualPathTransformer(
+        self.dptransformer = SepFormerBackbone(
             num_blocks=num_blocks, num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
             num_heads_intra=num_heads_intra, num_heads_inter=num_heads_inter,
             d_intra=bottleneck_channels, d_inter=bottleneck_channels, d_ff_intra=d_ff_intra, d_ff_inter=d_ff_inter,
-            norm=norm, nonlinear=nonlinear,
+            norm=norm, dropout=dropout, nonlinear=nonlinear,
             causal=causal,
             eps=eps
         )
@@ -311,13 +312,13 @@ class Separator(nn.Module):
         
         return output
 
-class DualPathTransformer(nn.Module):
+class SepFormerBackbone(nn.Module):
     def __init__(
         self,
         num_blocks=2, num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_intra=256, d_inter=256, d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu', causal=False,
+        norm=True, dropout=1e-1, nonlinear='relu', causal=False,
         eps=EPS
     ):
         super().__init__()
@@ -326,11 +327,11 @@ class DualPathTransformer(nn.Module):
         net = []
         
         for _ in range(num_blocks):
-            module = DualPathTransformerBlock(
+            module = SepFormerBlock(
                 num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
                 num_heads_intra=num_heads_intra, num_heads_inter=num_heads_inter,
                 d_intra=d_intra, d_inter=d_inter, d_ff_intra=d_ff_intra, d_ff_inter=d_ff_inter,
-                norm=norm, nonlinear=nonlinear,
+                norm=norm, dropout=dropout, nonlinear=nonlinear,
                 causal=causal,
                 eps=eps
             )
@@ -349,13 +350,13 @@ class DualPathTransformer(nn.Module):
 
         return output
 
-class DualPathTransformerBlock(nn.Module):
+class SepFormerBlock(nn.Module):
     def __init__(
         self,
         num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_intra=256, d_inter=256, d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu',
+        norm=True, dropout=1e-1, nonlinear='relu',
         causal=False,
         eps=EPS
     ):
@@ -364,13 +365,13 @@ class DualPathTransformerBlock(nn.Module):
         self.intra_transformer = IntraTransformer(
             d_intra,
             num_layers=num_layers_intra, num_heads=num_heads_intra, d_ff=d_ff_intra,
-            norm=norm, nonlinear=nonlinear,
+            norm=norm, dropout=dropout, nonlinear=nonlinear,
             eps=eps
         )
         self.inter_transformer = InterTransformer(
             d_inter,
             num_layers=num_layers_inter, num_heads=num_heads_inter, d_ff=d_ff_inter,
-            norm=norm, nonlinear=nonlinear, causal=causal,
+            norm=norm, dropout=dropout, nonlinear=nonlinear, causal=causal,
             eps=eps
         )
         
@@ -387,19 +388,23 @@ class DualPathTransformerBlock(nn.Module):
         return output
 
 class IntraTransformer(nn.Module):
-    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=0, norm_first=False, eps=EPS):
+    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=1e-1, norm_first=False, eps=EPS):
         super().__init__()
 
         self.num_features = num_features
 
-        if type(norm) is bool and norm:
-            norm_name = 'gLN'
+        if isinstance(norm, int):
+            if norm:
+                norm_name = 'gLN'
+                layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
+            else:
+                layer_norm = None
         else:
             norm_name = norm
+            layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
         
         self.positional_encoding = PositionalEncoding(num_features, batch_first=False)
         encoder_layer = nn.TransformerEncoderLayer(num_features, num_heads, d_ff, dropout=dropout, activation=nonlinear, layer_norm_eps=eps, batch_first=False, norm_first=norm_first)
-        layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers, norm=layer_norm)
     
     def forward(self, input):
@@ -425,19 +430,23 @@ class IntraTransformer(nn.Module):
         return output
 
 class InterTransformer(nn.Module):
-    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=0, causal=False, norm_first=False, eps=EPS):
+    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=1e-1, causal=False, norm_first=False, eps=EPS):
         super().__init__()
 
         self.num_features = num_features
 
-        if type(norm) is bool and norm:
-            norm_name = 'cLN' if causal else 'gLN'
+        if isinstance(norm, int):
+            if norm:
+                norm_name = 'cLN' if causal else 'gLN'
+                layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
+            else:
+                layer_norm = None
         else:
             norm_name = norm
+            layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
         
         self.positional_encoding = PositionalEncoding(num_features, batch_first=False)
         encoder_layer = nn.TransformerEncoderLayer(num_features, num_heads, d_ff, dropout=dropout, activation=nonlinear, layer_norm_eps=eps, batch_first=False, norm_first=norm_first)
-        layer_norm = LayerNormWrapper(norm_name, num_features, causal=causal, batch_first=False, eps=eps)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers, norm=layer_norm)
         
     def forward(self, input):
@@ -516,20 +525,20 @@ def _test_inter_transformer():
 
     print(input.size(), output.size())
 
-def _test_dual_path_transformer_block():
+def _test_sepformer_block():
     d_model, d_ff = 32, 8
     input = torch.randn((4, d_model, 5, 8))
 
-    model = DualPathTransformerBlock(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
+    model = SepFormerBlock(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
     output = model(input)
 
     print(input.size(), output.size())
 
-def _test_dual_path_transformer():
+def _test_sepformer_backbone():
     d_model, d_ff = 32, 8
     input = torch.randn((4, d_model, 5, 8))
 
-    model = DualPathTransformer(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
+    model = SepFormerBackbone(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
     output = model(input)
 
     print(input.size(), output.size())
@@ -578,12 +587,12 @@ if __name__ == '__main__':
     _test_inter_transformer()
     print()
 
-    print("="*10, "DualPathTransformerBlock", "="*10)
-    _test_dual_path_transformer_block()
+    print("="*10, "SepFormerBlock", "="*10)
+    _test_sepformer_block()
     print()
 
-    print("="*10, "DualPathTransformer", "="*10)
-    _test_dual_path_transformer()
+    print("="*10, "SepFormerBackbone", "="*10)
+    _test_sepformer_backbone()
     print()
 
     print("="*10, "Separator", "="*10)

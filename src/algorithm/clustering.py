@@ -39,7 +39,7 @@ class KMeansBase(nn.Module):
         Returns:
             centroid_ids <torch.LongTensor>: (batch_size, K)
         """
-        batch_size, num_samples, num_features = data.size()
+        batch_size, num_samples, _ = data.size()
         centroid_ids = []
 
         for _ in range(batch_size):
@@ -57,7 +57,7 @@ class KMeansBase(nn.Module):
         Returns:
             centroid_ids <torch.LongTensor>: (batch_size, K)
         """
-        batch_size, num_samples, num_features = data.size()
+        _, num_samples, _ = data.size()
 
         centroid_ids = []
 
@@ -102,11 +102,12 @@ class KMeans(KMeansBase):
         return cluster_ids, centroids
         
     def update_once(self):
-        num_samples, K = self.num_samples, self.K
+        K = self.K
         cluster_ids = self.cluster_ids # (batch_size, num_samples)
         data = self.data # (batch_size, num_samples, num_features)
 
         mask = torch.eye(K)[cluster_ids] # (batch_size, num_samples, K)
+        mask = mask.to(data.device)
 
         """
         1. Calculate centroids

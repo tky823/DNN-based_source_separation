@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import warnings
 import argparse
+
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTestDataset, TestDataLoader
 from adhoc_driver import Tester
-from models.dptnet import DPTNet
+from models.sepformer import SepFormer
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Evaluation of Dual-Path trasformer network.")
+parser = argparse.ArgumentParser(description="Evaluation of SepFormer.")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
 parser.add_argument('--sample_rate', '-sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='clipped-sisdr', choices=['clipped-sisdr', 'sisdr'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
 parser.add_argument('--model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
@@ -33,7 +35,7 @@ def main(args):
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
-    model = DPTNet.build_model(args.model_path)
+    model = SepFormer.build_model(args.model_path)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -48,7 +50,10 @@ def main(args):
         print("Does NOT use CUDA")
     
     # Criterion
-    if args.criterion == 'sisdr':
+    if args.criterion in ['clipped-sisdr', 'sisdr']:
+        if args.criterion == 'clipped-sisdr':
+            warnings.warn("Clipped value is ignored at test time.", UserWarning)
+        
         criterion = NegSISDR()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
