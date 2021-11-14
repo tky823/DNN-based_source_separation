@@ -20,6 +20,7 @@ class KMeansBase(nn.Module):
         else:
             centroid_ids = self._init_kmeans_random(data, K=K) # (batch_size, K)
         
+        centroid_ids = centroid_ids.to(data.device)
         centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
         flatten_data = data.reshape(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
         flatten_centroids = flatten_data[centroid_ids]
