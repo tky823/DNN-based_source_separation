@@ -95,7 +95,7 @@ def main(args):
         sep_num_layers_intra=args.sep_num_layers_intra, sep_num_layers_inter=args.sep_num_layers_inter,
         sep_num_heads_intra=args.sep_num_heads_intra, sep_num_heads_inter=args.sep_num_heads_inter,
         sep_d_ff_intra=args.sep_d_ff_intra, sep_d_ff_inter=args.sep_d_ff_inter,
-        sep_norm=args.sep_norm, sep_nonlinear=args.sep_nonlinear, mask_nonlinear=args.mask_nonlinear,
+        sep_norm=args.sep_norm, sep_nonlinear=args.sep_nonlinear, sep_dropout=args.sep_dropout, mask_nonlinear=args.mask_nonlinear,
         causal=args.causal,
         n_sources=args.n_sources
     )

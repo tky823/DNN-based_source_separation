@@ -1,21 +1,16 @@
 #!/bin/bash
 
 exp_dir="./exp"
-continue_from=""
 tag=""
 
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sample_rate=${sr_k}000
 duration=4
-valid_duration=10
 max_or_min='min'
 
-train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
-valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
-
-train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
-valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
+wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
+test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tt_mix"
 
 # Encoder & decoder
 enc_basis='trainable' # choose from ['trainable','Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
@@ -91,10 +86,12 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
+model_choice="best"
+
 model_dir="${save_dir}/model"
-loss_dir="${save_dir}/loss"
-sample_dir="${save_dir}/sample"
+model_path="${model_dir}/${model_choice}.pth"
 log_dir="${save_dir}/log"
+out_dir="${save_dir}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -104,50 +101,14 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
-train.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
---train_list_path ${train_list_path} \
---valid_list_path ${valid_list_path} \
+test.py \
+--test_wav_root ${wav_root} \
+--test_list_path ${test_list_path} \
 --sample_rate ${sample_rate} \
---duration ${duration} \
---valid_duration ${valid_duration} \
---enc_basis ${enc_basis} \
---dec_basis ${dec_basis} \
---enc_nonlinear "${enc_nonlinear}" \
---window_fn "${window_fn}" \
---enc_onesided "${enc_onesided}" \
---enc_return_complex "${enc_return_complex}" \
--F ${F} \
--L ${L} \
--B ${B} \
--C ${C} \
--P ${P} \
--N ${N} \
--K_intra ${K_intra} \
--K_inter ${K_inter} \
--h_intra ${h_intra} \
--h_inter ${h_inter} \
--d_ff_intra ${d_ff_intra} \
--d_ff_inter ${d_ff_inter} \
---causal ${causal} \
---sep_norm ${sep_norm} \
---sep_nonlinear ${sep_nonlinear} \
---sep_dropout ${sep_dropout} \
---mask_nonlinear ${mask_nonlinear} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
---clip ${clip} \
---optimizer ${optimizer} \
---lr ${lr} \
---weight_decay ${weight_decay} \
---max_norm ${max_norm} \
---batch_size ${batch_size} \
---epochs ${epochs} \
---model_dir "${model_dir}" \
---loss_dir "${loss_dir}" \
---sample_dir "${sample_dir}" \
---continue_from "${continue_from}" \
+--out_dir "${out_dir}" \
+--model_path "${model_path}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
---seed ${seed} | tee "${log_dir}/train_${time_stamp}.log"
+--seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"

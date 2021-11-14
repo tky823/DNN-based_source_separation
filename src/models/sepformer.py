@@ -20,7 +20,7 @@ class SepFormer(nn.Module):
         sep_num_blocks=2,
         sep_num_layers_intra=8, sep_num_layers_inter=8, sep_num_heads_intra=8, sep_num_heads_inter=8,
         sep_d_ff_intra=1024, sep_d_ff_inter=1024,
-        sep_norm=True, sep_nonlinear='relu', mask_nonlinear='relu',
+        sep_norm=True, sep_nonlinear='relu', sep_dropout=1e-1, mask_nonlinear='relu',
         causal=True,
         n_sources=2,
         eps=EPS,
@@ -64,7 +64,7 @@ class SepFormer(nn.Module):
         self.sep_d_ff_intra, self.sep_d_ff_inter = sep_d_ff_intra, sep_d_ff_inter,
         
         self.causal = causal
-        self.sep_norm = sep_norm
+        self.sep_norm, self.sep_dropout = sep_norm, sep_dropout
         self.sep_nonlinear, self.mask_nonlinear = sep_nonlinear, mask_nonlinear
         
         self.n_sources = n_sources
@@ -80,7 +80,7 @@ class SepFormer(nn.Module):
             num_blocks=sep_num_blocks,
             num_layers_intra=sep_num_layers_intra, num_layers_inter=sep_num_layers_inter, num_heads_intra=sep_num_heads_intra, num_heads_inter=sep_num_heads_inter,
             d_ff_intra=sep_d_ff_intra, d_ff_inter=sep_d_ff_inter,
-            norm=sep_norm, nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+            norm=sep_norm, nonlinear=sep_nonlinear, dropout=sep_dropout, mask_nonlinear=mask_nonlinear,
             causal=causal,
             n_sources=n_sources,
             eps=eps
@@ -159,7 +159,7 @@ class SepFormer(nn.Module):
             'sep_num_layers_intra': self.sep_num_layers_intra, 'sep_num_layers_inter': self.sep_num_layers_inter,
             'sep_num_heads_intra': self.sep_num_heads_intra, 'sep_num_heads_inter': self.sep_num_heads_inter,
             'sep_d_ff_intra': self.sep_d_ff_intra, 'sep_d_ff_inter': self.sep_d_ff_inter,
-            'sep_norm': self.sep_norm, 'sep_nonlinear': self.sep_nonlinear, 'mask_nonlinear': self.mask_nonlinear,
+            'sep_norm': self.sep_norm, 'sep_nonlinear': self.sep_nonlinear, 'sep_dropout': self.sep_dropout, 'mask_nonlinear': self.mask_nonlinear,
             'causal': self.causal,
             'n_sources': self.n_sources,
             'eps': self.eps
@@ -187,6 +187,7 @@ class SepFormer(nn.Module):
         sep_d_ff_intra, sep_d_ff_inter = config['sep_d_ff_intra'], config['sep_d_ff_inter']
         
         sep_norm = config['sep_norm']
+        sep_dropout = config['sep_dropout']
         sep_nonlinear, mask_nonlinear = config['sep_nonlinear'], config['mask_nonlinear']
 
         causal = config['causal']
@@ -204,7 +205,7 @@ class SepFormer(nn.Module):
             sep_num_blocks=sep_num_blocks, sep_num_layers_intra=sep_num_layers_intra, sep_num_layers_inter=sep_num_layers_inter,
             sep_num_heads_intra=sep_num_heads_intra, sep_num_heads_inter=sep_num_heads_inter,
             sep_d_ff_intra=sep_d_ff_intra, sep_d_ff_inter=sep_d_ff_inter,
-            sep_norm=sep_norm, sep_nonlinear=sep_nonlinear, mask_nonlinear=mask_nonlinear,
+            sep_norm=sep_norm, sep_nonlinear=sep_nonlinear, sep_dropout=sep_dropout, mask_nonlinear=mask_nonlinear,
             causal=causal,
             n_sources=n_sources,
             eps=eps
@@ -237,7 +238,7 @@ class Separator(nn.Module):
         num_blocks=2, num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu', mask_nonlinear='relu',
+        norm=True, nonlinear='relu', dropout=1e-1, mask_nonlinear='relu',
         causal=False,
         n_sources=2,
         eps=EPS
@@ -257,7 +258,7 @@ class Separator(nn.Module):
             num_blocks=num_blocks, num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
             num_heads_intra=num_heads_intra, num_heads_inter=num_heads_inter,
             d_intra=bottleneck_channels, d_inter=bottleneck_channels, d_ff_intra=d_ff_intra, d_ff_inter=d_ff_inter,
-            norm=norm, nonlinear=nonlinear,
+            norm=norm, dropout=dropout, nonlinear=nonlinear,
             causal=causal,
             eps=eps
         )
@@ -317,7 +318,7 @@ class DualPathTransformer(nn.Module):
         num_blocks=2, num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_intra=256, d_inter=256, d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu', causal=False,
+        norm=True, dropout=1e-1, nonlinear='relu', causal=False,
         eps=EPS
     ):
         super().__init__()
@@ -330,7 +331,7 @@ class DualPathTransformer(nn.Module):
                 num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
                 num_heads_intra=num_heads_intra, num_heads_inter=num_heads_inter,
                 d_intra=d_intra, d_inter=d_inter, d_ff_intra=d_ff_intra, d_ff_inter=d_ff_inter,
-                norm=norm, nonlinear=nonlinear,
+                norm=norm, dropout=dropout, nonlinear=nonlinear,
                 causal=causal,
                 eps=eps
             )
@@ -355,7 +356,7 @@ class DualPathTransformerBlock(nn.Module):
         num_layers_intra=8, num_layers_inter=8,
         num_heads_intra=8, num_heads_inter=8,
         d_intra=256, d_inter=256, d_ff_intra=1024, d_ff_inter=1024,
-        norm=True, nonlinear='relu',
+        norm=True, dropout=1e-1, nonlinear='relu',
         causal=False,
         eps=EPS
     ):
@@ -364,13 +365,13 @@ class DualPathTransformerBlock(nn.Module):
         self.intra_transformer = IntraTransformer(
             d_intra,
             num_layers=num_layers_intra, num_heads=num_heads_intra, d_ff=d_ff_intra,
-            norm=norm, nonlinear=nonlinear,
+            norm=norm, dropout=dropout, nonlinear=nonlinear,
             eps=eps
         )
         self.inter_transformer = InterTransformer(
             d_inter,
             num_layers=num_layers_inter, num_heads=num_heads_inter, d_ff=d_ff_inter,
-            norm=norm, nonlinear=nonlinear, causal=causal,
+            norm=norm, dropout=dropout, nonlinear=nonlinear, causal=causal,
             eps=eps
         )
         
@@ -387,7 +388,7 @@ class DualPathTransformerBlock(nn.Module):
         return output
 
 class IntraTransformer(nn.Module):
-    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=0, norm_first=False, eps=EPS):
+    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=1e-1, norm_first=False, eps=EPS):
         super().__init__()
 
         self.num_features = num_features
@@ -425,7 +426,7 @@ class IntraTransformer(nn.Module):
         return output
 
 class InterTransformer(nn.Module):
-    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=0, causal=False, norm_first=False, eps=EPS):
+    def __init__(self, num_features, num_layers=8, num_heads=8, d_ff=1024, norm=True, nonlinear='relu', dropout=1e-1, causal=False, norm_first=False, eps=EPS):
         super().__init__()
 
         self.num_features = num_features
