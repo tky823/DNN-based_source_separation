@@ -393,14 +393,18 @@ class IntraTransformer(nn.Module):
 
         self.num_features = num_features
 
-        if isinstance(norm, int) and norm:
-            norm_name = 'gLN'
+        if isinstance(norm, int):
+            if norm:
+                norm_name = 'gLN'
+                layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
+            else:
+                layer_norm = None
         else:
             norm_name = norm
+            layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
         
         self.positional_encoding = PositionalEncoding(num_features, batch_first=False)
         encoder_layer = nn.TransformerEncoderLayer(num_features, num_heads, d_ff, dropout=dropout, activation=nonlinear, layer_norm_eps=eps, batch_first=False, norm_first=norm_first)
-        layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers, norm=layer_norm)
     
     def forward(self, input):
@@ -431,14 +435,18 @@ class InterTransformer(nn.Module):
 
         self.num_features = num_features
 
-        if isinstance(norm, int) and norm:
-            norm_name = 'cLN' if causal else 'gLN'
+        if isinstance(norm, int):
+            if norm:
+                norm_name = 'cLN' if causal else 'gLN'
+                layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
+            else:
+                layer_norm = None
         else:
             norm_name = norm
+            layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
         
         self.positional_encoding = PositionalEncoding(num_features, batch_first=False)
         encoder_layer = nn.TransformerEncoderLayer(num_features, num_heads, d_ff, dropout=dropout, activation=nonlinear, layer_norm_eps=eps, batch_first=False, norm_first=norm_first)
-        layer_norm = LayerNormWrapper(norm_name, num_features, causal=causal, batch_first=False, eps=eps)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers, norm=layer_norm)
         
     def forward(self, input):
@@ -517,20 +525,20 @@ def _test_inter_transformer():
 
     print(input.size(), output.size())
 
-def _test_dual_path_transformer_block():
+def _test_sepformer_block():
     d_model, d_ff = 32, 8
     input = torch.randn((4, d_model, 5, 8))
 
-    model = DualPathTransformerBlock(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
+    model = SepFormerBlock(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
     output = model(input)
 
     print(input.size(), output.size())
 
-def _test_dual_path_transformer():
+def _test_sepformer_backbone():
     d_model, d_ff = 32, 8
     input = torch.randn((4, d_model, 5, 8))
 
-    model = DualPathTransformer(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
+    model = SepFormerBackbone(d_intra=d_model, d_inter=d_model, d_ff_intra=d_ff, d_ff_inter=d_ff)
     output = model(input)
 
     print(input.size(), output.size())
@@ -579,12 +587,12 @@ if __name__ == '__main__':
     _test_inter_transformer()
     print()
 
-    print("="*10, "DualPathTransformerBlock", "="*10)
-    _test_dual_path_transformer_block()
+    print("="*10, "SepFormerBlock", "="*10)
+    _test_sepformer_block()
     print()
 
-    print("="*10, "DualPathTransformer", "="*10)
-    _test_dual_path_transformer()
+    print("="*10, "SepFormerBackbone", "="*10)
+    _test_sepformer_backbone()
     print()
 
     print("="*10, "Separator", "="*10)
