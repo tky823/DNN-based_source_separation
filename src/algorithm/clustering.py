@@ -20,7 +20,6 @@ class KMeansBase(nn.Module):
         else:
             centroid_ids = self._init_kmeans_random(data, K=K) # (batch_size, K)
         
-        centroid_ids = centroid_ids.to(data.device)
         centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
         flatten_data = data.reshape(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
         flatten_centroids = flatten_data[centroid_ids]
@@ -47,7 +46,8 @@ class KMeansBase(nn.Module):
             _centroid_ids = random.sample(range(num_samples), K)
             centroid_ids.append(_centroid_ids)
         
-        centroid_ids = torch.stack(centroid_ids, dim=0) # (batch_size, K)
+        centroid_ids = torch.Tensor(centroid_ids).long() # (batch_size, K)
+        centroid_ids = centroid_ids.to(data.device)
 
         return centroid_ids
     
@@ -77,6 +77,7 @@ class KMeansBase(nn.Module):
             centroid_ids.append(_centroid_ids)
         
         centroid_ids = torch.Tensor(centroid_ids).long()
+        centroid_ids = centroid_ids.to(data.device)
 
         return centroid_ids
     
