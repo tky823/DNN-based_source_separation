@@ -97,11 +97,11 @@ def main(args):
         if torch.cuda.is_available():
             model.cuda()
             model = nn.DataParallel(model)
-            print("Use CUDA")
+            print("Use CUDA", flush=True)
         else:
             raise ValueError("Cannot use CUDA.")
     else:
-        print("Does NOT use CUDA")
+        print("Does NOT use CUDA", flush=True)
         
     # Optimizer
     # The learning rate is computed in AdhocTrainer. In fact, You don't have to specify learning rate in advance.
