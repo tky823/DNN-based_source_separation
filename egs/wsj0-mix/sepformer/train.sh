@@ -26,7 +26,7 @@ enc_onesided=0 # enc_onesided is activated if enc_basis or dec_basis in ['Fourie
 enc_return_complex=0 # enc_return_complex is activated if enc_basis or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']
 
 F=256
-L=8 # L corresponds to the window length (samples) in this script.
+L=16 # L corresponds to the window length (samples) in this script.
 
 # Separator
 B=256
