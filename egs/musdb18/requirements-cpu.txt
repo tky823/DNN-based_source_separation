@@ -1,7 +1,0 @@
-numpy>=1.19.0
-matplotlib
-musdb==0.4.0
-museval==0.4.0
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==1.10.0+cpu
-torchaudio==0.10.0+cpu
