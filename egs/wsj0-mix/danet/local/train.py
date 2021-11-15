@@ -3,6 +3,7 @@
 
 import argparse
 
+import yaml
 import torch
 import torch.nn as nn
 
@@ -39,7 +40,8 @@ parser.add_argument('--optimizer', type=str, default='rmsprop', choices=['sgd', 
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate. Default: 1e-4')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=16, help='Batch size. Default: 16')
+parser.add_argument('--scheduler_path', type=str, default=None, help='Path to scheduler.yaml')
+parser.add_argument('--batch_size', type=int, default=64, help='Batch size. Default: 64')
 parser.add_argument('--epochs', type=int, default=150, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -96,6 +98,16 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
+
+    # Scheduler
+    with open(args.scheduler_path) as f:
+        config_scheduler = yaml.safe_load(f)
+    
+    if config_scheduler['scheduler'] == 'ExponentialLR':
+        config_scheduler.pop('scheduler')
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, **config_scheduler)
+    else:
+        raise NotImplementedError("Not support schduler {}.".format(args.scheduler))
     
     # Criterion
     if args.criterion == 'se':
@@ -107,7 +119,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()
     
 if __name__ == '__main__':

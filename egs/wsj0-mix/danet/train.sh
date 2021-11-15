@@ -39,9 +39,9 @@ criterion='se' # or 'l2loss'
 # Optimizer
 optimizer='rmsprop'
 lr=1e-4
-lr_end=3e-6
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
+scheduler_path="./config/paper/scheduler.yaml"
 
 batch_size=64
 epochs=150
@@ -57,7 +57,7 @@ gpu_id="0"
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
     save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}"
-    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-${lr_end}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -65,7 +65,26 @@ fi
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
+config_dir="${save_dir}/config"
 log_dir="${save_dir}/log"
+
+if [ ! -e "${config_dir}" ]; then
+    mkdir -p "${config_dir}"
+fi
+
+augmentation_dir=`dirname ${augmentation_path}`
+augmentation_name=`basename ${augmentation_path}`
+
+if [ ! -e "${config_dir}/${augmentation_name}" ]; then
+    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
+fi
+
+scheduler_dir=`dirname ${scheduler_path}`
+scheduler_name=`basename ${scheduler_path}`
+
+if [ ! -e "${config_dir}/${scheduler_name}" ]; then
+    cp "${scheduler_path}" "${config_dir}/${scheduler_name}"
+fi
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -98,9 +117,9 @@ train.py \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
---lr_end ${lr_end} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
+--scheduler_path "${scheduler_path}" \
 --batch_size ${batch_size} \
 --epochs ${epochs} \
 --model_dir "${model_dir}" \

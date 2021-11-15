@@ -18,13 +18,13 @@ MIN_PESQ = -0.5
 NO_IMPROVEMENT = 10
 
 class AdhocTrainer(TrainerBase):
-    def __init__(self, model, loader, criterion, optimizer, args):
+    def __init__(self, model, loader, criterion, optimizer, scheduler, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
         
         self.model = model
         
         self.criterion = criterion
-        self.optimizer = optimizer
+        self.optimizer, self.scheduler = optimizer, scheduler
         
         self._reset(args)
     
@@ -37,8 +37,6 @@ class AdhocTrainer(TrainerBase):
         self.fft_size, self.hop_size = args.fft_size, args.hop_size
         self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
-
-        self.lr_decay = (args.lr_end / args.lr)**(1 / self.epochs)
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -56,15 +54,7 @@ class AdhocTrainer(TrainerBase):
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
-            # Learning rate scheduling
-            # torch.optim.lr_scheduler.ExponentialLR may be useful.
-            lr_decay = self.lr_decay
-
-            for param_group in self.optimizer.param_groups:
-                prev_lr = param_group['lr']
-                lr = lr_decay * prev_lr
-                print("Learning rate: {} -> {}".format(prev_lr, lr))
-                param_group['lr'] = lr
+            self.scheduler.step()
             
             if self.valid_loader is not None:
                 if valid_loss < self.best_loss:

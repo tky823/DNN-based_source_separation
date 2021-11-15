@@ -34,7 +34,6 @@ criterion='se' # or 'l2loss'
 # Optimizer
 optimizer='rmsprop'
 lr=1e-4
-lr_end=3e-6
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
@@ -52,7 +51,7 @@ gpu_id="0"
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
     save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}"
-    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-${lr_end}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
