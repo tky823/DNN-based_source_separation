@@ -55,7 +55,7 @@ class TrainerBase:
             self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
             
             self.best_loss = config['best_loss']
-            self.prev_loss = self.valid_loss[self.start_epoch-1]
+            self.prev_loss = self.valid_loss[self.start_epoch - 1]
             self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):

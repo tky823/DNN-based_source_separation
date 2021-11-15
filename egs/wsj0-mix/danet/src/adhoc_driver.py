@@ -27,13 +27,62 @@ class AdhocTrainer(TrainerBase):
         self.optimizer, self.scheduler = optimizer, scheduler
         
         self._reset(args)
-    
+
     def _reset(self, args):
-        # Override
-        super()._reset(args)
+        self.sample_rate = args.sample_rate
+        self.n_sources = args.n_sources
+        self.max_norm = args.max_norm
+        
+        self.model_dir = args.model_dir
+        self.loss_dir = args.loss_dir
+        self.sample_dir = args.sample_dir
+        
+        os.makedirs(self.model_dir, exist_ok=True)
+        os.makedirs(self.loss_dir, exist_ok=True)
+        os.makedirs(self.sample_dir, exist_ok=True)
+        
+        self.epochs = args.epochs
+        
+        self.train_loss = torch.empty(self.epochs)
+        self.valid_loss = torch.empty(self.epochs)
+        
+        self.use_cuda = args.use_cuda
+        
+        if args.continue_from:
+            config = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
+            
+            self.start_epoch = config['epoch']
+            
+            self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
+            self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
+            
+            self.best_loss = config['best_loss']
+            self.prev_loss = self.valid_loss[self.start_epoch - 1]
+            self.no_improvement = config['no_improvement']
+            
+            if isinstance(self.model, nn.DataParallel):
+                self.model.module.load_state_dict(config['state_dict'])
+            else:
+                self.model.load_state_dict(config['state_dict'])
+            
+            self.optimizer.load_state_dict(config['optim_dict'])
+            self.scheduler.load_state_dict(config['scheduler_dict'])
+        else:
+            model_path = os.path.join(self.model_dir, "best.pth")
+            
+            if os.path.exists(model_path):
+                if args.overwrite:
+                    print("Overwrite models.")
+                else:
+                    raise ValueError("{} already exists. If you continue to run, set --overwrite to be True.".format(model_path))
+            
+            self.start_epoch = 0
+            
+            self.best_loss = float('infinity')
+            self.prev_loss = float('infinity')
+            self.no_improvement = 0
         
         self.n_bins = args.n_bins
-
         self.fft_size, self.hop_size = args.fft_size, args.hop_size
         self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
