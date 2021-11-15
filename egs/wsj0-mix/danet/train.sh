@@ -72,13 +72,6 @@ if [ ! -e "${config_dir}" ]; then
     mkdir -p "${config_dir}"
 fi
 
-augmentation_dir=`dirname ${augmentation_path}`
-augmentation_name=`basename ${augmentation_path}`
-
-if [ ! -e "${config_dir}/${augmentation_name}" ]; then
-    cp "${augmentation_path}" "${config_dir}/${augmentation_name}"
-fi
-
 scheduler_dir=`dirname ${scheduler_path}`
 scheduler_name=`basename ${scheduler_path}`
 
