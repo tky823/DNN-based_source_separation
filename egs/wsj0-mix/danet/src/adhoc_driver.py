@@ -251,6 +251,27 @@ class AdhocTrainer(TrainerBase):
         
         return valid_loss
 
+    def save_model(self, epoch, model_path='./tmp.pth'):
+        if isinstance(self.model, nn.DataParallel):
+            config = self.model.module.get_config()
+            config['state_dict'] = self.model.module.state_dict()
+        else:
+            config = self.model.get_config()
+            config['state_dict'] = self.model.state_dict()
+            
+        config['optim_dict'] = self.optimizer.state_dict()
+        config['scheduler_dict'] = self.scheduler.state_dict()
+        
+        config['best_loss'] = self.best_loss
+        config['no_improvement'] = self.no_improvement
+        
+        config['train_loss'] = self.train_loss
+        config['valid_loss'] = self.valid_loss
+        
+        config['epoch'] = epoch + 1
+        
+        torch.save(config, model_path)
+
 class AdhocTester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):
         self.loader = loader
