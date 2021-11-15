@@ -15,6 +15,7 @@ from criterion.pit import pit
 
 BITS_PER_SAMPLE_WSJ0 = 16
 MIN_PESQ = -0.5
+NO_IMPROVEMENT = 10
 
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, criterion, optimizer, args):
@@ -34,21 +35,10 @@ class AdhocTrainer(TrainerBase):
         self.n_bins = args.n_bins
 
         self.fft_size, self.hop_size = args.fft_size, args.hop_size
-
-        if args.window_fn:
-            if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.fft_size, periodic=True)
-            elif args.window_fn == 'hamming':
-                self.window = torch.hamming_window(self.fft_size, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
-        else:
-            self.window = None
-        
+        self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
-        assert self.normalize == self.valid_loader.dataset.normalize, "Nomalization of STFT is different between `train_loader.dataset` and `valid_loader.dataset`."
 
-        self.lr_decay = (args.lr_end / args.lr)**(1/self.epochs)
+        self.lr_decay = (args.lr_end / args.lr)**(1 / self.epochs)
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -56,42 +46,66 @@ class AdhocTrainer(TrainerBase):
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
-            
+            s = "[Epoch {}/{}] loss (train): {:.5f}".format(epoch + 1, self.epochs, train_loss)
             self.train_loss[epoch] = train_loss
-            self.valid_loss[epoch] = valid_loss
+
+            if self.valid_loader is not None:
+                s += ", loss (valid): {:.5f}".format(valid_loss)
+                self.valid_loss[epoch] = valid_loss
+            
+            s += ", {:.3f} [sec]".format(end - start)
+            print(s, flush=True)
 
             # Learning rate scheduling
             # torch.optim.lr_scheduler.ExponentialLR may be useful.
             lr_decay = self.lr_decay
+
             for param_group in self.optimizer.param_groups:
                 prev_lr = param_group['lr']
                 lr = lr_decay * prev_lr
                 print("Learning rate: {} -> {}".format(prev_lr, lr))
                 param_group['lr'] = lr
             
-            if valid_loss < self.best_loss:
-                self.best_loss = valid_loss
-                self.no_improvement = 0
-                model_path = os.path.join(self.model_dir, "best.pth")
-                self.save_model(epoch, model_path)
-            else:
-                if valid_loss >= self.prev_loss:
-                    self.no_improvement += 1
-                    if self.no_improvement >= 10:
-                        print("Stop training")
-                        break
-                else:
+            if self.valid_loader is not None:
+                if valid_loss < self.best_loss:
+                    self.best_loss = valid_loss
                     self.no_improvement = 0
+                    model_path = os.path.join(self.model_dir, "best.pth")
+                    self.save_model(epoch, model_path)
+                else:
+                    if valid_loss >= self.prev_loss:
+                        self.no_improvement += 1
+                        if self.no_improvement >= NO_IMPROVEMENT:
+                            print("Stop training")
+                            break
+                    else:
+                        self.no_improvement = 0
             
-            self.prev_loss = valid_loss
+                self.prev_loss = valid_loss
             
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
+
+            if self.valid_loader is not None:
+                draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
+            else:
+                draw_loss_curve(train_loss=self.train_loss[:epoch + 1], save_path=save_path)
     
+    def run_one_epoch(self, epoch):
+        """
+        Training
+        """
+        train_loss = self.run_one_epoch_train(epoch)
+
+        if self.valid_loader is not None:
+            valid_loss = self.run_one_epoch_eval(epoch)
+        else:
+            valid_loss = None
+
+        return train_loss, valid_loss
+
     def run_one_epoch_train(self, epoch):
         # Override
         """
@@ -214,17 +228,7 @@ class AdhocTester(TesterBase):
 
         self.n_bins = args.n_bins
         self.fft_size, self.hop_size = args.fft_size, args.hop_size
-
-        if args.window_fn:
-            if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.fft_size, periodic=True)
-            elif args.window_fn == 'hamming':
-                self.window = torch.hamming_window(self.fft_size, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
-        else:
-            self.window = None
-        
+        self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
     
     def run(self):
