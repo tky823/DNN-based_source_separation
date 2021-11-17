@@ -56,8 +56,8 @@ class ParallelMMDenseRNN(nn.Module):
         return output
 
     @classmethod
-    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann'):
-        return ParallelMMDenseRNNTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn)
+    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann', eps=EPS):
+        return ParallelMMDenseRNNTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)
     
     @property
     def num_parameters(self):
@@ -70,7 +70,7 @@ class ParallelMMDenseRNN(nn.Module):
         return _num_parameters
 
 class ParallelMMDenseRNNTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: ParallelMMDenseRNN, fft_size, hop_size=None, window_fn='hann'):
+    def __init__(self, base_model: ParallelMMDenseRNN, fft_size, hop_size=None, window_fn='hann', eps=EPS):
         super().__init__()
 
         self.base_model = base_model
@@ -83,6 +83,7 @@ class ParallelMMDenseRNNTimeDomainWrapper(nn.Module):
         self.window = nn.Parameter(window, requires_grad=False)
 
         self.sources = list(self.base_model.net.keys())
+        self.eps = eps
     
     def forward(self, input, iteration=1):
         """
@@ -96,6 +97,7 @@ class ParallelMMDenseRNNTimeDomainWrapper(nn.Module):
 
         n_sources = len(self.sources)
         batch_size, _, in_channels, T = input.size()
+        eps = self.eps
 
         input = input.reshape(batch_size * in_channels, T)
         mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
@@ -109,7 +111,7 @@ class ParallelMMDenseRNNTimeDomainWrapper(nn.Module):
             estimated_amplitude.append(_estimated_amplitude)
         
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
-        estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration)
+        estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
         estimated_spectrogram = estimated_spectrogram.reshape(batch_size * n_sources * in_channels, *estimated_spectrogram.size()[-2:])
         output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
         output = output.reshape(batch_size, n_sources, in_channels, T)
