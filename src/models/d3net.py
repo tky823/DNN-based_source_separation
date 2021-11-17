@@ -90,7 +90,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
         window = build_window(fft_size, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
-        self.sources = list(self.base_model.modules.keys())
+        self.sources = list(self.base_model.net.keys())
     
     def forward(self, input, iteration=1):
         """
