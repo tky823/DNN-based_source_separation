@@ -317,8 +317,8 @@ class OpenUnmix(nn.Module):
 
         return model
     
-    @classmethod
-    def TimeDomainWrapper(_):
+    @property
+    def TimeDomainWrapper(self):
         return OpenUnmixTimeDomainWrapper
     
     @property
