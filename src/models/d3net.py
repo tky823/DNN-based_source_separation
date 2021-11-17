@@ -116,6 +116,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
             _estimated_amplitude = self.base_model(mixture_amplitude, target=target)
             estimated_amplitude.append(_estimated_amplitude)
         
+        estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
         estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration)
         estimated_spectrogram = estimated_spectrogram.reshape(batch_size * n_sources * in_channels, *estimated_spectrogram.size()[-2:])
         output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
