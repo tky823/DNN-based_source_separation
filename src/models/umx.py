@@ -317,9 +317,9 @@ class OpenUnmix(nn.Module):
 
         return model
     
-    @property
-    def TimeDomainWrapper(self):
-        return OpenUnmixTimeDomainWrapper
+    @classmethod
+    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann'):
+        return OpenUnmixTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn)
     
     @property
     def num_parameters(self):
