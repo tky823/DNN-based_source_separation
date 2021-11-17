@@ -2,7 +2,8 @@ import yaml
 import torch
 import torch.nn as nn
 
-from utils.utils_audio import build_window
+from utils.audio import build_window
+from algorithm.frequency_mask import multichannel_wiener_filter
 from utils.model import choose_nonlinear, choose_rnn
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
@@ -59,7 +60,11 @@ class ParallelOpenUnmix(nn.Module):
         output = self.net[target](input)
 
         return output
-    
+
+    @classmethod
+    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann'):
+        return ParallelOpenUnmixTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn)
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -69,6 +74,52 @@ class ParallelOpenUnmix(nn.Module):
                 _num_parameters += p.numel()
                 
         return _num_parameters
+
+class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
+    def __init__(self, base_model: ParallelOpenUnmix, fft_size, hop_size=None, window_fn='hann'):
+        super().__init__()
+
+        self.base_model = base_model
+
+        if hop_size is None:
+            hop_size = fft_size // 4
+        
+        self.fft_size, self.hop_size = fft_size, hop_size
+        window = build_window(fft_size, window_fn=window_fn)
+        self.window = nn.Parameter(window, requires_grad=False)
+
+        self.sources = list(self.base_model.modules.keys())
+    
+    def forward(self, input, iteration=1):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, 1, in_channels, T)
+            iteration <int>: Iteration of EM algorithm
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, in_channels, T)
+        """
+        assert input.dim() == 4, "input is expected 4D input."
+
+        n_sources = len(self.sources)
+        batch_size, _, in_channels, T = input.size()
+
+        input = input.reshape(batch_size * in_channels, T)
+        mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
+        mixture_spectrogram = mixture_spectrogram.reshape(batch_size, in_channels, *mixture_spectrogram.size()[-2:])
+        mixture_amplitude = torch.abs(mixture_spectrogram)
+
+        estimated_amplitude = []
+
+        for target in self.sources:
+            _estimated_amplitude = self.base_model(mixture_amplitude, target=target)
+            estimated_amplitude.append(_estimated_amplitude)
+        
+        estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration)
+        estimated_spectrogram = estimated_spectrogram.reshape(batch_size * n_sources * in_channels, *estimated_spectrogram.size()[-2:])
+        output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
+        output = output.reshape(batch_size, n_sources, in_channels, T)
+
+        return output
 
 """
 Open-Unmix
