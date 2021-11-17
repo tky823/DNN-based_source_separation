@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+from utils.utils_audio import build_window
 from utils.m_densenet import choose_layer_norm, choose_nonlinear
 from models.glu import GLU2d
 
@@ -122,7 +123,6 @@ class MDenseNet(nn.Module):
         """
         max_bin = self.max_bin
         n_bins = input.size(2)
-        eps = self.eps
 
         if max_bin == n_bins:
             x_valid, x_invalid = input, None
@@ -130,13 +130,12 @@ class MDenseNet(nn.Module):
             sections = [max_bin, n_bins - max_bin]
             x_valid, x_invalid = torch.split(input, sections, dim=2)
 
-        x = (x_valid - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
-
+        x = self.transform_affine_in(x_valid)
         x = self.net(x)
         x = self.dense_block(x)
         x = self.norm2d(x)
         x = self.glu2d(x)
-        x = self.scale_out.unsqueeze(dim=1) * x + self.bias_out.unsqueeze(dim=1)
+        x = self.transform_affine_out(x)
         x = self.relu2d(x)
 
         _, _, _, n_frames = x.size()
@@ -151,6 +150,30 @@ class MDenseNet(nn.Module):
             output = x
         else:
             output = torch.cat([x, x_invalid], dim=2)
+
+        return output
+
+    def transform_affine_in(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, max_bin, n_frames)
+        Rreturns:
+            output: (batch_size, n_channels, max_bin, n_frames)
+        """
+        eps = self.eps
+
+        output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, max_bin, n_frames)
+
+        return output
+
+    def transform_affine_out(self, input):
+        """
+        Args:
+            input: (batch_size, n_channels, n_bins, n_frames)
+        Rreturns:
+            output: (batch_size, n_channels, n_bins, n_frames)
+        """
+        output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
 
         return output
     
@@ -264,6 +287,10 @@ class MDenseNet(nn.Module):
             model.load_state_dict(config['state_dict'])
         
         return model
+
+    @classmethod
+    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann'):
+        return MDenseNetTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn)
     
     @property
     def num_parameters(self):
@@ -274,6 +301,42 @@ class MDenseNet(nn.Module):
                 _num_parameters += p.numel()
                 
         return _num_parameters
+
+class MDenseNetTimeDomainWrapper(nn.Module):
+    def __init__(self, base_model: nn.Module, fft_size, hop_size=None, window_fn='hann'):
+        super().__init__()
+
+        self.base_model = base_model
+
+        if hop_size is None:
+            hop_size = fft_size // 4
+        
+        self.fft_size, self.hop_size = fft_size, hop_size
+        window = build_window(fft_size, window_fn=window_fn)
+        self.window = nn.Parameter(window, requires_grad=False)
+    
+    def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, in_channels, T)
+        Returns:
+            output <torch.Tensor>: (batch_size, in_channels, T)
+        """
+        assert input.dim() == 3, "input is expected 3D input."
+
+        batch_size, in_channels, T = input.size()
+
+        input = input.reshape(batch_size * in_channels, T)
+        mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
+        mixture_spectrogram = mixture_spectrogram.reshape(batch_size, in_channels, *mixture_spectrogram.size()[-2:])
+        mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
+        estimated_amplitude = self.base_model(mixture_amplitude)
+        estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
+        estimated_spectrogram = estimated_spectrogram.reshape(batch_size * in_channels, *estimated_spectrogram.size()[-2:])
+        output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
+        output = output.reshape(batch_size, in_channels, T)
+
+        return output
 
 class MDenseNetBackbone(nn.Module):
     def __init__(self, in_channels, num_features, growth_rate, kernel_size, scale=(2,2), dilated=False, norm=True, nonlinear='relu', depth=None, out_channels=None, eps=EPS):
