@@ -16,6 +16,8 @@ class ADANet(DANet):
         
         self.num_anchors = num_anchors
         self.anchor = nn.Parameter(torch.Tensor(num_anchors, embed_dim), requires_grad=True)
+
+        self._reset_parameters()
     
     def forward(self, input, threshold_weight=None, n_sources=None):
         """
