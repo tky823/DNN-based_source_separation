@@ -362,9 +362,7 @@ class OpenUnmix(nn.Module):
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
 
             additional_attributes.update({
-                'target': target,
-                'sources': kwargs['sources'],
-                'n_sources': len(kwargs['sources'])
+                'target': target
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
@@ -378,7 +376,14 @@ class OpenUnmix(nn.Module):
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        if task == 'musdb18':
+            additional_attributes.update({
+                'sources': config['sources'],
+                'n_sources': len(config['sources'])
+            })
 
         for key, value in additional_attributes.items():
             setattr(model, key, value)
