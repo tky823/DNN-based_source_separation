@@ -6,7 +6,7 @@ from algorithm.clustering import KMeans
 EPS = 1e-12
 
 class DANet(nn.Module):
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS, **kwargs):
+    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS):
         super().__init__()
         
         self.n_bins = n_bins
@@ -24,7 +24,7 @@ class DANet(nn.Module):
         
         self.mask_nonlinear = mask_nonlinear
         
-        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional)
+        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
         
         if mask_nonlinear == 'sigmoid':
@@ -78,25 +78,34 @@ class DANet(nn.Module):
         log_amplitude = torch.log(input + eps)
         x = log_amplitude.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
-        x = self.fc(x) # (batch_size, n_frames, embed_dim*n_bins)
+        x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
         x = x.view(batch_size, n_frames, embed_dim, n_bins)
         x = x.permute(0, 2, 3, 1).contiguous()  # (batch_size, embed_dim, n_bins, n_frames)
-        latent = x.view(batch_size, embed_dim, n_bins*n_frames)
+        latent = x.view(batch_size, embed_dim, n_bins * n_frames)
+        latent = latent.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embed_dim)
         
         if assignment is None:
-            # TODO: test threshold
             if self.training:
                 raise ValueError("assignment is required.")
-            latent_kmeans = latent.permute(0, 2, 1) # (batch_size, n_bins*n_frames, embed_dim)
-            kmeans = KMeans(latent_kmeans, K=n_sources)
-            _, attractor = kmeans(iteration=iter_clustering) # (batch_size, n_bins*n_frames, n_sources), (batch_size, n_sources, embed_dim)
+            
+            if threshold_weight is not None:
+                assert batch_size == 1, "KMeans is expected same number of samples among all batches, so if threshold_weight is given, batch_size should be 1."
+                
+                flatten_latent = latent.view(batch_size * n_bins * n_frames, embed_dim) # (batch_size * n_bins * n_frames, embed_dim)
+                flatten_threshold_weight = threshold_weight.view(-1) # (batch_size * n_bins * n_frames)
+                nonzero_indices, = torch.nonzero(flatten_threshold_weight, as_tuple=True) # (n_nonzeros,)
+                latent_nonzero = flatten_latent[nonzero_indices] # (n_nonzeros, embed_dim)
+                latent_nonzero = latent_nonzero.view(batch_size, -1, embed_dim) # (batch_size, n_nonzeros, embed_dim)
+            
+            kmeans = KMeans(latent, K=n_sources)
+            _, attractor = kmeans(iteration=iter_clustering) # (batch_size, n_bins * n_frames), (batch_size, n_sources, embed_dim)
         else:
-            threshold_weight = threshold_weight.view(batch_size, 1, n_bins*n_frames)
-            assignment = assignment.view(batch_size, n_sources, n_bins*n_frames) # (batch_size, n_sources, n_bins*n_frames)
+            threshold_weight = threshold_weight.view(batch_size, 1, n_bins * n_frames)
+            assignment = assignment.view(batch_size, n_sources, n_bins * n_frames) # (batch_size, n_sources, n_bins * n_frames)
             assignment = threshold_weight * assignment
-            attractor = torch.bmm(assignment, latent.permute(0, 2, 1)) / (assignment.sum(dim=2, keepdim=True) + eps) # (batch_size, n_sources, embed_dim)
+            attractor = torch.bmm(assignment, latent) / (assignment.sum(dim=2, keepdim=True) + eps) # (batch_size, n_sources, embed_dim)
         
-        similarity = torch.bmm(attractor, latent) # (batch_size, n_sources, n_bins*n_frames)
+        similarity = torch.bmm(attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
         mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
@@ -150,8 +159,6 @@ class DANet(nn.Module):
         return _num_parameters
 
 def _test_danet():
-    torch.manual_seed(111)
-
     batch_size = 2
     K = 10
     
@@ -165,10 +172,10 @@ def _test_danet():
     
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
-    assignment = ideal_binary_mask(sources)
+    assignment = compute_ideal_binary_mask(sources, source_dim=1)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
-    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
@@ -177,8 +184,6 @@ def _test_danet():
     print(input.size(), output.size())
 
 def _test_danet_paper():
-    torch.manual_seed(111)
-
     batch_size = 2
     K = 20
     
@@ -192,10 +197,10 @@ def _test_danet_paper():
     
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
-    assignment = ideal_binary_mask(sources)
+    assignment = compute_ideal_binary_mask(sources, source_dim=1)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
-    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear, n_sources=n_sources)
+    model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
@@ -204,7 +209,9 @@ def _test_danet_paper():
     print(input.size(), output.size())
         
 if __name__ == '__main__':
-    from algorithm.frequency_mask import ideal_binary_mask
+    from algorithm.frequency_mask import compute_ideal_binary_mask
+
+    torch.manual_seed(111)
 
     print("="*10, "DANet", "="*10)
     _test_danet()
