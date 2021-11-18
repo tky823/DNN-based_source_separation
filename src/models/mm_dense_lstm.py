@@ -6,10 +6,10 @@ from utils.audio import build_window
 from algorithm.frequency_mask import multichannel_wiener_filter
 from models.mm_dense_rnn import MMDenseRNN
 
+__sources__ = ['bass', 'drums', 'other', 'vocals']
 FULL = 'full'
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-__sources__ = ['bass', 'drums', 'other', 'vocals']
 __pretrained_model_ids__ = {
     "musdb18": {
         SAMPLE_RATE_MUSDB18: {
@@ -80,7 +80,7 @@ class ParallelMMDenseLSTM(nn.Module):
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sample_rate][config]
-            download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+            download_dir = os.path.join(root, MMDenseLSTM.__name__, task, "sr{}".format(sample_rate), config)
         else:
             raise NotImplementedError("Not support task={}.".format(task))
 

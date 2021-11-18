@@ -64,6 +64,53 @@ class ParallelOpenUnmix(nn.Module):
         return output
 
     @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        additional_attributes = {}
+        
+        if task in ['musdb18']:
+            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            config = kwargs.get('config') or "paper"
+            sources = __sources__
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][config]
+            download_dir = os.path.join(root, OpenUnmix.__name__, task, "sr{}".format(sample_rate), config)
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
+        
+        modules = {}
+
+        for target in sources:
+            model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
+
+            if not os.path.exists(model_path):
+                download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+            
+            config = torch.load(model_path, map_location=lambda storage, loc: storage)
+            modules[target] = OpenUnmix.build_model(model_path, load_state_dict=load_state_dict)
+        
+        model = cls(modules)
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
+
+        return model
+
+    @classmethod
     def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann', eps=EPS):
         return ParallelOpenUnmixTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)
 
@@ -89,7 +136,7 @@ class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
         self.fft_size, self.hop_size = fft_size, hop_size
         window = build_window(fft_size, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-        
+
         self.eps = eps
     
     def forward(self, input, iteration=1):
