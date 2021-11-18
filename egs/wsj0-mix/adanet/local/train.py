@@ -105,7 +105,10 @@ def main(args):
     with open(args.scheduler_path) as f:
         config_scheduler = yaml.safe_load(f)
     
-    if config_scheduler['scheduler'] == 'ExponentialLR':
+    if config_scheduler['scheduler'] == 'ReduceLROnPlateau':
+        config_scheduler.pop('scheduler')
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, **config_scheduler)
+    elif config_scheduler['scheduler'] == 'ExponentialLR':
         config_scheduler.pop('scheduler')
         scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, **config_scheduler)
     else:

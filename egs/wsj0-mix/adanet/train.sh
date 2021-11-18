@@ -40,7 +40,7 @@ criterion='se' # or 'l2loss'
 
 # Optimizer
 optimizer='rmsprop'
-lr=1e-4
+lr=1e-3
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 scheduler_path="./config/paper/scheduler.yaml"
