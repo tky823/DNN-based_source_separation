@@ -90,7 +90,11 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 ```
 
 ## Pretrained Models
-You can load pretrained models like
+You need `gdown` to download pretrained models.
+```sh
+pip install gdown
+```
+You can load pretrained models.
 ```py
 from models.conv_tasnet import ConvTasNet
 
@@ -122,6 +126,9 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 | D3Net (bass, drums, other, vocals) | MUSDB18 | `model = ParallelD3Net.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 
 See `egs/tutorials/hub/pretrained.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained.ipynb).
+
+### Time Domain Wrappers for Time-Frequency Domain Models
+See `egs/tutorials/hub/time-domain_wrapper.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/time-domain_wrapper.ipynb).
 
 ### Speech Separation by Pretrained Models
 See `egs/tutorials/hub/speech-separation.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/speech-separation.ipynb).

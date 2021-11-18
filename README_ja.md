@@ -90,6 +90,10 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 ```
 
 ## 事前学習済みモデル
+事前学習済みモデルのダウンロードには`gdown`が必要です．
+```sh
+pip install gdown
+```
 事前学習済みモデルを次のようにダウンロードすることができます．
 ```py
 from models.conv_tasnet import ConvTasNet
@@ -121,13 +125,16 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 | D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
 | D3Net (bass, drums, other, vocals) | MUSDB18 | `model = ParallelD3Net.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 
-`egs/tutorials/hub/pretrained.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained.ipynb)にとんでください．
+`egs/tutorials/hub/pretrained_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained_ja.ipynb)にとんでください．
+
+### 時間周波数領域モデルのための時間領域ラッパー
+`egs/tutorials/hub/time-domain_wrapper_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/time-domain_wrapper_ja.ipynb)にとんでください．
 
 ### 事前学習済みモデルによる話者分離の例
-`egs/tutorials/hub/speech-separation.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/speech-separation.ipynb)にとんでください．
+`egs/tutorials/hub/speech-separation_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/speech-separation_ja.ipynb)にとんでください．
 
 ### 事前学習済みモデルによる楽音分離の例
-`egs/tutorials/hub/music-source-separation.ipynb`を見るか，[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/music-source-separation.ipynb)にとんでください．
+`egs/tutorials/hub/music-source-separation_ja.ipynb`を見るか，[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/music-source-separation_ja.ipynb)にとんでください．
 
 自前の音楽ファイルで分離を試したい場合は，以下を参照してください．
 - MMDenseLSTM: `egs/tutorials/mm-dense-lstm/separate_music_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/mm-dense-lstm/separate_music_ja.ipynb)にとんでください．
