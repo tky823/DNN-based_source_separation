@@ -235,6 +235,7 @@ class DPRNNTasNet(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
         pretrained_model_ids_task = __pretrained_model_ids__[task]
+        additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
@@ -243,6 +244,10 @@ class DPRNNTasNet(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][n_sources]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
         elif task == 'librispeech':
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
             n_sources = kwargs.get('n_sources') or 2
@@ -250,8 +255,16 @@ class DPRNNTasNet(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][n_sources]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
         
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
@@ -259,6 +272,9 @@ class DPRNNTasNet(nn.Module):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
 
         return model
     

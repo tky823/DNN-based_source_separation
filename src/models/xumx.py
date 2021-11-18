@@ -279,6 +279,7 @@ class CrossNetOpenUnmix(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
         pretrained_model_ids_task = __pretrained_model_ids__[task]
+        additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
@@ -287,8 +288,17 @@ class CrossNetOpenUnmix(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][config]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+
+            additional_attributes.update({
+                'sources': kwargs['sources'],
+                'n_sources': len(kwargs['sources'])
+            })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
+
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
         
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
@@ -296,6 +306,9 @@ class CrossNetOpenUnmix(nn.Module):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
+    
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
 
         return model
 

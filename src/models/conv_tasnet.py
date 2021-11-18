@@ -253,6 +253,7 @@ class ConvTasNet(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
         pretrained_model_ids_task = __pretrained_model_ids__[task]
+        additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
@@ -262,6 +263,10 @@ class ConvTasNet(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][n_sources][config]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers/{}".format(sample_rate, n_sources, config))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
         elif task == 'musdb18':
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or '4sec_L20'
@@ -269,6 +274,11 @@ class ConvTasNet(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][config]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
+
+            additional_attributes.update({
+                'sources': kwargs['sources'],
+                'n_sources': len(kwargs['sources'])
+            })
         elif task in ['wham/separate-noisy', 'wham/enhance-single', 'wham/enhance-both']:
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
             model_choice = kwargs.get('model_choice') or 'best'
@@ -282,8 +292,16 @@ class ConvTasNet(nn.Module):
 
             model_id = pretrained_model_ids_task[sample_rate][n_sources]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
 
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
@@ -291,6 +309,9 @@ class ConvTasNet(nn.Module):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
 
         return model
     
