@@ -106,6 +106,9 @@ class ADANet(DANet):
 
         return output, latent
     
+    def _reset_parameters(self):
+        nn.init.orthogonal_(self.anchor.data)
+    
     def get_config(self):
         config = super().get_config()
         config['num_anchors'] = self.num_anchors
