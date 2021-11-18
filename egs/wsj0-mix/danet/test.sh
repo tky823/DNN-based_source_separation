@@ -24,7 +24,7 @@ K=20
 # Network configuration
 H=300
 B=4
-dropout=5e-1
+dropout=0
 causal=0
 mask_nonlinear='sigmoid'
 iter_clustering=10
