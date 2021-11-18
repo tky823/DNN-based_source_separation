@@ -50,13 +50,34 @@ class ParallelMMDenseRNN(nn.Module):
         self.sources = sources
 
     def forward(self, input, target=None):
-        if type(target) is not str:
-            raise TypeError("`target` is expected str, but given {}".format(type(target)))
+        """
+        Args:
+            input: Nonnegative tensor with shape of
+                (batch_size, in_channels, n_bins, n_frames) if target is specified.
+                (batch_size, 1, in_channels, n_bins, n_frames) if target is None.
+        Returns:
+            output:
+                (batch_size, in_channels, n_bins, n_frames) if target is specified.
+                (batch_size, n_sources, in_channels, n_bins, n_frames) if target is None.
+        """
+        if target is None:
+            assert input.dim() == 5, "input is expected 5D, but given {}.".format(input.dim())
+            input = input.squeeze(dim=1)
+            output = []
+            for target in self.sources:
+                _output = self.net[target](input)
+                output.append(_output)
+            output = torch.stack(output, dim=1)
+        else:
+            if type(target) is not str:
+                raise TypeError("`target` is expected str, but given {}".format(type(target)))
+            
+            assert input.dim() == 4, "input is expected 4D, but given {}.".format(input.dim())
         
-        output = self.net[target](input)
+            output = self.net[target](input)
 
         return output
-
+    
     @classmethod
     def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann', eps=EPS):
         return ParallelMMDenseRNNTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)

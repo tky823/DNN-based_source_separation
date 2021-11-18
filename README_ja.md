@@ -111,11 +111,15 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 | DPRNN-TasNet | WSJ0-3mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DPRNN-TasNet | LibriSpeech | `model = DPRNNTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
 | MMDenseLSTM | MUSDB18 | `model = MMDenseLSTM.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| MMDenseLSTM (bass, drums, other, vocals) | MUSDB18 | `model = ParallelMMDenseLSTM.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 | Open-Unmix | MUSDB18 | `model = OpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| Open-Unmix (bass, drums, other, vocals) | MUSDB18 | `model = ParallelOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 | Open-Unmix | MUSDB18-HQ | `model = OpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100, target="vocals")` |
+| Open-Unmix (bass, drums, other, vocals) | MUSDB18-HQ | `model = ParallelOpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100)` |
 | DPTNet | WSJ0-2mix | `model = DPTNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 | D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
+| D3Net (bass, drums, other, vocals) | MUSDB18 | `model = ParallelD3Net.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 
 `egs/tutorials/hub/pretrained.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained.ipynb)にとんでください．
 
