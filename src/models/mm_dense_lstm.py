@@ -29,8 +29,9 @@ class ParallelMMDenseLSTM(nn.Module):
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
     
         in_channels = None
+        sources = list(modules.keys())
 
-        for key in modules.keys():
+        for key in sources:
             module = modules[key]
             if not isinstance(module, MMDenseLSTM):
                 raise ValueError("All modules must be MMDenseLSTM.")
@@ -43,8 +44,13 @@ class ParallelMMDenseLSTM(nn.Module):
         self.net = modules
 
         self.in_channels = in_channels
+        self.sources = sources
 
     def forward(self, input, target=None):
+        """
+        Args:
+            input: (batch_size, )
+        """
         if type(target) is not str:
             raise TypeError("`target` is expected str, but given {}".format(type(target)))
         
@@ -79,7 +85,6 @@ class ParallelMMDenseLSTMTimeDomainWrapper(nn.Module):
         window = build_window(fft_size, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
-        self.sources = list(self.base_model.net.keys())
         self.eps = eps
     
     def forward(self, input, iteration=1):
@@ -114,6 +119,10 @@ class ParallelMMDenseLSTMTimeDomainWrapper(nn.Module):
         output = output.reshape(batch_size, n_sources, in_channels, T)
 
         return output
+
+    @property
+    def sources(self):
+        return list(self.base_model.sources)
 
 class MMDenseLSTM(MMDenseRNN):
     def __init__(

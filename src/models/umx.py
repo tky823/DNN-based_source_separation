@@ -38,8 +38,9 @@ class ParallelOpenUnmix(nn.Module):
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
     
         in_channels = None
+        sources = list(modules.keys())
 
-        for key in modules.keys():
+        for key in sources:
             module = modules[key]
             if not isinstance(module, OpenUnmix):
                 raise ValueError("All modules must be OpenUnmix.")
@@ -52,6 +53,7 @@ class ParallelOpenUnmix(nn.Module):
         self.net = modules
 
         self.in_channels = in_channels
+        self.sources = sources
 
     def forward(self, input, target=None):
         if type(target) is not str:
@@ -87,8 +89,7 @@ class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
         self.fft_size, self.hop_size = fft_size, hop_size
         window = build_window(fft_size, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-
-        self.sources = list(self.base_model.net.keys())
+        
         self.eps = eps
     
     def forward(self, input, iteration=1):
@@ -123,6 +124,10 @@ class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
         output = output.reshape(batch_size, n_sources, in_channels, T)
 
         return output
+
+    @property
+    def sources(self):
+        return list(self.base_model.sources)
 
 """
 Open-Unmix

@@ -40,8 +40,9 @@ class ParallelD3Net(nn.Module):
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
     
         in_channels = None
+        sources = list(modules.keys())
 
-        for key in modules.keys():
+        for key in sources:
             module = modules[key]
             if not isinstance(module, D3Net):
                 raise ValueError("All modules must be D3Net.")
@@ -54,6 +55,7 @@ class ParallelD3Net(nn.Module):
         self.net = modules
 
         self.in_channels = in_channels
+        self.sources = sources
 
     def forward(self, input, target=None):
         if type(target) is not str:
@@ -78,7 +80,7 @@ class ParallelD3Net(nn.Module):
         return _num_parameters
 
 class ParallelD3NetTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: ParallelD3Net, fft_size, hop_size=None, window_fn='hann'):
+    def __init__(self, base_model: ParallelD3Net, fft_size, hop_size=None, window_fn='hann', eps=EPS):
         super().__init__()
 
         self.base_model = base_model
@@ -90,7 +92,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
         window = build_window(fft_size, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
-        self.sources = list(self.base_model.net.keys())
+        self.eps = eps
     
     def forward(self, input, iteration=1):
         """
@@ -104,6 +106,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
 
         n_sources = len(self.sources)
         batch_size, _, in_channels, T = input.size()
+        eps = self.eps
 
         input = input.reshape(batch_size * in_channels, T)
         mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
@@ -117,12 +120,16 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
             estimated_amplitude.append(_estimated_amplitude)
         
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
-        estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration)
+        estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
         estimated_spectrogram = estimated_spectrogram.reshape(batch_size * n_sources * in_channels, *estimated_spectrogram.size()[-2:])
         output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
         output = output.reshape(batch_size, n_sources, in_channels, T)
 
         return output
+    
+    @property
+    def sources(self):
+        return list(self.base_model.sources)
 
 class D3Net(nn.Module):
     def __init__(

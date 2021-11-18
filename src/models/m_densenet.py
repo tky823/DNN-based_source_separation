@@ -27,8 +27,9 @@ class ParallelMDenseNet(nn.Module):
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
     
         in_channels = None
+        sources = list(modules.keys())
 
-        for key in modules.keys():
+        for key in sources:
             module = modules[key]
             if not isinstance(module, MDenseNet):
                 raise ValueError("All modules must be MDenseNet.")
@@ -41,6 +42,7 @@ class ParallelMDenseNet(nn.Module):
         self.net = modules
 
         self.in_channels = in_channels
+        self.sources = sources
 
     def forward(self, input, target=None):
         if type(target) is not str:
