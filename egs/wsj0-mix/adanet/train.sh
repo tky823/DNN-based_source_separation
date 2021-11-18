@@ -39,7 +39,7 @@ iter_clustering=10
 criterion='se' # or 'l2loss'
 
 # Optimizer
-optimizer='rmsprop'
+optimizer='adam'
 lr=1e-3
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
