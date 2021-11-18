@@ -98,7 +98,7 @@ class ParallelOpenUnmix(nn.Module):
         pretrained_model_ids_task = __pretrained_model_ids__[task]
         additional_attributes = {}
         
-        if task in ['musdb18']:
+        if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
             sources = __sources__
