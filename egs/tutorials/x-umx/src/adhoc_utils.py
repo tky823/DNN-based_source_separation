@@ -76,16 +76,15 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
                 
-                _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=1)
-                _estimated_sources_amplitude = model(_mixture_amplitude) # (2, n_sources, n_mics, n_bins, n_frames)
+                _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=1) # (n_flips, 1, n_mics, n_bins, n_frames)
+                _estimated_sources_amplitude = model(_mixture_amplitude) # (n_flips, n_sources, n_mics, n_bins, n_frames)
 
                 if n_mics == 1:
                     _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=2, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
                 elif n_mics == 2:
-                    sections = [1, 1]
-                    _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.split(_estimated_sources_amplitude, sections, dim=0)
-                    _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dims=(2,))
-                    _estimated_sources_amplitude = torch.cat([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0)
+                    _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.unbind(_estimated_sources_amplitude, dim=0) # n_flips of (n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dims=(1,)) # (n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude = torch.stack([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0) # (n_flips, n_sources, n_mics, n_bins, n_frames)
                     _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
@@ -95,11 +94,10 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
             estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (batch_size, n_sources, n_mics, n_bins, n_frames)
             estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4) # (n_sources, n_mics, n_bins, batch_size, n_frames)
             estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+            estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
             mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, batch_size * n_frames)
-
             mixture = mixture.cpu()
-            estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
             if n_mics == 1:
                 estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=1) # (n_sources, n_bins, batch_size * n_frames)
