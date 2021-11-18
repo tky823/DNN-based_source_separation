@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filter
-from models.d3net import D3Net
+from models.d3net import D3Net, ParallelD3Net
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
@@ -52,21 +52,19 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
 
         mixture = F.pad(mixture, (0, padding))
         mixture = mixture.reshape(*mixture.size()[:2], -1, patch_size)
-        mixture = mixture.permute(2, 0, 1, 3).unsqueeze(dim=1)
+        mixture = mixture.permute(2, 0, 1, 3).unsqueeze(dim=1) # (batch_size, 1, n_mics, n_bins, n_frames)
 
         if use_cuda:
             mixture = mixture.cuda()
 
-        n_sources = len(__sources__)
+        n_sources = len(model.sources)
 
         with torch.no_grad():
             batch_size, _, n_mics, n_bins, n_frames = mixture.size()
             
             mixture_amplitude = torch.abs(mixture)
             
-            estimated_sources_amplitude = {
-                target: [] for target in __sources__
-            }
+            estimated_sources_amplitude = []
 
             # Serial operation
             for _mixture_amplitude in mixture_amplitude:
@@ -79,33 +77,28 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
                 
-                for target in __sources__:
-                    _estimated_sources_amplitude = model(_mixture_amplitude, target=target)
+                _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=1) # (n_flips, 1, n_mics, n_bins, n_frames)
+                _estimated_sources_amplitude = model(_mixture_amplitude) # (n_flips, n_sources, n_mics, n_bins, n_frames)
 
-                    if n_mics == 1:
-                        _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=1, keepdim=True)
-                    elif n_mics == 2:
-                        sections = [1, 1]
-                        _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.split(_estimated_sources_amplitude, sections, dim=0)
-                        _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dims=(1,))
-                        _estimated_sources_amplitude = torch.cat([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0)
-                        _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True)
-                    else:
-                        raise NotImplementedError("Not support {} channels input.".format(n_mics))
-                    
-                    estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
-        
-            estimated_sources_amplitude = [
-                torch.cat(estimated_sources_amplitude[target], dim=0) for target in __sources__
-            ]
-            estimated_sources_amplitude = torch.stack(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
-            estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4)
+                if n_mics == 1:
+                    _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=2, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
+                elif n_mics == 2:
+                    _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.unbind(_estimated_sources_amplitude, dim=0) # n_flips of (n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dims=(1,)) # (n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude = torch.stack([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0) # (n_flips, n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
+                else:
+                    raise NotImplementedError("Not support {} channels input.".format(n_mics))
+                
+                estimated_sources_amplitude.append(_estimated_sources_amplitude)
+
+            estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (batch_size, n_sources, n_mics, n_bins, n_frames)
+            estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4) # (n_sources, n_mics, n_bins, batch_size, n_frames)
             estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+            estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
             mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, batch_size * n_frames)
-
             mixture = mixture.cpu()
-            estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
             if n_mics == 1:
                 estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=1) # (n_sources, n_bins, batch_size * n_frames)
@@ -131,7 +124,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
             _estimated_paths = {}
 
             for idx in range(n_sources):
-                source = __sources__[idx]
+                source = model.sources[idx]
                 path = os.path.join(out_dir, "{}.wav".format(source))
                 torchaudio.save(path, y[idx], sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 _estimated_paths[source] = path
@@ -226,24 +219,3 @@ def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude,
         eps <float>: small value for numerical stability
     """
     return multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=iteration, channels_first=channels_first, eps=eps)
-
-class ParallelD3Net(nn.Module):
-    def __init__(self, modules):
-        super().__init__()
-
-        if isinstance(modules, nn.ModuleDict):
-            pass
-        elif isinstance(modules, dict):
-            modules = nn.ModuleDict(modules)
-        else:
-            raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
-        
-        self.net = modules
-
-    def forward(self, input, target=None):
-        if type(target) is not str:
-            raise TypeError("`target` is expected str, but given {}".format(type(target)))
-        
-        output = self.net[target](input)
-
-        return output
