@@ -13,6 +13,7 @@ class DANet(nn.Module):
         self.hidden_channels, self.embed_dim = hidden_channels, embed_dim
         self.num_blocks = num_blocks
 
+        self.dropout = dropout
         self.causal = causal
 
         if causal:
@@ -118,6 +119,7 @@ class DANet(nn.Module):
             'embed_dim': self.embed_dim,
             'hidden_channels': self.hidden_channels,
             'num_blocks': self.num_blocks,
+            'dropout': self.dropout,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
             'iter_clustering': self.iter_clustering,
@@ -134,6 +136,7 @@ class DANet(nn.Module):
         embed_dim = config['embed_dim']
         hidden_channels = config['hidden_channels']
         num_blocks = config['num_blocks']
+        dropout = config['dropout']
         
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
@@ -141,7 +144,7 @@ class DANet(nn.Module):
         
         eps = config['eps']
         
-        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
+        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])

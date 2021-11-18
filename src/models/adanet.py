@@ -106,14 +106,45 @@ class ADANet(DANet):
 
         return output, latent
     
-    def _get_num_parameters(self):
-        num_parameters = 0
+    def get_config(self):
+        config = super().get_config()
+        config['num_anchors'] = self.num_anchors
+        
+        return config
+    
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        n_bins = config['n_bins']
+        embed_dim = config['embed_dim']
+        hidden_channels = config['hidden_channels']
+        num_blocks = config['num_blocks']
+        num_anchors = config['num_anchors']
+        dropout = config['dropout']
+        
+        causal = config['causal']
+        mask_nonlinear = config['mask_nonlinear']
+        iter_clustering = config['iter_clustering']
+        
+        eps = config['eps']
+        
+        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, num_anchors=num_anchors, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        
+        return model
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
         
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
+                _num_parameters += p.numel()
                 
-        return num_parameters
+        return _num_parameters
 
 def _test_adanet():
     torch.manual_seed(111)
@@ -133,7 +164,7 @@ def _test_adanet():
     input = sources.sum(dim=1, keepdim=True)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
     
-    model = ADANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, num_anchors=6, causal=causal, mask_nonlinear=mask_nonlinear)
+    model = ADANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, num_anchors=N, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
