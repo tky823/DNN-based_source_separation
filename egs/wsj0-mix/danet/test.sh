@@ -24,6 +24,7 @@ K=20
 # Network configuration
 H=300
 B=4
+dropout=5e-1
 causal=0
 mask_nonlinear='sigmoid'
 iter_clustering=10
@@ -50,7 +51,7 @@ gpu_id="0"
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
-    save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
     save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"

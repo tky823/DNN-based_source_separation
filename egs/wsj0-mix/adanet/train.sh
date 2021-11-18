@@ -20,7 +20,7 @@ valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 window_fn='hann'
 fft_size=256
 hop_size=64
-ideal_mask='ibm'
+ideal_mask='wfm'
 threshold=40
 
 # Embedding dimension
@@ -29,6 +29,7 @@ K=20
 # Network configuration
 H=300
 B=4
+N=6
 dropout=5e-1
 causal=0
 mask_nonlinear='sigmoid'
@@ -57,7 +58,7 @@ gpu_id="0"
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
-    save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
     save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
@@ -101,9 +102,11 @@ train.py \
 --threshold ${threshold} \
 --fft_size ${fft_size} \
 --hop_size ${hop_size} \
+-N ${N} \
 -K ${K} \
 -H ${H} \
 -B ${B} \
+-N ${N} \
 --dropout ${dropout} \
 --causal ${causal} \
 --mask_nonlinear ${mask_nonlinear} \

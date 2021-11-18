@@ -10,11 +10,11 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import AdhocTrainer
-from models.danet import DANet
+from models.adanet import ADANet
 from criterion.distance import L1Loss, L2Loss
 from adhoc_criterion import SquaredError
 
-parser = argparse.ArgumentParser(description="Training of DANet")
+parser = argparse.ArgumentParser(description="Training of ADANet")
 
 parser.add_argument('--train_wav_root', type=str, default=None, help='Path for training dataset ROOT directory')
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')
@@ -31,6 +31,7 @@ parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
 parser.add_argument('--hidden_channels', '-H', type=int, default=300, help='hidden_channels')
 parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM layers')
+parser.add_argument('--num_anchors', '-N', type=int, default=4, help='# of anchors')
 parser.add_argument('--dropout', type=float, default=0, help='Dropout rate of LSTM layers')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
@@ -76,7 +77,7 @@ def main(args):
         args.max_norm = None
     
     args.n_bins = args.fft_size // 2 + 1
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
+    model = ADANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, num_anchors=args.num_anchors, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
