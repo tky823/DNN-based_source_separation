@@ -19,8 +19,5 @@ if [ -z "${model_id}" ] ; then
     model_id="${model_ids[${model_name}]}"
 fi
 
-curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${model_id}" > /dev/null
-code="$(awk '/_warning_/ {print $NF}' /tmp/cookie)"  
-curl -Lb /tmp/cookie "https://drive.google.com/uc?export=download&confirm=${code}&id=${model_id}" -o "${file}.zip"
-
-unzip "${file}.zip"
+# Download
+python -c "from utils.utils import download_pretrained_model_from_google_drive as download; download('${model_id}', path='./')"
