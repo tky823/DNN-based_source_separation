@@ -1,3 +1,4 @@
+pyyaml>=5.1
 numpy>=1.19.0
 matplotlib
 musdb==0.4.0

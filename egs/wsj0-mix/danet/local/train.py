@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
+import yaml
 import torch
 import torch.nn as nn
 
@@ -20,7 +22,7 @@ parser.add_argument('--train_list_path', type=str, default=None, help='Path for 
 parser.add_argument('--valid_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_cv_mix')
 parser.add_argument('--sample_rate', '-sr', type=int, default=8000, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=2, help='Duration')
-parser.add_argument('--valid_duration', type=float, default=4, help='Duration for valid dataset for avoiding memory error.')
+parser.add_argument('--valid_duration', type=float, default=0, help='Duration for valid dataset for avoiding memory error.')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
@@ -36,10 +38,10 @@ parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se', 'l1loss', 'l2loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='rmsprop', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate. Default: 1e-4')
-parser.add_argument('--lr_end', type=float, default=3e-6, help='Learning rate at the end of training. Exponential learning rate decay is applied. Default: 3e-6')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=4, help='Batch size. Default: 128')
+parser.add_argument('--scheduler_path', type=str, default=None, help='Path to scheduler.yaml')
+parser.add_argument('--batch_size', type=int, default=64, help='Batch size. Default: 64')
 parser.add_argument('--epochs', type=int, default=150, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -54,16 +56,20 @@ def main(args):
     
     samples = int(args.sample_rate * args.duration)
     overlap = 0
-    max_samples = int(args.sample_rate * args.valid_duration)
+
+    loader = {}
 
     train_dataset = IdealMaskSpectrogramTrainDataset(args.train_wav_root, args.train_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, samples=samples, overlap=overlap, n_sources=args.n_sources)
-    valid_dataset = IdealMaskSpectrogramEvalDataset(args.valid_wav_root, args.valid_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, max_samples=max_samples, n_sources=args.n_sources)
-    print("Training dataset includes {} samples.".format(len(train_dataset)))
-    print("Valid dataset includes {} samples.".format(len(valid_dataset)))
-    
-    loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    print("Training dataset includes {} samples.".format(len(train_dataset)))
+
+    if args.valid_duration > 0:
+        max_samples = int(args.sample_rate * args.valid_duration)
+        valid_dataset = IdealMaskSpectrogramEvalDataset(args.valid_wav_root, args.valid_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, max_samples=max_samples, n_sources=args.n_sources)
+        loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+        print("Valid dataset includes {} samples.".format(len(valid_dataset)))
+    else:
+        loader['valid'] = None
     
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
@@ -92,6 +98,16 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
+
+    # Scheduler
+    with open(args.scheduler_path) as f:
+        config_scheduler = yaml.safe_load(f)
+    
+    if config_scheduler['scheduler'] == 'ExponentialLR':
+        config_scheduler.pop('scheduler')
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, **config_scheduler)
+    else:
+        raise NotImplementedError("Not support schduler {}.".format(args.scheduler))
     
     # Criterion
     if args.criterion == 'se':
@@ -103,7 +119,7 @@ def main(args):
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
-    trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
+    trainer = AdhocTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()
     
 if __name__ == '__main__':

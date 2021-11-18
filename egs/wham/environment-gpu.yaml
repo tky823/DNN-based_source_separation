@@ -7,6 +7,7 @@ channels:
 
 dependencies:
   - python>=3.6,<=3.9
+  - pyyaml>=5.1
   - numpy>=1.19
   - matplotlib
   - mir_eval==0.6
