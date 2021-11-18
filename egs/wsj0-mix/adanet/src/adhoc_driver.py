@@ -99,7 +99,10 @@ class AdhocTrainer(TrainerBase):
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
-            self.scheduler.step()
+            if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                self.scheduler.step(valid_loss)
+            else:
+                self.scheduler.step()
             
             if self.valid_loader is not None:
                 if valid_loss < self.best_loss:
@@ -122,25 +125,8 @@ class AdhocTrainer(TrainerBase):
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-
-            if self.valid_loader is not None:
-                draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
-            else:
-                draw_loss_curve(train_loss=self.train_loss[:epoch + 1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
     
-    def run_one_epoch(self, epoch):
-        """
-        Training
-        """
-        train_loss = self.run_one_epoch_train(epoch)
-
-        if self.valid_loader is not None:
-            valid_loss = self.run_one_epoch_eval(epoch)
-        else:
-            valid_loss = None
-
-        return train_loss, valid_loss
-
     def run_one_epoch_train(self, epoch):
         # Override
         """

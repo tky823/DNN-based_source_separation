@@ -59,19 +59,17 @@ def main(args):
     samples = int(args.sample_rate * args.duration)
     overlap = 0
 
-    loader = {}
-
     train_dataset = IdealMaskSpectrogramTrainDataset(args.train_wav_root, args.train_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, samples=samples, overlap=overlap, n_sources=args.n_sources)
-    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    
+    max_samples = int(args.sample_rate * args.valid_duration)
+    valid_dataset = IdealMaskSpectrogramEvalDataset(args.valid_wav_root, args.valid_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, max_samples=max_samples, n_sources=args.n_sources)
+    
     print("Training dataset includes {} samples.".format(len(train_dataset)))
+    print("Valid dataset includes {} samples.".format(len(valid_dataset)))
 
-    if args.valid_duration > 0:
-        max_samples = int(args.sample_rate * args.valid_duration)
-        valid_dataset = IdealMaskSpectrogramEvalDataset(args.valid_wav_root, args.valid_list_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, max_samples=max_samples, n_sources=args.n_sources)
-        loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
-        print("Valid dataset includes {} samples.".format(len(valid_dataset)))
-    else:
-        loader['valid'] = None
+    loader = {}
+    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None

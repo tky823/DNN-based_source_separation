@@ -103,7 +103,10 @@ class AdhocTrainer(TrainerBase):
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
-            self.scheduler.step()
+            if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                self.scheduler.step(valid_loss)
+            else:
+                self.scheduler.step()
             
             if self.valid_loader is not None:
                 if valid_loss < self.best_loss:
