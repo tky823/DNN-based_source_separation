@@ -2,7 +2,6 @@
 
 model_id=""
 model_name="paper"
-file="model"
 
 . ./path.sh
 . parse_options.sh || exit 1
