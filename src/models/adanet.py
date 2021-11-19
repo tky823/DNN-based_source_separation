@@ -59,7 +59,7 @@ class ADANet(DANet):
         embed_dim = self.embed_dim
         eps = self.eps
 
-        diag_mask = torch.eye(n_sources)
+        diag_mask = 1 - torch.eye(n_sources)
         diag_mask = diag_mask.to(input.device) # (n_sources, n_sources)
 
         patterns = list(itertools.combinations(range(num_anchors), n_sources))
