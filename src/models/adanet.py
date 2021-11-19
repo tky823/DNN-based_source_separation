@@ -11,8 +11,8 @@ EPS = 1e-12
     Anchored DANet
 """
 class ADANet(DANet):
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, num_anchors=6, dropout=5e-1, causal=False, mask_nonlinear='sigmoid', eps=EPS, **kwargs):
-        super().__init__(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps, **kwargs)
+    def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, num_anchors=6, dropout=5e-1, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS, **kwargs):
+        super().__init__(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps, take_log=take_log, take_db=take_db, **kwargs)
         
         self.num_anchors = num_anchors
         self.anchor = nn.Parameter(torch.Tensor(num_anchors, embed_dim), requires_grad=True)
@@ -22,21 +22,26 @@ class ADANet(DANet):
     def forward(self, input, threshold_weight=None, n_sources=None):
         """
         Args:
-            input <torch.Tensor>: Amplitude tensor with shape of (batch_size, 1, n_bins, n_frames)
-            threshold_weight <torch.Tensor> or <float>: Tensor shape of (batch_size, 1, n_bins, n_frames).
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
+            assignment <torch.Tensor>: Speaker assignment during training. Tensor shape is (batch_size, n_sources, n_bins, n_frames).
+            threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
         Returns:
-            output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
+            output (batch_size, n_sources, n_bins, n_frames)
         """
-        output, _ = self.extract_latent(input, threshold_weight=threshold_weight, n_sources=n_sources)
+        output, _, _ = self.extract_latent(input, threshold_weight=threshold_weight, n_sources=n_sources)
         
         return output
     
     def extract_latent(self, input, threshold_weight=None, n_sources=None):
         """
         Args:
-            input <torch.Tensor>: Amplitude tensor with shape of (batch_size, 1, n_bins, n_frames)
-            threshold_weight <torch.Tensor> or <float>: Tensor shape of (batch_size, 1, n_bins, n_frames).
-            n_sources <int>: Number of sources in mixture.
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
+            assignment <torch.Tensor>: Speaker assignment during training. Tensor shape is (batch_size, n_sources, n_bins, n_frames).
+            threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
+            latent <torch.Tensor>: (batch_size, n_bins * n_frames, embed_dim)
+            attractor <torch.Tensor>: (batch_size, n_sources, embed_dim)
         """
         if n_sources is None:
             raise ValueError("Specify n_sources!")
@@ -58,8 +63,14 @@ class ADANet(DANet):
 
         self.rnn.flatten_parameters()
         
-        log_amplitude = torch.log(input + eps)
-        x = log_amplitude.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
+        if self.take_log:
+            x = torch.log(input + eps)
+        elif self.take_db:
+            x = 20 * torch.log10(input + eps)
+        else:
+            x = input
+        
+        x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
         x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
         x = x.view(batch_size, n_frames, embed_dim, n_bins)
@@ -96,9 +107,8 @@ class ADANet(DANet):
         flatten_attractor_combination = attractor_combination.view(batch_size * n_patterns, n_sources, embed_dim)
         max_similarity_combination = torch.stack(max_similarity_combination, dim=1) # (batch_size, n_patterns)
         indices = torch.argmin(max_similarity_combination, dim=1) # (batch_size,)
-        flatten_indices = indices + torch.arange(0, batch_size * n_patterns, n_patterns) # (batch_size,)
+        flatten_indices = indices + torch.arange(0, batch_size * n_patterns, n_patterns).to(indices.device) # (batch_size,)
         flatten_indices = flatten_indices.long()
-        flatten_indices = flatten_indices.to(flatten_attractor_combination.device)
         attractor = flatten_attractor_combination[flatten_indices] # (batch_size, n_sources, embed_dim)
 
         similarity = torch.bmm(attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
@@ -106,13 +116,14 @@ class ADANet(DANet):
         mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
 
-        return output, latent
+        return output, latent, attractor
     
     def _reset_parameters(self):
         nn.init.orthogonal_(self.anchor.data)
     
     def get_config(self):
         config = super().get_config()
+        config.pop('iter_clustering')
         config['num_anchors'] = self.num_anchors
         
         return config
@@ -130,11 +141,17 @@ class ADANet(DANet):
         
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
-        iter_clustering = config['iter_clustering']
+        take_log, take_db = config['take_log'], config['take_db']
         
         eps = config['eps']
         
-        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, num_anchors=num_anchors, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
+        model = cls(
+            n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
+            num_blocks=num_blocks, num_anchors=num_anchors,
+            dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, 
+            take_log=take_log, take_db=take_db,
+            eps=eps
+        )
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])

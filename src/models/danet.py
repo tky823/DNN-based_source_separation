@@ -6,7 +6,7 @@ from algorithm.clustering import KMeans
 EPS = 1e-12
 
 class DANet(nn.Module):
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, eps=EPS):
+    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, take_log=True, take_db=False, eps=EPS):
         super().__init__()
         
         self.n_bins = n_bins
@@ -36,27 +36,35 @@ class DANet(nn.Module):
             raise NotImplementedError("")
         
         self.iter_clustering = iter_clustering
+        self.take_log, self.take_db = take_log, take_db
         self.eps = eps
+
+        if self.take_log and self.take_db:
+            raise ValueError("Either take_log or take_db should be False.")
     
     def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
-            input (batch_size, 1, n_bins, n_frames): Amplitude
-            assignment (batch_size, n_sources, n_bins, n_frames): Speaker assignment when training
-            threshold_weight (batch_size, 1, n_bins, n_frames) or <float>
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
+            assignment <torch.Tensor>: Speaker assignment during training. Tensor shape is (batch_size, n_sources, n_bins, n_frames).
+            threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
         Returns:
             output (batch_size, n_sources, n_bins, n_frames)
         """
-        output, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
+        output, _, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
         
         return output
     
     def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
-            input (batch_size, 1, n_bins, n_frames) <torch.Tensor>
-            assignment (batch_size, n_sources, n_bins, n_frames) <torch.Tensor>
-            threshold_weight (batch_size, 1, n_bins, n_frames) or <float>
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
+            assignment <torch.Tensor>: Speaker assignment during training. Tensor shape is (batch_size, n_sources, n_bins, n_frames).
+            threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
+            latent <torch.Tensor>: (batch_size, n_bins * n_frames, embed_dim)
+            attractor <torch.Tensor>: (batch_size, n_sources, embed_dim)
         """
         if iter_clustering is None:
             iter_clustering = self.iter_clustering
@@ -75,9 +83,15 @@ class DANet(nn.Module):
         batch_size, _, n_bins, n_frames = input.size()
 
         self.rnn.flatten_parameters()
+
+        if self.take_log:
+            x = torch.log(input + eps)
+        elif self.take_db:
+            x = 20 * torch.log10(input + eps)
+        else:
+            x = input
         
-        log_amplitude = torch.log(input + eps)
-        x = log_amplitude.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
+        x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
         x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
         x = x.view(batch_size, n_frames, embed_dim, n_bins)
@@ -111,7 +125,7 @@ class DANet(nn.Module):
         mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
 
-        return output, latent
+        return output, latent, attractor
     
     def get_config(self):
         config = {
@@ -123,6 +137,7 @@ class DANet(nn.Module):
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
             'iter_clustering': self.iter_clustering,
+            'take_log': self.take_log, 'take_db': self.take_db,
             'eps': self.eps
         }
         
@@ -141,10 +156,17 @@ class DANet(nn.Module):
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
         iter_clustering = config['iter_clustering']
+        take_log, take_db = config['take_log'], config['take_db']
         
         eps = config['eps']
         
-        model = cls(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, iter_clustering=iter_clustering, eps=eps)
+        model = cls(
+            n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
+            num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear,
+            iter_clustering=iter_clustering,
+            take_log=take_log, take_db=take_db,
+            eps=eps
+        )
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
