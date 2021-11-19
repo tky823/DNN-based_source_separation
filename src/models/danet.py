@@ -252,7 +252,7 @@ class DANet(nn.Module):
         return _num_parameters
 
 class DANetTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: nn.Module, n_fft, hop_length=None, window_fn='hann'):
+    def __init__(self, base_model: nn.Module, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         super().__init__()
 
         self.base_model = base_model
@@ -263,6 +263,8 @@ class DANetTimeDomainWrapper(nn.Module):
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
+
+        self.eps = eps
     
     def forward(self, input, threshold=None, n_sources=None, iter_clustering=None):
         """
@@ -282,7 +284,7 @@ class DANetTimeDomainWrapper(nn.Module):
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
 
         if threshold is not None:
-            log_amplitude = 20 * torch.log10(mixture_amplitude + 1e-12)
+            log_amplitude = 20 * torch.log10(mixture_amplitude + self.eps)
             max_log_amplitude = torch.max(log_amplitude)
             threshold = 10**((max_log_amplitude - threshold) / 20)
             threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
