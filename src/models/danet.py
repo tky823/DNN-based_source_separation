@@ -225,7 +225,7 @@ class DANet(nn.Module):
 
         if task in ['wsj0-mix', 'wsj0']:
             additional_attributes.update({
-                'n_fft': config['sources'], 'hop_length': config['hop_length'],
+                'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
                 'window_fn': config['window_fn'],
                 'threshold': config['threshold']
             })
