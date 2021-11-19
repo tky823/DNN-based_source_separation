@@ -252,7 +252,7 @@ class DANet(nn.Module):
         return _num_parameters
 
 class DANetTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: nn.Module, n_fft, hop_length=None, window_fn='hann', eps=EPS):
+    def __init__(self, base_model: DANet, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         super().__init__()
 
         self.base_model = base_model

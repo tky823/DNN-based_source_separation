@@ -3,9 +3,18 @@ import itertools
 import torch
 import torch.nn as nn
 
-from models.danet import DANet
+from transform.stft import stft, istft
+from models.danet import DANet, DANetTimeDomainWrapper
 
 EPS = 1e-12
+
+__pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc"
+        }
+    }
+}
 
 """
     Anchored DANet
@@ -160,6 +169,62 @@ class ADANet(DANet):
         
         return model
     
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        additional_attributes = {}
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'best'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
+
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        if task in ['wsj0-mix', 'wsj0']:
+            additional_attributes.update({
+                'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
+                'window_fn': config['window_fn'],
+                'threshold': config['threshold']
+            })
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
+
+        return model
+
+    @classmethod
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
+        return ADANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -169,6 +234,41 @@ class ADANet(DANet):
                 _num_parameters += p.numel()
                 
         return _num_parameters
+
+class ADANetTimeDomainWrapper(DANetTimeDomainWrapper):
+    def __init__(self, base_model: ADANet, n_fft, hop_length=None, window_fn='hann', eps=EPS):
+        super().__init__(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
+    
+    def forward(self, input, threshold=None, n_sources=None):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, 1, T)
+            threshold <float>: threshold [dB]
+            n_sources <int>: Number of sources
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, T)
+        """
+        assert input.dim() == 3, "input is expected 3D input."
+
+        T = input.size(-1)
+
+        mixture_spectrogram = stft(input, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
+        mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
+
+        if threshold is not None:
+            log_amplitude = 20 * torch.log10(mixture_amplitude + self.eps)
+            max_log_amplitude = torch.max(log_amplitude)
+            threshold = 10**((max_log_amplitude - threshold) / 20)
+            threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        else:
+            threshold_weight = None
+
+        estimated_amplitude = self.base_model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
+        n_sources = estimated_amplitude.size(2)
+        estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
+        output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
+
+        return output
 
 def _test_adanet():
     torch.manual_seed(111)
