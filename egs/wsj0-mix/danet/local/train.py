@@ -35,6 +35,8 @@ parser.add_argument('--dropout', type=float, default=0, help='Dropout rate of LS
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
+parser.add_argument('--take_log', type=int, default=1, help='Whether to apply log for input.')
+parser.add_argument('--take_db', type=int, default=0, help='Whether to apply 20*log10 for input.')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se', 'l1loss', 'l2loss'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='rmsprop', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -76,7 +78,7 @@ def main(args):
         args.max_norm = None
     
     args.n_bins = args.fft_size // 2 + 1
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
+    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

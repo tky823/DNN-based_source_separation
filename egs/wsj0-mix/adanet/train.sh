@@ -33,7 +33,8 @@ N=6
 dropout=5e-1
 causal=0
 mask_nonlinear='sigmoid'
-iter_clustering=10
+take_log=1
+take_db=0
 
 # Criterion
 criterion='se' # or 'l2loss'
@@ -59,6 +60,13 @@ gpu_id="0"
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
     save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    if [ ${take_log} -eq 1 ]; then
+        save_dir="${save_dir}/take_log"
+    elif [ ${take_db} -eq 1 ]; then
+        save_dir="${save_dir}/take_db"
+    else
+        save_dir="${save_dir}/take_identity"
+    fi
     save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
@@ -110,7 +118,8 @@ train.py \
 --dropout ${dropout} \
 --causal ${causal} \
 --mask_nonlinear ${mask_nonlinear} \
---iter_clustering ${iter_clustering} \
+--take_log ${take_log} \
+--take_db ${take_db} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
