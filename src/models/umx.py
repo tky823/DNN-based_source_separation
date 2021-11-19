@@ -502,7 +502,6 @@ class OpenUnmixTimeDomainWrapper(nn.Module):
 
         batch_size, in_channels, T = input.size()
 
-        input = input.reshape(batch_size * in_channels, T)
         mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
         estimated_amplitude = self.base_model(mixture_amplitude)

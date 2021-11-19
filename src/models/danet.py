@@ -237,6 +237,10 @@ class DANet(nn.Module):
 
         return model
     
+    @classmethod
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
+        return DANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
+    
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -265,20 +269,18 @@ class DANetTimeDomainWrapper(nn.Module):
         Args:
             input <torch.Tensor>: (batch_size, 1, T)
         Returns:
-            output <torch.Tensor>: (batch_size, in_channels, T)
+            output <torch.Tensor>: (batch_size, n_sources, T)
         """
         assert input.dim() == 3, "input is expected 3D input."
 
-        batch_size, _, T = input.size()
+        T = input.size(-1)
 
-        input = input.reshape(batch_size, T)
         mixture_spectrogram = stft(input, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
         estimated_amplitude = self.base_model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
         n_sources = estimated_amplitude.size(2)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
         output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
-        output = output.reshape(batch_size, n_sources, T)
 
         return output
 
