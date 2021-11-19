@@ -8,6 +8,7 @@ from models.tdcn import TimeDilatedConvNet
 
 SAMPLE_RATE_MUSDB18 = 44100
 SAMPLE_RATE_LIBRISPEECH = 16000
+EPS = 1e-12
 
 __pretrained_model_ids__ = {
     "wsj0-mix": {
@@ -49,8 +50,6 @@ __pretrained_model_ids__ = {
         }
     }
 }
-
-EPS = 1e-12
 
 class ConvTasNet(nn.Module):
     def __init__(self,

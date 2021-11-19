@@ -5,6 +5,14 @@ from algorithm.clustering import KMeans
 
 EPS = 1e-12
 
+__pretrained_model_ids__ = {
+    "wsj0-mix": {
+        8000: {
+            2: "1---pkSV6KsJuNl0iLComr-PJiMZCHHRu"
+        }
+    }
+}
+
 class DANet(nn.Module):
     def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, take_log=True, take_db=False, eps=EPS):
         super().__init__()
@@ -63,7 +71,7 @@ class DANet(nn.Module):
             threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
         Returns:
             output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
-            latent <torch.Tensor>: (batch_size, n_bins * n_frames, embed_dim)
+            latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
             attractor <torch.Tensor>: (batch_size, n_sources, embed_dim)
         """
         if iter_clustering is None:
@@ -125,6 +133,8 @@ class DANet(nn.Module):
         mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
 
+        latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
+
         return output, latent, attractor
     
     def get_config(self):
@@ -171,6 +181,58 @@ class DANet(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        import os
+        
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in __pretrained_model_ids__:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+            
+        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        additional_attributes = {}
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'last'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
+
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        if task in ['wsj0-mix', 'wsj0']:
+            additional_attributes.update({
+                'n_fft': config['sources'], 'hop_length': config['hop_length'],
+                'window_fn': config['window_fn'],
+                'threshold': config['threshold']
+            })
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
+
         return model
     
     @property

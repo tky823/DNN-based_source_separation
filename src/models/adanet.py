@@ -40,7 +40,7 @@ class ADANet(DANet):
             threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
         Returns:
             output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
-            latent <torch.Tensor>: (batch_size, n_bins * n_frames, embed_dim)
+            latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
             attractor <torch.Tensor>: (batch_size, n_sources, embed_dim)
         """
         if n_sources is None:
@@ -115,6 +115,8 @@ class ADANet(DANet):
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
         mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
+
+        latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
 
         return output, latent, attractor
     
