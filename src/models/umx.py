@@ -3,8 +3,9 @@ import torch
 import torch.nn as nn
 
 from utils.audio import build_window
-from algorithm.frequency_mask import multichannel_wiener_filter
 from utils.model import choose_nonlinear, choose_rnn
+from algorithm.frequency_mask import multichannel_wiener_filter
+from transform.stft import stft, istft
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
@@ -478,16 +479,16 @@ class OpenUnmix(nn.Module):
         return _num_parameters
 
 class OpenUnmixTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: nn.Module, fft_size, hop_size=None, window_fn='hann'):
+    def __init__(self, base_model: nn.Module, n_fft, hop_length=None, window_fn='hann'):
         super().__init__()
 
         self.base_model = base_model
 
-        if hop_size is None:
-            hop_size = fft_size // 4
+        if hop_length is None:
+            hop_length = n_fft // 4
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        window = build_window(fft_size, window_fn=window_fn)
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
     
     def forward(self, input):
@@ -502,13 +503,11 @@ class OpenUnmixTimeDomainWrapper(nn.Module):
         batch_size, in_channels, T = input.size()
 
         input = input.reshape(batch_size * in_channels, T)
-        mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
-        mixture_spectrogram = mixture_spectrogram.reshape(batch_size, in_channels, *mixture_spectrogram.size()[-2:])
+        mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
         estimated_amplitude = self.base_model(mixture_amplitude)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
-        estimated_spectrogram = estimated_spectrogram.reshape(batch_size * in_channels, *estimated_spectrogram.size()[-2:])
-        output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
+        output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
         output = output.reshape(batch_size, in_channels, T)
 
         return output

@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 
+from utils.audio import build_window
 from algorithm.clustering import KMeans
+from transform.stft import stft, istft
 
 EPS = 1e-12
 
@@ -244,6 +246,41 @@ class DANet(nn.Module):
                 _num_parameters += p.numel()
                 
         return _num_parameters
+
+class DANetTimeDomainWrapper(nn.Module):
+    def __init__(self, base_model: nn.Module, n_fft, hop_length=None, window_fn='hann'):
+        super().__init__()
+
+        self.base_model = base_model
+
+        if hop_length is None:
+            hop_length = n_fft // 4
+        
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
+        self.window = nn.Parameter(window, requires_grad=False)
+    
+    def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, 1, T)
+        Returns:
+            output <torch.Tensor>: (batch_size, in_channels, T)
+        """
+        assert input.dim() == 3, "input is expected 3D input."
+
+        batch_size, _, T = input.size()
+
+        input = input.reshape(batch_size, T)
+        mixture_spectrogram = stft(input, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
+        mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
+        estimated_amplitude = self.base_model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
+        n_sources = estimated_amplitude.size(2)
+        estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
+        output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
+        output = output.reshape(batch_size, n_sources, T)
+
+        return output
 
 def _test_danet():
     batch_size = 2
