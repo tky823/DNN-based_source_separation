@@ -500,14 +500,13 @@ class OpenUnmixTimeDomainWrapper(nn.Module):
         """
         assert input.dim() == 3, "input is expected 3D input."
 
-        batch_size, in_channels, T = input.size()
+        T = input.size(-1)
 
         mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
         estimated_amplitude = self.base_model(mixture_amplitude)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
         output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
-        output = output.reshape(batch_size, in_channels, T)
 
         return output
 
