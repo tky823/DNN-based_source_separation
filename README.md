@@ -98,7 +98,7 @@ You can load pretrained models.
 ```py
 from models.conv_tasnet import ConvTasNet
 
-model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, target='vocals')
+model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")
 ```
 
 | Model | Dataset | Example |
