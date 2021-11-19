@@ -127,7 +127,7 @@ class ParallelMMDenseRNNTimeDomainWrapper(nn.Module):
         estimated_amplitude = []
 
         for target in self.sources:
-            _estimated_amplitude = self.base_model(mixture_amplitude, target=target)
+            _estimated_amplitude = self.base_model(mixture_amplitude.squeeze(dim=1), target=target)
             estimated_amplitude.append(_estimated_amplitude)
         
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)

@@ -355,8 +355,7 @@ class CrossNetOpenUnmixTimeDomainWrapper(nn.Module):
         """
         assert input.dim() == 4, "input is expected 4D input."
 
-        n_sources = len(self.sources)
-        batch_size, _, in_channels, T = input.size()
+        T = input.size(-1)
         eps = self.eps
 
         mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
