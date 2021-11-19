@@ -264,10 +264,13 @@ class DANetTimeDomainWrapper(nn.Module):
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
     
-    def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
+    def forward(self, input, threshold=None, n_sources=None, iter_clustering=None):
         """
         Args:
             input <torch.Tensor>: (batch_size, 1, T)
+            threshold <float>: threshold [dB]
+            n_sources <int>: Number of sources
+            iter_clustering <int>: Number of iteration in KMeans
         Returns:
             output <torch.Tensor>: (batch_size, n_sources, T)
         """
@@ -277,7 +280,16 @@ class DANetTimeDomainWrapper(nn.Module):
 
         mixture_spectrogram = stft(input, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
-        estimated_amplitude = self.base_model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
+
+        if threshold is not None:
+            log_amplitude = 20 * torch.log10(mixture_amplitude + 1e-12)
+            max_log_amplitude = torch.max(log_amplitude)
+            threshold = 10**((max_log_amplitude - threshold) / 20)
+            threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        else:
+            threshold_weight = None
+
+        estimated_amplitude = self.base_model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
         n_sources = estimated_amplitude.size(2)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
         output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
