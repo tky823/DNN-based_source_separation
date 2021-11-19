@@ -5,6 +5,7 @@ import torch
 import torchaudio
 
 from utils.utils_audio import build_window
+from transform.stft import stft
 from dataset import MUSDB18Dataset
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
@@ -111,21 +112,10 @@ class SpectrogramDataset(WaveDataset):
         """
         mixture, target, latent, title, scale = super().__getitem__(idx)
         
-        n_dims = mixture.dim()
         T = mixture.size(-1)
 
-        if n_dims > 2:
-            mixture_channels = mixture.size()[:-1]
-            target_channels = target.size()[:-1]
-            mixture = mixture.reshape(-1, mixture.size(-1))
-            target = target.reshape(-1, target.size(-1))
-
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        
-        if n_dims > 2:
-            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            target = target.reshape(*target_channels, *target.size()[-2:])
+        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        target = stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
 
         return mixture, target, latent, T, title, scale
 
@@ -256,21 +246,9 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         sources = torch.concatenate(sources, dim=0)
         target = torch.concatenate(target, dim=0)
         mixture = sources.sum(dim=0, keepdim=True)
-        
-        n_dims = mixture.dim()
 
-        if n_dims > 2:
-            mixture_channels = mixture.size()[:-1]
-            target_channels = target.size()[:-1]
-            mixture = mixture.reshape(-1, mixture.size(-1))
-            target = target.reshape(-1, target.size(-1))
-
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        
-        if n_dims > 2:
-            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            target = target.reshape(*target_channels, *target.size()[-2:])
+        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        target = stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
 
         return mixture, target, latent, source_names, scales
 

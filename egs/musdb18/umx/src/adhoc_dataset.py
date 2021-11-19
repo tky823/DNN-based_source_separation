@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
+from transform.stft import stft
 from dataset import assert_sample_rate
 from dataset import SpectrogramDataset
 
@@ -97,8 +98,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         mixture = mixture.reshape(-1, mixture.size(-1))
         target = target.reshape(-1, target.size(-1))
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         n_frames = mixture.size(-1)
         padding = (patch_size - n_frames % patch_size) % patch_size
@@ -202,8 +203,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
         mixture = mixture.reshape(-1, mixture.size(-1))
         target = target.reshape(-1, target.size(-1))
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         n_frames = mixture.size(-1)
         padding = (patch_size - n_frames % patch_size) % patch_size

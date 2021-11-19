@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import torch.nn as nn
 
+from transform.stft import stft
 from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_wiener_filter_mask
 
 EPS = 1e-12
@@ -204,21 +205,10 @@ class SpectrogramDataset(WaveDataset):
         """
         mixture, sources, segment_IDs = super().__getitem__(idx)
 
-        n_dims = mixture.dim()
         T = mixture.size(-1)
 
-        if n_dims > 2:
-            mixture_channels = mixture.size()[:-1]
-            sources_channels = sources.size()[:-1]
-            mixture = mixture.reshape(-1, mixture.size(-1))
-            sources = sources.reshape(-1, sources.size(-1))
-
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
-        sources = torch.stft(sources, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
-
-        if n_dims > 2:
-            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            sources = sources.reshape(*sources_channels, *sources.size()[-2:])
+        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
+        sources = stft(sources, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
         
         return mixture, sources, T, segment_IDs
 

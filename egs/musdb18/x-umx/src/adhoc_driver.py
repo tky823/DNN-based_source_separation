@@ -8,6 +8,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from transform.stft import istft
 from driver import apply_multichannel_wiener_filter_norbert, apply_multichannel_wiener_filter_torch
 from driver import TrainerBase, TesterBase
 
@@ -227,11 +228,11 @@ class AdhocSchedulerTrainer(TrainerBase):
                     estimated_sources_channels = estimated_sources.size()[:-2]
 
                     mixture = mixture.view(-1, *mixture.size()[-2:])
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                    mixture = istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
                     mixture = mixture.view(*mixture_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                     estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-                    estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                    estimated_sources = istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
                     estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                     track_dir = os.path.join(self.sample_dir, name)
@@ -472,7 +473,7 @@ class AdhocTester(TesterBase):
                 estimated_sources_channels = estimated_sources.size()[:-2]
 
                 estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-                estimated_sources = torch.istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                estimated_sources = istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
                 estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                 track_dir = os.path.join(self.estimates_dir, name)

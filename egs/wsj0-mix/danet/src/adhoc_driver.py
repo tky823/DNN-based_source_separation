@@ -10,6 +10,7 @@ import torch.nn as nn
 
 from utils.utils import draw_loss_curve
 from utils.bss import bss_eval_sources
+from transform.stft import istft
 from driver import TrainerBase, TesterBase
 from criterion.pit import pit
 
@@ -230,10 +231,10 @@ class AdhocTrainer(TrainerBase):
 
                     phase = torch.angle(mixture)
                     estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)
-                    estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (n_sources, T)
+                    estimated_sources = istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (1, T)
+                    mixture = istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (1, T)
                     mixture = mixture.squeeze(dim=0) # (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
@@ -340,17 +341,18 @@ class AdhocTester(TesterBase):
                 mixture = mixture[0].cpu()
                 sources = sources[0].cpu()
     
-                mixture_amplitude = mixture_amplitude[0].cpu() # -> (1, n_bins, n_frames)
-                estimated_sources_amplitude = output[0].cpu() # -> (n_sources, n_bins, n_frames)
-                ratio = estimated_sources_amplitude / mixture_amplitude
-                estimated_sources = ratio * mixture # -> (n_sources, n_bins, n_frames)
+                mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)
+                estimated_sources_amplitude = output[0].cpu() # (n_sources, n_bins, n_frames)
 
-                perm_idx = perm_idx[0] # -> (n_sources,)
-                T = T[0]  # -> ()
-                segment_IDs = segment_IDs[0] # -> (n_sources,)
-                mixture = torch.istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # -> (T,)
-                sources = torch.istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
-                estimated_sources = torch.istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # -> (n_sources, T)
+                phase = torch.angle(mixture)
+                estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase) # (n_sources, n_bins, n_frames)
+
+                perm_idx = perm_idx[0] # (n_sources,)
+                T = T[0]  # ()
+                segment_IDs = segment_IDs[0] # (n_sources,)
+                mixture = istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # (T,)
+                sources = istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # (n_sources, T)
+                estimated_sources = istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # (n_sources, T)
                 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(
