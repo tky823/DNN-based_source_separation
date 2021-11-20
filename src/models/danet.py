@@ -77,9 +77,6 @@ class DANet(nn.Module):
             latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
             attractor <torch.Tensor>: (batch_size, n_sources, embed_dim)
         """
-        if iter_clustering is None:
-            iter_clustering = self.iter_clustering
-        
         if n_sources is not None:
             if assignment is not None and n_sources != assignment.size(1):
                 raise ValueError("n_sources is different from assignment.size(1)")
