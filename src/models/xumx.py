@@ -283,7 +283,7 @@ class CrossNetOpenUnmix(nn.Module):
         additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
             model_choice = kwargs.get('model_choice') or 'best'
 
@@ -304,10 +304,12 @@ class CrossNetOpenUnmix(nn.Module):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
-        if task == 'musdb18':
+        if task in ['musdb18']:
             additional_attributes.update({
                 'sources': config['sources'],
-                'n_sources': len(config['sources'])
+                'n_sources': len(config['sources']),
+                'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
+                'window_fn': config['window_fn'],
             })
     
         for key, value in additional_attributes.items():

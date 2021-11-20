@@ -100,7 +100,7 @@ class ParallelOpenUnmix(nn.Module):
         additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
             sources = __sources__
             model_choice = kwargs.get('model_choice') or 'best'
@@ -115,6 +115,8 @@ class ParallelOpenUnmix(nn.Module):
         })
         
         modules = {}
+        n_fft, hop_length = None, None
+        window_fn = None
 
         for target in sources:
             model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
@@ -124,6 +126,27 @@ class ParallelOpenUnmix(nn.Module):
             
             config = torch.load(model_path, map_location=lambda storage, loc: storage)
             modules[target] = OpenUnmix.build_model(model_path, load_state_dict=load_state_dict)
+
+            if task in ['musdb18', 'musdb18hq']:
+                if n_fft is None:
+                    n_fft = config['n_fft']
+                else:
+                    assert n_fft == config['n_fft'], "`n_fft` is different among models."
+                
+                if hop_length is None:
+                    hop_length = config['hop_length']
+                else:
+                    assert hop_length == config['hop_length'], "`hop_length` is different among models."
+                
+                if window_fn is None:
+                    window_fn = config['window_fn']
+                else:
+                    assert window_fn == config['window_fn'], "`window_fn` is different among models."
+        
+        additional_attributes.update({
+            'n_fft': n_fft, 'hop_length': hop_length,
+            'window_fn': window_fn,
+        })
         
         model = cls(modules)
 

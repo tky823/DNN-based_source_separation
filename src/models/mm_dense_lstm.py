@@ -107,6 +107,8 @@ class ParallelMMDenseLSTM(nn.Module):
         })
         
         modules = {}
+        n_fft, hop_length = None, None
+        window_fn = None
 
         for target in sources:
             model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
@@ -116,6 +118,27 @@ class ParallelMMDenseLSTM(nn.Module):
             
             config = torch.load(model_path, map_location=lambda storage, loc: storage)
             modules[target] = MMDenseLSTM.build_model(model_path, load_state_dict=load_state_dict)
+
+            if task in ['musdb18']:
+                if n_fft is None:
+                    n_fft = config['n_fft']
+                else:
+                    assert n_fft == config['n_fft'], "`n_fft` is different among models."
+                
+                if hop_length is None:
+                    hop_length = config['hop_length']
+                else:
+                    assert hop_length == config['hop_length'], "`hop_length` is different among models."
+                
+                if window_fn is None:
+                    window_fn = config['window_fn']
+                else:
+                    assert window_fn == config['window_fn'], "`window_fn` is different among models."
+        
+        additional_attributes.update({
+            'n_fft': n_fft, 'hop_length': hop_length,
+            'window_fn': window_fn,
+        })
         
         model = cls(modules)
 
