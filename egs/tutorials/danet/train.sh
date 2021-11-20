@@ -87,9 +87,12 @@ train.py \
 -K ${K} \
 -H ${H} \
 -B ${B} \
+--dropout ${dropout} \
 --causal ${causal} \
 --mask_nonlinear ${mask_nonlinear} \
 --iter_clustering ${iter_clustering} \
+--take_log ${take_log} \
+--take_db ${take_db} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \

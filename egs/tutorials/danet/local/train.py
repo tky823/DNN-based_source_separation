@@ -26,9 +26,12 @@ parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
 parser.add_argument('--hidden_channels', '-H', type=int, default=600, help='hidden_channels')
 parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM layers')
+parser.add_argument('--dropout', type=float, default=0, help='Dropout rate of LSTM layers')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
+parser.add_argument('--iter_clustering', type=int, default=-1, help='# iterations when clustering')
+parser.add_argument('--take_log', type=int, default=1, help='Log operation')
+parser.add_argument('--take_db', type=int, default=0, help='20*log10 operation.')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
@@ -66,7 +69,7 @@ def main(args):
     
     args.n_bins = args.n_fft // 2 + 1
 
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear)
+    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
