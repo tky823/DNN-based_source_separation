@@ -4,6 +4,7 @@ import torch
 import torchaudio
 import torch.nn as nn
 
+from utils.audio import build_window
 from transforms.stft import stft
 from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_wiener_filter_mask
 
@@ -184,12 +185,7 @@ class SpectrogramDataset(WaveDataset):
         self.n_bins = n_fft // 2 + 1
 
         if window_fn:
-            if window_fn == 'hann':
-                self.window = torch.hann_window(n_fft, periodic=True)
-            elif window_fn == 'hamming':
-                self.window = torch.hamming_window(n_fft, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(n_fft, window_fn=window_fn)
         else:
             self.window = None
         
@@ -387,11 +383,12 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
             ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T () <int>
-            segment_IDs (n_sources,) <list<str>>
+            segment_ID (n_sources,) <list<str>>
         """
-        mixture, sources, ideal_mask, threshold_weight, T, segment_IDs = super().__getitem__(idx)
+        mixture, sources, ideal_mask, threshold_weight, T, _ = super().__getitem__(idx)
+        segment_ID = self.json_data[idx]['ID']
 
-        return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
+        return mixture, sources, ideal_mask, threshold_weight, T, segment_ID
 
 """
     Data loader
