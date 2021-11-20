@@ -417,7 +417,9 @@ class AttractorTrainer(Trainer):
                 print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
-            self.valid_loss[epoch] = valid_loss
+
+            if valid_loss is not None:
+                self.valid_loss[epoch] = valid_loss
 
             if valid_loss is not None:
                 if valid_loss < self.best_loss:
