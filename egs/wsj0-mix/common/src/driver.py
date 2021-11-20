@@ -10,7 +10,7 @@ import torch.nn as nn
 
 from utils.utils import draw_loss_curve
 from utils.bss import bss_eval_sources
-from transform.stft import istft
+from transforms.stft import istft
 from criterion.pit import pit
 
 BITS_PER_SAMPLE_WSJ0 = 16

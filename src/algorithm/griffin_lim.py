@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn as nn
 
-from utils.utils_audio import build_window
+from utils.audio import build_window
 
 class GriffinLim(nn.Module):
     def __init__(self, n_fft, hop_length=None, window_fn='hann'):

@@ -4,8 +4,8 @@ import random
 import torch
 import torchaudio
 
-from utils.utils_audio import build_window
-from transform.stft import stft
+from utils.audio import build_window
+from transforms.stft import stft
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 

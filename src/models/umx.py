@@ -5,7 +5,7 @@ import torch.nn as nn
 from utils.audio import build_window
 from utils.model import choose_nonlinear, choose_rnn
 from algorithm.frequency_mask import multichannel_wiener_filter
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100

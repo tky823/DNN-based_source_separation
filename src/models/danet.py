@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from utils.audio import build_window
 from algorithm.clustering import KMeans
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 
 EPS = 1e-12
 

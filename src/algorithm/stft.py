@@ -1,10 +1,8 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_audio import build_Fourier_bases, build_window, build_optimal_window
+from utils.audio import build_Fourier_bases, build_window, build_optimal_window
 
 class BatchSTFT(nn.Module):
     def __init__(self, n_fft, hop_length=None, window_fn='hann', normalize=False):

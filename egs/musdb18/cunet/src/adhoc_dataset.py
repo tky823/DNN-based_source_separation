@@ -5,7 +5,7 @@ import torch
 import torchaudio
 
 from utils.utils_audio import build_window
-from transform.stft import stft
+from transforms.stft import stft
 from dataset import MUSDB18Dataset
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']

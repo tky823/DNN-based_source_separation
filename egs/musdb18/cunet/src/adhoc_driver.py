@@ -6,7 +6,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from transform.stft import istft
+from transforms.stft import istft
 from driver import TrainerBase
 
 SAMPLE_RATE_MUSDB18 = 44100

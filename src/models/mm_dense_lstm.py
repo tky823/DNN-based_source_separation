@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from utils.audio import build_window
 from algorithm.frequency_mask import multichannel_wiener_filter
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 from models.mm_dense_rnn import MMDenseRNN
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']

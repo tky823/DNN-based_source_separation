@@ -4,7 +4,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
-from transform.stft import stft
+from transforms.stft import stft
 from dataset import assert_sample_rate
 from dataset import SpectrogramDataset
 

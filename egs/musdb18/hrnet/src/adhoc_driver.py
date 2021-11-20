@@ -8,7 +8,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from transform.stft import istft
+from transforms.stft import istft
 from driver import TrainerBase, TesterBase
 
 BITS_PER_SAMPLE_MUSDB18 = 16

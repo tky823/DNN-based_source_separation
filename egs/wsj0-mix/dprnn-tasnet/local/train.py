@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -12,7 +13,7 @@ from models.dprnn_tasnet import DPRNNTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
+parser = argparse.ArgumentParser(description="Training of DPRNN-TasNet")
 
 parser.add_argument('--train_wav_root', type=str, default=None, help='Path for training dataset ROOT directory')
 parser.add_argument('--valid_wav_root', type=str, default=None, help='Path for validation dataset ROOT directory')

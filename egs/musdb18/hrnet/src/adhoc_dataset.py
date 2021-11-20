@@ -5,7 +5,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
-from transform.stft import stft
+from transforms.stft import stft
 from dataset import SpectrogramDataset
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']

@@ -6,7 +6,7 @@ from torch.nn.modules.utils import _pair
 
 from utils.audio import build_window
 from utils.m_densenet import choose_layer_norm, choose_nonlinear
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 from models.glu import GLU2d
 
 """

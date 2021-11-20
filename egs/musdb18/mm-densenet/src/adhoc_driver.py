@@ -8,7 +8,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
-from transform.stft import istft
+from transforms.stft import istft
 from driver import apply_multichannel_wiener_filter_norbert, apply_multichannel_wiener_filter_torch
 from driver import TrainerBase, TesterBase
 

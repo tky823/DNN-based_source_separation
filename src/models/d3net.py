@@ -9,7 +9,7 @@ from torch.nn.modules.utils import _pair
 from utils.audio import build_window
 from utils.d3net import choose_layer_norm
 from algorithm.frequency_mask import multichannel_wiener_filter
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.d2net import D2Block, D2BlockFixedDilation

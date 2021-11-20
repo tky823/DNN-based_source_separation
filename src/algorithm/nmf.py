@@ -1,6 +1,5 @@
 import torch
 
-from criterion.distance import L2Loss
 from criterion.divergence import generalized_kl_divergence, is_divergence
 
 EPS=1e-12

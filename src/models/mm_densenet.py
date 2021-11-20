@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from utils.audio import build_window
 from utils.m_densenet import choose_layer_norm
 from algorithm.frequency_mask import multichannel_wiener_filter
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.m_densenet import MDenseNetBackbone, DenseBlock

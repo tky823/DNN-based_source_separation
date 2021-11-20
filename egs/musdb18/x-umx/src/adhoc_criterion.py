@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 from criterion.combination import CombinationLoss
 
 EPS = 1e-12

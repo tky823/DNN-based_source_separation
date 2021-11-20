@@ -3,7 +3,7 @@ import itertools
 import torch
 import torch.nn as nn
 
-from transform.stft import stft, istft
+from transforms.stft import stft, istft
 from models.danet import DANet, DANetTimeDomainWrapper
 
 EPS = 1e-12

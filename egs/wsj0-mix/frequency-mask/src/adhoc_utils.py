@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_audio import build_window
+from utils.audio import build_window
 from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_phase_sensitive_mask
 
 class FrequencyMasking(nn.Module):
