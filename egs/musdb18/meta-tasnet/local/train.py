@@ -92,8 +92,7 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
+
     if args.conv_name == 'generated' or args.norm_name == 'generated':
         if args.embed_dim <= 0:
             raise ValueError("Invalid `embed_dim`.")
@@ -169,6 +168,9 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion_similarity))
     
     criterion = MultiLoss(metrics, weights)
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = Trainer(model, loader, criterion, optimizer, args)
     trainer.run()

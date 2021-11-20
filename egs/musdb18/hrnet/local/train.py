@@ -72,9 +72,6 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
     model = HRNet.build_from_config(config_path=args.config_path)
 
     print(model)
@@ -109,6 +106,9 @@ def main(args):
         args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()

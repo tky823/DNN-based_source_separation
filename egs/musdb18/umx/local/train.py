@@ -85,9 +85,6 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
     in_channels = 2
     args.n_bins = args.n_fft // 2 + 1
     model = OpenUnmix(in_channels, hidden_channels=args.hidden_channels, num_layers=args.num_layers, n_bins=args.n_bins, max_bin=args.max_bin, dropout=args.dropout, causal=args.causal)
@@ -121,6 +118,9 @@ def main(args):
         args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
