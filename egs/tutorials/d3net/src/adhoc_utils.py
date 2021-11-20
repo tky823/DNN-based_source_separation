@@ -2,7 +2,6 @@ import os
 
 import torch
 import torchaudio
-import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filter
