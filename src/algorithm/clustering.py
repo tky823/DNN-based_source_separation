@@ -4,21 +4,36 @@ import torch
 import torch.nn as nn
 
 class KMeansBase(nn.Module):
-    def __init__(self, data, K=2, init_centroids='kmeans++'):
+    def __init__(self, K=2, init_centroids='kmeans++'):
+        super().__init__()
+
+        self.K = K
+        self.init_centroids = init_centroids
+
+        self.cluster_ids, self.centroids = None, None
+    
+    def forward(self, data):
         """
         Args:
             data <torch.Tensor>: (batch_size, num_samples, num_features)
         """
-        super().__init__()
-
-        self.K = K
-        
-        batch_size, num_samples, num_features = data.size()
-        
-        if init_centroids == 'kmeans++':
-            centroid_ids = self._init_kmeans_pp(data, K=K) # (batch_size, K)
+        if self.training:
+            if self.cluster_ids is None or self.centroids is None:
+                cluster_ids, centroids = self._init_kmeans(data)
+                self.cluster_ids, self.centroids = cluster_ids, centroids
         else:
-            centroid_ids = self._init_kmeans_random(data, K=K) # (batch_size, K)
+            raise NotImplementedError
+
+        return cluster_ids, centroids
+    
+    def _init_kmeans(self, data):
+        K = self.K
+        batch_size, num_samples, num_features = data.size()
+
+        if self.init_centroids == 'kmeans++':
+            centroid_ids = self._init_kmeans_pp(data) # (batch_size, K)
+        else:
+            centroid_ids = self._init_kmeans_random(data) # (batch_size, K)
         
         centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
         flatten_data = data.reshape(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
@@ -27,18 +42,17 @@ class KMeansBase(nn.Module):
         
         distance = self.compute_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
-        
-        self.cluster_ids = cluster_ids # (batch_size, num_samples)
-        self.num_samples = num_samples
-        self.data = data # (batch_size, num_samples, num_features)
+
+        return cluster_ids, centroids
     
-    def _init_kmeans_random(self, data, K=2):
+    def _init_kmeans_random(self, data):
         """
         Args:
             data <torch.Tensor>: (batch_size, num_samples, num_features)
         Returns:
             centroid_ids <torch.LongTensor>: (batch_size, K)
         """
+        K = self.K
         batch_size, num_samples, _ = data.size()
         centroid_ids = []
 
@@ -51,13 +65,14 @@ class KMeansBase(nn.Module):
 
         return centroid_ids
     
-    def _init_kmeans_pp(self, data, K=2):
+    def _init_kmeans_pp(self, data):
         """
         Args:
             data <torch.Tensor>: (batch_size, num_samples, num_features)
         Returns:
             centroid_ids <torch.LongTensor>: (batch_size, K)
         """
+        K = self.K
         _, num_samples, _ = data.size()
 
         centroid_ids = []
@@ -87,41 +102,50 @@ class KMeansBase(nn.Module):
         return distance
 
 class KMeans(KMeansBase):
-    def __init__(self, data, K=2, init_centroids='kmeans++'):
+    def __init__(self, K=2, init_centroids='kmeans++'):
+        """
+        Args:
+            K <int>: number of clusters
+        """
+        super().__init__(K=K, init_centroids=init_centroids)
+    
+    def forward(self, data, iteration=None):
         """
         Args:
             data <torch.Tensor>: (batch_size, num_samples, num_features)
-            K <int>: number of clusters
         """
-        super().__init__(data, K=K, init_centroids=init_centroids)
-    
-    def forward(self, iteration=10):
-        if iteration is not None:
-            assert iteration > 0, "iteration should be positive."
-        
-            for idx in range(iteration):
-                cluster_ids, centroids = self.update_once()
+        if self.training:
+            if self.cluster_ids is None or self.centroids is None:
+                self.cluster_ids, self.centroids = self._init_kmeans(data)
         else:
-            prev_cluster_ids, prev_centroids = None, None
+            raise NotImplementedError
 
+        if iteration is not None:
+            for idx in range(iteration):
+                cluster_ids, centroids = self.update_once(data, cluster_ids=self.cluster_ids, centroids=self.centroids)
+
+                self.cluster_ids, self.centroids = cluster_ids, centroids
+        else:
             while True:
-                cluster_ids, centroids = self.update_once()
+                cluster_ids, centroids = self.update_once(data, cluster_ids=self.cluster_ids, centroids=self.centroids)
+                distance = self.compute_distance(self.centroids, centroids, dim=-1)
+                distance = distance.mean().item()
 
-                if prev_cluster_ids is not None:
-                    distance = self.compute_distance(prev_centroids, centroids, dim=-1)
-                    distance = distance.mean().item()
-                    if distance == 0:
-                        break
-                
-                prev_cluster_ids, prev_centroids = cluster_ids, centroids
+                self.cluster_ids, self.centroids = cluster_ids, centroids
+
+                if distance == 0:
+                    break
+
+        return self.cluster_ids, self.centroids
         
-        return cluster_ids, centroids
-        
-    def update_once(self):
+    def update_once(self, data, cluster_ids=None, centroids=None):
+        """
+        Args:
+            data: (batch_size, num_samples, num_features)
+            cluster_ids: (batch_size, num_samples)
+            centroids: (batch_size, K, num_features)
+        """
         K = self.K
-        cluster_ids = self.cluster_ids # (batch_size, num_samples)
-        data = self.data # (batch_size, num_samples, num_features)
-
         mask = torch.eye(K)[cluster_ids] # (batch_size, num_samples, K)
         mask = mask.to(data.device)
 
@@ -138,8 +162,6 @@ class KMeans(KMeansBase):
         """
         distance = self.compute_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
-
-        self.cluster_ids = cluster_ids
     
         return cluster_ids, centroids
 
@@ -173,8 +195,8 @@ def _test_kmeans_pp_iteration():
     random.seed(seed)
     torch.manual_seed(seed)
 
-    kmeans = KMeans(data, K=K)
-    _, centroids = kmeans(iteration=iteration) # (batch_size, K), (batch_size, K, num_features)
+    kmeans = KMeans(K=K)
+    _, centroids = kmeans(data, iteration=iteration) # (batch_size, K), (batch_size, K, num_features)
 
     for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
         plt.figure()
@@ -189,10 +211,11 @@ def _test_kmeans_pp_iteration():
     random.seed(seed)
     torch.manual_seed(seed)
 
-    kmeans = KMeans(data, K=K)
+    kmeans = KMeans(K=K)
+    _, centroids = kmeans(data, iteration=0) # Only initializes centroids.
 
     for idx in range(iteration):
-        _, centroids = kmeans.update_once()
+        _, centroids = kmeans(data, iteration=1)
 
         for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
             plt.figure()
@@ -232,8 +255,8 @@ def _test_kmeans():
     random.seed(seed)
     torch.manual_seed(seed)
 
-    kmeans = KMeans(data, K=K)
-    _, centroids = kmeans() # (batch_size, K), (batch_size, K, num_features)
+    kmeans = KMeans(K=K)
+    _, centroids = kmeans(data) # (batch_size, K), (batch_size, K, num_features)
 
     for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
         plt.figure()

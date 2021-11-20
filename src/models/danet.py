@@ -123,8 +123,8 @@ class DANet(nn.Module):
                 latent_nonzero = flatten_latent[nonzero_indices] # (n_nonzeros, embed_dim)
                 latent_nonzero = latent_nonzero.view(batch_size, -1, embed_dim) # (batch_size, n_nonzeros, embed_dim)
             
-            kmeans = KMeans(latent, K=n_sources)
-            _, attractor = kmeans(iteration=iter_clustering) # (batch_size, n_bins * n_frames), (batch_size, n_sources, embed_dim)
+            kmeans = KMeans(K=n_sources)
+            _, attractor = kmeans(latent, iteration=iter_clustering) # (batch_size, n_bins * n_frames), (batch_size, n_sources, embed_dim)
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, n_bins * n_frames)
             assignment = assignment.view(batch_size, n_sources, n_bins * n_frames) # (batch_size, n_sources, n_bins * n_frames)
