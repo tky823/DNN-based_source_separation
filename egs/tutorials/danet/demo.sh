@@ -17,8 +17,12 @@ threshold=40
 K=20
 H=256
 B=4
+dropout=0
 causal=0
 mask_nonlinear='sigmoid'
+iter_clustering=-1
+take_log=1
+take_db=0
 
 # Criterion
 criterion='se'
