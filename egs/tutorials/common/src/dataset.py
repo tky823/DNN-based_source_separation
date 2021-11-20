@@ -162,7 +162,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         
         mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
         sources_amplitude = torch.abs(sources)
-        ideal_mask = self.generate_mask(sources_amplitude)
+        ideal_mask = self.generate_mask(sources_amplitude, source_dim=0)
         
         mixture_amplitude = torch.abs(mixture)
         log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
