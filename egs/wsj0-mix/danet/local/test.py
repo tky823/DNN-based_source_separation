@@ -46,9 +46,6 @@ def main(args):
     
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-
-    if args.iteration < -1:
-        args.iteration = None # Iterates untils convergence
     
     if args.use_cuda:
         if torch.cuda.is_available():
@@ -71,6 +68,9 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
 
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
+
+    if args.iter_clustering < 0:
+        args.iter_clustering = None # Iterates untils convergence
     
     tester = AdhocTester(model, loader, pit_criterion, args)
     tester.run()

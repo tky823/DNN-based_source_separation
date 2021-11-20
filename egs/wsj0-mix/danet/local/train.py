@@ -74,9 +74,6 @@ def main(args):
     else:
         loader['valid'] = None
     
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
     args.n_bins = args.n_fft // 2 + 1
     model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, take_log=args.take_log, take_db=args.take_db)
     print(model)
@@ -121,6 +118,12 @@ def main(args):
         criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+
+    if args.iter_clustering < 0:
+        args.iter_clustering = None # Iterates untils convergence
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()
