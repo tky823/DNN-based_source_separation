@@ -8,8 +8,8 @@ n_sources=2
 sample_rate=16000
 
 window_fn='hann'
-n_fft=256
-hop_length=64
+n_fft=512
+hop_length=128
 ideal_mask='ibm'
 threshold=40
 

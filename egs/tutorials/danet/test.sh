@@ -11,8 +11,8 @@ test_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.jso
 sample_rate=16000
 
 window_fn='hann'
-n_fft=256
-hop_length=64
+n_fft=512
+hop_length=128
 ideal_mask='ibm'
 threshold=40
 

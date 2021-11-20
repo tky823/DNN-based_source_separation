@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -9,7 +10,7 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from driver import AttractorTrainer
 from models.danet import DANet
-from criterion.distance import L2Loss
+from adhoc_criterion import SquaredError
 
 parser = argparse.ArgumentParser(description="Training of DANet (Deep Attractor Network)")
 
@@ -20,7 +21,7 @@ parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampl
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
-parser.add_argument('--n_fft', type=int, default=256, help='Window length')
+parser.add_argument('--n_fft', type=int, default=512, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
 parser.add_argument('--hidden_channels', '-H', type=int, default=600, help='hidden_channels')
@@ -29,7 +30,7 @@ parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
 parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -90,8 +91,8 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
         
     # Criterion
-    if args.criterion == 'l2loss':
-        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
+    if args.criterion == 'se':
+        criterion = SquaredError(sum_dim=(1,2), mean_dim=3) # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
