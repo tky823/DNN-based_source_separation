@@ -371,6 +371,21 @@ def get_stats(spectrogram, eps=EPS):
 
     return psd, covariance
 
+def _prepare_data():
+    sample_rate = 16000
+    resampler = torchaudio.transforms.Resample(44100, sample_rate)
+
+    source1, _ = torchaudio.load("data/single-channel/man-44100.wav")
+    source1 = resampler(source1)
+    torchaudio.save("data/single-channel/man-{}.wav".format(sample_rate), source1, sample_rate=sample_rate, bits_per_sample=16)
+    
+    source2, _ = torchaudio.load("data/single-channel/woman-44100.wav")
+    source2 = resampler(source2)
+    torchaudio.save("data/single-channel/woman-{}.wav".format(sample_rate), source2, sample_rate=sample_rate, bits_per_sample=16)
+    
+    mixture = source1 + source2
+    torchaudio.save("data/single-channel/mixture-{}.wav".format(sample_rate), mixture, sample_rate=sample_rate, bits_per_sample=16)
+
 def _test_amplitude(amplitude, method='IBM'):
     if method == 'IBM':
         mask = compute_ideal_binary_mask(amplitude)
@@ -413,29 +428,15 @@ if __name__ == '__main__':
     import torchaudio
     
     os.makedirs("data/frequency_mask", exist_ok=True)
+
+    # _prepare_data()
     
     n_fft, hop_length = 1024, 256
-    n_basis = 4
     
-    """
-    source1, sr = read_wav("data/man-44100.wav")
-    source1 = resample_poly(source1, up=16000, down=sr)
-    torchaudio.save("data/man-16000.wav", source1, sample_rate=16000, bits_per_sample=16)
-    """
-    source1, sr = torchaudio.load("data/man-16000.wav")
-    _, T = source1.size()
-    
-    """
-    source2, sr = read_wav("data/woman-44100.wav")
-    source2 = resample_poly(source2, up=16000, down=sr)
-    torchaudio.save("data/woman-16000.wav", source2, sample_rate=16000, bits_per_sample=16)
-    """
-    source2, sr = torchaudio.load("data/woman-16000.wav")
-    
+    source1, sr = torchaudio.load("data/single-channel/man-16000.wav")
+    source2, sr = torchaudio.load("data/single-channel/woman-16000.wav")
     mixture = source1 + source2
-    """
-    torchaudio.save("data/mixture-16000.wav", mixture, sample_rate=16000, bits_per_sample=16)
-    """
+    T = mixture.size(-1)
     
     spectrogram_mixture = torch.stft(mixture, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_mixture = torch.abs(spectrogram_mixture)
