@@ -43,6 +43,8 @@ max_norm=0 # 0 is handled as no clipping
 batch_size=64
 epochs=150
 
+model_choice="last"
+
 use_cuda=1
 overwrite=0
 seed=111
@@ -65,8 +67,6 @@ if [ -z "${tag}" ]; then
 else
     save_dir="${exp_dir}/${tag}"
 fi
-
-model_choice="best"
 
 model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
