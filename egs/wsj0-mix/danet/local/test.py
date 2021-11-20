@@ -24,7 +24,7 @@ parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'ir
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
 parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
-parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
+parser.add_argument('--iter_clustering', type=int, default=-1, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se', 'l1loss', 'l2loss'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -47,9 +47,8 @@ def main(args):
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
-    if model.iter_clustering != args.iter_clustering:
-        print("model.iter_clustering is changed from {} -> {}.".format(model.iter_clustering, args.iter_clustering))
-        model.iter_clustering = args.iter_clustering
+    if args.iteration < -1:
+        args.iteration = None # Iterates untils convergence
     
     if args.use_cuda:
         if torch.cuda.is_available():

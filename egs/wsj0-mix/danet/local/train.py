@@ -78,7 +78,7 @@ def main(args):
         args.max_norm = None
     
     args.n_bins = args.n_fft // 2 + 1
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering, take_log=args.take_log, take_db=args.take_db)
+    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

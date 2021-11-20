@@ -131,7 +131,6 @@ class ADANet(DANet):
     
     def get_config(self):
         config = super().get_config()
-        config.pop('iter_clustering')
         config['num_anchors'] = self.num_anchors
         
         return config

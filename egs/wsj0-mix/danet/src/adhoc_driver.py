@@ -87,6 +87,8 @@ class AdhocTrainer(TrainerBase):
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
         self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
+
+        self.iter_clustering = args.iter_clustering
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -218,7 +220,7 @@ class AdhocTrainer(TrainerBase):
                 mixture_amplitude = torch.abs(mixture)
                 sources_amplitude = torch.abs(sources)
                 
-                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
+                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
                 # At the test phase, assignment may be unknown.
                 loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
@@ -295,6 +297,8 @@ class AdhocTester(TesterBase):
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
+
+        self.iter_clustering = args.iter_clustering
     
     def run(self):
         self.model.eval()
@@ -334,7 +338,7 @@ class AdhocTester(TesterBase):
                 mixture_amplitude = torch.abs(mixture) # -> (1, 1, n_bins, n_frames)
                 sources_amplitude = torch.abs(sources)
                 
-                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources)
+                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
                 loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 

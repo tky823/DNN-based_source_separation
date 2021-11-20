@@ -17,7 +17,7 @@ __pretrained_model_ids__ = {
 }
 
 class DANet(nn.Module):
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', iter_clustering=10, take_log=True, take_db=False, eps=EPS):
+    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS):
         super().__init__()
         
         self.n_bins = n_bins
@@ -46,7 +46,6 @@ class DANet(nn.Module):
         else:
             raise NotImplementedError("")
         
-        self.iter_clustering = iter_clustering
         self.take_log, self.take_db = take_log, take_db
         self.eps = eps
 
@@ -146,7 +145,6 @@ class DANet(nn.Module):
             'dropout': self.dropout,
             'causal': self.causal,
             'mask_nonlinear': self.mask_nonlinear,
-            'iter_clustering': self.iter_clustering,
             'take_log': self.take_log, 'take_db': self.take_db,
             'eps': self.eps
         }
@@ -165,7 +163,6 @@ class DANet(nn.Module):
         
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
-        iter_clustering = config['iter_clustering']
         take_log, take_db = config['take_log'], config['take_db']
         
         eps = config['eps']
@@ -173,7 +170,6 @@ class DANet(nn.Module):
         model = cls(
             n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
             num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear,
-            iter_clustering=iter_clustering,
             take_log=take_log, take_db=take_db,
             eps=eps
         )
