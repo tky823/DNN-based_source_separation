@@ -331,8 +331,53 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, n_sources=2, eps=EPS):
+    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
         super().__init__(wav_root, list_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
+
+        wav_root = os.path.abspath(wav_root)
+        list_path = os.path.abspath(list_path)
+
+        self.json_data = []
+        
+        with open(list_path) as f:
+            for line in f:
+                ID = line.strip()
+                wav_path = os.path.join(wav_root, 'mix', '{}.wav'.format(ID))
+                
+                wave, _ = torchaudio.load(wav_path)
+                
+                _, T_total = wave.size()
+                
+                if max_samples is None:
+                    samples = T_total
+                else:
+                    if T_total < max_samples:
+                        samples = T_total
+                    else:
+                        samples = max_samples
+                
+                data = {
+                    'sources': {},
+                    'mixture': {}
+                }
+                
+                for source_idx in range(n_sources):
+                    source_data = {
+                        'path': os.path.join('s{}'.format(source_idx + 1), '{}.wav'.format(ID)),
+                        'start': 0,
+                        'end': samples
+                    }
+                    data['sources']['s{}'.format(source_idx+1)] = source_data
+                
+                mixture_data = {
+                    'path': os.path.join('mix', '{}.wav'.format(ID)),
+                    'start': 0,
+                    'end': samples
+                }
+                data['mixture'] = mixture_data
+                data['ID'] = ID
+            
+                self.json_data.append(data)
 
     def __getitem__(self, idx):
         """
