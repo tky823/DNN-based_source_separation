@@ -238,7 +238,7 @@ class TasNet(nn.Module):
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
 

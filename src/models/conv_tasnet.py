@@ -255,7 +255,7 @@ class ConvTasNet(nn.Module):
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
             config = kwargs.get('config') or 'enc_relu'
             model_choice = kwargs.get('model_choice') or 'best'
@@ -267,20 +267,20 @@ class ConvTasNet(nn.Module):
                 'n_sources': n_sources
             })
         elif task == 'musdb18':
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or '4sec_L20'
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sample_rate][config]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
         elif task in ['wham/separate-noisy', 'wham/enhance-single', 'wham/enhance-both']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            sample_rate = kwargs.get('sample_rate') or 8000
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sample_rate]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate))
         elif task == 'librispeech':
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
             n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
 

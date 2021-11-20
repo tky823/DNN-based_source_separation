@@ -92,7 +92,7 @@ class ParallelMMDenseLSTM(nn.Module):
         additional_attributes = {}
         
         if task in ['musdb18']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
             sources = __sources__
             model_choice = kwargs.get('model_choice') or 'best'
