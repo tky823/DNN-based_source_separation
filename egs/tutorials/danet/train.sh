@@ -12,7 +12,7 @@ valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.js
 
 sample_rate=16000
 
-window_fn='hamming'
+window_fn='hann'
 n_fft=256
 hop_length=64
 ideal_mask='ibm'
@@ -24,10 +24,10 @@ H=256
 B=4
 causal=0
 mask_nonlinear='sigmoid'
-iter_clustering=10
+iter_clustering=-1
 
 # Criterion
-criterion='l2loss'
+criterion='se'
 
 # Optimizer
 optimizer='rmsprop'

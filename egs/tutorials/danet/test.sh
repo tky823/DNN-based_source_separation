@@ -10,7 +10,7 @@ test_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.jso
 
 sample_rate=16000
 
-window_fn='hamming'
+window_fn='hann'
 n_fft=256
 hop_length=64
 ideal_mask='ibm'
@@ -22,10 +22,10 @@ H=256
 B=4
 causal=0
 mask_nonlinear='sigmoid'
-iter_clustering=10
+iter_clustering=-1
 
 # Criterion
-criterion='l2loss'
+criterion='se'
 
 # Optimizer
 optimizer='rmsprop'
@@ -34,6 +34,8 @@ weight_decay=0
 
 batch_size=128
 epochs=100
+
+model_choice="best"
 
 use_cuda=0
 overwrite=0
@@ -49,8 +51,6 @@ if [ -z "${tag}" ]; then
 else
     save_dir="${exp_dir}/${tag}"
 fi
-
-model_choice="best"
 
 model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
