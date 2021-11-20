@@ -8,12 +8,10 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import SpectrogramTrainDataset, TrainDataLoader
 from driver import Trainer
-from models.dpcl_net import DeepEmbedding
+from models.deep_clustering import DeepEmbedding
 from criterion.sdr import AffinityLoss
 
-parser = argparse.ArgumentParser(description="Training of Conv-TasNet")
-
-parser = argparse.ArgumentParser("Speech separation by fully convolutional time-domain audio separation network (Conv-TasNet)")
+parser = argparse.ArgumentParser(description="Training of DeepClustering")
 
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
@@ -29,7 +27,7 @@ parser.add_argument('--num_layers', '-R', type=int, default=3, help='Number of l
 parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
 parser.add_argument('--epochs', type=int, default=100, help='Epoch')
 parser.add_argument('--causal', type=int, default=1, help='Causality')
-parser.add_argument('--lr', type=float, default=0.0001, help='Learning rate')
+parser.add_argument('--lr', type=float, default=1e-5, help='Learning rate')
 parser.add_argument('--criterion', type=str, default='affinity', choices=['affinity'], help='Criterion')
 parser.add_argument('--exp_dir', type=str, default='./tmp', help='Path to experiment')
 parser.add_argument('--continue_from', type=str, default=None, help='Model path when resuming training')
