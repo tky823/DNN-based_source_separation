@@ -4,9 +4,10 @@ import json
 import torch
 import torchaudio
 
+from utils.audio import build_window
 from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
-EPS=1e-12
+EPS = 1e-12
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
@@ -98,12 +99,7 @@ class SpectrogramDataset(WaveDataset):
         self.n_bins = n_fft // 2 + 1
 
         if window_fn:
-            if window_fn == 'hann':
-                self.window = torch.hann_window(n_fft, periodic=True)
-            elif window_fn == 'hamming':
-                self.window = torch.hamming_window(n_fft, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(n_fft, window_fn=window_fn)
         else:
             self.window = None
         
