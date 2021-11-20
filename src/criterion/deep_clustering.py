@@ -19,12 +19,11 @@ class AffinityLoss(nn.Module):
         batch_size, embedded_dims, n_bins, n_frames = input.size()
         batch_size, n_sources, n_bins, n_frames = target.size()
 
-        input = input.view(batch_size, embedded_dims, n_bins*n_frames)
-        target = target.view(batch_size, n_sources, n_bins*n_frames)
-        input_transposed = input.permute(0,2,1).contiguous() # (batch_size, n_bins*n_frames, embedded_dims)
-        target_transposed = target.permute(0,2,1).contiguous() # (batch_size, n_bins*n_frames, n_sources)
+        input = input.view(batch_size, embedded_dims, n_bins * n_frames)
+        target = target.view(batch_size, n_sources, n_bins * n_frames)
+        input_transposed = input.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embedded_dims)
+        target_transposed = target.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, n_sources)
 
-        
         affinity_input = torch.bmm(input, input_transposed) # (batch_size, embedded_dims, embedded_dims)
         affinity_target = torch.bmm(target, target_transposed) # (batch_size, n_sources, n_sources)
         affinity_correlation = torch.bmm(input, target_transposed) # (batch_size, embedded_dims, n_sources)
