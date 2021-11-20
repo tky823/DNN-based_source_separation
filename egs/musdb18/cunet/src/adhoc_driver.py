@@ -28,7 +28,7 @@ class AdhocTrainer(TrainerBase):
         # Override
         self.sample_rate = args.sample_rate
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length    
         self.window = self.valid_loader.dataset.window
         self.normalize = self.valid_loader.dataset.normalize
 
@@ -203,12 +203,12 @@ class AdhocTrainer(TrainerBase):
 
                     for idx, source_name in enumerate(source_names):
                         scale = scales[idx]
-                        estimated_source = istft(estimated_sources[idx], self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # (2, T)
+                        estimated_source = istft(estimated_sources[idx], self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False) # (2, T)
                         save_path = os.path.join(save_dir, "epoch{}_{}{}.wav".format(epoch + 1, source_name, scale))
                         estimated_source = self.resampler(estimated_source)
                         torchaudio.save(save_path, estimated_source, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)
 
-                    mixture = istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # (2, T)
+                    mixture = istft(mixture, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False) # (2, T)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     mixture = self.resampler(mixture)
                     torchaudio.save(save_path, mixture, sample_rate=SAMPLE_RATE_MUSDB18, bits_per_sample=BITS_PER_SAMPLE)

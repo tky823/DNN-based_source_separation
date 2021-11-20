@@ -47,8 +47,8 @@ parser.add_argument('--conv_name', type=str, default='generated', help='Conv1D t
 parser.add_argument('--norm_name', type=str, default='generated', help='Normalization type')
 parser.add_argument('--embed_dim', type=int, default=0, help='Source embedding dimension')
 parser.add_argument('--embed_bottleneck_channels', type=int, default=0, help='Bottleneck channels in embedding module.')
-parser.add_argument('--fft_size', type=int, default=None, help='# of FFT samples.')
-parser.add_argument('--hop_size', type=int, default=None, help='Hop length of STFT')
+parser.add_argument('--n_fft', type=int, default=None, help='# of FFT samples.')
+parser.add_argument('--hop_length', type=int, default=None, help='Hop length of STFT')
 parser.add_argument('--enc_compression_rate', type=int, default=4, help='Compression rate')
 parser.add_argument('--num_filters', type=int, default=6, help='# of filters')
 parser.add_argument('--n_mels', type=int, default=256, help='# of mel bins')
@@ -109,14 +109,14 @@ def main(args):
         if args.embed_bottleneck_channels > 0:
             warnings.warn("`embed_bottleneck_channels` is NOT used.", UserWarning)
         kwargs = {}
-    if args.fft_size is None:
-        args.fft_size = 1024 * (args.sample_rate[0] // 8000)
-    if args.hop_size is None:
-        args.hop_size = args.fft_size // 4
+    if args.n_fft is None:
+        args.n_fft = 1024 * (args.sample_rate[0] // 8000)
+    if args.hop_length is None:
+        args.hop_length = args.n_fft // 4
     
     model = MetaTasNet(
         args.n_bases, args.kernel_size, stride=args.stride,
-        enc_fft_size=args.fft_size, enc_hop_size=args.hop_size, enc_compression_rate=args.enc_compression_rate,
+        enc_n_fft=args.n_fft, enc_hop_length=args.hop_length, enc_compression_rate=args.enc_compression_rate,
         num_filters=args.num_filters, n_mels=args.n_mels,
         sep_hidden_channels=args.sep_hidden_channels, sep_bottleneck_channels=args.sep_bottleneck_channels, sep_skip_channels=args.sep_skip_channels,
         sep_kernel_size=args.sep_kernel_size, sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers,

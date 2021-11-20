@@ -21,8 +21,8 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
     
     sources = config['sources']
     patch_size = config['patch_size']
-    fft_size, hop_size = config['fft_size'], config['hop_size']
-    window = torch.hann_window(fft_size)
+    n_fft, hop_length = config['n_fft'], config['hop_length']
+    window = torch.hann_window(n_fft)
     
     if use_cuda:
         model.cuda()
@@ -46,7 +46,7 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
         if pre_resampler is not None:
             x = pre_resampler(x)
         
-        mixture = torch.stft(x, n_fft=fft_size, hop_length=hop_size, window=window, return_complex=True)
+        mixture = torch.stft(x, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
         padding = (patch_size - mixture.size(-1) % patch_size) % patch_size
 
         mixture = F.pad(mixture, (0, padding))
@@ -110,7 +110,7 @@ def separate_by_xumx(model_path, file_paths, out_dirs):
             estimated_sources_channels = estimated_sources.size()[:-2]
 
             estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-            y = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, return_complex=False)
+            y = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, return_complex=False)
             
             if post_resampler is not None:
                 y = post_resampler(y)
@@ -144,8 +144,8 @@ def load_experiment_config(config_path):
         'sample_rate': config.get('sample_rate') or SAMPLE_RATE_MUSDB18,
         'sources': config['sources'],
         'patch_size': config.get('patch_size') or 256,
-        'fft_size': config.get('fft_size') or 4096,
-        'hop_size': config.get('hop_size') or 1024
+        'n_fft': config.get('n_fft') or 4096,
+        'hop_length': config.get('hop_length') or 1024
     }
 
     return config

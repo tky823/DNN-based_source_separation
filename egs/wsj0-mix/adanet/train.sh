@@ -18,8 +18,8 @@ train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 window_fn='hann'
-fft_size=256
-hop_size=64
+n_fft=256
+hop_length=64
 ideal_mask='wfm'
 threshold=40
 
@@ -59,7 +59,7 @@ gpu_id="0"
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
-    save_dir="${save_dir}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
     if [ ${take_log} -eq 1 ]; then
         save_dir="${save_dir}/take_log"
     elif [ ${take_db} -eq 1 ]; then
@@ -108,8 +108,8 @@ train.py \
 --window_fn "${window_fn}" \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 -N ${N} \
 -K ${K} \
 -H ${H} \

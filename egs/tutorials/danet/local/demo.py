@@ -15,8 +15,8 @@ parser = argparse.ArgumentParser(description="Demonstration of DaNet")
 
 parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
-parser.add_argument('--fft_size', type=int, default=256, help='Window length')
-parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--n_fft', type=int, default=256, help='Window length')
+parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--n_sources', type=int, default=2, help='Number of speakers')
 parser.add_argument('--iter_clustering', type=int, default=10, help='Number of iterations when running clustering using Kmeans algorithm.')
 parser.add_argument('--num_chunk', type=int, default=256, help='Number of chunks')
@@ -70,18 +70,18 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
     model = load_model(model_path)
     model.eval()
     
-    fft_size, hop_size = args.fft_size, args.hop_size
+    n_fft, hop_length = args.n_fft, args.hop_length
     window_fn = args.window_fn
     
-    if hop_size is None:
-        hop_size = fft_size//2
+    if hop_length is None:
+        hop_length = n_fft//2
     
     n_sources = args.n_sources
     iter_clustering = args.iter_clustering
     
-    n_bins = fft_size//2 + 1
-    stft = BatchSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
-    istft = BatchInvSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
+    n_bins = n_fft//2 + 1
+    stft = BatchSTFT(n_fft, hop_length=hop_length, window_fn=window_fn)
+    istft = BatchInvSTFT(n_fft, hop_length=hop_length, window_fn=window_fn)
 
     print("Start separation...")
     

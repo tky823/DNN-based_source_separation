@@ -7,7 +7,7 @@ from criterion.combination import CombinationLoss
 EPS = 1e-12
 
 class MultiDomainLoss(nn.Module):
-    def  __init__(self, criterion_time, criterion_frequency, weight_time=10, weight_frequency=1, combination=True, fft_size=None, hop_size=None, window=None, normalize=False, **kwargs):
+    def  __init__(self, criterion_time, criterion_frequency, weight_time=10, weight_frequency=1, combination=True, n_fft=None, hop_length=None, window=None, normalize=False, **kwargs):
         super().__init__()
 
         if combination:
@@ -20,7 +20,7 @@ class MultiDomainLoss(nn.Module):
             self.criterion_frequency = criterion_frequency
 
         self.weight_time, self.weight_frequency = weight_time, weight_frequency
-        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_fft, self.hop_length = n_fft, hop_length
         self.window = nn.Parameter(window, requires_grad=False)
         self.normalize = normalize
     
@@ -34,7 +34,7 @@ class MultiDomainLoss(nn.Module):
             mixture: (batch_size, n_mics, n_bins, n_frames)
         """
         weight_time, weight_frequency = self.weight_time, self.weight_frequency
-        fft_size, hop_size = self.fft_size, self.hop_size
+        n_fft, hop_length = self.n_fft, self.hop_length
         window = self.window.to(target.device)
         normalize = self.normalize
         
@@ -45,15 +45,15 @@ class MultiDomainLoss(nn.Module):
             raise ValueError("target should be complex.")
 
         target_amplitude = torch.abs(target)
-        target_time = istft(target, n_fft=fft_size, hop_length=hop_size, window=window, normalized=normalize, return_complex=False)
+        target_time = istft(target, n_fft=n_fft, hop_length=hop_length, window=window, normalized=normalize, return_complex=False)
 
         mixture_time = target_time.sum(dim=1, keepdim=True) # (batch_size, 1, n_mics, T)
-        mixture = stft(mixture_time, n_fft=fft_size, hop_length=hop_size, window=window, normalized=normalize, return_complex=True)
+        mixture = stft(mixture_time, n_fft=n_fft, hop_length=hop_length, window=window, normalized=normalize, return_complex=True)
         mixture_phase = torch.angle(mixture) # (batch_size, n_mics, n_bins, n_frames)
 
         input_amplitude = input
         input = input_amplitude * torch.exp(1j * mixture_phase) # To complex spectrogram
-        input_time = istft(input, n_fft=fft_size, hop_length=hop_size, window=window, normalized=normalize, return_complex=False)
+        input_time = istft(input, n_fft=n_fft, hop_length=hop_length, window=window, normalized=normalize, return_complex=False)
 
         if weight_time == 0 and weight_frequency == 0:
             raise NotImplementedError("Specify weight.")
@@ -82,18 +82,18 @@ def _test_mdl():
     batch_size = 5
     n_sources = 4
     in_channels, T = 2, 32
-    fft_size, hop_size = 8, 2
-    window = build_window(fft_size, window_fn='hann')
+    n_fft, hop_length = 8, 2
+    window = build_window(n_fft, window_fn='hann')
 
     input = torch.randn(batch_size, n_sources, in_channels, T)
     target = torch.randn(batch_size, n_sources, in_channels, T)
 
-    input = stft(input, n_fft=fft_size, hop_length=hop_size, window=window, return_complex=True)
-    target = stft(target, n_fft=fft_size, hop_length=hop_size, window=window, return_complex=True)
+    input = stft(input, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
+    target = stft(target, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
 
     input_amplitude = torch.abs(input)
 
-    criterion = MultiDomainLoss(combination=True, fft_size=fft_size, hop_size=hop_size, window=window)
+    criterion = MultiDomainLoss(combination=True, n_fft=n_fft, hop_length=hop_length, window=window)
     loss = criterion(input_amplitude, target)
 
     print(loss)

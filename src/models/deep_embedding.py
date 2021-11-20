@@ -194,13 +194,13 @@ class ChimeraNet(nn.Module):
 def _test_deep_embedding():
     batch_size, T = 2, 512
     n_sources = 2
-    fft_size, hop_size = 256, 128
+    n_fft, hop_length = 256, 128
     window_fn = 'hann'
-    n_bins = fft_size//2 + 1
+    n_bins = n_fft//2 + 1
     hidden_channels, embed_dim = 300, 40
 
-    stft = BatchSTFT(fft_size=fft_size, hop_size=hop_size, window_fn=window_fn)
-    istft = BatchInvSTFT(fft_size=fft_size, hop_size=hop_size, window_fn=window_fn)
+    stft = BatchSTFT(n_fft=n_fft, hop_length=hop_length, window_fn=window_fn)
+    istft = BatchInvSTFT(n_fft=n_fft, hop_length=hop_length, window_fn=window_fn)
     criterion = AffinityLoss()
 
     signal = torch.randn((batch_size*n_sources, T), dtype=torch.float)

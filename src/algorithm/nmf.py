@@ -90,8 +90,8 @@ class NMF:
 def _test(metric='EUC'):
     torch.manual_seed(111)
 
-    fft_size, hop_size = 1024, 256
-    n_bases = 6
+    n_fft, hop_length = 1024, 256
+    n_basis = 6
     iteration = 100
     
     signal, sr = read_wav("data/music-8000.wav")
@@ -99,8 +99,8 @@ def _test(metric='EUC'):
     T = len(signal)
     signal = torch.Tensor(signal).unsqueeze(dim=0)
     
-    stft = BatchSTFT(fft_size=fft_size, hop_size=hop_size)
-    istft = BatchInvSTFT(fft_size=fft_size, hop_size=hop_size)
+    stft = BatchSTFT(n_fft=n_fft, hop_length=hop_length)
+    istft = BatchInvSTFT(n_fft=n_fft, hop_length=hop_length)
 
     spectrogram = stft(signal).squeeze(dim=0)
     real = spectrogram[...,0]
@@ -115,7 +115,7 @@ def _test(metric='EUC'):
     plt.savefig('data/NMF/spectrogram.png', bbox_inches='tight')
     plt.close()
 
-    nmf = NMF(n_bases, metric=metric)
+    nmf = NMF(n_basis, metric=metric)
     nmf.update(power, iteration=iteration)
 
     estimated_power = torch.matmul(nmf.base, nmf.activation)
@@ -129,7 +129,7 @@ def _test(metric='EUC'):
     estimated_signal = estimated_signal / np.abs(estimated_signal).max()
     write_wav("data/NMF/{}/music-8000-estimated-iter{}.wav".format(metric, iteration), signal=estimated_signal, sr=8000)
 
-    for idx in range(n_bases):
+    for idx in range(n_basis):
         estimated_power = torch.matmul(nmf.base[:, idx: idx+1], nmf.activation[idx: idx+1, :])
         estimated_amplitude = torch.sqrt(estimated_power)
         ratio = estimated_amplitude / (amplitude + EPS)

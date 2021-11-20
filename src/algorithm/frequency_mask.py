@@ -383,7 +383,7 @@ def _test_amplitude(amplitude, method='IBM'):
     
     estimated_amplitude = amplitude * mask
     estimated_spectrgram = estimated_amplitude * torch.exp(1j * torch.angle(spectrogram_mixture))
-    estimated_signal = torch.istft(estimated_spectrgram, n_fft=fft_size, hop_length=hop_size, length=T)
+    estimated_signal = torch.istft(estimated_spectrgram, n_fft=n_fft, hop_length=hop_length, length=T)
     estimated_signal = estimated_signal.detach().cpu()
     
     for signal, tag in zip(estimated_signal, ['man', 'woman']):
@@ -401,7 +401,7 @@ def _test_spectrogram(spectrogram, method='PSM'):
     
     estimated_amplitude = amplitude * mask
     estimated_spectrgram = estimated_amplitude * torch.exp(1j * torch.angle(spectrogram_mixture))
-    estimated_signal = torch.istft(estimated_spectrgram, n_fft=fft_size, hop_length=hop_size, length=T)
+    estimated_signal = torch.istft(estimated_spectrgram, n_fft=n_fft, hop_length=hop_length, length=T)
     estimated_signal = estimated_signal.detach().cpu()
     
     for signal, tag in zip(estimated_signal, ['man', 'woman']):
@@ -414,7 +414,7 @@ if __name__ == '__main__':
     
     os.makedirs("data/frequency_mask", exist_ok=True)
     
-    fft_size, hop_size = 1024, 256
+    n_fft, hop_length = 1024, 256
     n_basis = 4
     
     """
@@ -437,13 +437,13 @@ if __name__ == '__main__':
     torchaudio.save("data/mixture-16000.wav", mixture, sample_rate=16000, bits_per_sample=16)
     """
     
-    spectrogram_mixture = torch.stft(mixture, n_fft=fft_size, hop_length=hop_size, return_complex=True)
+    spectrogram_mixture = torch.stft(mixture, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_mixture = torch.abs(spectrogram_mixture)
     
-    spectrogram_source1 = torch.stft(source1, n_fft=fft_size, hop_length=hop_size, return_complex=True)
+    spectrogram_source1 = torch.stft(source1, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_source1 = torch.abs(spectrogram_source1)
     
-    spectrogram_source2 = torch.stft(source2, n_fft=fft_size, hop_length=hop_size, return_complex=True)
+    spectrogram_source2 = torch.stft(source2, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_source2 = torch.abs(spectrogram_source2)
 
     spectrogram = torch.cat([spectrogram_source1, spectrogram_source2], dim=0)

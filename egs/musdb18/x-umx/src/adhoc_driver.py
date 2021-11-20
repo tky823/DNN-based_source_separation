@@ -31,7 +31,7 @@ class AdhocSchedulerTrainer(TrainerBase):
         self.sources = args.sources
         self.sample_rate = args.sample_rate
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length    
         self.window = self.valid_loader.dataset.window
         self.normalize = self.valid_loader.dataset.normalize
 
@@ -228,11 +228,11 @@ class AdhocSchedulerTrainer(TrainerBase):
                     estimated_sources_channels = estimated_sources.size()[:-2]
 
                     mixture = mixture.view(-1, *mixture.size()[-2:])
-                    mixture = istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                    mixture = istft(mixture, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False)
                     mixture = mixture.view(*mixture_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                     estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-                    estimated_sources = istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                    estimated_sources = istft(estimated_sources, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False)
                     estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                     track_dir = os.path.join(self.sample_dir, name)
@@ -387,7 +387,7 @@ class AdhocTester(TesterBase):
 
         self.musdb18_root = args.musdb18_root
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length    
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
         
@@ -473,7 +473,7 @@ class AdhocTester(TesterBase):
                 estimated_sources_channels = estimated_sources.size()[:-2]
 
                 estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-                estimated_sources = istft(estimated_sources, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                estimated_sources = istft(estimated_sources, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False)
                 estimated_sources = estimated_sources.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
 
                 track_dir = os.path.join(self.estimates_dir, name)

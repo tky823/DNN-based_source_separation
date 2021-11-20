@@ -409,13 +409,13 @@ class AttractorTrainer(TrainerBase):
         # Override
         super()._reset(args)
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length
 
         if args.window_fn:
             if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.fft_size, periodic=True)
+                self.window = torch.hann_window(self.n_fft, periodic=True)
             elif args.window_fn == 'hamming':
-                self.window = torch.hamming_window(self.fft_size, periodic=True)
+                self.window = torch.hamming_window(self.n_fft, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:
@@ -505,10 +505,10 @@ class AttractorTrainer(TrainerBase):
                     estimated_sources_amplitude = output[0].cpu() # (n_sources, n_bins, n_frames)
                     phase = torch.angle(mixture)
                     estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)
-                    estimated_sources = istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (n_sources, T)
+                    estimated_sources = istft(estimated_sources, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (1, T)
+                    mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (1, T)
                     mixture = mixture.squeeze(dim=0) # (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
@@ -544,13 +544,13 @@ class AttractorTester(TesterBase):
         # Override
         super()._reset(args)
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length
 
         if args.window_fn:
             if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.fft_size, periodic=True)
+                self.window = torch.hann_window(self.n_fft, periodic=True)
             elif args.window_fn == 'hamming':
-                self.window = torch.hamming_window(self.fft_size, periodic=True)
+                self.window = torch.hamming_window(self.n_fft, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:
@@ -609,9 +609,9 @@ class AttractorTester(TesterBase):
                 perm_idx = perm_idx[0] # (n_sources,)
                 T = T[0]  # <int>
                 segment_IDs = segment_IDs[0] # <str>
-                mixture = istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # (T,)
-                sources = istft(sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # (n_sources, T)
-                estimated_sources = istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window, length=T) # (n_sources, T)
+                mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # (T,)
+                sources = istft(sources, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window, length=T) # (n_sources, T)
+                estimated_sources = istft(estimated_sources, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window, length=T) # (n_sources, T)
                 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(
@@ -787,10 +787,10 @@ class AnchoredAttractorTrainer(AttractorTrainer):
                     estimated_sources_amplitude = output[0].cpu() # (n_sources, n_bins, n_frames)
                     ratio = estimated_sources_amplitude / mixture_amplitude
                     estimated_sources = ratio * mixture # (n_sources, n_bins, n_frames)
-                    estimated_sources = istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (n_sources, T)
+                    estimated_sources = istft(estimated_sources, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (1, T)
+                    mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (1, T)
                     mixture = mixture.squeeze(dim=0) # (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))

@@ -11,8 +11,8 @@ test_json_path="../../../dataset/LibriSpeech/test-clean/test-${n_sources}mix.jso
 sample_rate=16000
 
 window_fn='hamming'
-fft_size=256
-hop_size=64
+n_fft=256
+hop_length=64
 ideal_mask='ibm'
 threshold=40
 
@@ -45,7 +45,7 @@ seed=111
 prefix=""
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+    save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -73,8 +73,8 @@ test.py \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
 --iter_clustering ${iter_clustering} \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \

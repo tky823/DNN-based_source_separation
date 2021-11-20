@@ -70,17 +70,17 @@ class WaveDataset(MUSDB18Dataset):
         return len(self.json_data)
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=44100, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=44100, sources=__sources__, target=None):
         super().__init__(musdb18_root, sample_rate=sample_rate, sources=sources, target=target)
         
-        if hop_size is None:
-            hop_size = fft_size // 2
+        if hop_length is None:
+            hop_length = n_fft // 2
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size // 2 + 1
+        self.n_fft, self.hop_length = n_fft, hop_length
+        self.n_bins = n_fft // 2 + 1
 
         if window_fn:
-            self.window = build_window(fft_size, window_fn=window_fn)
+            self.window = build_window(n_fft, window_fn=window_fn)
         else:
             self.window = None
         
@@ -92,7 +92,7 @@ class SpectrogramDataset(WaveDataset):
         if n_dims > 2:
             input = input.reshape(-1, input.size(-1))
 
-        input = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources)*2, n_bins, n_frames)
+        input = torch.stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources)*2, n_bins, n_frames)
         power = torch.sum(torch.abs(input)**2, dim=-1) # (len(sources)*2, n_bins, n_frames)
         power = torch.mean(power)
 
@@ -114,14 +114,14 @@ class SpectrogramDataset(WaveDataset):
         
         T = mixture.size(-1)
 
-        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        target = stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
 
         return mixture, target, latent, T, title, scale
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=44100, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
+    def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=44100, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
         
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
@@ -174,8 +174,8 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target, latent
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=44100, patch_size=256, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
-        super().__init__(musdb18_root, fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
+    def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=44100, patch_size=256, max_samples=10*SAMPLE_RATE_MUSDB18, sources=__sources__, target=None, threshold=THRESHOLD_POWER):
+        super().__init__(musdb18_root, n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
         
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         
@@ -247,8 +247,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         target = torch.concatenate(target, dim=0)
         mixture = sources.sum(dim=0, keepdim=True)
 
-        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
-        target = stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, 2, n_bins, n_frames) or (2, n_bins, n_frames)
+        target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), 2, n_bins, n_frames) or (2, n_bins, n_frames)
 
         return mixture, target, latent, source_names, scales
 
@@ -273,7 +273,7 @@ def _test_train_dataset():
     
     musdb18_root = "../../../../../db/musdb18"
 
-    dataset = SpectrogramTrainDataset(musdb18_root, fft_size=2048, hop_size=512, sample_rate=8000, duration=4, target='vocals')
+    dataset = SpectrogramTrainDataset(musdb18_root, n_fft=2048, hop_length=512, sample_rate=8000, duration=4, target='vocals')
     
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
@@ -281,7 +281,7 @@ def _test_train_dataset():
 
     dataset.save_as_json('data/tmp.json')
 
-    dataset = SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', fft_size=2048, hop_size=512, sample_rate=44100, target='vocals')
+    dataset = SpectrogramTrainDataset.from_json(musdb18_root, 'data/tmp.json', n_fft=2048, hop_length=512, sample_rate=44100, target='vocals')
     for mixture, sources in dataset:
         print(mixture.size(), sources.size())
         break

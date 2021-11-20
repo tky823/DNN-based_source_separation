@@ -20,8 +20,8 @@ def separate_by_umx(model_paths, file_paths, out_dirs):
     config = load_experiment_config(model_paths)
 
     patch_size = config['patch_size']
-    fft_size, hop_size = config['fft_size'], config['hop_size']
-    window = torch.hann_window(fft_size)
+    n_fft, hop_length = config['n_fft'], config['hop_length']
+    window = torch.hann_window(n_fft)
     
     if use_cuda:
         model.cuda()
@@ -45,7 +45,7 @@ def separate_by_umx(model_paths, file_paths, out_dirs):
         if pre_resampler is not None:
             x = pre_resampler(x)
         
-        mixture = torch.stft(x, n_fft=fft_size, hop_length=hop_size, window=window, return_complex=True)
+        mixture = torch.stft(x, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
         padding = (patch_size - mixture.size(-1) % patch_size) % patch_size
 
         mixture = F.pad(mixture, (0, padding))
@@ -109,7 +109,7 @@ def separate_by_umx(model_paths, file_paths, out_dirs):
             estimated_sources_channels = estimated_sources.size()[:-2]
 
             estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-            y = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, return_complex=False)
+            y = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, return_complex=False)
             
             if post_resampler is not None:
                 y = post_resampler(y)
@@ -145,7 +145,7 @@ def load_pretrained_model(model_paths):
 def load_experiment_config(config_paths):
     sample_rate = None
     patch_size = None
-    fft_size, hop_size = None, None
+    n_fft, hop_length = None, None
 
     for source in __sources__:
         config_path = config_paths[source]
@@ -165,25 +165,25 @@ def load_experiment_config(config_paths):
                 assert patch_size == config['patch_size'], "Invalid patch_size."
             patch_size = config['patch_size']
         
-        if fft_size is None:
-            fft_size = config.get('fft_size')
-        elif config.get('fft_size') is not None:
-            if fft_size is not None:
-                assert fft_size == config['fft_size'], "Invalid fft_size."
-            fft_size = config['fft_size']
+        if n_fft is None:
+            n_fft = config.get('n_fft')
+        elif config.get('n_fft') is not None:
+            if n_fft is not None:
+                assert n_fft == config['n_fft'], "Invalid n_fft."
+            n_fft = config['n_fft']
 
-        if hop_size is None:
-            hop_size = config.get('hop_size')
-        elif config.get('hop_size') is not None:
-            if hop_size is not None:
-                assert hop_size == config['hop_size'], "Invalid hop_size."
-            hop_size = config['hop_size']
+        if hop_length is None:
+            hop_length = config.get('hop_length')
+        elif config.get('hop_length') is not None:
+            if hop_length is not None:
+                assert hop_length == config['hop_length'], "Invalid hop_length."
+            hop_length = config['hop_length']
     
     config = {
         'sample_rate': sample_rate or SAMPLE_RATE_MUSDB18,
         'patch_size': patch_size or 256,
-        'fft_size': fft_size or 4096,
-        'hop_size': hop_size or 1024
+        'n_fft': n_fft or 4096,
+        'hop_length': hop_length or 1024
     }
 
     return config

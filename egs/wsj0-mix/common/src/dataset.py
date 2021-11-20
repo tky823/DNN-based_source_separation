@@ -174,20 +174,20 @@ class WaveTestDataset(WaveEvalDataset):
         return mixture, sources, segment_ID
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, samples=32000, overlap=None, n_sources=2):
+    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, samples=32000, overlap=None, n_sources=2):
         super().__init__(wav_root, list_path, samples=samples, overlap=overlap, n_sources=n_sources)
         
-        if hop_size is None:
-            hop_size = fft_size // 2
+        if hop_length is None:
+            hop_length = n_fft // 2
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size // 2 + 1
+        self.n_fft, self.hop_length = n_fft, hop_length
+        self.n_bins = n_fft // 2 + 1
 
         if window_fn:
             if window_fn == 'hann':
-                self.window = torch.hann_window(fft_size, periodic=True)
+                self.window = torch.hann_window(n_fft, periodic=True)
             elif window_fn == 'hamming':
-                self.window = torch.hamming_window(fft_size, periodic=True)
+                self.window = torch.hamming_window(n_fft, periodic=True)
             else:
                 raise ValueError("Invalid argument.")
         else:
@@ -207,14 +207,14 @@ class SpectrogramDataset(WaveDataset):
 
         T = mixture.size(-1)
 
-        mixture = stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
-        sources = stft(sources, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
+        sources = stft(sources, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
         
         return mixture, sources, T, segment_IDs
 
 class IdealMaskSpectrogramDataset(SpectrogramDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
-        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, samples=samples, overlap=overlap, n_sources=n_sources)
+    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, samples=samples, overlap=overlap, n_sources=n_sources)
         
         if mask_type == 'ibm':
             self.generate_mask = compute_ideal_binary_mask
@@ -254,8 +254,8 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
 class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
-        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, samples=samples, overlap=overlap, n_sources=n_sources, eps=eps)
+    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, samples=samples, overlap=overlap, n_sources=n_sources, eps=eps)
     
     def __getitem__(self, idx):
         """
@@ -270,8 +270,8 @@ class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
-        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
+    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, max_samples=None, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
 
         wav_root = os.path.abspath(wav_root)
         list_path = os.path.abspath(list_path)
@@ -331,8 +331,8 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, list_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, n_sources=2, eps=EPS):
-        super().__init__(wav_root, list_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
+    def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, n_sources=2, eps=EPS):
+        super().__init__(wav_root, list_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold, n_sources=n_sources, eps=eps)
 
     def __getitem__(self, idx):
         """

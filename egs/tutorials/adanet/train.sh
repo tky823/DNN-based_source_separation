@@ -12,8 +12,8 @@ valid_json_path="../../../dataset/LibriSpeech/dev-clean/valid-${n_sources}mix.js
 sample_rate=16000
 
 window_fn='hamming'
-fft_size=256
-hop_size=64
+n_fft=256
+hop_length=64
 threshold=40
 
 # Model configuration
@@ -42,7 +42,7 @@ seed=111
 . ./path.sh
 . parse_options.sh || exit 1
 
-save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
+save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${n_fft}-${hop_length}_${window_fn}-window_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}/seed${seed}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -64,8 +64,8 @@ train.py \
 --sample_rate ${sample_rate} \
 --window_fn ${window_fn} \
 --threshold ${threshold} \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 -K ${K} \
 -H ${H} \
 -B ${B} \

@@ -21,8 +21,8 @@ parser.add_argument('--window_fn', type=str, default='hamming', help='Window fun
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Weight threshold. Default: 40 ')
 # Model configuration
-parser.add_argument('--fft_size', type=int, default=256, help='Window length')
-parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--n_fft', type=int, default=256, help='Window length')
+parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
@@ -35,10 +35,10 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    test_dataset = IdealMaskSpectrogramTestDataset(args.wav_root, args.test_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
-    args.n_bins = args.fft_size // 2 + 1
+    args.n_bins = args.n_fft // 2 + 1
     loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
     model = DANet.build_model(args.model_path)

@@ -80,7 +80,7 @@ class AdhocTrainer(TrainerBase):
             self.no_improvement = 0
         
         self.n_bins = args.n_bins
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length
         self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
     
@@ -209,10 +209,10 @@ class AdhocTrainer(TrainerBase):
 
                     phase = torch.angle(mixture)
                     estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)
-                    estimated_sources = istft(estimated_sources, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (n_sources, T)
+                    estimated_sources = istft(estimated_sources, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (n_sources, T)
                     estimated_sources = estimated_sources.cpu()
                     
-                    mixture = istft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, normalized=self.normalize, window=self.window) # (1, T)
+                    mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (1, T)
                     mixture = mixture.squeeze(dim=0) # (T,)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
