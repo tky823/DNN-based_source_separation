@@ -34,7 +34,7 @@ parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM laye
 parser.add_argument('--dropout', type=float, default=0, help='Dropout rate of LSTM layers')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
+parser.add_argument('--iter_clustering', type=int, default=-1, help='# iterations when clustering')
 parser.add_argument('--take_log', type=int, default=1, help='Whether to apply log for input.')
 parser.add_argument('--take_db', type=int, default=0, help='Whether to apply 20*log10 for input.')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')

@@ -32,7 +32,7 @@ B=4
 dropout=0
 causal=0
 mask_nonlinear='sigmoid'
-iter_clustering=10
+iter_clustering=-1
 take_log=1
 take_db=0
 
