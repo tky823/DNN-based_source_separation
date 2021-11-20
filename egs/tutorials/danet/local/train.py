@@ -20,8 +20,6 @@ parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampl
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
-
-# Model configuration
 parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
@@ -50,18 +48,24 @@ def main(args):
     set_seed(args.seed)
     
     train_dataset = IdealMaskSpectrogramTrainDataset(args.wav_root, args.train_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
-    valid_dataset = IdealMaskSpectrogramEvalDataset(args.wav_root, args.valid_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    train_loader = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
-    print("Valid dataset includes {} samples.".format(len(valid_dataset)))
+
+    if args.iter_clustering < 0:
+        valid_loader = None
+        args.iter_clustering = None
+    else:
+        valid_dataset = IdealMaskSpectrogramEvalDataset(args.wav_root, args.valid_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+        valid_loader = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+        print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
-    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['train'] = train_loader
+    loader['valid'] = valid_loader
     
     args.n_bins = args.n_fft // 2 + 1
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
+
+    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -90,6 +94,9 @@ def main(args):
         criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+    
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AttractorTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
