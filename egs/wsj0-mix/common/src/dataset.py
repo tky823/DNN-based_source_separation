@@ -197,16 +197,16 @@ class SpectrogramDataset(WaveDataset):
             mixture (1, n_bins, n_frames) <torch.Tensor>
             sources (n_sources, n_bins, n_frames) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
-            segment_IDs (n_sources,) <list<str>>
+            segment_ID <str>
         """
-        mixture, sources, segment_IDs = super().__getitem__(idx)
+        mixture, sources, segment_ID = super().__getitem__(idx)
 
         T = mixture.size(-1)
 
         mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
         sources = stft(sources, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
         
-        return mixture, sources, T, segment_IDs
+        return mixture, sources, T, segment_ID
 
 class IdealMaskSpectrogramDataset(SpectrogramDataset):
     def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
@@ -232,12 +232,12 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
             ideal_mask (n_sources, n_bins, n_frames) <torch.Tensor>
             threshold_weight (1, n_bins, n_frames) <torch.Tensor>
             T (), <int>: Number of samples in time-domain
-            segment_IDs (n_sources,) <list<str>>
+            segment_ID <str>
         """
         threshold = self.threshold
         eps = self.eps
         
-        mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
+        mixture, sources, T, segment_ID = super().__getitem__(idx) # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
         sources_amplitude = torch.abs(sources)
         ideal_mask = self.generate_mask(sources_amplitude)
         
@@ -247,7 +247,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         threshold = 10**((max_log_amplitude - threshold) / 20)
         threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
         
-        return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
+        return mixture, sources, ideal_mask, threshold_weight, T, segment_ID
 
 class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
     def __init__(self, wav_root, list_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, samples=32000, overlap=None, n_sources=2, eps=EPS):
@@ -529,7 +529,7 @@ class MixedNumberSourcesWaveDataset(WSJ0Dataset):
         Returns:
             mixture (1, T) <torch.Tensor>
             sources (n_sources, T) <torch.Tensor>
-            segment_IDs (n_sources,) <list<str>>
+            segment_ID <str>
         """
         data = self.json_data[idx]
         sources = []
