@@ -96,10 +96,24 @@ class KMeans(KMeansBase):
         super().__init__(data, K=K, init_centroids=init_centroids)
     
     def forward(self, iteration=10):
-        assert iteration > 0, "iteration should be positive."
+        if iteration is not None:
+            assert iteration > 0, "iteration should be positive."
         
-        for idx in range(iteration):
-            cluster_ids, centroids = self.update_once()
+            for idx in range(iteration):
+                cluster_ids, centroids = self.update_once()
+        else:
+            prev_cluster_ids, prev_centroids = None, None
+
+            while True:
+                cluster_ids, centroids = self.update_once()
+
+                if prev_cluster_ids is not None:
+                    distance = self.compute_distance(prev_centroids, centroids, dim=-1)
+                    distance = distance.mean().item()
+                    if distance == 0:
+                        break
+                
+                prev_cluster_ids, prev_centroids = cluster_ids, centroids
         
         return cluster_ids, centroids
         
@@ -117,7 +131,7 @@ class KMeans(KMeansBase):
         masked_data = mask.unsqueeze(dim=3) * data.unsqueeze(dim=2) # (batch_size, num_samples, K, num_features)
         pseudo_centroids = masked_data.sum(dim=1) # (batch_size, K, num_features)
         denominator = mask.sum(dim=1).unsqueeze(dim=2) # (batch_size, K, 1)
-        centroids = pseudo_centroids / denominator  # (batch_size, K, num_features)
+        centroids = pseudo_centroids / denominator # (batch_size, K, num_features)
         
         """
         2. Put labels based on distance
@@ -129,11 +143,7 @@ class KMeans(KMeansBase):
     
         return cluster_ids, centroids
 
-def _test_kmeans():
-    import os
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
+def _test_kmeans_pp_iteration():
     K = 2
     iteration = 10
     seed = 111
@@ -151,13 +161,13 @@ def _test_kmeans():
     data = (data - mean) / std
 
     for batch_idx, _ in enumerate(data):
-        os.makedirs("data/KMeans/{}".format(batch_idx + 1), exist_ok=True)
+        os.makedirs("data/KMeans/iteration/{}".format(batch_idx + 1), exist_ok=True)
 
     for batch_idx, _data in enumerate(data):
         plt.figure()
         x, y = torch.unbind(_data, dim=-1)
         plt.scatter(x, y, color='black')
-        plt.savefig("data/KMeans/{}/faithful-0.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.savefig("data/KMeans/iteration/{}/faithful-0.png".format(batch_idx + 1), bbox_inches='tight')
         plt.close()
 
     random.seed(seed)
@@ -172,7 +182,7 @@ def _test_kmeans():
         plt.scatter(x, y, color='black')
         x, y = torch.unbind(_centroids, dim=-1)
         plt.scatter(x, y, color='red')
-        plt.savefig("data/KMeans/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.savefig("data/KMeans/iteration/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
         plt.close()
 
     # or same as ...
@@ -190,9 +200,55 @@ def _test_kmeans():
             plt.scatter(x, y, color='black')
             x, y = torch.unbind(_centroids, dim=-1)
             plt.scatter(x, y, color='red')
-            plt.savefig("data/KMeans/{}/faithful-{}.png".format(batch_idx + 1, idx + 1), bbox_inches='tight')
+            plt.savefig("data/KMeans/iteration/{}/faithful-{}.png".format(batch_idx + 1, idx + 1), bbox_inches='tight')
             plt.close()
 
-if __name__ == '__main__':
-    _test_kmeans()
+def _test_kmeans():
+    K = 2
+    seed = 111
 
+    df = pd.read_csv("data/faithful.csv")
+    x, y = torch.Tensor(df['waiting']).unsqueeze(dim=1), torch.Tensor(df['eruptions']).unsqueeze(dim=1)
+    data0 = torch.cat([x, y], dim=1)
+
+    mat = torch.Tensor([[1, -0.1], [-0.1, 0.8]])
+    data1 = torch.matmul(data0, mat)
+
+    data = torch.stack([data0, data1], dim=0)
+    mean = data.mean(dim=1, keepdim=True)
+    std = data.std(dim=1, keepdim=True)
+    data = (data - mean) / std
+
+    for batch_idx, _ in enumerate(data):
+        os.makedirs("data/KMeans/None/{}".format(batch_idx + 1), exist_ok=True)
+
+    for batch_idx, _data in enumerate(data):
+        plt.figure()
+        x, y = torch.unbind(_data, dim=-1)
+        plt.scatter(x, y, color='black')
+        plt.savefig("data/KMeans/None/{}/faithful-0.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.close()
+
+    random.seed(seed)
+    torch.manual_seed(seed)
+
+    kmeans = KMeans(data, K=K)
+    _, centroids = kmeans() # (batch_size, K), (batch_size, K, num_features)
+
+    for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
+        plt.figure()
+        x, y = torch.unbind(_data, dim=-1)
+        plt.scatter(x, y, color='black')
+        x, y = torch.unbind(_centroids, dim=-1)
+        plt.scatter(x, y, color='red')
+        plt.savefig("data/KMeans/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.close()
+
+if __name__ == '__main__':
+    import os
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    _test_kmeans_pp_iteration()
+
+    _test_kmeans()
