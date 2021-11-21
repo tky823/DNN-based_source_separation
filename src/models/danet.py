@@ -5,6 +5,7 @@ from utils.audio import build_window
 from algorithm.clustering import KMeans
 from transforms.stft import stft, istft
 
+SAMPLE_RATE_LIBRISPEECH = 16000
 EPS = 1e-12
 
 __pretrained_model_ids__ = {
@@ -209,6 +210,17 @@ class DANet(nn.Module):
             additional_attributes.update({
                 'n_sources': n_sources
             })
+        elif task in ['librispeech']:
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_LIBRISPEECH
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'last'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
         
@@ -224,7 +236,7 @@ class DANet(nn.Module):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
-        if task in ['wsj0-mix', 'wsj0']:
+        if task in ['wsj0-mix', 'wsj0', 'librispeech']:
             additional_attributes.update({
                 'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
                 'window_fn': config['window_fn'],
