@@ -39,8 +39,7 @@ class WaveDataset(LibriSpeechDataset):
             source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
-            wave = wave[:, start: end]
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end - start)
             mixture = mixture + wave
         
             if sources is None:
