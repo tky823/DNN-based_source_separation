@@ -13,6 +13,11 @@ __pretrained_model_ids__ = {
             2: "1---pkSV6KsJuNl0iLComr-PJiMZCHHRu",
             3: "1Z78kcYZvmIs8GdPr49mxc_a_dKsvjLbW"
         }
+    },
+    "librispeech": {
+        16000: {
+            2: "1TFh9t3Lw1ngDS5Riqp7lQEojfV0T3AKw"
+        }
     }
 }
 
