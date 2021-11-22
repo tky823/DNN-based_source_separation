@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from utils.audio import build_window
+from utils.model import choose_nonlinear
 from algorithm.clustering import KMeans
 from transforms.stft import stft, istft
 
@@ -45,12 +46,12 @@ class DANet(nn.Module):
         self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
         
-        if mask_nonlinear == 'sigmoid':
-            self.mask_nonlinear2d = nn.Sigmoid()
-        elif mask_nonlinear == 'softmax':
-            self.mask_nonlinear2d = nn.Softmax(dim=1)
-        else:
-            raise NotImplementedError("")
+        kwargs = {}
+        
+        if mask_nonlinear == 'softmax':
+            kwargs["dim"] = 1
+        
+        self.mask_nonlinear2d = choose_nonlinear(mask_nonlinear, **kwargs)
         
         self.take_log, self.take_db = take_log, take_db
         self.eps = eps
