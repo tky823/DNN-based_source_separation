@@ -47,7 +47,7 @@ class DANet(nn.Module):
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
         
         kwargs = {}
-        
+
         if mask_nonlinear == 'softmax':
             kwargs["dim"] = 1
         
@@ -310,11 +310,27 @@ class DANetTimeDomainWrapper(nn.Module):
 
         return output
 
-class FixedAttractorDANet(DANet):
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS):
-        super().__init__(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, take_log=take_log, take_db=take_db, eps=eps)
+class FixedAttractorDANet(nn.Module):
+    def __init__(self, base_model: DANet, fixed_attractor=None):
+        """
+        Args:
+            base_model <DANet>: Base Deep Attractor Network.
+            attractor <torch.Tensor>: Pretrained attractor with shape of (n_sources, embed_dim).
+        """
+        super().__init__()
 
-        self.fixed_attractor = None
+        self.base_model = base_model
+        self.fixed_attractor = nn.Parameter(fixed_attractor, requires_grad=False)
+
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
     def forward(self, input):
         """
@@ -335,63 +351,57 @@ class FixedAttractorDANet(DANet):
             output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
             latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
         """
-        if self.fixed_attractor is None:
-            raise RuntimeError("Call self.set_fixed_attractor() beforehand.")
-        
         n_sources = self.fixed_attractor.size(0)
-        embed_dim = self.embed_dim
-        eps = self.eps
+        embed_dim = self.base_model.embed_dim
+        eps = self.base_model.eps
         
         batch_size, _, n_bins, n_frames = input.size()
 
-        self.rnn.flatten_parameters()
+        self.base_model.rnn.flatten_parameters()
 
-        if self.take_log:
+        if self.base_model.take_log:
             x = torch.log(input + eps)
-        elif self.take_db:
+        elif self.base_model.take_db:
             x = 20 * torch.log10(input + eps)
         else:
             x = input
         
         x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
-        x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
-        x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
+        x, _ = self.base_model.rnn(x) # (batch_size, n_frames, n_bins)
+        x = self.base_model.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
         x = x.view(batch_size, n_frames, embed_dim, n_bins)
         x = x.permute(0, 2, 3, 1).contiguous()  # (batch_size, embed_dim, n_bins, n_frames)
         latent = x.view(batch_size, embed_dim, n_bins * n_frames)
         latent = latent.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embed_dim)
-        
-        if self.training:
-            raise ValueError("Only supports evaluation time.")
     
-        similarity = torch.bmm(self.fixed_attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
+        batch_fixed_attractor = self.fixed_attractor.expand(batch_size, -1, -1)
+        similarity = torch.bmm(batch_fixed_attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
-        mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
+        mask = self.base_model.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
         output = mask * input
 
         latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
 
         return output, latent
     
-    def set_fixed_attractor(self, attractor):
-        if isinstance(attractor, nn.Parameter):
-            attractor = attractor.data
-        
-        self.register_buffer("fixed_attractor", attractor, persistent=True) # To avoid conflicts of super().load_state_dict()
-    
     def get_config(self):
-        config = super().get_config()
-        config["attractor"] = self.fixed_attractor
+        config = self.base_model.get_config()
+        config["attractor_size"] = self.fixed_attractor.size()
 
         return config
     
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
-        model = super().build_model(model_path, load_state_dict=load_state_dict)
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
-        fixed_attractor = config["attractor"]
-        model.set_fixed_attractor(fixed_attractor)
+        base_model = DANet.build_model(model_path, load_state_dict=False)
+        dummy_attractor = torch.empty(*config["attractor_size"])
+
+        model = cls(base_model, dummy_attractor)
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        else:
+            raise ValueError("Set load_state_dict=True")
         
         return model
 
@@ -444,7 +454,33 @@ def _test_danet_paper():
     output = model(input, assignment, threshold_weight=threshold_weight)
     
     print(input.size(), output.size())
-        
+
+def _test_fixed_attractor_danet():
+    batch_size = 2
+    K = 10
+    
+    H = 32
+    B = 4
+    
+    n_bins, n_frames = 4, 128
+    n_sources = 2
+    causal = False
+    mask_nonlinear = 'sigmoid'
+    
+    sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
+    input = sources.sum(dim=1, keepdim=True)
+    attractor = torch.randn(n_sources, K)
+    
+    base_model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear)
+    model = FixedAttractorDANet(base_model, fixed_attractor=attractor)
+
+    print(model)
+    print("# Parameters: {}".format(model.num_parameters))
+
+    output = model(input)
+
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     from algorithm.frequency_mask import compute_ideal_binary_mask
 
@@ -457,3 +493,6 @@ if __name__ == '__main__':
     print("="*10, "DANet (same configuration in paper)", "="*10)
     _test_danet_paper()
     print()
+
+    print("="*10, "DANet w/ fixed attractor", "="*10)
+    _test_fixed_attractor_danet()
