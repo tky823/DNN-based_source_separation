@@ -10,7 +10,6 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
 from models.danet import DANet
-from criterion.distance import L1Loss, L2Loss
 from criterion.pit import PIT2d
 from adhoc_criterion import SquaredError
 
@@ -26,7 +25,7 @@ parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--iter_clustering', type=int, default=-1, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='se', choices=['se', 'l1loss', 'l2loss'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
 parser.add_argument('--model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
@@ -60,17 +59,13 @@ def main(args):
     # Criterion
     if args.criterion == 'se':
         criterion = SquaredError(sum_dim=(1,2), mean_dim=3) # (batch_size, n_sources, n_bins, n_frames)
-    elif args.criterion == 'l1loss':
-        criterion = L1Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
-    elif args.criterion == 'l2loss':
-        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
 
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
     if args.iter_clustering < 0:
-        args.iter_clustering = None # Iterates untils convergence
+        args.iter_clustering = None # Iterates until convergence
     
     tester = AdhocTester(model, loader, pit_criterion, args)
     tester.run()

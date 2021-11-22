@@ -451,9 +451,73 @@ class AdhocTester(TesterBase):
         print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
-class FixedAnchorTester(TesterBase):
+class FixedAttractorComputer:
+    def __init__(self, model, loader, args):
+        self.loader = loader
+        
+        self.model = model
+        
+        self._reset(args)
+
+    def _reset(self, args):
+        self.use_cuda = args.use_cuda
+
+        self.base_model_path, self.wrapper_model_path = args.base_model_path, args.wrapper_model_path
+        
+        config = torch.load(self.base_model_path, map_location=lambda storage, loc: storage)
+        
+        if isinstance(self.model, nn.DataParallel):
+            self.model.module.load_state_dict(config['state_dict'])
+        else:
+            self.model.load_state_dict(config['state_dict'])
+        
+        self.wrapper_class = args.wrapper_class
+        self.iter_clustering = args.iter_clustering
+
+    def run(self):
+        self.model.eval()
+
+        attractors = []
+
+        with torch.no_grad():
+            for mixture, sources, assignment, threshold_weight in self.train_dataset:
+                if self.use_cuda:
+                    mixture = mixture.cuda()
+                    assignment = assignment.cuda()
+                    threshold_weight = threshold_weight.cuda()
+                
+                n_sources = sources.size(1)
+                mixture_amplitude = torch.abs(mixture)
+            
+                _, _, attractor = self.model.extract_latent(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
+
+                attractors.append(attractor)
+
+        attractors = torch.cat(attractors, dim=0) # (len(dataset), n_sources, embed_dim)
+        attractors = attractors.view(-1, attractors.size(-1)) # (len(dataset) * n_sources, embed_dim)
+        
+        kmeans = KMeans(K=n_sources)
+        _, centroids = kmeans(attractors) # (n_sources, embed_dim)
+
+        self.save_model(self.wrapper_class, centroids)
+    
+    def save_model(self, wrapper_class, attractor):
+        if isinstance(self.model, nn.DataParallel):
+            base_model = self.model.module
+        else:
+            base_model = self.model.get_config()
+            
+        wrapper_model = wrapper_class(base_model, attractor)
+
+        config = torch.load(self.base_model_path, map_location=lambda storage, loc: storage)
+        config['state_dict'] = wrapper_model.state_dict()
+        config["attractor_size"] = attractor.size()
+        
+        torch.save(config, self.wrapper_model_path)
+
+class FixedAttractorTester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):
-        self.train_loader, self.test_loader = loader["train"], loader["test"]
+        self.loader = loader
         
         self.model = model
         
@@ -471,10 +535,6 @@ class FixedAnchorTester(TesterBase):
         self.normalize = self.test_loader.dataset.normalize
 
     def run(self):
-        self.compute_fiexed_anchors()
-        self.evaluate_all()
-    
-    def evaluate_all(self):
         self.model.eval()
 
         n_sources = self.n_sources
@@ -623,30 +683,3 @@ class FixedAnchorTester(TesterBase):
 
         print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
-
-    def compute_fiexed_anchors(self):
-        self.model.eval()
-
-        attractors = []
-
-        with torch.no_grad():
-            for mixture, sources, assignment, threshold_weight in self.train_dataset:
-                if self.use_cuda:
-                    mixture = mixture.cuda()
-                    assignment = assignment.cuda()
-                    threshold_weight = threshold_weight.cuda()
-                
-                n_sources = sources.size(1)
-                mixture_amplitude = torch.abs(mixture)
-            
-                _, _, attractor = self.model.extract_latent(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=n_sources)
-
-                attractors.append(attractor)
-
-        attractors = torch.cat(attractors, dim=0) # (len(dataset), n_sources, embed_dim)
-        attractors = attractors.view(1, -1, attractors.size(-1)) # (1, len(dataset) * n_sources, embed_dim)
-        
-        kmeans = KMeans(K=n_sources)
-        _, centroids = kmeans(attractors) # (1, n_sources, embed_dim)
-
-        self.fixed_attractor = centroids.unsqueeze(dim=0)

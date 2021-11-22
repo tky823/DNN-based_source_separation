@@ -66,7 +66,7 @@ class DANet(nn.Module):
             assignment <torch.Tensor>: Speaker assignment during training. Tensor shape is (batch_size, n_sources, n_bins, n_frames).
             threshold_weight <torch.Tensor> or <float>: (batch_size, 1, n_bins, n_frames)
         Returns:
-            output (batch_size, n_sources, n_bins, n_frames)
+            output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
         """
         output, _, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
         
@@ -337,7 +337,7 @@ class FixedAttractorDANet(nn.Module):
         Args:
             input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
         Returns:
-            output (batch_size, n_sources, n_bins, n_frames)
+            output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
         """
         output, _ = self.extract_latent(input)
         
