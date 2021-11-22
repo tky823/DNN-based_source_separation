@@ -182,10 +182,10 @@ class AdhocTrainer(TrainerBase):
         with torch.no_grad():
             for idx, (mixture, sources, ideal_mask, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, n_bins, n_frames)
-                sources (batch_size, n_sources, n_bins, n_frames)
-                ideal_mask (batch_size, n_sources, n_bins, n_frames)
-                threshold_weight (batch_size, n_bins, n_frames)
+                    mixture (batch_size, 1, n_bins, n_frames)
+                    sources (batch_size, n_sources, n_bins, n_frames)
+                    ideal_mask (batch_size, n_sources, n_bins, n_frames)
+                    threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -194,18 +194,18 @@ class AdhocTrainer(TrainerBase):
                     threshold_weight = threshold_weight.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
-                sources_amplitude = torch.abs(sources)
+                oracle_sources_amplitude = ideal_mask * mixture_amplitude
                 
-                output = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
+                estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
-                loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, estimated_sources_amplitude, oracle_sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
                     mixture = mixture[0].cpu() # (1, n_bins, n_frames, 2)
                     mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)
-                    estimated_sources_amplitude = output[0].cpu() # (n_sources, n_bins, n_frames)
+                    estimated_sources_amplitude = estimated_sources_amplitude[0].cpu() # (n_sources, n_bins, n_frames)
 
                     phase = torch.angle(mixture)
                     estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)

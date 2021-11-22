@@ -220,16 +220,16 @@ class AdhocTrainer(TrainerBase):
                 mixture_amplitude = torch.abs(mixture)
                 sources_amplitude = torch.abs(sources)
                 
-                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
+                estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
                 # At the test phase, assignment may be unknown.
-                loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, estimated_sources_amplitude, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
                 if idx < 5:
                     mixture = mixture[0].cpu() # (1, n_bins, n_frames, 2)
                     mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)
-                    estimated_sources_amplitude = output[0].cpu() # (n_sources, n_bins, n_frames)
+                    estimated_sources_amplitude = estimated_sources_amplitude[0].cpu() # (n_sources, n_bins, n_frames)
 
                     phase = torch.angle(mixture)
                     estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)
@@ -338,15 +338,15 @@ class AdhocTester(TesterBase):
                 mixture_amplitude = torch.abs(mixture) # -> (1, 1, n_bins, n_frames)
                 sources_amplitude = torch.abs(sources)
                 
-                output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
-                loss, perm_idx = self.pit_criterion(output, sources_amplitude, batch_mean=False)
+                estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
+                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
                 mixture = mixture[0].cpu()
                 sources = sources[0].cpu()
     
                 mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)
-                estimated_sources_amplitude = output[0].cpu() # (n_sources, n_bins, n_frames)
+                estimated_sources_amplitude = estimated_sources_amplitude[0].cpu() # (n_sources, n_bins, n_frames)
 
                 phase = torch.angle(mixture)
                 estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase) # (n_sources, n_bins, n_frames)

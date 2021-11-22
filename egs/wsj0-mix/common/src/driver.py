@@ -10,6 +10,7 @@ import torch.nn as nn
 
 from utils.utils import draw_loss_curve
 from utils.bss import bss_eval_sources
+from utils.audio import build_window
 from transforms.stft import istft
 from criterion.pit import pit
 
@@ -412,17 +413,11 @@ class AttractorTrainer(TrainerBase):
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
 
         if args.window_fn:
-            if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.n_fft, periodic=True)
-            elif args.window_fn == 'hamming':
-                self.window = torch.hamming_window(self.n_fft, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(self.n_fft, window_fn=args.window_fn)
         else:
             self.window = None
         
         self.normalize = self.train_loader.dataset.normalize
-        assert self.normalize == self.valid_loader.dataset.normalize, "Nomalization of STFT is different between `train_loader.dataset` and `valid_loader.dataset`."
     
     def run_one_epoch_train(self, epoch):
         # Override
@@ -547,12 +542,7 @@ class AttractorTester(TesterBase):
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
 
         if args.window_fn:
-            if args.window_fn == 'hann':
-                self.window = torch.hann_window(self.n_fft, periodic=True)
-            elif args.window_fn == 'hamming':
-                self.window = torch.hamming_window(self.n_fft, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(self.n_fft, window_fn=args.window_fn)
         else:
             self.window = None
         
