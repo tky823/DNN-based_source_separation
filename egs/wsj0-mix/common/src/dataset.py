@@ -69,7 +69,7 @@ class WaveDataset(WSJ0Dataset):
         Returns:
             mixture (1, T) <torch.Tensor>
             sources (n_sources, T) <torch.Tensor>
-            segment_IDs (n_sources,) <list<str>>
+            segment_ID <str>
         """
         data = self.json_data[idx]
         sources = []
@@ -413,21 +413,16 @@ class TestDataLoader(torch.utils.data.DataLoader):
         self.collate_fn = test_collate_fn
 
 def test_collate_fn(batch):
-    batched_mixture, batched_sources = None, None
+    batched_mixture, batched_sources = [], []
     batched_segment_ID = []
     
     for mixture, sources, segmend_ID in batch:
-        mixture = mixture.unsqueeze(dim=0)
-        sources = sources.unsqueeze(dim=0)
-        
-        if batched_mixture is None:
-            batched_mixture = mixture
-            batched_sources = sources
-        else:
-            batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
-            batched_sources = torch.cat([batched_sources, sources], dim=0)
-        
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
         batched_segment_ID.append(segmend_ID)
+    
+    batched_mixture = torch.stack(batched_mixture, dim=0)
+    batched_sources = torch.stack(batched_sources, dim=0)
     
     return batched_mixture, batched_sources, batched_segment_ID
 
@@ -445,11 +440,6 @@ def attractor_test_collate_fn(batch):
     batched_segment_ID = []
     
     for mixture, sources, assignment, weight_threshold, T, segmend_ID in batch:
-        mixture = mixture.unsqueeze(dim=0)
-        sources = sources.unsqueeze(dim=0)
-        assignment = assignment.unsqueeze(dim=0)
-        weight_threshold = weight_threshold.unsqueeze(dim=0)
-        
         batched_mixture.append(mixture)
         batched_sources.append(sources)
         batched_assignment.append(assignment)
@@ -458,10 +448,10 @@ def attractor_test_collate_fn(batch):
         batched_T.append(T)
         batched_segment_ID.append(segmend_ID)
     
-    batched_mixture = torch.cat(batched_mixture, dim=0)
-    batched_sources = torch.cat(batched_sources, dim=0)
-    batched_assignment = torch.cat(batched_assignment, dim=0)
-    batched_weight_threshold = torch.cat(batched_weight_threshold, dim=0)
+    batched_mixture = torch.stack(batched_mixture, dim=0)
+    batched_sources = torch.stack(batched_sources, dim=0)
+    batched_assignment = torch.stack(batched_assignment, dim=0)
+    batched_weight_threshold = torch.stack(batched_weight_threshold, dim=0)
     
     return batched_mixture, batched_sources, batched_assignment, batched_weight_threshold, batched_T, batched_segment_ID
 
