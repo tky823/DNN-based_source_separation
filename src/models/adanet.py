@@ -12,7 +12,7 @@ __pretrained_model_ids__ = {
     "wsj0-mix": {
         8000: {
             2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc",
-            3: ""
+            3: "1-JlTb446sC8rPuFF8XW6qVpXi9-CSw0I"
         }
     }
 }
