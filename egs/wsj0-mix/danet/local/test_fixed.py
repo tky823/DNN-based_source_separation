@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import argparse
 
 import torch
@@ -74,6 +75,8 @@ def main(args):
         args.n_bins = args.n_fft // 2 + 1
         loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
         
+        base_model_filename = os.path.basename(args.base_model_path)
+        args.wrapper_model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
         model = FixedAttractorDANet.build_model(args.wrapper_model_path)
         
         print(model)
