@@ -480,7 +480,7 @@ class FixedAttractorComputer:
         attractors = []
 
         with torch.no_grad():
-            for mixture, sources, assignment, threshold_weight in self.train_dataset:
+            for mixture, sources, assignment, threshold_weight in self.loader:
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     assignment = assignment.cuda()
