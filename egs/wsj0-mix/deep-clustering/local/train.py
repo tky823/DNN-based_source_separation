@@ -74,7 +74,7 @@ def main(args):
         loader['valid'] = None
     
     args.n_bins = args.n_fft // 2 + 1
-    model = DeepEmbedding(args.n_bins, hidden_channels=args.hidden_channels, num_layers=args.num_layers, embed_dim=args.embed_dim, num_clusters=args.n_sources, causal=args.causal)
+    model = DeepEmbedding(args.n_bins, hidden_channels=args.hidden_channels, embed_dim=args.embed_dim, num_layers=args.num_layers, causal=args.causal, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
