@@ -76,8 +76,8 @@ def main(args):
         loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
         
         base_model_filename = os.path.basename(args.base_model_path)
-        args.wrapper_model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
-        model = FixedAttractorDANet.build_model(args.wrapper_model_path, load_state_dict=True)
+        args.model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
+        model = FixedAttractorDANet.build_model(args.model_path, load_state_dict=True)
         
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
