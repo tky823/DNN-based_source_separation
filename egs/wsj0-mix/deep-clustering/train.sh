@@ -30,13 +30,12 @@ K=40
 H=300
 B=2
 causal=0
-mask_nonlinear='sigmoid'
 iter_clustering=-1
 take_log=1
 take_db=0
 
 # Criterion
-criterion='se'
+criterion='affinity'
 
 # Optimizer
 optimizer='momentum-sgd'
@@ -59,7 +58,7 @@ gpu_id="0"
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
-    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}"
     if [ ${take_log} -eq 1 ]; then
         save_dir="${save_dir}/take_log"
     elif [ ${take_db} -eq 1 ]; then
