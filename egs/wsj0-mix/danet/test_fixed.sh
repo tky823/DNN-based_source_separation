@@ -71,9 +71,8 @@ else
 fi
 
 wrapper_save_dir="${save_dir}/fixed-attractor"
-
 base_model_path="${save_dir}/model/${model_choice}.pth"
-wrapper_model_path="${wrapper_save_dir}/model/${model_choice}.pth"
+wrapper_model_dir="${wrapper_save_dir}/model"
 log_dir="${wrapper_save_dir}/log"
 out_dir="${wrapper_save_dir}/test"
 
@@ -99,7 +98,7 @@ test_fixed.py \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \
 --base_model_path "${base_model_path}" \
---wrapper_model_path "${wrapper_model_path}" \
+--wrapper_model_dir "${wrapper_model_dir}" \
 --use_cuda ${use_cuda} \
 --compute_attractor ${compute_attractor} \
 --estimate_all ${estimate_all} \
