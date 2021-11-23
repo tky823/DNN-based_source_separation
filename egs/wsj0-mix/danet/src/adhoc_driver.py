@@ -535,8 +535,8 @@ class FixedAttractorTester(TesterBase):
 
         self.n_bins = args.n_bins
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
-        self.window = self.test_loader.dataset.window
-        self.normalize = self.test_loader.dataset.normalize
+        self.window = self.loader.dataset.window
+        self.normalize = self.loader.dataset.normalize
 
     def run(self):
         self.model.eval()
