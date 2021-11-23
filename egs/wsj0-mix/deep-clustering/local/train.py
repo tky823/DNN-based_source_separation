@@ -37,8 +37,9 @@ parser.add_argument('--take_log', type=int, default=1, help='Whether to apply lo
 parser.add_argument('--take_db', type=int, default=0, help='Whether to apply 20*log10 for input.')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
-parser.add_argument('--optimizer', type=str, default='sgd', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
+parser.add_argument('--optimizer', type=str, default='momentum-sgd', choices=['sgd', 'momentum-sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-5, help='Learning rate. Default: 1e-5')
+parser.add_argument('--momentum', type=float, default=9e-1, help='Momentum of optimizer.')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
 parser.add_argument('--scheduler_path', type=str, default=None, help='Path to scheduler.yaml')
@@ -89,10 +90,18 @@ def main(args):
         
     # Optimizer
     if args.optimizer == 'sgd':
+        if args.momentum > 0:
+            raise ValueError("momentum should be 0.")
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    elif args.optimizer == 'momentum-sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     elif args.optimizer == 'adam':
+        if args.momentum > 0:
+            raise ValueError("momentum should be 0.")
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     elif args.optimizer == 'rmsprop':
+        if args.momentum > 0:
+            raise ValueError("momentum should be 0.")
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
