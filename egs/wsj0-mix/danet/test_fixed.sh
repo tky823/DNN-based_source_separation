@@ -46,6 +46,8 @@ epochs=150
 model_choice="last"
 
 use_cuda=1
+compute_attractor=1
+estimate_all=1
 overwrite=0
 seed=111
 gpu_id="0"
@@ -99,5 +101,7 @@ test_fixed.py \
 --base_model_path "${base_model_path}" \
 --wrapper_model_path "${wrapper_model_path}" \
 --use_cuda ${use_cuda} \
+--compute_attractor ${compute_attractor} \
+--estimate_all ${estimate_all} \
 --overwrite ${overwrite} \
 --seed ${seed} | tee "${log_dir}/test_${time_stamp}.log"
