@@ -462,7 +462,7 @@ class FixedAttractorComputer:
     def _reset(self, args):
         self.use_cuda = args.use_cuda
 
-        self.base_model_path, self.wrapper_model_path = args.base_model_path, args.wrapper_model_path
+        self.base_model_path, self.wrapper_model_dir = args.base_model_path, args.wrapper_model_dir
         
         config = torch.load(self.base_model_path, map_location=lambda storage, loc: storage)
         
@@ -470,6 +470,8 @@ class FixedAttractorComputer:
             self.model.module.load_state_dict(config['state_dict'])
         else:
             self.model.load_state_dict(config['state_dict'])
+        
+        os.makedirs(self.wrapper_model_dir, exist_ok=True)
         
         self.wrapper_class = args.wrapper_class
         self.iter_clustering = args.iter_clustering
@@ -480,7 +482,7 @@ class FixedAttractorComputer:
         attractors = []
 
         with torch.no_grad():
-            for mixture, sources, assignment, threshold_weight in self.train_dataset:
+            for mixture, sources, assignment, threshold_weight in self.loader:
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     assignment = assignment.cuda()
@@ -499,21 +501,23 @@ class FixedAttractorComputer:
         kmeans = KMeans(K=n_sources)
         _, centroids = kmeans(attractors) # (n_sources, embed_dim)
 
-        self.save_model(self.wrapper_class, centroids)
+        base_model_filename = os.path.basename(self.base_model_path)
+        wrapper_model_path = os.path.join(self.wrapper_model_dir, base_model_filename)
+        self.save_model(self.wrapper_class, centroids, model_path=wrapper_model_path)
     
-    def save_model(self, wrapper_class, attractor):
+    def save_model(self, wrapper_class, attractor, model_path="./tmp.pth"):
         if isinstance(self.model, nn.DataParallel):
             base_model = self.model.module
         else:
-            base_model = self.model.get_config()
-            
+            base_model = self.model
+        
         wrapper_model = wrapper_class(base_model, attractor)
 
-        config = torch.load(self.base_model_path, map_location=lambda storage, loc: storage)
-        config['state_dict'] = wrapper_model.state_dict()
+        config = base_model.get_config()
+        config["state_dict"] = wrapper_model.state_dict()
         config["attractor_size"] = attractor.size()
         
-        torch.save(config, self.wrapper_model_path)
+        torch.save(config, model_path)
 
 class FixedAttractorTester(TesterBase):
     def __init__(self, model, loader, pit_criterion, args):

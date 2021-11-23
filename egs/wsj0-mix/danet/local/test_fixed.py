@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import argparse
 
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, AttractorTrainDataLoader, AttractorTestDataLoader
+from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, TrainDataLoader, AttractorTestDataLoader
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
@@ -28,7 +29,7 @@ parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
 parser.add_argument('--base_model_path', type=str, default='./tmp/model/best.pth', help='Path for model')
-parser.add_argument('--wrapper_model_path', type=str, default='./tmp/wrapper_model/best.pth', help='Path for model')
+parser.add_argument('--wrapper_model_dir', type=str, default='./tmp/wrapper_model', help='Path for wrapper model')
 parser.add_argument('--use_cuda', type=int, default=1, help='0: Not use cuda, 1: Use cuda')
 parser.add_argument('--compute_attractor', type=int, default=1, help='0: Does not compute attractor, 1: Computes attractor')
 parser.add_argument('--estimate_all', type=int, default=1, help='0: Does not estimate, 1: Estimates all data')
@@ -46,10 +47,9 @@ def main(args):
         print("Test dataset includes {} samples.".format(len(test_dataset)))
         
         args.n_bins = args.n_fft // 2 + 1
-        loader = AttractorTrainDataLoader(test_dataset, batch_size=1, shuffle=False)
+        loader = TrainDataLoader(test_dataset, batch_size=1, shuffle=False)
         
-        model = DANet.build_model(args.model_path)
-        
+        model = DANet.build_model(args.base_model_path)
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
         
@@ -57,11 +57,11 @@ def main(args):
             if torch.cuda.is_available():
                 model.cuda()
                 model = nn.DataParallel(model)
-                print("Use CUDA")
+                print("Use CUDA", flush=True)
             else:
                 raise ValueError("Cannot use CUDA.")
         else:
-            print("Does NOT use CUDA")
+            print("Does NOT use CUDA", flush=True)
         
         args.wrapper_class = FixedAttractorDANet
 
@@ -75,7 +75,9 @@ def main(args):
         args.n_bins = args.n_fft // 2 + 1
         loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
         
-        model = FixedAttractorDANet.build_model(args.model_path)
+        base_model_filename = os.path.basename(args.base_model_path)
+        args.wrapper_model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
+        model = FixedAttractorDANet.build_model(args.wrapper_model_path)
         
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
@@ -84,11 +86,11 @@ def main(args):
             if torch.cuda.is_available():
                 model.cuda()
                 model = nn.DataParallel(model)
-                print("Use CUDA")
+                print("Use CUDA", flush=True)
             else:
                 raise ValueError("Cannot use CUDA.")
         else:
-            print("Does NOT use CUDA")
+            print("Does NOT use CUDA", flush=True)
         
         # Criterion
         if args.criterion == 'se':
