@@ -11,7 +11,10 @@ class DeepEmbedding(nn.Module):
 
         self.n_bins = n_bins
         self.hidden_channels, self.embed_dim = hidden_channels, embed_dim
+        self.num_layers = num_layers
+        self.causal = causal
 
+        self.rnn_type=rnn_type
         self.take_log, self.take_db = take_log, take_db
         self.eps = eps
 
@@ -56,6 +59,20 @@ class DeepEmbedding(nn.Module):
         output = x / (norm + eps)
 
         return output
+
+    def get_config(self):
+        config = {
+            'n_bins': self.n_bins,
+            'embed_dim': self.embed_dim,
+            'hidden_channels': self.hidden_channels,
+            'num_layers': self.num_layers,
+            'causal': self.causal,
+            'rnn_type': self.rnn_type,
+            'take_log': self.take_log, 'take_db': self.take_db,
+            'eps': self.eps
+        }
+        
+        return config
     
     @property
     def num_parameters(self):
