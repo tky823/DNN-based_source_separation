@@ -160,6 +160,7 @@ class AdhocTrainer(TrainerBase):
         n_train_batch = len(self.train_loader)
         
         for idx, (mixture, _, mask, threshold_weight) in enumerate(self.train_loader):
+            # TODO: Use thredhold
             if self.use_cuda:
                 mixture = mixture.cuda()
                 mask = mask.cuda()
