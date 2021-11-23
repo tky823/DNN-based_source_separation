@@ -48,7 +48,7 @@ def main(args):
         args.n_bins = args.n_fft // 2 + 1
         loader = TrainDataLoader(test_dataset, batch_size=1, shuffle=False)
         
-        model = DANet.build_model(args.model_path)
+        model = DANet.build_model(args.base_model_path)
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
         
@@ -74,7 +74,7 @@ def main(args):
         args.n_bins = args.n_fft // 2 + 1
         loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
         
-        model = FixedAttractorDANet.build_model(args.model_path)
+        model = FixedAttractorDANet.build_model(args.wrapper_model_path)
         
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
