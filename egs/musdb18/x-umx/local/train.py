@@ -95,9 +95,6 @@ def main(args):
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
     in_channels = 2
     args.n_bins = args.n_fft // 2 + 1
     model = CrossNetOpenUnmix(
@@ -174,6 +171,9 @@ def main(args):
             weight_time=args.weight_time, weight_frequency=args.weight_frequency,
             n_fft=args.n_fft, hop_length=args.hop_length, window=train_dataset.window, normalize=train_dataset.normalize
         )
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocSchedulerTrainer(model, loader, criterion, optimizer, scheduler, args)
     trainer.run()

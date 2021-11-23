@@ -7,9 +7,9 @@ n_sources=2
 
 sample_rate=16000
 
-window_fn='hamming'
-n_fft=256
-hop_length=64
+window_fn='hann'
+n_fft=512
+hop_length=128
 ideal_mask='ibm'
 threshold=40
 
@@ -17,11 +17,15 @@ threshold=40
 K=20
 H=256
 B=4
+dropout=0
 causal=0
 mask_nonlinear='sigmoid'
+iter_clustering=-1
+take_log=1
+take_db=0
 
 # Criterion
-criterion='l2loss'
+criterion='se'
 
 # Optimizer
 optimizer='rmsprop'
@@ -30,6 +34,12 @@ weight_decay=0
 
 batch_size=4
 epochs=100
+
+n_sources_test=2
+num_chunk=256
+duration=5
+iter_clustering=100
+model_choice="last"
 
 use_cuda=1
 overwrite=0
@@ -44,14 +54,7 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_choice="last"
 model_path="${save_dir}/model/${model_choice}.pth"
-
-n_sources_test=2
-iter_clustering=100
-
-num_chunk=256
-duration=5
 
 demo.py \
 --sample_rate ${sample_rate} \

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -9,7 +10,7 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from driver import AttractorTrainer
 from models.danet import DANet
-from criterion.distance import L2Loss
+from adhoc_criterion import SquaredError
 
 parser = argparse.ArgumentParser(description="Training of DANet (Deep Attractor Network)")
 
@@ -17,21 +18,22 @@ parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
 parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
-parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
-
-# Model configuration
-parser.add_argument('--n_fft', type=int, default=256, help='Window length')
+parser.add_argument('--n_fft', type=int, default=512, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
 parser.add_argument('--hidden_channels', '-H', type=int, default=600, help='hidden_channels')
 parser.add_argument('--num_blocks', '-B', type=int, default=4, help='# LSTM layers')
+parser.add_argument('--dropout', type=float, default=0, help='Dropout rate of LSTM layers')
 parser.add_argument('--causal', type=int, default=0, help='Causality')
 parser.add_argument('--mask_nonlinear', type=str, default='sigmoid', help='Non-linear function of mask estiamtion')
-parser.add_argument('--iter_clustering', type=int, default=10, help='# iterations when clustering')
+parser.add_argument('--iter_clustering', type=int, default=-1, help='# iterations when clustering')
+parser.add_argument('--take_log', type=int, default=1, help='Log operation')
+parser.add_argument('--take_db', type=int, default=0, help='20*log10 operation.')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
-parser.add_argument('--criterion', type=str, default='l2loss', choices=['l2loss'], help='Criterion')
+parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
 parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'adam', 'rmsprop'], help='Optimizer, [sgd, adam, rmsprop]')
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
@@ -50,18 +52,24 @@ def main(args):
     set_seed(args.seed)
     
     train_dataset = IdealMaskSpectrogramTrainDataset(args.wav_root, args.train_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
-    valid_dataset = IdealMaskSpectrogramEvalDataset(args.wav_root, args.valid_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    train_loader = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
-    print("Valid dataset includes {} samples.".format(len(valid_dataset)))
+
+    if args.iter_clustering < 0:
+        valid_loader = None
+        args.iter_clustering = None
+    else:
+        valid_dataset = IdealMaskSpectrogramEvalDataset(args.wav_root, args.valid_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+        valid_loader = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+        print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
-    loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
+    loader['train'] = train_loader
+    loader['valid'] = valid_loader
     
     args.n_bins = args.n_fft // 2 + 1
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, causal=args.causal, mask_nonlinear=args.mask_nonlinear, iter_clustering=args.iter_clustering)
+
+    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
@@ -86,10 +94,13 @@ def main(args):
         raise ValueError("Not support optimizer {}".format(args.optimizer))
         
     # Criterion
-    if args.criterion == 'l2loss':
-        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
+    if args.criterion == 'se':
+        criterion = SquaredError(sum_dim=(1,2), mean_dim=3) # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+    
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AttractorTrainer(model, loader, criterion, optimizer, args)
     trainer.run()

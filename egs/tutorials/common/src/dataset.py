@@ -4,9 +4,10 @@ import json
 import torch
 import torchaudio
 
+from utils.audio import build_window
 from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
 
-EPS=1e-12
+EPS = 1e-12
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
@@ -38,8 +39,7 @@ class WaveDataset(LibriSpeechDataset):
             source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
-            wave = wave[:, start: end]
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end - start)
             mixture = mixture + wave
         
             if sources is None:
@@ -98,12 +98,7 @@ class SpectrogramDataset(WaveDataset):
         self.n_bins = n_fft // 2 + 1
 
         if window_fn:
-            if window_fn == 'hann':
-                self.window = torch.hann_window(n_fft, periodic=True)
-            elif window_fn == 'hamming':
-                self.window = torch.hamming_window(n_fft, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(n_fft, window_fn=window_fn)
         else:
             self.window = None
         
@@ -166,7 +161,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         
         mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
         sources_amplitude = torch.abs(sources)
-        ideal_mask = self.generate_mask(sources_amplitude)
+        ideal_mask = self.generate_mask(sources_amplitude, source_dim=0)
         
         mixture_amplitude = torch.abs(mixture)
         log_amplitude = 20 * torch.log10(mixture_amplitude + eps)

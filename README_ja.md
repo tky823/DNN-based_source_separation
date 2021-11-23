@@ -14,7 +14,7 @@ DNNによる音源分離（PyTorch実装）
 | Deep clustering | [Single-Channel Multi-Speaker Separation using Deep Clustering](https://arxiv.org/abs/1607.02173) |  |
 | Chimera++ | [Alternative Objective Functions for Deep Clustering](https://www.merl.com/publications/docs/TR2018-005.pdf) |  |
 | DANet | [Deep Attractor Network for Single-microphone Apeaker Aeparation](https://arxiv.org/abs/1611.08930) | ✔ |
-| ADANet | [Speaker-independent Speech Separation with Deep Attractor Network](https://arxiv.org/abs/1707.03634) |  |
+| ADANet | [Speaker-independent Speech Separation with Deep Attractor Network](https://arxiv.org/abs/1707.03634) | ✔ |
 | TasNet | [TasNet: Time-domain Audio Separation Network for Real-time, Single-channel Speech Separation](https://arxiv.org/abs/1711.00541) | ✔ |
 | Conv-TasNet | [Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation](https://arxiv.org/abs/1809.07454) | ✔ |
 | DPRNN-TasNet | [Dual-path RNN: Efficient Long Sequence Modeling for Time-domain Single-channel Speech Separation](https://arxiv.org/abs/1910.06379) | ✔ |
@@ -105,6 +105,8 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 |:---:|:---:|:---:|
 | DANet | WSJ0-2mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | DANet | WSJ0-3mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
+| ADANet | WSJ0-2mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| ADANet | WSJ0-3mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | LSTM-TasNet | WSJ0-2mix | `model = LSTMTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | Conv-TasNet | WSJ0-2mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | Conv-TasNet | WSJ0-3mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |

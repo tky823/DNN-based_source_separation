@@ -11,7 +11,8 @@ EPS = 1e-12
 __pretrained_model_ids__ = {
     "wsj0-mix": {
         8000: {
-            2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc"
+            2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc",
+            3: "1--xFyvBc2bgNEw5wfCpokRd0JoabuAog"
         }
     }
 }

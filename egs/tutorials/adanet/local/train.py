@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import ThresholdWeightSpectrogramTrainDataset, TrainDataLoader, EvalDataLoader
+from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from driver import AnchoredAttractorTrainer
 from models.adanet import ADANet
 from criterion.distance import L2Loss
@@ -17,10 +18,8 @@ parser.add_argument('--wav_root', type=str, default=None, help='Path for dataset
 parser.add_argument('--train_json_path', type=str, default=None, help='Path for train.json')
 parser.add_argument('--valid_json_path', type=str, default=None, help='Path for valid.json')
 parser.add_argument('--sample_rate', '-sr', type=int, default=8000, help='Sampling rate')
-parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
+parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
-
-# Model configuration
 parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
@@ -48,18 +47,18 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 def main(args):
     set_seed(args.seed)
     
-    train_dataset = ThresholdWeightSpectrogramTrainDataset(args.wav_root, args.train_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, threshold=args.threshold)
-    valid_dataset = ThresholdWeightSpectrogramTrainDataset(args.wav_root, args.valid_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, threshold=args.threshold)
+    train_dataset = IdealMaskSpectrogramTrainDataset(args.wav_root, args.train_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    valid_dataset = IdealMaskSpectrogramEvalDataset(args.wav_root, args.valid_json_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+    
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    loader['valid'] = TrainDataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False)
+    loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
     
     args.n_bins = args.n_fft//2 + 1
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
+
     model = ADANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, n_anchors=args.n_anchors, causal=args.causal, mask_nonlinear=args.mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
@@ -89,6 +88,9 @@ def main(args):
         criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AnchoredAttractorTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
