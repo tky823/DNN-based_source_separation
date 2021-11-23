@@ -6,13 +6,17 @@ from utils.model import choose_rnn
 EPS = 1e-12
 
 class DeepEmbedding(nn.Module):
-    def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=2, causal=False, eps=EPS, **kwargs):
+    def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=2, causal=False, rnn_type='lstm', take_log=True, take_db=False, eps=EPS):
         super().__init__()
 
         self.n_bins = n_bins
         self.hidden_channels, self.embed_dim = hidden_channels, embed_dim
 
+        self.take_log, self.take_db = take_log, take_db
         self.eps = eps
+
+        if self.take_log and self.take_db:
+            raise ValueError("Either take_log or take_db should be False.")
 
         if causal:
             bidirectional = False
@@ -21,26 +25,33 @@ class DeepEmbedding(nn.Module):
             bidirectional = True
             num_directions = 2
 
-        self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
+        self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
     
     def forward(self, input):
         """
         Args:
-            input (batch_size, n_bins, n_frames): Input feature. This input is expected log-magnitude.
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
         Returns:
-            output (batch_size, embed_dim, n_bins, n_frames): Embedded feature.
+            output <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
         """
         n_bins, embed_dim = self.n_bins, self.embed_dim
         eps = self.eps
 
-        batch_size, _, n_frames = input.size()
+        batch_size, _, _, n_frames = input.size()
 
-        x = input.permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
+        if self.take_log:
+            x = torch.log(input + eps)
+        elif self.take_db:
+            x = 20 * torch.log10(input + eps)
+        else:
+            x = input
+
+        x = x.squeeze(dim=1).permute(0, 2, 1) # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x)
-        x = self.fc(x) # (batch_size, n_frames, n_bins*embed_dim)
+        x = self.fc(x) # (batch_size, n_frames, n_bins * embed_dim)
         x = x.view(batch_size, n_frames, n_bins, embed_dim)
-        x = x.permute(0, 3, 2, 1).contiguous() # (batch_size, embed_dim, n_bins, n_frames)
+        x = x.permute(0, 2, 1, 3).contiguous() # (batch_size, n_bins, n_frames, embed_dim)
         norm = torch.sum(x**2, dim=1, keepdim=True)
         output = x / (norm + eps)
 
@@ -192,31 +203,33 @@ def _test_deep_embedding():
     n_fft, hop_length = 256, 128
     window_fn = 'hann'
     n_bins = n_fft // 2 + 1
-    hidden_channels, embed_dim = 300, 40
+    hidden_channels, embed_dim = 16, 20
 
     criterion = AffinityLoss()
 
     window = build_window(n_fft, window_fn=window_fn)
     waveform = torch.randn((batch_size, n_sources, T), dtype=torch.float)
 
-    spectrogram = stft(waveform, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
-    amplitude = torch.abs(spectrogram)
-    target = 20 * torch.log10(amplitude + EPS)
-    target = compute_ideal_binary_mask(target)
-    input = target.sum(dim=1)
+    sources = stft(waveform, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
+    mixture = sources.sum(dim=1, keepdim=True)
+    input = torch.abs(mixture)
+    target = compute_ideal_binary_mask(sources, source_dim=1) # (batch_size, n_sources, n_bins, n_frames)
 
     # Non causal
     print("-"*10, "Non causal", "-"*10)
 
-    model = DeepEmbedding_pp(n_bins, hidden_channels, embed_dim=embed_dim, causal=False)
+    model = DeepEmbedding(n_bins, hidden_channels=hidden_channels, embed_dim=embed_dim, causal=False)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
     output = model(input)
-    print(input.size(), output.size())
-    
-    loss = criterion(output, target)
-    print(loss.item())
+    print(input.size(), output.size(), target.size())
+
+    output = output.view(batch_size, -1, embed_dim)
+    target = target.view(batch_size, n_sources, -1).permute(0, 2, 1)
+
+    loss = criterion(output, target, batch_mean=False)
+    print(loss)
 
 def _test_chimeranet():
     pass
