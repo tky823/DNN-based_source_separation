@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, AttractorTrainDataLoader, AttractorTestDataLoader
+from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, TrainDataLoader, AttractorTestDataLoader
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
@@ -46,10 +46,9 @@ def main(args):
         print("Test dataset includes {} samples.".format(len(test_dataset)))
         
         args.n_bins = args.n_fft // 2 + 1
-        loader = AttractorTrainDataLoader(test_dataset, batch_size=1, shuffle=False)
+        loader = TrainDataLoader(test_dataset, batch_size=1, shuffle=False)
         
         model = DANet.build_model(args.model_path)
-        
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
         
