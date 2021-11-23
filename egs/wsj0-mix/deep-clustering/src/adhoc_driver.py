@@ -159,17 +159,16 @@ class AdhocTrainer(TrainerBase):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources, _, threshold_weight) in enumerate(self.train_loader):
+        for idx, (mixture, _, mask, threshold_weight) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
-                sources = sources.cuda()
+                mask = mask.cuda()
                 threshold_weight = threshold_weight.cuda()
             
             mixture_amplitude = torch.abs(mixture)
-            sources_amplitude = torch.abs(sources)
             
-            estimated_sources_amplitude = self.model(mixture_amplitude)
-            loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
+            embedding = self.model(mixture_amplitude)
+            loss = self.criterion(embedding, mask)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -193,65 +192,7 @@ class AdhocTrainer(TrainerBase):
         """
         Validation
         """
-        n_sources = self.n_sources
-        
-        self.model.eval()
-        
-        valid_loss = 0
-        n_valid = len(self.valid_loader.dataset)
-        
-        with torch.no_grad():
-            for idx, (mixture, sources, _, threshold_weight) in enumerate(self.valid_loader):
-                """
-                    mixture (batch_size, 1, n_bins, n_frames)
-                    sources (batch_size, n_sources, n_bins, n_frames)
-                    threshold_weight (batch_size, n_bins, n_frames)
-                """
-                if self.use_cuda:
-                    mixture = mixture.cuda()
-                    sources = sources.cuda()
-                    threshold_weight = threshold_weight.cuda()
-                
-                mixture_amplitude = torch.abs(mixture)
-                sources_amplitude = torch.abs(sources)
-                
-                estimated_sources_amplitude = self.model(mixture_amplitude)
-                # At the test phase, assignment may be unknown.
-                loss, _ = pit(self.criterion, estimated_sources_amplitude, sources_amplitude, batch_mean=False)
-                loss = loss.sum(dim=0)
-                valid_loss += loss.item()
-                
-                if idx < 5:
-                    mixture = mixture[0].cpu() # (1, n_bins, n_frames, 2)
-                    mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)
-                    estimated_sources_amplitude = estimated_sources_amplitude[0].cpu() # (n_sources, n_bins, n_frames)
-
-                    phase = torch.angle(mixture)
-                    estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)
-                    estimated_sources = istft(estimated_sources, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (n_sources, T)
-                    estimated_sources = estimated_sources.cpu()
-                    
-                    mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window) # (1, T)
-                    mixture = mixture.squeeze(dim=0) # (T,)
-                    
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
-                    os.makedirs(save_dir, exist_ok=True)
-                    save_path = os.path.join(save_dir, "mixture.wav")
-                    norm = torch.abs(mixture).max()
-                    mixture = mixture / norm
-                    signal = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
-                    torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
-                    
-                    for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1, source_idx + 1))
-                        norm = torch.abs(estimated_source).max()
-                        estimated_source = estimated_source / norm
-                        signal = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
-                        torchaudio.save(save_path, signal, sample_rate=self.sample_rate, bits_per_sample=BITS_PER_SAMPLE_WSJ0)
-        
-        valid_loss /= n_valid
-        
-        return valid_loss
+        raise NotImplementedError("Not support evaluation.")
 
     def save_model(self, epoch, model_path='./tmp.pth'):
         if isinstance(self.model, nn.DataParallel):
