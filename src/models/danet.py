@@ -460,13 +460,10 @@ class FixedAttractorDANet(nn.Module):
 
         if not os.path.exists(attractor_path):
             download_pretrained_model_from_google_drive(attractor_id, download_dir, quiet=quiet)
-        
-        config = torch.load(attractor_path, map_location=lambda storage, loc: storage)
-        dummy_attractor = torch.empty(*config["attractor_size"])
-        model = cls(base_model, dummy_attractor)
 
         if load_state_dict:
-            model.load_state_dict(config['state_dict'])
+            fixed_attractor = torch.load(attractor_path, map_location=lambda storage, loc: storage)
+            model = cls(base_model, fixed_attractor)
         else:
             raise ValueError("Set load_state_dict=True")
 
