@@ -67,7 +67,7 @@ def main(args):
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
     metrics = OrderedDict()
-    metrics['sisdr'] = NegSISDR()
+    metrics['SISDR'] = NegSISDR()
     metrics = Metrics(metrics)
 
     if args.iter_clustering < 0:
