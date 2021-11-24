@@ -9,12 +9,13 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, TrainDataLoader, AttractorTestDataLoader
+from adhoc_data_paralell import AdhocDataParallel
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
 from adhoc_criterion import SquaredError
 
-parser = argparse.ArgumentParser(description="Evaluation of DANet")
+parser = argparse.ArgumentParser(description="Evaluation of DANet using fixed attractor.")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
@@ -56,7 +57,7 @@ def main(args):
         if args.use_cuda:
             if torch.cuda.is_available():
                 model.cuda()
-                model = nn.DataParallel(model)
+                model = AdhocDataParallel(model)
                 print("Use CUDA", flush=True)
             else:
                 raise ValueError("Cannot use CUDA.")
