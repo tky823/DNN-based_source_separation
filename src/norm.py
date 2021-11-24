@@ -53,7 +53,7 @@ class CumulativeLayerNorm1d(nn.Module):
         
     def _reset_parameters(self):
         self.gamma.data.fill_(1)
-        self.beta.data.zero_()
+        self.beta.data.fill_(0)
         
     def forward(self, input):
         """
@@ -75,19 +75,17 @@ class CumulativeLayerNorm1d(nn.Module):
         else:
             raise ValueError("Only support 3D or 4D input, but given {}D".format(input.dim()))
         
-        step_sum = input.sum(dim=1) # -> (batch_size, T)
-        input_pow = input**2
-        step_pow_sum = input_pow.sum(dim=1) # -> (batch_size, T)
-        cum_sum = torch.cumsum(step_sum, dim=1) # -> (batch_size, T)
-        cum_squared_sum = torch.cumsum(step_pow_sum, dim=1) # -> (batch_size, T)
+        step_sum = torch.sum(input, dim=1) # (batch_size, T)
+        step_squared_sum = torch.sum(input**2, dim=1) # (batch_size, T)
+        cum_sum = torch.cumsum(step_sum, dim=1) # (batch_size, T)
+        cum_squared_sum = torch.cumsum(step_squared_sum, dim=1) # (batch_size, T)
         
-        cum_num = torch.arange(C, C*(T+1), C, dtype=torch.float) # -> (T, ): [C, 2*C, ..., T*C]
+        cum_num = torch.arange(C, C * (T + 1), C, dtype=torch.float) # (T, ): [C, 2*C, ..., T*C]
         cum_mean = cum_sum / cum_num # (batch_size, T)
         cum_squared_mean = cum_squared_sum / cum_num
         cum_var = cum_squared_mean - cum_mean**2
         
-        cum_mean = cum_mean.unsqueeze(dim=1)
-        cum_var = cum_var.unsqueeze(dim=1)
+        cum_mean, cum_var = cum_mean.unsqueeze(dim=1), cum_var.unsqueeze(dim=1)
         
         output = (input - cum_mean) / (torch.sqrt(cum_var) + eps) * self.gamma + self.beta
 
