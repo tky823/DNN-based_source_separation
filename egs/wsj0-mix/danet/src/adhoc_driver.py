@@ -444,7 +444,7 @@ class AdhocTester(TesterBase):
 
                 s = "{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq)
                 for _, result in results.items():
-                    s += ", {}".format(result.item())
+                    s += ", {:.3f}".format(result.item())
                 print(s, flush=True)
                 
                 test_loss += loss.item()
@@ -467,7 +467,7 @@ class AdhocTester(TesterBase):
 
         os.chdir("../") # back to the original directory
 
-        s = "Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
+        s = "Loss: {:.3f}, SDR improvement: {:.3f}, SIR improvement: {:.3f}, SAR: {:.3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
 
         for key, result in test_results.items():
             s += ", {} improvement: {:.3f}".format(key, result)
