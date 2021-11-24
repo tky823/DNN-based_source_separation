@@ -9,7 +9,7 @@ import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, TrainDataLoader, AttractorTestDataLoader
-from adhoc_data_paralell import AdhocDataParallel
+from adhoc_data_parallel import AdhocDataParallel
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
