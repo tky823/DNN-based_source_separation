@@ -482,7 +482,7 @@ class FixedAttractorDANet(nn.Module):
         return FixedAttractorDANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
 
 class FixedAttractorDANetTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: DANet, n_fft, hop_length=None, window_fn='hann'):
+    def __init__(self, base_model: FixedAttractorDANet, n_fft, hop_length=None, window_fn='hann'):
         super().__init__()
 
         self.base_model = base_model
