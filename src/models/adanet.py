@@ -8,19 +8,18 @@ from models.danet import DANet, DANetTimeDomainWrapper
 
 EPS = 1e-12
 
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc",
-            3: "1--xFyvBc2bgNEw5wfCpokRd0JoabuAog"
-        }
-    }
-}
-
 """
     Anchored DANet
 """
 class ADANet(DANet):
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc",
+                3: "1--xFyvBc2bgNEw5wfCpokRd0JoabuAog"
+            }
+        }
+    }
     def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, num_anchors=6, dropout=5e-1, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS, **kwargs):
         super().__init__(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps, take_log=take_log, take_db=take_db, **kwargs)
         
@@ -174,10 +173,10 @@ class ADANet(DANet):
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:

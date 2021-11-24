@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,15 +9,6 @@ from utils.model import choose_rnn
 from models.filterbank import FourierEncoder, FourierDecoder
 
 EPS = 1e-12
-
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1kq6WyNygiYDABIx7IoqmyJd3dj5b4Cjv",
-            3: ""
-        }
-    }
-}
 
 class TasNetBase(nn.Module):
     def __init__(self, hidden_channels, kernel_size, stride=None, window_fn='hann', enc_trainable=False, dec_trainable=False, onesided=True, return_complex=True):
@@ -78,6 +71,14 @@ class TasNet(nn.Module):
     """
     LSTM-TasNet
     """
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1kq6WyNygiYDABIx7IoqmyJd3dj5b4Cjv",
+                3: ""
+            }
+        }
+    }
     def __init__(
         self,
         n_basis, kernel_size=40, stride=None, enc_basis=None, dec_basis=None,
@@ -225,16 +226,14 @@ class TasNet(nn.Module):
     
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:

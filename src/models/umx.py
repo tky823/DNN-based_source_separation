@@ -1,3 +1,5 @@
+import os
+
 import yaml
 import torch
 import torch.nn as nn
@@ -10,18 +12,6 @@ from transforms.stft import stft, istft
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-__pretrained_model_ids__ = {
-    "musdb18": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": "1sqlK26fLJ6ns-NOxCrxhwI92wv45QPCB"
-        }
-    },
-    "musdb18hq": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": "18pj2ubYnZPSQWPpHaREAcbmrNzEihNHO"
-        }
-    }
-}
 
 """
 Reference: https://github.com/sigsep/open-unmix-pytorch
@@ -87,16 +77,14 @@ class ParallelOpenUnmix(nn.Module):
 
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in OpenUnmix.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = OpenUnmix.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:
@@ -222,6 +210,18 @@ Open-Unmix
     See https://hal.inria.fr/hal-02293689/document
 """
 class OpenUnmix(nn.Module):
+    pretrained_model_ids = {
+        "musdb18": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "1sqlK26fLJ6ns-NOxCrxhwI92wv45QPCB"
+            }
+        },
+        "musdb18hq": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "18pj2ubYnZPSQWPpHaREAcbmrNzEihNHO"
+            }
+        }
+    }
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', eps=EPS):
         """
         Args:
@@ -439,10 +439,10 @@ class OpenUnmix(nn.Module):
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:

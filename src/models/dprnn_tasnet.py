@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,28 +10,26 @@ from models.transform import Segment1d, OverlapAdd1d
 from models.dprnn import DPRNN
 
 SAMPLE_RATE_LIBRISPEECH = 16000
-
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1-2DOUDi2NImL7akQzTXLpDqJsJL4HyiY",
-            3: "1-5EhjEBiArjFat4gXyNkKyUjAkTvkgU0"
-        },
-        16000: {
-            2: "", # TODO
-            3: "" # TODO
-        }
-    },
-    "librispeech": {
-        SAMPLE_RATE_LIBRISPEECH: {
-            2: "1hTmxhI8JQlNnWVjwWUBGYlC7O_-ykK4H"
-        }
-    }
-}
-
 EPS = 1e-12
 
 class DPRNNTasNet(nn.Module):
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1-2DOUDi2NImL7akQzTXLpDqJsJL4HyiY",
+                3: "1-5EhjEBiArjFat4gXyNkKyUjAkTvkgU0"
+            },
+            16000: {
+                2: "", # TODO
+                3: "" # TODO
+            }
+        },
+        "librispeech": {
+            SAMPLE_RATE_LIBRISPEECH: {
+                2: "1hTmxhI8JQlNnWVjwWUBGYlC7O_-ykK4H"
+            }
+        }
+    }
     def __init__(
         self,
         n_basis, kernel_size, stride=None, enc_basis=None, dec_basis=None,
@@ -225,16 +225,14 @@ class DPRNNTasNet(nn.Module):
 
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:

@@ -1,4 +1,4 @@
-import warnings
+import os
 
 import yaml
 import torch
@@ -23,14 +23,6 @@ __sources__ = ['bass', 'drums', 'other', 'vocals']
 FULL = 'full'
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-__pretrained_model_ids__ = {
-    "musdb18": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
-            "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
-        }
-    }
-}
 
 class ParallelD3Net(nn.Module):
     def __init__(self, modules):
@@ -102,10 +94,10 @@ class ParallelD3Net(nn.Module):
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in D3Net.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = D3Net.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18']:
@@ -222,6 +214,14 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
         return list(self.base_model.sources)
 
 class D3Net(nn.Module):
+    pretrained_model_ids = {
+        "musdb18": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
+                "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
+            }
+        }
+    }
     def __init__(
         self,
         in_channels, num_features,
@@ -489,16 +489,14 @@ class D3Net(nn.Module):
     
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18']:
