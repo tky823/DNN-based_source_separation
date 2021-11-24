@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -10,8 +11,9 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
 from models.danet import DANet
+from criterion.sdr import NegSISDR
 from criterion.pit import PIT2d
-from adhoc_criterion import SquaredError
+from adhoc_criterion import Metrics, SquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
@@ -64,10 +66,14 @@ def main(args):
 
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
+    metrics = OrderedDict()
+    metrics['sisdr'] = NegSISDR()
+    metrics = Metrics(metrics)
+
     if args.iter_clustering < 0:
         args.iter_clustering = None # Iterates until convergence
     
-    tester = AdhocTester(model, loader, pit_criterion, args)
+    tester = AdhocTester(model, loader, pit_criterion, metrics, args)
     tester.run()
 
 if __name__ == '__main__':
