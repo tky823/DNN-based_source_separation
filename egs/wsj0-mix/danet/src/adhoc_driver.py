@@ -544,12 +544,12 @@ class FixedAttractorComputer:
         torch.save(config, model_path)
 
 class FixedAttractorTester(TesterBase):
-    def __init__(self, model, loader, pit_criterion, args):
+    def __init__(self, model, loader, pit_criterion, metrics, args):
         self.loader = loader
         
         self.model = model
         
-        self.pit_criterion = pit_criterion
+        self.pit_criterion, self.metrics = pit_criterion, metrics
         
         self._reset(args)
 
@@ -570,10 +570,16 @@ class FixedAttractorTester(TesterBase):
         test_sir_improvement = 0
         test_sar = 0
         test_pesq = 0
+        test_results = OrderedDict()
+
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
 
-        print("ID, Loss, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+        s = "ID, Loss, SDR improvement, SIR improvement, SAR, PESQ"
+        for key, _ in self.metrics.items():
+            s += ", {} improvement".format(key)
+            test_results[key] = 0
+        print(s, flush=True)
 
         tmp_dir = os.path.join(os.getcwd(), 'tmp')
         os.makedirs(tmp_dir, exist_ok=True)
@@ -689,13 +695,22 @@ class FixedAttractorTester(TesterBase):
                     subprocess.call("rm {}".format(estimated_path), shell=True)
 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq), flush=True)
                 
+                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources[perm_idx].unsqueeze(dim=0), sources.unsqueeze(dim=0))
+
+                s = "{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq)
+                for _, result in results.items():
+                    s += ", {:.3f}".format(result.item())
+                print(s, flush=True)
+
                 test_loss += loss.item()
                 test_sdr_improvement += sdr_improvement.item()
                 test_sir_improvement += sir_improvement.item()
                 test_sar += sar.item()
                 test_pesq += pesq
+
+                for key, result in results.items():
+                    test_results[key] += result
         
         test_loss /= n_test
         test_sdr_improvement /= n_test

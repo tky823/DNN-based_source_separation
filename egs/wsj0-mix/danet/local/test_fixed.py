@@ -3,6 +3,7 @@
 
 import os
 import argparse
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -13,7 +14,8 @@ from adhoc_data_parallel import AdhocDataParallel
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
-from adhoc_criterion import SquaredError
+from criterion.sdr import NegSISDR
+from adhoc_criterion import Metrics, SquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet using fixed attractor.")
 
@@ -101,7 +103,11 @@ def main(args):
         
         pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
-        tester = FixedAttractorTester(model, loader, pit_criterion, args)
+        metrics = OrderedDict()
+        metrics['SISDR'] = NegSISDR()
+        metrics = Metrics(metrics)
+
+        tester = FixedAttractorTester(model, loader, pit_criterion, metrics, args)
         tester.run()
 
 if __name__ == '__main__':
