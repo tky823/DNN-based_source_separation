@@ -470,7 +470,7 @@ class AdhocTester(TesterBase):
         s = "Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
 
         for key, result in test_results.items():
-            s += ", {}: {:.3f}".format(result)
+            s += ", {}: {:.3f}".format(key, result)
 
         print(s)
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
