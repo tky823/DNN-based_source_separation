@@ -79,3 +79,9 @@ class Metrics(nn.Module):
             results[key] = loss_mixture - loss
         
         return results
+    
+    def keys(self):
+        return self.metrics.keys()
+    
+    def items(self):
+        return self.metrics.items()
