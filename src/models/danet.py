@@ -200,6 +200,16 @@ class DANet(nn.Module):
         
         return config
     
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
@@ -290,18 +300,8 @@ class DANet(nn.Module):
         return model
     
     @classmethod
-    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
-        return DANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
-    
-    @property
-    def num_parameters(self):
-        _num_parameters = 0
-        
-        for p in self.parameters():
-            if p.requires_grad:
-                _num_parameters += p.numel()
-                
-        return _num_parameters
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
+        return DANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
 
 class DANetTimeDomainWrapper(nn.Module):
     def __init__(self, base_model: DANet, n_fft, hop_length=None, window_fn='hann', eps=EPS):
@@ -344,7 +344,6 @@ class DANetTimeDomainWrapper(nn.Module):
             threshold_weight = None
 
         estimated_amplitude = self.base_model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
-        n_sources = estimated_amplitude.size(2)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
         output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
 
@@ -477,6 +476,43 @@ class FixedAttractorDANet(nn.Module):
             setattr(model, key, value)
 
         return model
+
+    @classmethod
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
+        return FixedAttractorDANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
+
+class FixedAttractorDANetTimeDomainWrapper(nn.Module):
+    def __init__(self, base_model: DANet, n_fft, hop_length=None, window_fn='hann'):
+        super().__init__()
+
+        self.base_model = base_model
+
+        if hop_length is None:
+            hop_length = n_fft // 4
+        
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
+        self.window = nn.Parameter(window, requires_grad=False)
+    
+    def forward(self, input):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, 1, T)
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, T)
+        """
+        assert input.dim() == 3, "input is expected 3D input."
+
+        T = input.size(-1)
+
+        mixture_spectrogram = stft(input, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
+        mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
+
+        estimated_amplitude = self.base_model(mixture_amplitude)
+        estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
+        output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
+
+        return output
 
 def _test_danet():
     batch_size = 2

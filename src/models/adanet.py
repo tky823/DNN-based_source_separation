@@ -260,7 +260,6 @@ class ADANetTimeDomainWrapper(DANetTimeDomainWrapper):
             threshold_weight = None
 
         estimated_amplitude = self.base_model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
-        n_sources = estimated_amplitude.size(2)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
         output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
 
