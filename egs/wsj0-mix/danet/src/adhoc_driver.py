@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import uuid
+from collections import OrderedDict
 
 import torch
 import torchaudio
@@ -311,12 +312,15 @@ class AdhocTester(TesterBase):
         test_sir_improvement = 0
         test_sar = 0
         test_pesq = 0
+        test_results = OrderedDict()
+
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
 
         s = "ID, Loss, SDR improvement, SIR improvement, SAR, PESQ"
         for key, _ in self.metrics.items():
             s += ", {}".format(key)
+            test_results[key] = 0
         print(s, flush=True)
 
         tmp_dir = os.path.join(os.getcwd(), 'tmp')
@@ -448,6 +452,9 @@ class AdhocTester(TesterBase):
                 test_sir_improvement += sir_improvement.item()
                 test_sar += sar.item()
                 test_pesq += pesq
+
+                for key, result in results.items():
+                    test_results[key] += result
         
         test_loss /= n_test
         test_sdr_improvement /= n_test
@@ -455,9 +462,17 @@ class AdhocTester(TesterBase):
         test_sar /= n_test
         test_pesq /= n_test
 
+        for key in test_results.keys():
+            test_results[key] /= n_test
+
         os.chdir("../") # back to the original directory
 
-        print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
+        s = "Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
+
+        for key, result in test_results.items():
+            s += ", {}: {:.3f}".format(result)
+
+        print(s)
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
 class FixedAttractorComputer:
