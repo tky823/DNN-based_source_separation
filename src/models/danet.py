@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -9,21 +11,20 @@ from transforms.stft import stft, istft
 SAMPLE_RATE_LIBRISPEECH = 16000
 EPS = 1e-12
 
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1AkdK4a4WxgExY7trX0hDIbgY5SmrJhEL",
-            3: "1Z78kcYZvmIs8GdPr49mxc_a_dKsvjLbW"
-        }
-    },
-    "librispeech": {
-        16000: {
-            2: "1TFh9t3Lw1ngDS5Riqp7lQEojfV0T3AKw"
+class DANet(nn.Module):
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1AkdK4a4WxgExY7trX0hDIbgY5SmrJhEL",
+                3: "1Z78kcYZvmIs8GdPr49mxc_a_dKsvjLbW"
+            }
+        },
+        "librispeech": {
+            16000: {
+                2: "1TFh9t3Lw1ngDS5Riqp7lQEojfV0T3AKw"
+            }
         }
     }
-}
-
-class DANet(nn.Module):
     def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS):
         super().__init__()
         
@@ -143,6 +144,47 @@ class DANet(nn.Module):
 
         return output, latent, attractor
     
+    def extract_latent_by_attractor(self, input, attractor):
+        """
+        Args:
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
+            attractor <torch.Tensor>: Attractor with shape of (n_sources, embed_dim).
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
+            latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
+        """
+        eps = self.eps
+        
+        batch_size, _, n_bins, n_frames = input.size()
+        n_sources, embed_dim = attractor.size()
+
+        self.rnn.flatten_parameters()
+
+        if self.take_log:
+            x = torch.log(input + eps)
+        elif self.take_db:
+            x = 20 * torch.log10(input + eps)
+        else:
+            x = input
+        
+        x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
+        x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
+        x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
+        x = x.view(batch_size, n_frames, embed_dim, n_bins)
+        x = x.permute(0, 2, 3, 1).contiguous()  # (batch_size, embed_dim, n_bins, n_frames)
+        latent = x.view(batch_size, embed_dim, n_bins * n_frames)
+        latent = latent.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embed_dim)
+    
+        batch_fixed_attractor = attractor.expand(batch_size, -1, -1)
+        similarity = torch.bmm(batch_fixed_attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
+        similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
+        mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
+        output = mask * input
+
+        latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
+
+        return output, latent
+
     def get_config(self):
         config = {
             'n_bins': self.n_bins,
@@ -188,16 +230,14 @@ class DANet(nn.Module):
 
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:
@@ -311,6 +351,13 @@ class DANetTimeDomainWrapper(nn.Module):
         return output
 
 class FixedAttractorDANet(nn.Module):
+    pretrained_attractor_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1au5-XT-VTOX-RDl4Y8E7b8BxDncKpfon"
+            }
+        }
+    }
     def __init__(self, base_model: DANet, fixed_attractor=None):
         """
         Args:
@@ -351,36 +398,7 @@ class FixedAttractorDANet(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
             latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
         """
-        n_sources = self.fixed_attractor.size(0)
-        embed_dim = self.base_model.embed_dim
-        eps = self.base_model.eps
-        
-        batch_size, _, n_bins, n_frames = input.size()
-
-        self.base_model.rnn.flatten_parameters()
-
-        if self.base_model.take_log:
-            x = torch.log(input + eps)
-        elif self.base_model.take_db:
-            x = 20 * torch.log10(input + eps)
-        else:
-            x = input
-        
-        x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
-        x, _ = self.base_model.rnn(x) # (batch_size, n_frames, n_bins)
-        x = self.base_model.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
-        x = x.view(batch_size, n_frames, embed_dim, n_bins)
-        x = x.permute(0, 2, 3, 1).contiguous()  # (batch_size, embed_dim, n_bins, n_frames)
-        latent = x.view(batch_size, embed_dim, n_bins * n_frames)
-        latent = latent.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embed_dim)
-    
-        batch_fixed_attractor = self.fixed_attractor.expand(batch_size, -1, -1)
-        similarity = torch.bmm(batch_fixed_attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
-        similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
-        mask = self.base_model.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
-        output = mask * input
-
-        latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
+        output, latent = self.base_model.extract_latent_by_attractor(input, self.fixed_attractor)
 
         return output, latent
     
@@ -403,6 +421,64 @@ class FixedAttractorDANet(nn.Module):
         else:
             raise ValueError("Set load_state_dict=True")
         
+        return model
+    
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        from utils.utils import download_pretrained_model_from_google_drive
+        
+        # For pretrained FixedAttractorDANet, pretrained attractor is saved separately from state dict of base DANet,
+        base_model = DANet.build_from_pretrained(root, quiet=quiet, load_state_dict=load_state_dict, **kwargs)
+
+        task = kwargs.get('task')
+
+        if not task in cls.pretrained_attractor_ids:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+        
+        pretrained_attractor_ids_task = cls.pretrained_attractor_ids[task]
+        additional_attributes = {}
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'last'
+
+            attractor_id = pretrained_attractor_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
+
+        attractor_path = os.path.join(download_dir, "attractor", "{}.pth".format(model_choice))
+
+        if not os.path.exists(attractor_path):
+            download_pretrained_model_from_google_drive(attractor_id, download_dir, quiet=quiet)
+        
+        config = torch.load(attractor_path, map_location=lambda storage, loc: storage)
+        dummy_attractor = torch.empty(*config["attractor_size"])
+        model = cls(base_model, dummy_attractor)
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        else:
+            raise ValueError("Set load_state_dict=True")
+
+        if task in ['wsj0-mix', 'wsj0']:
+            additional_attributes.update({
+                'n_fft': base_model.n_fft, 'hop_length': base_model.hop_length,
+                'window_fn': base_model.window_fn
+            })
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
+
         return model
 
 def _test_danet():
