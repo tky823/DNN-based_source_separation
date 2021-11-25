@@ -39,8 +39,8 @@ DNNによる音源分離（PyTorch実装）
 ## モジュール
 | モジュール | 参考文献 | 実装 |
 | :---: | :---: | :---: |
-| Depthwise-separable convolution |  | ✔ |
-| Gated Linear Units (GLU) |  | ✔ |
+| Depthwise-separable convolution | [Xception: Deep Learning with Depthwise Separable Convolutions](https://arxiv.org/abs/1610.02357) | ✔ |
+| Gated Linear Units (GLU) | [Language Modeling with Gated Convolutional Networks](https://arxiv.org/abs/1612.08083) | ✔ |
 | Feature-wise Linear Modulation (FiLM) | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
 | Point-wise Convolutional Modulation (PoCM) | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) | ✔ |
 
