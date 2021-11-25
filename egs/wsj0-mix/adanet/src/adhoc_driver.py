@@ -83,6 +83,8 @@ class AdhocTrainer(TrainerBase):
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
         self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
+
+        self.target_type = args.target_type
     
     def run(self):
         for epoch in range(self.start_epoch, self.epochs):
@@ -133,6 +135,8 @@ class AdhocTrainer(TrainerBase):
         """
         Training
         """
+        n_sources = self.n_sources
+
         self.model.train()
         
         train_loss = 0
@@ -145,10 +149,16 @@ class AdhocTrainer(TrainerBase):
                 threshold_weight = threshold_weight.cuda()
             
             mixture_amplitude = torch.abs(mixture)
-            oracle_sources_amplitude = ideal_mask * mixture_amplitude
+            if self.target_type == "source":
+                target_amplitude = torch.abs(sources)
+            elif self.target_type == "oracle":
+                target_amplitude = ideal_mask * mixture_amplitude
+            else:
+                raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
             
-            estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=sources.size(1))
-            loss = self.criterion(estimated_sources_amplitude, oracle_sources_amplitude)
+            estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
+            
+            loss = self.criterion(estimated_sources_amplitude, target_amplitude)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -194,11 +204,16 @@ class AdhocTrainer(TrainerBase):
                     threshold_weight = threshold_weight.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
-                oracle_sources_amplitude = ideal_mask * mixture_amplitude
+                if self.target_type == "source":
+                    target_amplitude = torch.abs(sources)
+                elif self.target_type == "oracle":
+                    target_amplitude = ideal_mask * mixture_amplitude
+                else:
+                    raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
                 # At the test phase, assignment may be unknown.
-                loss, _ = pit(self.criterion, estimated_sources_amplitude, oracle_sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 

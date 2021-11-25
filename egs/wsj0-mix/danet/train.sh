@@ -22,6 +22,7 @@ n_fft=256
 hop_length=64
 ideal_mask='ibm'
 threshold=40
+target_type='source'
 
 # Embedding dimension
 K=20
@@ -37,7 +38,7 @@ take_log=1
 take_db=0
 
 # Criterion
-criterion='se' # or 'l2loss'
+criterion='se'
 
 # Optimizer
 optimizer='rmsprop'
@@ -58,8 +59,8 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
-    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/${target_type}"
+    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window/${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
     if [ ${take_log} -eq 1 ]; then
         save_dir="${save_dir}/take_log"
     elif [ ${take_db} -eq 1 ]; then
@@ -108,6 +109,7 @@ train.py \
 --window_fn "${window_fn}" \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
+--target_type ${target_type} \
 --n_fft ${n_fft} \
 --hop_length ${hop_length} \
 -K ${K} \
