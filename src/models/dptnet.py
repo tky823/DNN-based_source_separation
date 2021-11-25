@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,23 +12,22 @@ from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 
 EPS = 1e-12
 
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1QJnJEK8aed7_ED07jD7buyGb37giEDUx",
-            3: "" # TODO
-        },
-        16000: {
-            2: "", # TODO
-            3: "" # TODO
-        }
-    }
-}
-
 class DPTNet(nn.Module):
     """
     Dual-path transformer based network
     """
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1QJnJEK8aed7_ED07jD7buyGb37giEDUx",
+                3: "" # TODO
+            },
+            16000: {
+                2: "", # TODO
+                3: "" # TODO
+            }
+        }
+    }
     def __init__(
         self,
         n_basis, kernel_size, stride=None,
@@ -218,16 +219,14 @@ class DPTNet(nn.Module):
     
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:

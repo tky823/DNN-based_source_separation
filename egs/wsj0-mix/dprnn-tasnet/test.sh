@@ -9,7 +9,7 @@ sample_rate=${sr_k}000
 duration=4
 max_or_min='min'
 
-wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
+test_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
 test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tt_mix"
 
 # Encoder & decoder
@@ -85,8 +85,8 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 test.py \
---test_wav_root ${wav_root} \
---test_list_path ${test_list_path} \
+--test_wav_root "${test_wav_root}" \
+--test_list_path "${test_list_path}" \
 --sample_rate ${sample_rate} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \

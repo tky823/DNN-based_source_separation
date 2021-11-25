@@ -3,18 +3,21 @@
 
 import os
 import argparse
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramTestDataset, TrainDataLoader, AttractorTestDataLoader
+from adhoc_data_parallel import AdhocDataParallel
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
-from adhoc_criterion import SquaredError
+from criterion.sdr import NegSISDR
+from adhoc_criterion import Metrics, SquaredError
 
-parser = argparse.ArgumentParser(description="Evaluation of DANet")
+parser = argparse.ArgumentParser(description="Evaluation of DANet using fixed attractor.")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
@@ -56,7 +59,7 @@ def main(args):
         if args.use_cuda:
             if torch.cuda.is_available():
                 model.cuda()
-                model = nn.DataParallel(model)
+                model = AdhocDataParallel(model)
                 print("Use CUDA", flush=True)
             else:
                 raise ValueError("Cannot use CUDA.")
@@ -76,8 +79,8 @@ def main(args):
         loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
         
         base_model_filename = os.path.basename(args.base_model_path)
-        args.wrapper_model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
-        model = FixedAttractorDANet.build_model(args.wrapper_model_path)
+        args.model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
+        model = FixedAttractorDANet.build_model(args.model_path, load_state_dict=True)
         
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
@@ -100,7 +103,11 @@ def main(args):
         
         pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
-        tester = FixedAttractorTester(model, loader, pit_criterion, args)
+        metrics = OrderedDict()
+        metrics['SISDR'] = NegSISDR()
+        metrics = Metrics(metrics)
+
+        tester = FixedAttractorTester(model, loader, pit_criterion, metrics, args)
         tester.run()
 
 if __name__ == '__main__':

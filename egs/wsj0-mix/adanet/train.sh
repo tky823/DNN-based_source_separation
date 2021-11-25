@@ -22,6 +22,7 @@ n_fft=256
 hop_length=64
 ideal_mask='wfm'
 threshold=40
+target_type='oracle'
 
 # Embedding dimension
 K=20
@@ -58,8 +59,8 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}"
-    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/${target_type}"
+    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window/${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
     if [ ${take_log} -eq 1 ]; then
         save_dir="${save_dir}/take_log"
     elif [ ${take_db} -eq 1 ]; then
@@ -98,16 +99,17 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
---train_list_path ${train_list_path} \
---valid_list_path ${valid_list_path} \
+--train_wav_root "${train_wav_root}" \
+--valid_wav_root "${valid_wav_root}" \
+--train_list_path "${train_list_path}" \
+--valid_list_path "${valid_list_path}" \
 --sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
+--target_type ${target_type} \
 --n_fft ${n_fft} \
 --hop_length ${hop_length} \
 -N ${N} \

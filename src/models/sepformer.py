@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,15 +13,14 @@ from models.gtu import GTU1d
 
 EPS = 1e-12
 
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1-2Ta0CdVw78GzmP1QCzvoKLF2xPOz_Kb"
+class SepFormer(nn.Module):
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1-2Ta0CdVw78GzmP1QCzvoKLF2xPOz_Kb"
+            }
         }
     }
-}
-
-class SepFormer(nn.Module):
     def __init__(
         self,
         n_basis, kernel_size, stride=None, enc_basis=None, dec_basis=None,
@@ -225,17 +226,15 @@ class SepFormer(nn.Module):
         return model
 
     @classmethod
-    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:

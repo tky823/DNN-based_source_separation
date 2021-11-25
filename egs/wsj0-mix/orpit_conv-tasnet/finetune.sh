@@ -95,8 +95,8 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 finetune.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
+--train_wav_root "${train_wav_root}" \
+--valid_wav_root "${valid_wav_root}" \
 --train_list_path ${train_list_path} \
 --valid_list_path ${valid_list_path} \
 --sample_rate ${sample_rate} \

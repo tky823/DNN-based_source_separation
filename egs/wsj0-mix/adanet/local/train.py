@@ -26,6 +26,7 @@ parser.add_argument('--valid_duration', type=float, default=0, help='Duration fo
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
 parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
+parser.add_argument('--target_type', type=str, default='source', choices=['source', 'oracle'], help='Target type DNN tries to output.')
 parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
@@ -84,11 +85,11 @@ def main(args):
         if torch.cuda.is_available():
             model.cuda()
             model = nn.DataParallel(model)
-            print("Use CUDA")
+            print("Use CUDA", flush=True)
         else:
             raise ValueError("Cannot use CUDA.")
     else:
-        print("Does NOT use CUDA")
+        print("Does NOT use CUDA", flush=True)
         
     # Optimizer
     if args.optimizer == 'sgd':
@@ -116,10 +117,6 @@ def main(args):
     # Criterion
     if args.criterion == 'se':
         criterion = SquaredError(sum_dim=(1,2), mean_dim=3) # (batch_size, n_sources, n_bins, n_frames)
-    elif args.criterion == 'l1loss':
-        criterion = L1Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
-    elif args.criterion == 'l2loss':
-        criterion = L2Loss(dim=(2,3), reduction='mean') # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     

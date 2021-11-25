@@ -1,3 +1,5 @@
+import os
+
 import yaml
 import torch
 import torch.nn as nn
@@ -11,13 +13,6 @@ __sources__ = ['bass', 'drums', 'other', 'vocals']
 FULL = 'full'
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-__pretrained_model_ids__ = {
-    "musdb18": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": "1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV"
-        }
-    },
-}
 
 class ParallelMMDenseLSTM(nn.Module):
     def __init__(self, modules):
@@ -78,17 +73,15 @@ class ParallelMMDenseLSTM(nn.Module):
         return output
 
     @classmethod
-    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in MMDenseLSTM.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = MMDenseLSTM.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18']:
@@ -209,6 +202,13 @@ class ParallelMMDenseLSTMTimeDomainWrapper(nn.Module):
         return list(self.base_model.sources)
 
 class MMDenseLSTM(MMDenseRNN):
+    pretrained_model_ids = {
+        "musdb18": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "1-2JGWMgVBdSj5zF9hl27jKhyX7GN-cOV"
+            }
+        },
+    }
     def __init__(
         self,
         in_channels, num_features,
@@ -396,10 +396,10 @@ class MMDenseLSTM(MMDenseRNN):
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18']:

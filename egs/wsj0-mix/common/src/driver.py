@@ -279,19 +279,19 @@ class TesterBase:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                 
+                output = self.model(mixture)
+                
                 loss_mixture, _ = self.pit_criterion(mixture, sources, batch_mean=False)
                 loss_mixture = loss_mixture.sum(dim=0)
-                
-                output = self.model(mixture)
                 loss, perm_idx = self.pit_criterion(output, sources, batch_mean=False)
                 loss = loss.sum(dim=0)
                 loss_improvement = loss_mixture.item() - loss.item()
                 
-                mixture = mixture[0].squeeze(dim=0).cpu() # -> (T,)
-                sources = sources[0].cpu() # -> (n_sources, T)
-                estimated_sources = output[0].cpu() # -> (n_sources, T)
-                perm_idx = perm_idx[0] # -> (n_sources,)
-                segment_IDs = segment_IDs[0] # -> <str>
+                mixture = mixture[0].squeeze(dim=0).cpu() # (T,)
+                sources = sources[0].cpu() # (n_sources, T)
+                estimated_sources = output[0].cpu() # (n_sources, T)
+                perm_idx = perm_idx[0] # (n_sources,)
+                segment_IDs = segment_IDs[0] # <str>
 
                 repeated_mixture = torch.tile(mixture, (self.n_sources, 1))
                 result_estimated = bss_eval_sources(

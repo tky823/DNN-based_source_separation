@@ -1,3 +1,5 @@
+import os
+
 import yaml
 import torch
 import torch.nn as nn
@@ -10,18 +12,6 @@ from models.umx import OpenUnmix
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-__pretrained_model_ids__ = {
-    "musdb18": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": "1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj"
-        }
-    },
-    "musdb18hq": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": None
-        }
-    }
-}
 
 """
 CrossNet-Open-Unmix
@@ -29,6 +19,18 @@ CrossNet-Open-Unmix
     See https://arxiv.org/abs/2010.04228
 """
 class CrossNetOpenUnmix(nn.Module):
+    pretrained_model_ids = {
+        "musdb18": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj"
+            }
+        },
+        "musdb18hq": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": None
+            }
+        }
+    }
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', bridge=True, sources=__sources__, eps=EPS):
         """
         Args:
@@ -270,16 +272,14 @@ class CrossNetOpenUnmix(nn.Module):
     
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:

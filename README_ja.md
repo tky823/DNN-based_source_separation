@@ -39,8 +39,8 @@ DNNによる音源分離（PyTorch実装）
 ## モジュール
 | モジュール | 参考文献 | 実装 |
 | :---: | :---: | :---: |
-| Depthwise-separable convolution |  | ✔ |
-| Gated Linear Units (GLU) |  | ✔ |
+| Depthwise-separable convolution | [Xception: Deep Learning with Depthwise Separable Convolutions](https://arxiv.org/abs/1610.02357) | ✔ |
+| Gated Linear Units (GLU) | [Language Modeling with Gated Convolutional Networks](https://arxiv.org/abs/1612.08083) | ✔ |
 | Feature-wise Linear Modulation (FiLM) | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
 | Point-wise Convolutional Modulation (PoCM) | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) | ✔ |
 
@@ -105,6 +105,7 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 |:---:|:---:|:---:|
 | DANet | WSJ0-2mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | DANet | WSJ0-3mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
+| DANet (fixed attractor) | WSJ0-2mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | ADANet | WSJ0-2mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | ADANet | WSJ0-3mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | LSTM-TasNet | WSJ0-2mix | `model = LSTMTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |

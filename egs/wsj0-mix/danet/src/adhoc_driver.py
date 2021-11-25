@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import uuid
+from collections import OrderedDict
 
 import torch
 import torchaudio
@@ -89,6 +90,7 @@ class AdhocTrainer(TrainerBase):
         self.window = self.train_loader.dataset.window
         self.normalize = self.train_loader.dataset.normalize
 
+        self.target_type = args.target_type
         self.iter_clustering = args.iter_clustering
     
     def run(self):
@@ -162,18 +164,24 @@ class AdhocTrainer(TrainerBase):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.train_loader):
+        for idx, (mixture, sources, ideal_mask, threshold_weight) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
-                assignment = assignment.cuda()
+                ideal_mask = ideal_mask.cuda()
                 threshold_weight = threshold_weight.cuda()
             
             mixture_amplitude = torch.abs(mixture)
-            sources_amplitude = torch.abs(sources)
+            if self.target_type == "source":
+                target_amplitude = torch.abs(sources)
+            elif self.target_type == "oracle":
+                target_amplitude = ideal_mask * mixture_amplitude
+            else:
+                raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
             
-            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
-            loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
+            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=ideal_mask, threshold_weight=threshold_weight, n_sources=sources.size(1))
+            
+            loss = self.criterion(estimated_sources_amplitude, target_amplitude)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -205,12 +213,12 @@ class AdhocTrainer(TrainerBase):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, ideal_mask, threshold_weight) in enumerate(self.valid_loader):
                 """
-                mixture (batch_size, 1, n_bins, n_frames)
-                sources (batch_size, n_sources, n_bins, n_frames)
-                assignment (batch_size, n_sources, n_bins, n_frames)
-                threshold_weight (batch_size, n_bins, n_frames)
+                    mixture (batch_size, 1, n_bins, n_frames)
+                    sources (batch_size, n_sources, n_bins, n_frames)
+                    ideal_mask (batch_size, n_sources, n_bins, n_frames)
+                    threshold_weight (batch_size, n_bins, n_frames)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
@@ -219,11 +227,16 @@ class AdhocTrainer(TrainerBase):
                     assignment = assignment.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
-                sources_amplitude = torch.abs(sources)
+                if self.target_type == "source":
+                    target_amplitude = torch.abs(sources)
+                elif self.target_type == "oracle":
+                    target_amplitude = ideal_mask * mixture_amplitude
+                else:
+                    raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
                 # At the test phase, assignment may be unknown.
-                loss, _ = pit(self.criterion, estimated_sources_amplitude, sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
@@ -281,12 +294,12 @@ class AdhocTrainer(TrainerBase):
         torch.save(config, model_path)
 
 class AdhocTester(TesterBase):
-    def __init__(self, model, loader, pit_criterion, args):
+    def __init__(self, model, loader, pit_criterion, metrics, args):
         self.loader = loader
         
         self.model = model
         
-        self.pit_criterion = pit_criterion
+        self.pit_criterion, self.metrics = pit_criterion, metrics
         
         self._reset(args)
     
@@ -311,10 +324,16 @@ class AdhocTester(TesterBase):
         test_sir_improvement = 0
         test_sar = 0
         test_pesq = 0
+        test_results = OrderedDict()
+
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
 
-        print("ID, Loss, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+        s = "ID, Loss, SDR improvement, SIR improvement, SAR, PESQ"
+        for key, _ in self.metrics.items():
+            s += ", {} improvement".format(key)
+            test_results[key] = 0
+        print(s, flush=True)
 
         tmp_dir = os.path.join(os.getcwd(), 'tmp')
         os.makedirs(tmp_dir, exist_ok=True)
@@ -326,7 +345,7 @@ class AdhocTester(TesterBase):
                 """
                     mixture (1, 1, n_bins, n_frames)
                     sources (1, n_sources, n_bins, n_frames)
-                    assignment (1, n_sources, n_bins, n_frames)
+                    ideal_mask (1, n_sources, n_bins, n_frames)
                     threshold_weight (1, n_bins, n_frames)
                     T (1,)
                 """
@@ -336,7 +355,7 @@ class AdhocTester(TesterBase):
                     ideal_mask = ideal_mask.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                mixture_amplitude = torch.abs(mixture) # -> (1, 1, n_bins, n_frames)
+                mixture_amplitude = torch.abs(mixture) # (1, 1, n_bins, n_frames)
                 sources_amplitude = torch.abs(sources)
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
@@ -432,13 +451,22 @@ class AdhocTester(TesterBase):
                     subprocess.call("rm {}".format(estimated_path), shell=True)
 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq), flush=True)
+
+                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources[perm_idx].unsqueeze(dim=0), sources.unsqueeze(dim=0))
+
+                s = "{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq)
+                for _, result in results.items():
+                    s += ", {:.3f}".format(result.item())
+                print(s, flush=True)
                 
                 test_loss += loss.item()
                 test_sdr_improvement += sdr_improvement.item()
                 test_sir_improvement += sir_improvement.item()
                 test_sar += sar.item()
                 test_pesq += pesq
+
+                for key, result in results.items():
+                    test_results[key] += result
         
         test_loss /= n_test
         test_sdr_improvement /= n_test
@@ -446,9 +474,17 @@ class AdhocTester(TesterBase):
         test_sar /= n_test
         test_pesq /= n_test
 
+        for key in test_results.keys():
+            test_results[key] /= n_test
+
         os.chdir("../") # back to the original directory
 
-        print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
+        s = "Loss: {:.3f}, SDR improvement: {:.3f}, SIR improvement: {:.3f}, SAR: {:.3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
+
+        for key, result in test_results.items():
+            s += ", {} improvement: {:.3f}".format(key, result)
+
+        print(s)
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
 
 class FixedAttractorComputer:
@@ -520,12 +556,12 @@ class FixedAttractorComputer:
         torch.save(config, model_path)
 
 class FixedAttractorTester(TesterBase):
-    def __init__(self, model, loader, pit_criterion, args):
+    def __init__(self, model, loader, pit_criterion, metrics, args):
         self.loader = loader
         
         self.model = model
         
-        self.pit_criterion = pit_criterion
+        self.pit_criterion, self.metrics = pit_criterion, metrics
         
         self._reset(args)
 
@@ -535,23 +571,27 @@ class FixedAttractorTester(TesterBase):
 
         self.n_bins = args.n_bins
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
-        self.window = self.test_loader.dataset.window
-        self.normalize = self.test_loader.dataset.normalize
+        self.window = self.loader.dataset.window
+        self.normalize = self.loader.dataset.normalize
 
     def run(self):
         self.model.eval()
-
-        n_sources = self.n_sources
         
         test_loss = 0
         test_sdr_improvement = 0
         test_sir_improvement = 0
         test_sar = 0
         test_pesq = 0
+        test_results = OrderedDict()
+
         n_pesq_error = 0
         n_test = len(self.loader.dataset)
 
-        print("ID, Loss, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
+        s = "ID, Loss, SDR improvement, SIR improvement, SAR, PESQ"
+        for key, _ in self.metrics.items():
+            s += ", {} improvement".format(key)
+            test_results[key] = 0
+        print(s, flush=True)
 
         tmp_dir = os.path.join(os.getcwd(), 'tmp')
         os.makedirs(tmp_dir, exist_ok=True)
@@ -559,7 +599,7 @@ class FixedAttractorTester(TesterBase):
         os.chdir(tmp_dir)
         
         with torch.no_grad():
-            for idx, (mixture, sources, ideal_mask, threshold_weight, T, segment_IDs) in enumerate(self.loader):
+            for idx, (mixture, sources, _, _, T, segment_IDs) in enumerate(self.loader):
                 """
                     mixture (1, 1, n_bins, n_frames)
                     sources (1, n_sources, n_bins, n_frames)
@@ -570,13 +610,11 @@ class FixedAttractorTester(TesterBase):
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
-                    ideal_mask = ideal_mask.cuda()
-                    threshold_weight = threshold_weight.cuda()
                 
-                mixture_amplitude = torch.abs(mixture) # -> (1, 1, n_bins, n_frames)
+                mixture_amplitude = torch.abs(mixture) # (1, 1, n_bins, n_frames)
                 sources_amplitude = torch.abs(sources)
                 
-                estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
+                estimated_sources_amplitude = self.model(mixture_amplitude)
                 loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
@@ -669,13 +707,22 @@ class FixedAttractorTester(TesterBase):
                     subprocess.call("rm {}".format(estimated_path), shell=True)
 
                 pesq /= self.n_sources
-                print("{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq), flush=True)
                 
+                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources[perm_idx].unsqueeze(dim=0), sources.unsqueeze(dim=0))
+
+                s = "{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq)
+                for _, result in results.items():
+                    s += ", {:.3f}".format(result.item())
+                print(s, flush=True)
+
                 test_loss += loss.item()
                 test_sdr_improvement += sdr_improvement.item()
                 test_sir_improvement += sir_improvement.item()
                 test_sar += sar.item()
                 test_pesq += pesq
+
+                for key, result in results.items():
+                    test_results[key] += result
         
         test_loss /= n_test
         test_sdr_improvement /= n_test
