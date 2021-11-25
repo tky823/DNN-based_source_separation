@@ -29,8 +29,8 @@ class AffinityLoss(nn.Module):
 
         YY = torch.bmm(Y, trans_Y) # (batch_size, n_samples, n_samples)
         YY1 = YY.sum(dim=-1) # (batch_size, n_samples)
-        D = torch.diag_embed(1 / torch.sqrt(YY1 + eps)) # (batch_size, n_samples, n_samples)
-        VD, YD = torch.bmm(trans_V, D), torch.bmm(trans_Y, D) # (batch_size, embed_dim1, n_samples), (batch_size, embed_dim2, n_samples)
+        D = 1 / torch.sqrt(YY1 + eps) # (batch_size, n_samples)
+        VD, YD = trans_V * D.unsqueeze(dim=1), trans_Y * D.unsqueeze(dim=1) # (batch_size, embed_dim1, n_samples), (batch_size, embed_dim2, n_samples)
         VDV, YDY = torch.bmm(VD, V), torch.bmm(YD, Y) # (batch_size, embed_dim1, embed_dim1), (batch_size, embed_dim2, embed_dim2)
         VDY = torch.bmm(VD, Y) # (batch_size, embed_dim, embed_dim2)
 
