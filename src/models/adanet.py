@@ -16,7 +16,7 @@ class ADANet(DANet):
         "wsj0-mix": {
             8000: {
                 2: "1-02OJ33QlQ_rvgbd4KLX23A5NoShHA-L",
-                3: "1--xFyvBc2bgNEw5wfCpokRd0JoabuAog"
+                3: "1-BW-HQtszmnUHRPBPLwY9rjNxLpD9rm0"
             }
         }
     }
