@@ -5,7 +5,7 @@ import torch
 import torchaudio
 
 from utils.audio import build_window
-from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
+from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_wiener_filter_mask
 
 EPS = 1e-12
 
@@ -135,11 +135,11 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize)
         
         if mask_type == 'ibm':
-            self.generate_mask = ideal_binary_mask
+            self.generate_mask = compute_ideal_binary_mask
         elif mask_type == 'irm':
-            self.generate_mask = ideal_ratio_mask
+            self.generate_mask = compute_ideal_ratio_mask
         elif mask_type == 'wfm':
-            self.generate_mask = wiener_filter_mask
+            self.generate_mask = compute_wiener_filter_mask
         else:
             raise NotImplementedError("Not support mask {}".format(mask_type))
         

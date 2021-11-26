@@ -21,7 +21,7 @@ class DANet(nn.Module):
         },
         "librispeech": {
             16000: {
-                2: "1TFh9t3Lw1ngDS5Riqp7lQEojfV0T3AKw"
+                2: "18FJrUHawpxsJovgb26V8IuHZ5gannwQm"
             }
         }
     }
@@ -128,7 +128,8 @@ class DANet(nn.Module):
                 latent_nonzero = latent_nonzero.view(batch_size, -1, embed_dim) # (batch_size, n_nonzeros, embed_dim)
             
             kmeans = KMeans(K=n_sources)
-            _, attractor = kmeans(latent, iteration=iter_clustering) # (batch_size, n_bins * n_frames), (batch_size, n_sources, embed_dim)
+            _ = kmeans(latent, iteration=iter_clustering) # (batch_size, n_bins * n_frames)
+            attractor = kmeans.centroids # (batch_size, n_sources, embed_dim)
         else:
             threshold_weight = threshold_weight.view(batch_size, 1, n_bins * n_frames)
             assignment = assignment.view(batch_size, n_sources, n_bins * n_frames) # (batch_size, n_sources, n_bins * n_frames)
