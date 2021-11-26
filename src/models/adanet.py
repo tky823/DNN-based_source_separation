@@ -15,7 +15,7 @@ class ADANet(DANet):
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1-3b2FUJk1HRBcRG-ig92y2eZzYNsroZc",
+                2: "1-02OJ33QlQ_rvgbd4KLX23A5NoShHA-L",
                 3: "1--xFyvBc2bgNEw5wfCpokRd0JoabuAog"
             }
         }
@@ -192,7 +192,7 @@ class ADANet(DANet):
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
-            model_choice = kwargs.get('model_choice') or 'best'
+            model_choice = kwargs.get('model_choice') or "last"
 
             model_id = pretrained_model_ids_task[sample_rate][n_sources]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
