@@ -20,10 +20,11 @@ class ADANet(DANet):
             }
         }
     }
-    def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, num_anchors=6, dropout=5e-1, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS, **kwargs):
+    def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, num_anchors=6, dropout=5e-1, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, permute_anchors=False, eps=EPS, **kwargs):
         super().__init__(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps, take_log=take_log, take_db=take_db, **kwargs)
         
         self.num_anchors = num_anchors
+        self.permute_anchors = permute_anchors
         self.anchor = nn.Parameter(torch.Tensor(num_anchors, embed_dim), requires_grad=True)
 
         self._reset_parameters()
@@ -57,9 +58,14 @@ class ADANet(DANet):
         
         num_anchors = self.num_anchors
         embed_dim = self.embed_dim
+        permute_anchors = self.permute_anchors
         eps = self.eps
 
-        patterns = list(itertools.combinations(range(num_anchors), n_sources))
+        if permute_anchors:
+            patterns = list(itertools.permutations(range(num_anchors), n_sources))
+        else:
+            patterns = list(itertools.combinations(range(num_anchors), n_sources))
+        
         n_patterns = len(patterns)
         patterns = torch.Tensor(patterns).long()
         patterns = patterns.to(self.anchor.device)
@@ -132,6 +138,7 @@ class ADANet(DANet):
     def get_config(self):
         config = super().get_config()
         config['num_anchors'] = self.num_anchors
+        config['permute_anchors'] = self.permute_anchors
         
         return config
     
@@ -143,12 +150,14 @@ class ADANet(DANet):
         embed_dim = config['embed_dim']
         hidden_channels = config['hidden_channels']
         num_blocks = config['num_blocks']
-        num_anchors = config['num_anchors']
         dropout = config['dropout']
         
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
         take_log, take_db = config['take_log'], config['take_db']
+
+        num_anchors = config['num_anchors']
+        permute_anchors = config.get('permute_anchors', False)
         
         eps = config['eps']
         
@@ -157,6 +166,7 @@ class ADANet(DANet):
             num_blocks=num_blocks, num_anchors=num_anchors,
             dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, 
             take_log=take_log, take_db=take_db,
+            permute_anchors=permute_anchors,
             eps=eps
         )
 

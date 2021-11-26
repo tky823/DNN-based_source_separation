@@ -199,16 +199,6 @@ class DANet(nn.Module):
         }
         
         return config
-    
-    @property
-    def num_parameters(self):
-        _num_parameters = 0
-        
-        for p in self.parameters():
-            if p.requires_grad:
-                _num_parameters += p.numel()
-                
-        return _num_parameters
 
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
@@ -303,6 +293,16 @@ class DANet(nn.Module):
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         return DANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
 
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
+
 class DANetTimeDomainWrapper(nn.Module):
     def __init__(self, base_model: DANet, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         super().__init__()
@@ -367,16 +367,6 @@ class FixedAttractorDANet(nn.Module):
 
         self.base_model = base_model
         self.fixed_attractor = nn.Parameter(fixed_attractor, requires_grad=False)
-
-    @property
-    def num_parameters(self):
-        _num_parameters = 0
-        
-        for p in self.parameters():
-            if p.requires_grad:
-                _num_parameters += p.numel()
-                
-        return _num_parameters
 
     def forward(self, input):
         """
@@ -480,6 +470,16 @@ class FixedAttractorDANet(nn.Module):
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
         return FixedAttractorDANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
+
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
 
 class FixedAttractorDANetTimeDomainWrapper(nn.Module):
     def __init__(self, base_model: FixedAttractorDANet, n_fft, hop_length=None, window_fn='hann'):
