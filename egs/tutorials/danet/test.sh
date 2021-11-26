@@ -15,6 +15,7 @@ n_fft=512
 hop_length=128
 ideal_mask='ibm'
 threshold=40
+target_type='source'
 
 # Model configuration
 K=20
@@ -50,7 +51,8 @@ seed=111
 prefix=""
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/${criterion}/stft${n_fft}-${hop_length}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_dropout${dropout}_mask-${mask_nonlinear}"
+    save_dir="${exp_dir}/${n_sources}mix/${criterion}/${target_type}/stft${n_fft}-${hop_length}_${window_fn}-window"
+    save_dir="${save_dir}/${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_dropout${dropout}_mask-${mask_nonlinear}"
     if [ ${take_log} -eq 1 ]; then
         save_dir="${save_dir}/take_log"
     elif [ ${take_db} -eq 1 ]; then
@@ -83,6 +85,7 @@ test.py \
 --window_fn ${window_fn} \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
+--target_type ${target_type} \
 --iter_clustering ${iter_clustering} \
 --n_fft ${n_fft} \
 --hop_length ${hop_length} \

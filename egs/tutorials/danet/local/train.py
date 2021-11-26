@@ -20,7 +20,8 @@ parser.add_argument('--valid_json_path', type=str, default=None, help='Path for 
 parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--ideal_mask', type=str, default='ibm', choices=['ibm', 'irm', 'wfm'], help='Ideal mask for assignment')
-parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40 ')
+parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40')
+parser.add_argument('--target_type', type=str, default='source', choices=['source', 'oracle'], help='Target type DNN tries to output.')
 parser.add_argument('--n_fft', type=int, default=512, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--embed_dim', '-K', type=int, default=20, help='Embedding dimension')
@@ -69,7 +70,11 @@ def main(args):
     
     args.n_bins = args.n_fft // 2 + 1
 
-    model = DANet(args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels, num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear, take_log=args.take_log, take_db=args.take_db)
+    model = DANet(
+        args.n_bins, embed_dim=args.embed_dim, hidden_channels=args.hidden_channels,
+        num_blocks=args.num_blocks, dropout=args.dropout, causal=args.causal, mask_nonlinear=args.mask_nonlinear,
+        take_log=args.take_log, take_db=args.take_db
+    )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     

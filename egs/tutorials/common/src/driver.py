@@ -402,6 +402,7 @@ class AttractorTrainer(Trainer):
         else:
             self.window = None
 
+        self.target_type = args.target_type
         self.iter_clustering = args.iter_clustering
 
     def run(self):
@@ -472,18 +473,23 @@ class AttractorTrainer(Trainer):
         train_loss = 0
         n_train_batch = len(self.train_loader)
         
-        for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.train_loader):
+        for idx, (mixture, sources, ideal_mask, threshold_weight) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 sources = sources.cuda()
-                assignment = assignment.cuda()
+                ideal_mask = ideal_mask.cuda()
                 threshold_weight = threshold_weight.cuda()
             
             mixture_amplitude = torch.abs(mixture)
-            sources_amplitude = torch.abs(sources)
+            if self.target_type == "source":
+                target_amplitude = torch.abs(sources)
+            elif self.target_type == "oracle":
+                target_amplitude = ideal_mask * mixture_amplitude
+            else:
+                raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
             
-            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=assignment, threshold_weight=threshold_weight, n_sources=sources.size(1))
-            loss = self.criterion(estimated_sources_amplitude, sources_amplitude)
+            estimated_sources_amplitude = self.model(mixture_amplitude, assignment=ideal_mask, threshold_weight=threshold_weight, n_sources=sources.size(1))
+            loss = self.criterion(estimated_sources_amplitude, target_amplitude)
             
             self.optimizer.zero_grad()
             loss.backward()
@@ -515,25 +521,30 @@ class AttractorTrainer(Trainer):
         n_valid = len(self.valid_loader.dataset)
         
         with torch.no_grad():
-            for idx, (mixture, sources, assignment, threshold_weight) in enumerate(self.valid_loader):
+            for idx, (mixture, sources, ideal_mask, threshold_weight) in enumerate(self.valid_loader):
                 """
                     mixture (batch_size, 1, n_bins, n_frames)
                     sources (batch_size, n_sources, n_bins, n_frames)
-                    assignment (batch_size, n_sources, n_bins, n_frames)
+                    ideal_mask (batch_size, n_sources, n_bins, n_frames)
                     threshold_weight (batch_size, n_bins, n_bins)
                 """
                 if self.use_cuda:
                     mixture = mixture.cuda()
                     sources = sources.cuda()
                     threshold_weight = threshold_weight.cuda()
-                    assignment = assignment.cuda()
+                    ideal_mask = ideal_mask.cuda()
                 
                 mixture_amplitude = torch.abs(mixture)
-                sources_amplitude = torch.abs(sources)
+                if self.target_type == "source":
+                    target_amplitude = torch.abs(sources)
+                elif self.target_type == "oracle":
+                    target_amplitude = ideal_mask * mixture_amplitude
+                else:
+                    raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 output = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
                 # At the test phase, assignment may be unknown.
-                loss, _ = pit(self.criterion, output, sources_amplitude, batch_mean=False)
+                loss, _ = pit(self.criterion, output, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
                 
@@ -614,7 +625,7 @@ class AttractorTester(Tester):
                 """
                     mixture (1, 1, n_bins, n_frames)
                     sources (1, n_sources, n_bins, n_frames)
-                    assignment (1, n_sources, n_bins, n_frames)
+                    ideal_mask (1, n_sources, n_bins, n_frames)
                     threshold_weight (1, n_bins, n_frames)
                     T (1,)
                 """
