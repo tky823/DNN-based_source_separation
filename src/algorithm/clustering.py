@@ -1,5 +1,9 @@
+import math
+
 import torch
 import torch.nn as nn
+
+EPS = 1e-12
 
 class KMeansBase(nn.Module):
     def __init__(self, K=2, init_centroids='kmeans++'):
@@ -42,24 +46,19 @@ class KMeansBase(nn.Module):
         batch_size, num_samples, num_features = data.size()
 
         if self.init_centroids == 'kmeans++':
-            centroid_ids = init_kmeans_pp(data, K=K) # (batch_size, K)
+            centroid_ids = _init_kmeans_pp(data, K=K) # (batch_size, K)
         else:
-            centroid_ids = init_centroids_random(data, K=K) # (batch_size, K)
+            centroid_ids = _init_centroids_random(data, K=K) # (batch_size, K)
         
         centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
         flatten_data = data.view(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
         flatten_centroids = flatten_data[centroid_ids]
         centroids = flatten_centroids.view(batch_size, K, num_features) # (batch_size, K, num_features)
         
-        distance = self.compute_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
+        distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
 
         return cluster_ids, centroids
-    
-    def compute_distance(self, x, y, dim=-1, keepdim=False):
-        distance = torch.norm(x - y, dim=dim, keepdim=keepdim)
-
-        return distance
 
 class KMeans(KMeansBase):
     def __init__(self, K=2, init_centroids='kmeans++'):
@@ -93,7 +92,7 @@ class KMeans(KMeansBase):
             else:
                 while True:
                     cluster_ids, centroids = self.update_once(data, cluster_ids=self.cluster_ids, centroids=self.centroids)
-                    distance = self.compute_distance(self.centroids, centroids, dim=-1)
+                    distance = _euclid_distance(self.centroids, centroids, dim=-1)
                     distance = distance.mean().item()
 
                     self.cluster_ids, self.centroids = cluster_ids, centroids
@@ -137,7 +136,7 @@ class KMeans(KMeansBase):
         """
         2. Put labels based on distance
         """
-        distance = self.compute_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
+        distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
     
         return cluster_ids, centroids
@@ -149,13 +148,13 @@ class KMeans(KMeansBase):
         Returns:
             cluster_ids <torch.Tensor>: (batch_size, num_samples)
         """
-        distance = self.compute_distance(data.unsqueeze(dim=2), self.centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
+        distance = _euclid_distance(data.unsqueeze(dim=2), self.centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
 
         return cluster_ids
 
 class GMMCluteringBase(nn.Module):
-    def __init__(self, K=2, init_centroids='kmeans++', init_kmeans=True, diag_cov=False):
+    def __init__(self, K=2, init_centroids='kmeans++', init_kmeans=True, diag_cov=False, tol=1e-5, eps=EPS):
         super().__init__()
 
         self.K = K
@@ -168,6 +167,9 @@ class GMMCluteringBase(nn.Module):
 
         if self.init_kmeans:
             self.kmeans = KMeans(K=K, init_centroids=init_centroids)
+        
+        self.tol = tol
+        self.eps = eps
 
     def forward(self, data, centroids=None):
         """
@@ -184,7 +186,7 @@ class GMMCluteringBase(nn.Module):
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
         
         if self.training:
-            if self.cluster_probs is None or self.centroids is None or self.mix_coeff is None:
+            if self.centroids is None or self.mix_coeff is None or self.mix_coeff is None:
                 centroids, cov_matrix, mix_coeff = self._init_GMM(data)
                 self.centroids, self.cov_matrix, self.mix_coeff = centroids, cov_matrix, mix_coeff
         else:
@@ -197,7 +199,7 @@ class GMMCluteringBase(nn.Module):
             centroids = centroids.squeeze(dim=0) # (K, num_features)
 
         self.cluster_probs, self.centroids = cluster_probs, centroids
-        cluster_ids = torch.argmax(cluster_probs, dim=1) # (num_samples,)
+        cluster_ids = torch.argmax(cluster_probs, dim=-2) # (num_samples,)
 
         return cluster_ids
 
@@ -207,30 +209,96 @@ class GMMCluteringBase(nn.Module):
 
         if self.init_kmeans:
             assert self.init_centroids == self.kmeans.init_centroids, "Invalid init_centroids is specified."
-            _, centroids = self.kmeans(data)
+            _ = self.kmeans(data)
+            centroids = self.kmeans.centroids
         else:
             if self.init_centroids == 'kmeans++':
-                centroid_ids = init_kmeans_pp(data, K=K) # (batch_size, K)
+                centroid_ids = _init_kmeans_pp(data, K=K) # (batch_size, K)
             else:
-                centroid_ids = init_centroids_random(data, K=K) # (batch_size, K)
+                centroid_ids = _init_centroids_random(data, K=K) # (batch_size, K)
 
             centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
             flatten_data = data.view(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
             flatten_centroids = flatten_data[centroid_ids]
             centroids = flatten_centroids.view(batch_size, K, num_features) # (batch_size, K, num_features)
         
-        cov_matrix, mix_coeff = torch.eye(K), torch.ones(K) / K # (K,), (K, K)
-        cov_matrix, mix_coeff = torch.tile(cov_matrix, (batch_size, 1)), torch.tile(mix_coeff, (batch_size, 1, 1)) # (batch_size, K), (batch_size, K, K)
+        cov_matrix, mix_coeff = torch.eye(num_features), torch.ones(K) / K # (num_features, num_features), (K,)
+        cov_matrix, mix_coeff = torch.tile(cov_matrix, (batch_size, K, 1, 1)), torch.tile(mix_coeff, (batch_size, 1)) # (batch_size, K, num_features, num_features), (batch_size, K)
         cov_matrix, mix_coeff = cov_matrix.to(data.device), mix_coeff.to(data.device)
         
         return centroids, cov_matrix, mix_coeff
+
+    def compute_prob(self, data, centroids=None, cov_matrix=None, mix_coeff=None):
+        """
+        Args:
+            data: (batch_size, num_samples, num_features)
+            centroids: (batch_size, K, num_features)
+            cov_matrix: (batch_size, K, num_features, num_features)
+            mix_coeff: (batch_size, K)
+        Returns:
+            prob: (batch_size, num_samples)
+        """
+        batch_size, num_samples, num_features = data.size()
+        K = centroids.size(1)
+        eps = self.eps
+
+        x = data.unsqueeze(dim=1) - centroids.unsqueeze(dim=2) # (batch_size, K, num_samples, num_features)
+        x = x.view(batch_size * K, num_samples, num_features) # (batch_size * K, num_samples, num_features)
+
+        eye = torch.eye(num_features).to(cov_matrix.device) # (num_features, num_features)
+        cov_matrix = cov_matrix + eps * eye
+        precision_matrix = torch.linalg.inv(cov_matrix) # (batch_size, K, num_features, num_features)
+        precision_matrix = precision_matrix.view(batch_size * K, num_features, num_features)
+        det = torch.linalg.det(cov_matrix) # (batch_size, K)
+        xSigma = torch.bmm(x, precision_matrix) # (batch_size * K, num_samples, num_features)
+        xSigmax = torch.sum(xSigma * x, dim=2) # (batch_size * K, num_samples)
+
+        numerator = torch.exp(-0.5 * xSigmax.view(batch_size, K, num_samples)) # (batch_size, K, num_samples)
+        denominator = 2 * math.pi * torch.sqrt(det) # (batch_size, K)
+        prob = numerator / denominator.unsqueeze(dim=2) # (batch_size, K, num_samples)
+        prob = torch.sum(mix_coeff.unsqueeze(dim=2) * prob, dim=1) # (batch_size, num_samples)
+
+        return prob
+    
+    def compute_responsibility(self, data, centroids=None, cov_matrix=None, mix_coeff=None):
+        """
+        Args:
+            data: (batch_size, num_samples, num_features)
+            centroids: (batch_size, K, num_features)
+            cov_matrix: (batch_size, K, num_features, num_features)
+            mix_coeff: (batch_size, K)
+        Returns:
+            prob: (batch_size, K, num_samples)
+        """
+        batch_size, num_samples, num_features = data.size()
+        K = centroids.size(1)
+        eps = self.eps
+
+        x = data.unsqueeze(dim=1) - centroids.unsqueeze(dim=2) # (batch_size, K, num_samples, num_features)
+        x = x.view(batch_size * K, num_samples, num_features) # (batch_size * K, num_samples, num_features)
+
+        eye = torch.eye(num_features).to(cov_matrix.device) # (num_features, num_features)
+        cov_matrix = cov_matrix + eps * eye
+        precision_matrix = torch.linalg.inv(cov_matrix) # (batch_size, K, num_features, num_features)
+        precision_matrix = precision_matrix.view(batch_size * K, num_features, num_features)
+        det = torch.linalg.det(cov_matrix) # (batch_size, K)
+        xSigma = torch.bmm(x, precision_matrix) # (batch_size * K, num_samples, num_features)
+        xSigmax = torch.sum(xSigma * x, dim=2) # (batch_size * K, num_samples)
+
+        numerator = torch.exp(-0.5 * xSigmax.view(batch_size, K, num_samples)) # (batch_size, K, num_samples)
+        denominator = 2 * math.pi * torch.sqrt(det) # (batch_size, K)
+        prob = numerator / denominator.unsqueeze(dim=2) # (batch_size, K, num_samples)
+        prob = mix_coeff.unsqueeze(dim=2) * prob # (batch_size, K, num_samples)
+        prob = prob / torch.sum(prob, dim=1, keepdim=True) # (batch_size, K, num_samples)
+
+        return prob
 
 class GMMClustering(GMMCluteringBase):
     """
         Clustering based on Guassian Mixture Model.
     """
-    def __init__(self, K=2, init_centroids='kmeans++', init_kmeans=True):
-        super().__init__(K=K, init_centroids=init_centroids, init_kmeans=init_kmeans)
+    def __init__(self, K=2, init_centroids='kmeans++', init_kmeans=True, diag_cov=False, tol=1e-5):
+        super().__init__(K=K, init_centroids=init_centroids, init_kmeans=init_kmeans, diag_cov=diag_cov, tol=tol)
 
     def forward(self, data, iteration=None):
         """
@@ -245,25 +313,27 @@ class GMMClustering(GMMCluteringBase):
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
         
         if self.training:
-            if self.cluster_probs is None or self.centroids is None:
+            if self.centroids is None or self.cov_matrix is None or self.mix_coeff is None:
                 self.centroids, self.cov_matrix, self.mix_coeff = self._init_GMM(data)
+            
+            self.cluster_probs = self.compute_responsibility(data, self.centroids, cov_matrix=self.cov_matrix, mix_coeff=self.mix_coeff)
 
             if iteration is not None:
                 for idx in range(iteration):
-                    cluster_probs, centroids, cov_matrix, mix_coeff = self.update_once(data, cluster_probs=self.cluster_probs, centroids=self.centroids)
+                    cluster_probs, centroids, cov_matrix, mix_coeff = self.update_once(data, cluster_probs=self.cluster_probs, centroids=self.centroids, cov_matrix=self.cov_matrix, mix_coeff=self.mix_coeff)
 
                     self.cluster_probs = cluster_probs
                     self.centroids, self.cov_matrix, self.mix_coeff = centroids, cov_matrix, mix_coeff
             else:
                 while True:
-                    cluster_probs, centroids, cov_matrix, mix_coeff = self.update_once(data, cluster_probs=self.cluster_probs, centroids=self.centroids)
-                    distance = self.compute_distance(self.centroids, centroids, dim=-1)
+                    cluster_probs, centroids, cov_matrix, mix_coeff = self.update_once(data, cluster_probs=self.cluster_probs, centroids=self.centroids, cov_matrix=self.cov_matrix, mix_coeff=self.mix_coeff)
+                    distance = _euclid_distance(self.centroids, centroids, dim=-1)
                     distance = distance.mean().item()
 
                     self.cluster_probs = cluster_probs
                     self.centroids, self.cov_matrix, self.mix_coeff = centroids, cov_matrix, mix_coeff
 
-                    if distance == 0:
+                    if distance < self.tol:
                         break
         else:
             cluster_ids = self.infer(data)
@@ -281,16 +351,40 @@ class GMMClustering(GMMCluteringBase):
 
         return cluster_ids
         
-    def update_once(self, data, cluster_probs=None, centroids=None, cov_matrix=None, mix_coeff=None):
+    def update_once(self, data, cluster_probs, centroids=None, cov_matrix=None, mix_coeff=None):
         """
         Args:
             data: (batch_size, num_samples, num_features)
-            cluster_probs: (batch_size, num_samples, K)
+            cluster_prob: So called responsibility. (batch_size, K, num_samples)
+            centroids: (batch_size, K, num_features)
+            cov_matrix: (batch_size, K, num_features, num_features)
+            mix_coeff: (batch_size, K)
+        Returns:
+            cluster_probs: (batch_size, K, num_samples)
             centroids: (batch_size, K, num_features)
             cov_matrix: (batch_size, K, num_features, num_features)
             mix_coeff: (batch_size, K)
         """
-        raise NotImplementedError
+        batch_size, num_samples = data.size()[:2]
+        K = centroids.size(1)
+
+        """
+        1. M-step
+        """
+        num_effective = cluster_probs.sum(dim=-1) # (batch_size, K)
+        centroids = torch.sum(cluster_probs.unsqueeze(dim=3) * data.unsqueeze(dim=1), dim=2) / num_effective.unsqueeze(dim=-1) # (batch_size, K, num_features)
+        x = data.unsqueeze(dim=1) - centroids.unsqueeze(dim=2) # (batch_size, K, num_samples, num_features)
+        numerator = torch.sum(cluster_probs.view(batch_size, K, num_samples, 1, 1) * x.unsqueeze(dim=4) * x.unsqueeze(dim=3), dim=2) # (batch_size, K, num_features num_features)
+        denominator = num_effective.unsqueeze(dim=-1) # (batch_size, K, 1, 1)
+        cov_matrix = numerator / denominator # (batch_size, K, num_features, num_features)
+        mix_coeff = num_effective / num_samples
+
+        """
+        2. E-step
+        """
+        cluster_probs = self.compute_responsibility(data, centroids, cov_matrix=cov_matrix, mix_coeff=mix_coeff) # (batch_size, K, num_samples)
+
+        return cluster_probs, centroids, cov_matrix, mix_coeff
 
     def infer(self, data):
         """
@@ -301,7 +395,10 @@ class GMMClustering(GMMCluteringBase):
         """
         raise NotImplementedError
 
-def init_centroids_random(data, K=2):
+def _euclid_distance(x, y, dim=-1):
+    return torch.norm(x - y, dim=dim)
+
+def _init_centroids_random(data, K=2):
     """
     Args:
         data <torch.Tensor>: (batch_size, num_samples, num_features)
@@ -321,7 +418,7 @@ def init_centroids_random(data, K=2):
 
     return centroid_ids
 
-def init_kmeans_pp(data, K=2, compute_distance=lambda x, y, dim=-1: torch.norm(x - y, dim=dim)):
+def _init_kmeans_pp(data, K=2, compute_distance=_euclid_distance):
     """
     Args:
         data <torch.Tensor>: (batch_size, num_samples, num_features)
@@ -381,9 +478,9 @@ def _test_kmeans_pp_iteration():
     torch.manual_seed(seed)
 
     kmeans = KMeans(K=K)
-    _, centroids = kmeans(data, iteration=iteration) # (batch_size, K), (batch_size, K, num_features)
+    _ = kmeans(data, iteration=iteration) # (batch_size, K), (batch_size, K, num_features)
 
-    for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
+    for batch_idx, (_data, _centroids) in enumerate(zip(data, kmeans.centroids)):
         plt.figure()
         x, y = torch.unbind(_data, dim=-1)
         plt.scatter(x, y, color='black')
@@ -396,12 +493,12 @@ def _test_kmeans_pp_iteration():
     torch.manual_seed(seed)
 
     kmeans = KMeans(K=K)
-    _, centroids = kmeans(data, iteration=0) # Only initializes centroids.
+    _ = kmeans(data, iteration=0) # Only initializes centroids.
 
     for idx in range(iteration):
-        _, centroids = kmeans(data, iteration=1)
+        _ = kmeans(data, iteration=1)
 
-        for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
+        for batch_idx, (_data, _centroids) in enumerate(zip(data, kmeans.centroids)):
             plt.figure()
             x, y = torch.unbind(_data, dim=-1)
             plt.scatter(x, y, color='black')
@@ -439,9 +536,9 @@ def _test_kmeans():
     torch.manual_seed(seed)
 
     kmeans = KMeans(K=K)
-    _, centroids = kmeans(data) # (batch_size, K), (batch_size, K, num_features)
+    _ = kmeans(data) # (batch_size, K), (batch_size, K, num_features)
 
-    for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
+    for batch_idx, (_data, _centroids) in enumerate(zip(data, kmeans.centroids)):
         plt.figure()
         x, y = torch.unbind(_data, dim=-1)
         plt.scatter(x, y, color='black')
@@ -479,9 +576,9 @@ def _test_gmm_clustering():
     torch.manual_seed(seed)
 
     gmm_clustering = GMMClustering(K=K)
-    _, centroids = gmm_clustering(data) # (batch_size, K), (batch_size, K, num_features)
+    _ = gmm_clustering(data) # (batch_size, K), (batch_size, K, num_features)
 
-    for batch_idx, (_data, _centroids) in enumerate(zip(data, centroids)):
+    for batch_idx, (_data, _centroids) in enumerate(zip(data, gmm_clustering.centroids)):
         plt.figure()
         x, y = torch.unbind(_data, dim=-1)
         plt.scatter(x, y, color='black')
@@ -489,7 +586,6 @@ def _test_gmm_clustering():
         plt.scatter(x, y, color='red')
         plt.savefig("data/GMMClustering/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
         plt.close()
-
 
 if __name__ == '__main__':
     import os
@@ -505,4 +601,4 @@ if __name__ == '__main__':
     print()
 
     print("GMM clusteing")
-    _test_gmm_clustering()
+    # _test_gmm_clustering()
