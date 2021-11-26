@@ -27,8 +27,9 @@ class AffinityLoss(nn.Module):
         V, Y = input, target
         trans_V, trans_Y = V.permute(0, 2, 1), Y.permute(0, 2, 1) # (batch_size, embed_dim1, n_samples), (batch_size, embed_dim2, n_samples)
 
-        YY = torch.bmm(Y, trans_Y) # (batch_size, n_samples, n_samples)
-        YY1 = YY.sum(dim=-1) # (batch_size, n_samples)
+        Ysum = Y.sum(dim=1, keepdim=True) # (batch_size, n_samples, 1)
+        YY1 = torch.sum(Y * Ysum, dim=2) # (batch_size, n_samples)
+
         D = 1 / torch.sqrt(YY1 + eps) # (batch_size, n_samples)
         VD, YD = trans_V * D.unsqueeze(dim=1), trans_Y * D.unsqueeze(dim=1) # (batch_size, embed_dim1, n_samples), (batch_size, embed_dim2, n_samples)
         VDV, YDY = torch.bmm(VD, V), torch.bmm(YD, Y) # (batch_size, embed_dim1, embed_dim1), (batch_size, embed_dim2, embed_dim2)
@@ -40,3 +41,23 @@ class AffinityLoss(nn.Module):
             loss = loss.mean(dim=0) # ()
         
         return loss
+
+def _test_equality():
+    batch_size, n_samples, embed_dim = 4, 12, 5
+
+    Y = torch.randn(batch_size, n_samples, embed_dim)
+    trans_Y = Y.permute(0, 2, 1) # (batch_size, embed_dim, n_samples)
+
+    Ysum = Y.sum(dim=1, keepdim=True) # (batch_size, n_samples, 1)
+    YY1_new = torch.sum(Y * Ysum, dim=2) # (batch_size, n_samples)
+
+    YY = torch.bmm(Y, trans_Y) # (batch_size, n_samples, n_samples)
+    YY1_old = YY.sum(dim=-1) # (batch_size, n_samples)
+
+    print(YY1_new)
+    print(YY1_old)
+
+if __name__ == '__main__':
+    torch.manual_seed(111)
+
+    _test_equality()
