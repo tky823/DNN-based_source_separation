@@ -148,8 +148,15 @@ class KMeans(KMeansBase):
         Returns:
             cluster_ids <torch.Tensor>: (batch_size, num_samples)
         """
-        distance = _euclid_distance(data.unsqueeze(dim=2), self.centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
+        centroids = self.centroids
+
+        if centroids.dim() == 2:
+            centroids = centroids.unsqueeze(dim=0) # Add batch dimension
+        
+        distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
+
+        return cluster_ids
 
         return cluster_ids
 

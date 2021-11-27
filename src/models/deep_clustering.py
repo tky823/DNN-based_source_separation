@@ -335,12 +335,19 @@ def _test_deep_embedding():
     loss = criterion(output, target, batch_mean=False)
     print(loss)
 
+    kmeans = KMeans(K=n_sources)
+
+    kmeans.train()
+    cluster_ids = kmeans(output)
+
+
 def _test_chimeranet():
     pass
 
 if __name__ == '__main__':
     from utils.audio import build_window
     from transforms.stft import stft
+    from algorithm.clustering import KMeans
     from algorithm.frequency_mask import compute_ideal_binary_mask
     from criterion.deep_clustering import AffinityLoss
 
