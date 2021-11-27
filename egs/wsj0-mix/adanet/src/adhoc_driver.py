@@ -346,7 +346,6 @@ class AdhocTester(TesterBase):
                     raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
-                print(estimated_sources_amplitude.size(), target_amplitude.size())
                 loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 

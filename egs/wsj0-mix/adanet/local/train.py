@@ -116,7 +116,7 @@ def main(args):
     
     # Criterion
     if args.criterion == 'se':
-        criterion = SquaredError(sum_dim=(1,2), mean_dim=3) # (batch_size, n_sources, n_bins, n_frames)
+        criterion = SquaredError(sum_dim=2, mean_dim=(1,3)) # (batch_size, n_sources, n_bins, n_frames)
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
     
