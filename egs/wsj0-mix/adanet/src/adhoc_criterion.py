@@ -58,3 +58,28 @@ class SquaredError(nn.Module):
             _dims = _dims + mean_dim
         
         return _dims
+
+class Metrics(nn.Module):
+    def __init__(self, metrics):
+        super().__init__()
+
+        if not isinstance(metrics, nn.ModuleDict):
+            metrics = nn.ModuleDict(metrics)
+        
+        self.metrics = metrics
+    
+    def forward(self, mixture, estimated_sources, sources, batch_mean=True):
+        results = OrderedDict()
+
+        for key, metric in self.metrics.items():
+            loss_mixture = metric(mixture, sources, batch_mean=batch_mean)
+            loss = metric(estimated_sources, sources, batch_mean=batch_mean)
+            results[key] = loss_mixture - loss
+        
+        return results
+    
+    def keys(self):
+        return self.metrics.keys()
+    
+    def items(self):
+        return self.metrics.items()
