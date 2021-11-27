@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -9,7 +11,7 @@ class DeepEmbedding(nn.Module):
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1AkdK4a4WxgExY7trX0hDIbgY5SmrJhEL"
+                2: "1-5Zc2Va0OIKJAmA9QijSCYLcE_cOKDc6"
             }
         }
     }
@@ -107,6 +109,56 @@ class DeepEmbedding(nn.Module):
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
         
+        return model
+
+    @classmethod
+    def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
+        from utils.utils import download_pretrained_model_from_google_drive
+
+        task = kwargs.get('task')
+
+        if not task in cls.pretrained_model_ids:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+        
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
+        additional_attributes = {}
+        
+        if task in ['wsj0-mix', 'wsj0']:
+            sample_rate = kwargs.get('sample_rate') or 8000
+            n_sources = kwargs.get('n_sources') or 2
+            model_choice = kwargs.get('model_choice') or 'last'
+
+            model_id = pretrained_model_ids_task[sample_rate][n_sources]
+            download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
+        else:
+            raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
+
+        model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
+
+        if not os.path.exists(model_path):
+            download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
+        
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        if task in ['wsj0-mix', 'wsj0']:
+            additional_attributes.update({
+                'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
+                'window_fn': config['window_fn'],
+                'threshold': config['threshold']
+            })
+
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
+
         return model
     
     @property
