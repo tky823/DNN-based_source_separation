@@ -6,7 +6,7 @@ tag=""
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sample_rate=${sr_k}000
-duration=0.8 # 6400 samples
+duration=3.2 # 25600 samples
 max_or_min='min'
 
 test_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
@@ -92,6 +92,7 @@ test_fixed.py \
 --window_fn ${window_fn} \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
+--target_type ${target_type} \
 --n_fft ${n_fft} \
 --hop_length ${hop_length} \
 --iter_clustering ${iter_clustering} \

@@ -10,12 +10,12 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
-from models.danet import DANet
+from models.adanet import ADANet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT2d
 from adhoc_criterion import Metrics, SquaredError
 
-parser = argparse.ArgumentParser(description="Evaluation of DANet")
+parser = argparse.ArgumentParser(description="Evaluation of ADANet")
 
 parser.add_argument('--test_wav_root', type=str, default=None, help='Path for test dataset ROOT directory')
 parser.add_argument('--test_list_path', type=str, default=None, help='Path for mix_<n_sources>_spk_<max,min>_tt_mix')
@@ -26,7 +26,6 @@ parser.add_argument('--threshold', type=float, default=40, help='Wight threshold
 parser.add_argument('--target_type', type=str, default='source', choices=['source', 'oracle'], help='Target type DNN tries to output.')
 parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
-parser.add_argument('--iter_clustering', type=int, default=-1, help='# iterations when clustering')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='se', choices=['se'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -44,7 +43,7 @@ def main(args):
     args.n_bins = args.n_fft // 2 + 1
     loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     
-    model = DANet.build_model(args.model_path)
+    model = ADANet.build_model(args.model_path)
     
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
@@ -70,9 +69,6 @@ def main(args):
     metrics = OrderedDict()
     metrics['SISDR'] = NegSISDR()
     metrics = Metrics(metrics)
-
-    if args.iter_clustering < 0:
-        args.iter_clustering = None # Iterates until convergence
     
     tester = AdhocTester(model, loader, pit_criterion, metrics, args)
     tester.run()

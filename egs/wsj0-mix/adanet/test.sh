@@ -7,17 +7,21 @@ n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sample_rate=${sr_k}000
 duration=3.2 # 25600 samples
+valid_duration=10
 max_or_min='min'
 
-test_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tt"
-test_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tt_mix"
+train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
+valid_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/cv"
+
+train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_tr_mix"
+valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 window_fn='hann'
 n_fft=256
 hop_length=64
-ideal_mask='ibm'
+ideal_mask='wfm'
 threshold=40
-target_type='source'
+target_type='oracle'
 
 # Embedding dimension
 K=20
@@ -25,10 +29,10 @@ K=20
 # Network configuration
 H=300
 B=4
-dropout=0
+N=6
+dropout=5e-1
 causal=0
 mask_nonlinear='sigmoid'
-iter_clustering=-1
 take_log=1
 take_db=0
 
@@ -36,15 +40,13 @@ take_db=0
 criterion='se' # or 'l2loss'
 
 # Optimizer
-optimizer='rmsprop'
-lr=1e-4
+optimizer='adam'
+lr=1e-3
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
 batch_size=64
 epochs=150
-
-model_choice="last"
 
 use_cuda=1
 overwrite=0
@@ -56,7 +58,7 @@ gpu_id="0"
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/${target_type}"
-    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window/${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window/${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_N${N}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
     if [ ${take_log} -eq 1 ]; then
         save_dir="${save_dir}/take_log"
     elif [ ${take_db} -eq 1 ]; then
@@ -71,9 +73,8 @@ fi
 
 model_dir="${save_dir}/model"
 model_path="${model_dir}/${model_choice}.pth"
-test_save_dir="${save_dir}/kmeans"
-log_dir="${test_save_dir}/log"
-out_dir="${test_save_dir}/test"
+log_dir="${save_dir}/log"
+out_dir="${save_dir}/test"
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -93,7 +94,6 @@ test.py \
 --target_type ${target_type} \
 --n_fft ${n_fft} \
 --hop_length ${hop_length} \
---iter_clustering ${iter_clustering} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --out_dir "${out_dir}" \

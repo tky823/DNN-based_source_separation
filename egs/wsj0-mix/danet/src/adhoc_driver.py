@@ -312,6 +312,7 @@ class AdhocTester(TesterBase):
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
 
+        self.target_type = args.target_type
         self.iter_clustering = args.iter_clustering
     
     def run(self):
@@ -356,10 +357,15 @@ class AdhocTester(TesterBase):
                     threshold_weight = threshold_weight.cuda()
                 
                 mixture_amplitude = torch.abs(mixture) # (1, 1, n_bins, n_frames)
-                sources_amplitude = torch.abs(sources)
+                if self.target_type == "source":
+                    target_amplitude = torch.abs(sources)
+                elif self.target_type == "oracle":
+                    target_amplitude = ideal_mask * mixture_amplitude
+                else:
+                    raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
-                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
+                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
                 mixture = mixture[0].cpu()
@@ -574,6 +580,8 @@ class FixedAttractorTester(TesterBase):
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
 
+        self.target_type = args.target_type
+
     def run(self):
         self.model.eval()
         
@@ -599,11 +607,11 @@ class FixedAttractorTester(TesterBase):
         os.chdir(tmp_dir)
         
         with torch.no_grad():
-            for idx, (mixture, sources, _, _, T, segment_IDs) in enumerate(self.loader):
+            for idx, (mixture, sources, ideal_mask, _, T, segment_IDs) in enumerate(self.loader):
                 """
                     mixture (1, 1, n_bins, n_frames)
                     sources (1, n_sources, n_bins, n_frames)
-                    assignment (1, n_sources, n_bins, n_frames)
+                    ideal_mask (1, n_sources, n_bins, n_frames)
                     threshold_weight (1, n_bins, n_frames)
                     T (1,)
                 """
@@ -612,10 +620,15 @@ class FixedAttractorTester(TesterBase):
                     sources = sources.cuda()
                 
                 mixture_amplitude = torch.abs(mixture) # (1, 1, n_bins, n_frames)
-                sources_amplitude = torch.abs(sources)
+                if self.target_type == "source":
+                    target_amplitude = torch.abs(sources)
+                elif self.target_type == "oracle":
+                    target_amplitude = ideal_mask * mixture_amplitude
+                else:
+                    raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude)
-                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, sources_amplitude, batch_mean=False)
+                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
                 mixture = mixture[0].cpu()
