@@ -6,6 +6,13 @@ from utils.model import choose_rnn
 EPS = 1e-12
 
 class DeepEmbedding(nn.Module):
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1AkdK4a4WxgExY7trX0hDIbgY5SmrJhEL"
+            }
+        }
+    }
     def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=2, causal=False, rnn_type='lstm', take_log=True, take_db=False, eps=EPS):
         super().__init__()
 
@@ -73,6 +80,34 @@ class DeepEmbedding(nn.Module):
         }
         
         return config
+    
+    @classmethod
+    def build_model(cls, model_path, load_state_dict=False):
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
+        
+        n_bins = config['n_bins']
+        embed_dim = config['embed_dim']
+        hidden_channels = config['hidden_channels']
+        num_layers = config['num_layers']
+        causal = config['causal']
+
+        rnn_type = config['rnn_type']
+
+        take_log, take_db = config['take_log'], config['take_db']
+        
+        eps = config['eps']
+        
+        model = cls(
+            n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
+            num_layers=num_layers, causal=causal, rnn_type=rnn_type,
+            take_log=take_log, take_db=take_db,
+            eps=eps
+        )
+
+        if load_state_dict:
+            model.load_state_dict(config['state_dict'])
+        
+        return model
     
     @property
     def num_parameters(self):
