@@ -48,6 +48,8 @@ max_norm=0 # 0 is handled as no clipping
 batch_size=64
 epochs=150
 
+model_choice="last"
+
 use_cuda=1
 overwrite=0
 seed=111
