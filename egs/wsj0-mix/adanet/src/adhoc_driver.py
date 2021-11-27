@@ -346,14 +346,12 @@ class AdhocTester(TesterBase):
                     raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
                 
                 estimated_sources_amplitude = self.model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources)
+                print(estimated_sources_amplitude.size(), target_amplitude.size())
                 loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 
-                mixture = mixture[0].cpu()
-                sources = sources[0].cpu()
-    
-                mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)
-                estimated_sources_amplitude = estimated_sources_amplitude[0].cpu() # (n_sources, n_bins, n_frames)
+                mixture, sources = mixture[0].cpu(), sources[0].cpu()
+                mixture_amplitude, estimated_sources_amplitude = mixture_amplitude[0].cpu(), estimated_sources_amplitude[0].cpu() # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
 
                 phase = torch.angle(mixture)
                 estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase) # (n_sources, n_bins, n_frames)
