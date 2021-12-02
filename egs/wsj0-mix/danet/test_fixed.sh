@@ -42,8 +42,10 @@ weight_decay=0
 max_norm=0 # 0 is handled as no clipping
 
 batch_size=64
-epochs=150
+epochs_train=150
+epochs_finetune=150
 
+finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
 model_choice="last"
 
 use_cuda=1
@@ -66,7 +68,12 @@ if [ -z "${tag}" ]; then
     else
         save_dir="${save_dir}/take_identity"
     fi
-    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    if [ ${finetune} -eq 1 ]; then
+        save_dir="${save_dir}/b${batch_size}_e${epochs_train}+${epochs_finetune}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}"
+    else
+        save_dir="${save_dir}/b${batch_size}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}"
+    fi
+    save_dir="${save_dir}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
