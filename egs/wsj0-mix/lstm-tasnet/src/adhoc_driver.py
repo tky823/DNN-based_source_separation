@@ -7,6 +7,8 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from driver import TrainerBase, TesterBase
 
+HALVE_LR = 3
+
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
@@ -30,7 +32,7 @@ class AdhocTrainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr
@@ -121,7 +123,7 @@ class FinetuneTrainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr

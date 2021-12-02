@@ -62,7 +62,9 @@ if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pin
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed_train}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}"
+    save_dir="${save_dir}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed_train}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
