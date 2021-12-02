@@ -79,8 +79,7 @@ class AdhocTrainer(TrainerBase):
             
             self.start_epoch = 0
             
-            self.best_loss = float('infinity')
-            self.prev_loss = float('infinity')
+            self.best_loss, self.prev_loss = float('infinity'), float('infinity')
             self.no_improvement = 0
         
         self.n_bins = args.n_bins
@@ -527,6 +526,7 @@ class AdhocFinetuneTrainer(TrainerBase):
 
             self.best_loss = config['best_loss']
             self.prev_loss = self.valid_loss[self.start_epoch - 1]
+            self.no_improvement = config['no_improvement']
 
             self.optimizer.load_state_dict(config['optim_dict'])
             self.scheduler.load_state_dict(config['scheduler_dict'])
@@ -541,6 +541,7 @@ class AdhocFinetuneTrainer(TrainerBase):
             
             self.start_epoch = 0
             self.best_loss, self.prev_loss = float('infinity'), float('infinity')
+            self.no_improvement = 0
         
         if isinstance(self.model, nn.DataParallel):
             self.model.module.load_state_dict(config['state_dict'])

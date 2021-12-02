@@ -67,9 +67,7 @@ class FinetuneTrainer(TrainerBase):
         os.makedirs(self.sample_dir, exist_ok=True)
         
         self.epochs = args.epochs
-        
-        self.train_loss = torch.empty(self.epochs)
-        self.valid_loss = torch.empty(self.epochs)
+        self.train_loss, self.valid_loss = torch.empty(self.epochs), torch.empty(self.epochs)
         
         self.use_cuda = args.use_cuda
 
