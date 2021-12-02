@@ -15,8 +15,8 @@ class DANet(nn.Module):
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1AkdK4a4WxgExY7trX0hDIbgY5SmrJhEL",
-                3: "19MJ41pLY4W1BHI5rT8-v_Se_PL0DYjQ4"
+                2: "1--79IcEo59mlgd8I9RkDC-Psd03Qa4HS",
+                3: "1-3bjp3Dm44CwWiJ36efS7wpIai5Bl95h"
             }
         },
         "librispeech": {
