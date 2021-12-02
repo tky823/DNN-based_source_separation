@@ -41,8 +41,7 @@ max_norm=5
 finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
 model_choice="best"
 
-batch_size_train=128
-batch_size_finetune=128
+batch_size=128
 epochs_train=50
 epochs_finetune=50
 
@@ -64,13 +63,14 @@ fi
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}"
     save_dir="${save_dir}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}"
-    save_dir="${save_dir}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed_train}"
+    if [ ${finetune} -eq 1 ]; then
+        save_dir="${save_dir}/b${batch_size}_e${epochs_train}+${epochs_finetune}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}"
+    else
+        save_dir="${save_dir}/b${batch_size}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}"
+    fi
+    save_dir="${save_dir}/seed${seed_train}"
 else
     save_dir="${exp_dir}/${tag}"
-fi
-
-if [ ${finetune} -eq 1 ]; then
-    save_dir="${save_dir}/finetune/b${batch_size_finetune}_e${epochs_finetune}/seed${seed_finetune}"
 fi
 
 model_dir="${save_dir}/model"
