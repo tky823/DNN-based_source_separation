@@ -48,7 +48,8 @@ max_norm=0 # 0 is handled as no clipping
 scheduler_path="./config/paper/scheduler.yaml"
 
 batch_size=64
-epochs=250
+epochs_train=150
+epochs_finetune=100
 
 use_cuda=1
 overwrite=0
@@ -68,7 +69,7 @@ if [ -z "${tag}" ]; then
     else
         save_dir="${save_dir}/take_identity"
     fi
-    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${save_dir}/b${batch_size}_e${epochs_train}+${epochs_finetune}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -129,7 +130,7 @@ finetune.py \
 --max_norm ${max_norm} \
 --scheduler_path "${scheduler_path}" \
 --batch_size ${batch_size} \
---epochs ${epochs} \
+--epochs ${epochs_finetune} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \
