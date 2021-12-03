@@ -39,7 +39,6 @@ epochs=100
 n_sources_test=2
 num_chunk=256
 duration=5
-iter_clustering=100
 model_choice="last"
 
 use_cuda=1
@@ -71,6 +70,7 @@ demo.py \
 --window_fn ${window_fn} \
 --n_fft ${n_fft} \
 --hop_length ${hop_length} \
+--threshold ${threshold} \
 --n_sources ${n_sources_test} \
 --iter_clustering ${iter_clustering} \
 --num_chunk ${num_chunk} \

@@ -19,6 +19,7 @@ parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampl
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--n_fft', type=int, default=256, help='Window length')
 parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
+parser.add_argument('--threshold', type=float, default=40, help='Wight threshold. Default: 40')
 parser.add_argument('--n_sources', type=int, default=2, help='Number of speakers')
 parser.add_argument('--iter_clustering', type=int, default=10, help='Number of iterations when running clustering using Kmeans algorithm.')
 parser.add_argument('--num_chunk', type=int, default=256, help='Number of chunks')
@@ -30,6 +31,7 @@ FORMAT = pyaudio.paInt16
 NUM_CHANNELS = 1
 DEVICE_INDEX = 0
 BITS_PER_SAMPLE = 16
+EPS = 1e-12
 
 def main(args):
     process_offline(args.sample_rate, args.num_chunk, duration=args.duration, model_path=args.model_path, save_dir=args.save_dir, args=args)
@@ -80,6 +82,7 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
     if hop_length is None:
         hop_length = n_fft // 2
     
+    threshold = args.threshold
     n_sources = args.n_sources
     iter_clustering = args.iter_clustering
     T = mixture.size(-1)
@@ -91,7 +94,13 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
         mixture = stft(mixture, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_phase = torch.abs(mixture), torch.angle(mixture)
         mixture_amplitude = mixture_amplitude.unsqueeze(dim=0)
-        estimated_sources_amplitude = model(mixture_amplitude, n_sources=n_sources, iter_clustering=iter_clustering) # TODO: Args, threshold
+
+        log_amplitude = 20 * torch.log10(mixture_amplitude + EPS)
+        max_log_amplitude = torch.max(log_amplitude)
+        threshold = 10**((max_log_amplitude - threshold) / 20)
+        threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        
+        estimated_sources_amplitude = model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering) # TODO: Args, threshold
         estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=0)
         estimated_sources = estimated_sources_amplitude * torch.exp(1j * mixture_phase)
         estimated_sources = istft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False, length=T)
