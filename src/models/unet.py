@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+from utils.model import choose_nonlinear
 from conv import DepthwiseSeparableConv1d, DepthwiseSeparableConvTranspose1d, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
 
 class UNetBase(nn.Module):
@@ -215,7 +216,8 @@ class Encoder2d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(EncoderBlock2d(channels[n], channels[n+1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
+            
+            net.append(EncoderBlock2d(channels[n], channels[n + 1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
         
         self.net = nn.Sequential(*net)
         
@@ -268,8 +270,8 @@ class Decoder1d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(DecoderBlock1d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
-            # channels[n+1]//2: because of skip connection
+            net.append(DecoderBlock1d(channels[n], channels[n + 1] // 2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
+            # channels[n + 1] // 2: because of skip connection
     
         self.net = nn.Sequential(*net)
             
@@ -327,8 +329,9 @@ class Decoder2d(nn.Module):
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            net.append(DecoderBlock2d(channels[n], channels[n+1]//2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
-            # channels[n+1]//2: because of skip connection
+            
+            net.append(DecoderBlock2d(channels[n], channels[n + 1] // 2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, nonlinear=nonlinear[n]))
+            # channels[n + 1] // 2: because of skip connection
         
         self.net = nn.Sequential(*net)
             
@@ -349,6 +352,7 @@ class Decoder2d(nn.Module):
                 x = self.net[n](x)
             else:
                 x = self.net[n](x, skip[n])
+        
         output = x
         
         return output
@@ -356,7 +360,6 @@ class Decoder2d(nn.Module):
 """
     Encoder Block
 """
-
 class EncoderBlock1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
         super().__init__()
@@ -370,14 +373,9 @@ class EncoderBlock1d(nn.Module):
             self.conv1d = DepthwiseSeparableConv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         else:
             self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
-        self.batch_norm1d = nn.BatchNorm1d(out_channels)
         
-        if nonlinear == 'relu':
-            self.nonlinear = nn.ReLU()
-        elif nonlinear == 'sigmoid':
-            self.nonlinear = nn.Sigmoid()
-        else:
-            raise NotImplementedError()
+        self.norm1d = nn.BatchNorm1d(out_channels)
+        self.nonlinear = choose_nonlinear(nonlinear)
             
     def forward(self, input):
         """
@@ -385,18 +383,17 @@ class EncoderBlock1d(nn.Module):
             input (batch_size, C, T)
         """
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
-        
         kernel_size = (kernel_size - 1) * dilation + 1
         
         _, _, T = input.size()
-        padding = kernel_size - 1 - (stride - (T - kernel_size)%stride)%stride
-        padding_left = padding//2
+        padding = kernel_size - 1 - (stride - (T - kernel_size) % stride) % stride
+        padding_left = padding // 2
         padding_right = padding - padding_left
         
         input = F.pad(input, (padding_left, padding_right))
         
         x = self.conv1d(input)
-        x = self.batch_norm1d(x)
+        x = self.norm1d(x)
         output = self.nonlinear(x)
         
         return output
@@ -418,37 +415,32 @@ class EncoderBlock2d(nn.Module):
             self.conv2d = DepthwiseSeparableConv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         else:
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
-        self.batch_norm2d = nn.BatchNorm2d(out_channels)
         
-        if nonlinear == 'relu':
-            self.nonlinear = nn.ReLU()
-        else:
-            raise NotImplementedError()
+        self.norm2d = nn.BatchNorm2d(out_channels)
+        self.nonlinear = choose_nonlinear(nonlinear)
             
     def forward(self, input):
         """
         Args:
             input (batch_size, C, H, W)
+        Returns:
+            output: (batch_size, C, H_out, W_out), where H_out = H // Sh
         """
         Kh, Kw = self.kernel_size
         Sh, Sw = self.stride
         Dh, Dw = self.dilation
-        
         Kh = (Kh - 1) * Dh + 1
         Kw = (Kw - 1) * Dw + 1
         
         _, _, H, W = input.size()
-        padding_height = Kh - 1 - (Sh - (H - Kh) % Sh) % Sh
-        padding_width = Kw - 1 - (Sw - (W - Kw) % Sw) % Sw
-        padding_top = padding_height // 2
-        padding_bottom = padding_height - padding_top
-        padding_left = padding_width // 2
-        padding_right = padding_width - padding_left
+        Ph, Pw = Kh - 1 - (Sh - (H - Kh) % Sh) % Sh, Kw - 1 - (Sw - (W - Kw) % Sw) % Sw
+        Ph_top, Pw_left = Ph // 2, Pw // 2
+        Ph_bottom, Pw_right = Ph - Ph_top, Pw - Pw_left
         
-        input = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
+        input = F.pad(input, (Pw_left, Pw_right, Ph_top, Ph_bottom))
         
         x = self.conv2d(input)
-        x = self.batch_norm2d(x)
+        x = self.norm2d(x)
         output = self.nonlinear(x)
         
         return output
@@ -456,7 +448,6 @@ class EncoderBlock2d(nn.Module):
 """
     Decoder Block
 """
-
 class DecoderBlock1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu'):
         super().__init__()
@@ -470,15 +461,10 @@ class DecoderBlock1d(nn.Module):
             self.deconv1d = DepthwiseSeparableConvTranspose1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
         else:
             self.deconv1d = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
-        self.batch_norm1d = nn.BatchNorm1d(out_channels)
         
-        if nonlinear == 'relu':
-            self.nonlinear = nn.ReLU()
-        elif nonlinear == 'sigmoid':
-            self.nonlinear = nn.Sigmoid()
-        else:
-            raise NotImplementedError()
-            
+        self.norm1d = nn.BatchNorm1d(out_channels)
+        self.nonlinear = choose_nonlinear(nonlinear)
+        
     def forward(self, input, skip=None):
         """
         Args:
@@ -488,21 +474,24 @@ class DecoderBlock1d(nn.Module):
             output: (batch_size, C, T_out)
         """
         kernel_size, stride, dilation = self.kernel_size, self.stride, self.dilation
-        
         kernel_size = (kernel_size - 1) * dilation + 1
         
-        padding = kernel_size - stride
-        padding_left = padding//2
-        padding_right = padding - padding_left
+        P = kernel_size - stride
+        P_left = P // 2
+        P_right = P - P_left
 
         if skip is not None:
-            input = torch.cat([input, skip], dim=1)
+            input = self.pad_concat(input, skip)
         
         x = self.deconv1d(input)
-        x = F.pad(x, (-padding_left, -padding_right))
-        x = self.batch_norm1d(x)
+        x = F.pad(x, (-P_left, -P_right))
+        x = self.norm1d(x)
         output = self.nonlinear(x)
         
+        return output
+    
+    def pad_concat(self, input, skip):
+        output = torch.cat([input, skip], dim=1)
         return output
 
 class DecoderBlock2d(nn.Module):
@@ -513,6 +502,7 @@ class DecoderBlock2d(nn.Module):
         
         if stride is None:
             stride = kernel_size
+        
         stride = _pair(stride)
         dilation = _pair(dilation)
 
@@ -522,15 +512,10 @@ class DecoderBlock2d(nn.Module):
             self.deconv2d = DepthwiseSeparableConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
         else:
             self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
-        self.batch_norm2d = nn.BatchNorm2d(out_channels)
         
-        if nonlinear == 'relu':
-            self.nonlinear = nn.ReLU()
-        elif nonlinear == 'sigmoid':
-            self.nonlinear = nn.Sigmoid()
-        else:
-            raise NotImplementedError()
-            
+        self.norm2d = nn.BatchNorm2d(out_channels)
+        self.nonlinear = choose_nonlinear(nonlinear)
+    
     def forward(self, input, skip=None):
         """
         Args:
@@ -539,28 +524,26 @@ class DecoderBlock2d(nn.Module):
         Returns:
             output: (batch_size, C, H_out, W_out)
         """
-        Kh, Kw = self.kernel_size
-        Sh, Sw = self.stride
+        (Kh, Kw), (Sh, Sw) = self.kernel_size, self.stride
         Dh, Dw = self.dilation
+        Kh, Kw = (Kh - 1) * Dh + 1, (Kw - 1) * Dw + 1
         
-        Kh = (Kh - 1) * Dh + 1
-        Kw = (Kw - 1) * Dw + 1
-        
-        padding_height = Kh - Sh
-        padding_width = Kw - Sw
-        padding_top = padding_height//2
-        padding_bottom = padding_height - padding_top
-        padding_left = padding_width//2
-        padding_right = padding_width - padding_left
+        Ph, Pw = Kh - Sh, Kw - Sw
+        Ph_top, Pw_left = Ph // 2, Pw // 2
+        Ph_bottom, Pw_right = Ph - Ph_top, Pw - Pw_left
 
         if skip is not None:
-            input = torch.cat([input, skip], dim=1)
+            input = self.pad_concat(input, skip)
 
         x = self.deconv2d(input)
-        x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
-        x = self.batch_norm2d(x)
+        x = F.pad(x, (-Pw_left, -Pw_right, -Ph_top, -Ph_bottom))
+        x = self.norm2d(x)
         output = self.nonlinear(x)
         
+        return output
+
+    def pad_concat(self, input, skip):
+        output = torch.cat([input, skip], dim=1)
         return output
 
 def _test_unet():
@@ -586,8 +569,7 @@ def _test_unet():
     package = unet2d.get_package()
     model_path = "unet.pth"
     torch.save(package, model_path)
-    model = UNet2d.build_model(model_path)
-
+    _ = UNet2d.build_model(model_path)
 
 if __name__ == '__main__':
     _test_unet()
