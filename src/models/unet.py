@@ -489,9 +489,22 @@ class DecoderBlock1d(nn.Module):
         output = self.nonlinear(x)
         
         return output
-    
+
     def pad_concat(self, input, skip):
+        """
+        Args:
+            input (batch_size, C1, T_in)
+            skip (batch_size, C2, T_skip)
+        Returns:
+            output: (batch_size, C, T_skip), where C = C1 + C2
+        """
+        T_in, T_skip = input.size(-1), skip.size(-1)
+        T_padding = T_skip - T_in
+        P_left = T_padding // 2
+        P_right = T_padding - P_left
+        input = F.pad(input, (P_left, P_right))
         output = torch.cat([input, skip], dim=1)
+
         return output
 
 class DecoderBlock2d(nn.Module):
@@ -543,7 +556,20 @@ class DecoderBlock2d(nn.Module):
         return output
 
     def pad_concat(self, input, skip):
+        """
+        Args:
+            input (batch_size, C1, H_in, W_in)
+            skip (batch_size, C2, H_skip, W_skip)
+        Returns:
+            output: (batch_size, C, H_skip, W_skip), where C = C1 + C2
+        """
+        (H_in, W_in), (H_skip, W_skip) = input.size()[-2:], skip.size()[-2:]
+        Ph, Pw = H_skip - H_in, W_skip - W_in
+        Ph_top, Pw_left = Ph // 2, Pw // 2
+        Ph_bottom, Pw_right = Ph - Ph_top, Pw - Pw_left
+        input = F.pad(input, (Pw_left, Pw_right, Ph_top, Ph_bottom))
         output = torch.cat([input, skip], dim=1)
+        
         return output
 
 def _test_unet():
