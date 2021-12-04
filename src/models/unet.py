@@ -25,7 +25,7 @@ class UNetBase(nn.Module):
             model.load_state_dict(config['state_dict'])
         
         return model
-        
+    
     def get_config(self):
         config = {
             'channels': self.channels,
@@ -38,7 +38,7 @@ class UNetBase(nn.Module):
         }
         
         return config
-        
+    
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -132,7 +132,6 @@ class UNet2d(UNetBase):
 """
     Encoder
 """
-
 class Encoder1d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
@@ -232,11 +231,10 @@ class Encoder2d(nn.Module):
             skip.append(x)
         
         return x, skip
-        
+
 """
     Decoder
 """
-
 class Decoder1d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu'):
         """
@@ -375,7 +373,15 @@ class EncoderBlock1d(nn.Module):
             self.conv1d = nn.Conv1d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         
         self.norm1d = nn.BatchNorm1d(out_channels)
-        self.nonlinear = choose_nonlinear(nonlinear)
+
+        if nonlinear == "softmax":
+            kwargs = {
+                "dim": 1
+            }
+        else:
+            kwargs = {}
+        
+        self.nonlinear = choose_nonlinear(nonlinear, **kwargs)
             
     def forward(self, input):
         """
@@ -417,7 +423,15 @@ class EncoderBlock2d(nn.Module):
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation)
         
         self.norm2d = nn.BatchNorm2d(out_channels)
-        self.nonlinear = choose_nonlinear(nonlinear)
+        
+        if nonlinear == "softmax":
+            kwargs = {
+                "dim": 1
+            }
+        else:
+            kwargs = {}
+        
+        self.nonlinear = choose_nonlinear(nonlinear, **kwargs)
             
     def forward(self, input):
         """
@@ -444,7 +458,7 @@ class EncoderBlock2d(nn.Module):
         output = self.nonlinear(x)
         
         return output
-                
+
 """
     Decoder Block
 """
@@ -463,7 +477,15 @@ class DecoderBlock1d(nn.Module):
             self.deconv1d = nn.ConvTranspose1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
         
         self.norm1d = nn.BatchNorm1d(out_channels)
-        self.nonlinear = choose_nonlinear(nonlinear)
+
+        if nonlinear == "softmax":
+            kwargs = {
+                "dim": 1
+            }
+        else:
+            kwargs = {}
+        
+        self.nonlinear = choose_nonlinear(nonlinear, **kwargs)
         
     def forward(self, input, skip=None):
         """
@@ -527,7 +549,15 @@ class DecoderBlock2d(nn.Module):
             self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
         
         self.norm2d = nn.BatchNorm2d(out_channels)
-        self.nonlinear = choose_nonlinear(nonlinear)
+
+        if nonlinear == "softmax":
+            kwargs = {
+                "dim": 1
+            }
+        else:
+            kwargs = {}
+        
+        self.nonlinear = choose_nonlinear(nonlinear, **kwargs)
     
     def forward(self, input, skip=None):
         """
