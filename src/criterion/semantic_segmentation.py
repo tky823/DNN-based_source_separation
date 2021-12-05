@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+EPS = 1e-12
 
 class CategoricalDiceLoss(nn.Module):
-    def __init__(self, flatten_dim=(-1, -2), smooth=1):
+    def __init__(self, flatten_dim=(-1, -2), smooth=EPS):
         super().__init__()
 
         self.flatten_dim = flatten_dim
