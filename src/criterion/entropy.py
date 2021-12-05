@@ -36,7 +36,7 @@ class BinaryCrossEntropy(nn.Module):
         
         return loss
 
-class CrossEntropy(nn.Module):
+class CategoricalCrossEntropy(nn.Module):
     def __init__(self, class_dim=1, reduction="mean", eps=EPS):
         super().__init__()
 
