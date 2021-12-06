@@ -312,7 +312,8 @@ class AdhocTester(TesterBase):
             test_results[key] = 0
         print(s, flush=True)
 
-        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        tmp_ID = str(uuid.uuid4())
+        tmp_dir = os.path.join(os.getcwd(), 'tmp-{}'.format(tmp_ID))
         os.makedirs(tmp_dir, exist_ok=True)
         shutil.copy('./PESQ', os.path.join(tmp_dir, 'PESQ'))
         os.chdir(tmp_dir)

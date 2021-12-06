@@ -243,7 +243,7 @@ class GatedConv1d(nn.Module):
             padding_left = padding
             padding_right = 0
         else:
-            padding_left = padding//2
+            padding_left = padding // 2
             padding_right = padding - padding_left
         
         x = F.pad(input, (padding_left, padding_right))
@@ -348,7 +348,7 @@ def _test_wavenet():
     output_nonlinear = None
     conditioning = 'local'
     enc_dim, enc_T = 2, 512
-    enc_kernel_size, enc_stride = 3, T//enc_T
+    enc_kernel_size, enc_stride = 3, T // enc_T
     
     model = WaveNet(in_channels=in_channels, out_channels=out_channels, hidden_channels=hidden_channels, skip_channels=skip_channels, kernel_size=kernel_size, num_blocks=num_blocks, num_layers=num_layers, dilated=dilated, separable=separable, causal=causal, nonlinear=nonlinear, norm=norm, output_nonlinear=output_nonlinear, conditioning=conditioning, enc_dim=enc_dim, enc_kernel_size=enc_kernel_size, enc_stride=enc_stride)
     print(model)
