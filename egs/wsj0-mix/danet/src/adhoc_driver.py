@@ -804,11 +804,11 @@ class FixedAttractorComputer:
         attractors = attractors.view(-1, attractors.size(-1)) # (len(dataset) * n_sources, embed_dim)
         
         kmeans = KMeans(K=n_sources)
-        _, centroids = kmeans(attractors) # (n_sources, embed_dim)
+        _ = kmeans(attractors) # (n_sources, embed_dim)
 
         base_model_filename = os.path.basename(self.base_model_path)
         wrapper_model_path = os.path.join(self.wrapper_model_dir, base_model_filename)
-        self.save_model(self.wrapper_class, centroids, model_path=wrapper_model_path)
+        self.save_model(self.wrapper_class, kmeans.centroids, model_path=wrapper_model_path)
     
     def save_model(self, wrapper_class, attractor, model_path="./tmp.pth"):
         if isinstance(self.model, nn.DataParallel):
