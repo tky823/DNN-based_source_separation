@@ -376,6 +376,7 @@ class TesterBase:
                 test_pesq += pesq
         
         os.chdir("../") # back to the original directory
+        shutil.rmtree(tmp_dir)
 
         test_loss /= n_test
         test_loss_improvement /= n_test
@@ -692,6 +693,7 @@ class AttractorTester(TesterBase):
         test_pesq /= n_test
         
         os.chdir("../") # back to the original directory
+        shutil.rmtree(tmp_dir)
 
         print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))

@@ -417,6 +417,7 @@ class AdhocTester(TesterBase):
             test_results[key] /= n_test
 
         os.chdir("../") # back to the original directory
+        shutil.rmtree(tmp_dir)
 
         s = "SDR improvement: {:.3f}, SIR improvement: {:.3f}, SAR: {:.3f}, PESQ: {:.3f}".format(test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
 

@@ -297,6 +297,7 @@ class Tester(TesterBase):
                 test_pesq += pesq
         
         os.chdir("../") # back to the original directory
+        shutil.rmtree(tmp_dir)
 
         test_loss /= n_test
         test_loss_improvement /= n_test
