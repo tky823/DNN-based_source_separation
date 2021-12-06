@@ -354,7 +354,8 @@ class FixedAttractorDANet(nn.Module):
     pretrained_attractor_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1au5-XT-VTOX-RDl4Y8E7b8BxDncKpfon"
+                2: "1-eV-9ciO4toLTWlez63bfBB3jVZiqPRz",
+                3: ""
             }
         }
     }
