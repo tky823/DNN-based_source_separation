@@ -355,7 +355,7 @@ class FixedAttractorDANet(nn.Module):
         "wsj0-mix": {
             8000: {
                 2: "1-eV-9ciO4toLTWlez63bfBB3jVZiqPRz",
-                3: ""
+                3: "1-TR6itD1EdU1VKHpweuMjw6SgijSuepF"
             }
         }
     }
