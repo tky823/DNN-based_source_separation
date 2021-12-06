@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils.model import choose_nonlinear
 from utils.tasnet import choose_layer_norm
 from conv import DepthwiseSeparableConv1d
 
-EPS=1e-12
+EPS = 1e-12
 
 class WaveNet(nn.Module):
     def __init__(self, in_channels, out_channels, hidden_channels=256, skip_channels=256, kernel_size=3, num_blocks=3, num_layers=10, dilated=True, separable=False, causal=True, nonlinear='gated', norm=True, output_nonlinear=None, conditioning=None, enc_dim=None, enc_kernel_size=None, enc_stride=None, eps=EPS):
@@ -29,12 +30,15 @@ class WaveNet(nn.Module):
         end_net.append(nn.Conv1d(hidden_channels, out_channels, kernel_size=1, stride=1, bias=False))
         
         if output_nonlinear is not None:
-            if output_nonlinear == 'tanh':
-                end_net.append(nn.Tanh())
-            elif output_nonlinear == 'softmax':
-                end_net.append(nn.Softmax(dim=1))
+            if output_nonlinear == 'softmax':
+                kwargs = {
+                    "dim": 1
+                }
             else:
-                raise ValueError("Not support {}".format(output_nonlinear))
+                kwargs = {}
+            
+            module = choose_nonlinear(output_nonlinear, **kwargs)
+            end_net.append(module)
         
         self.end_net = nn.Sequential(*end_net)
         
@@ -65,23 +69,16 @@ class WaveNet(nn.Module):
         
     def get_config(self):
         config = {
-            'in_channels': self.in_channels,
-            'out_channels': self.out_channels,
-            'hidden_channels': self.hidden_channels,
-            'skip_channels': self.skip_channels,
+            'in_channels': self.in_channels, 'out_channels': self.out_channels, 'hidden_channels': self.hidden_channels, 'skip_channels': self.skip_channels,
             'kernel_size': self.kernel_size,
-            'num_blocks': self.num_blocks,
-            'num_layers': self.num_layers,
-            'dilated': self.dilated,
-            'separable': self.separable,
+            'num_blocks': self.num_blocks, 'num_layers': self.num_layers,
+            'dilated': self.dilated, 'separable': self.separable,
             'causal': self.causal,
-            'nonlinear': self.nonlinear,
-            'norm': self.norm,
+            'nonlinear': self.nonlinear, 'norm': self.norm,
             'output_nonlinear': self.output_nonlinear,
             'conditioning': self.conditioning,
             'enc_dim': self.enc_dim,
-            'enc_kernel_size': self.enc_kernel_size,
-            'enc_stride': self.enc_stride
+            'enc_kernel_size': self.enc_kernel_size, 'enc_stride': self.enc_stride
         }
         
         return config
@@ -122,7 +119,6 @@ class ConvBlock1d(nn.Module):
         skip_connection = 0
         
         for idx in range(num_layers):
-            residual = x
             x, skip = self.net[idx](x, enc_h=enc_h)
             skip_connection = skip_connection + skip
 
@@ -210,9 +206,11 @@ class GatedConv1d(nn.Module):
         if conditioning is not None:
             if conditioning == 'global':
                 self.embed_tanh_linear = nn.Linear(enc_dim, out_channels)
-            else: # conditioning=='local'
+            elif conditioning=='local':
                 self.embed_tanh_map = nn.ConvTranspose1d(enc_dim, enc_dim, kernel_size=enc_kernel_size, stride=enc_stride, bias=False)
                 self.embed_tanh_conv1d = nn.Conv1d(enc_dim, out_channels, kernel_size=1, stride=1, bias=False)
+            else:
+                raise NotImplementedError("Choose 'global' or 'local' for conditioning.")
         
         self.tanh = nn.Tanh()
         
@@ -224,9 +222,11 @@ class GatedConv1d(nn.Module):
         if conditioning is not None:
             if conditioning == 'global':
                 self.embed_sigmoid_linear = nn.Linear(enc_dim, out_channels)
-            else: # conditioning=='local'
+            elif conditioning=='local':
                 self.embed_sigmoid_map = nn.ConvTranspose1d(enc_dim, enc_dim, kernel_size=enc_kernel_size, stride=enc_stride, bias=False)
                 self.embed_sigmoid_conv1d = nn.Conv1d(enc_dim, out_channels, kernel_size=1, stride=1, bias=False)
+            else:
+                raise NotImplementedError("Choose 'global' or 'local' for conditioning.")
 
         self.sigmoid = nn.Sigmoid()
         
@@ -261,18 +261,20 @@ class GatedConv1d(nn.Module):
                 y_tanh = self.embed_tanh_linear(enc_h)
                 y_tanh = y_tanh.unsqueeze(dim=2)
                 x_tanh =  x_tanh + y_tanh
-            else:
+            elif conditioning == 'local':
                 y_tanh = self.embed_tanh_map(enc_h)
                 padding = enc_kernel_size - enc_stride
                 if causal:
                     padding_left = 0
                     padding_right = padding
                 else:
-                    padding_left = padding//2
+                    padding_left = padding // 2
                     padding_right = padding - padding_left
-                
+
                 y_tanh = F.pad(y_tanh, (-padding_left, -padding_right))
                 x_tanh = x_tanh + self.embed_tanh_conv1d(y_tanh)
+            else:
+                raise NotImplementedError("Choose 'global' or 'local' for conditioning.")
 
         x_tanh = self.tanh(x_tanh)
         x_sigmoid = self.sigmoid_conv1d(x)
@@ -282,10 +284,12 @@ class GatedConv1d(nn.Module):
                 y_sigmoid = self.embed_sigmoid_linear(enc_h)
                 y_sigmoid = y_sigmoid.unsqueeze(dim=2)
                 x_sigmoid =  x_sigmoid + y_sigmoid
-            else:
+            elif conditioning == 'local':
                 y_sigmoid = self.embed_sigmoid_map(enc_h)
                 y_sigmoid = F.pad(y_sigmoid, (-padding_left, -padding_right))
                 x_sigmoid =  x_sigmoid + self.embed_sigmoid_conv1d(y_sigmoid)
+            else:
+                raise NotImplementedError("Choose 'global' or 'local' for conditioning.")
         
         x_sigmoid = self.sigmoid(x_sigmoid)
         output = x_tanh * x_sigmoid

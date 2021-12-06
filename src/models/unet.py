@@ -201,7 +201,7 @@ class EnsembleUNet1d(UNetBase):
         
         self.encoder, self.decoders = nn.ModuleList(encoder), nn.ModuleList(decoders)
         
-    def forward(self, input, stack_dim=1, return_all=True):
+    def forward(self, input, stack_dim=1, return_all_layers=True):
         """
         Args:
             input: (batch_size, in_channels, T)
@@ -216,10 +216,10 @@ class EnsembleUNet1d(UNetBase):
         for ensemble_idx in range(self.num_ensembles):
             x = self.encoder[ensemble_idx](x)
             skip.append(x)
-            output = self.decoders[ensemble_idx](x, skip[::-1])
+            output = self.decoders[ensemble_idx](x, skip[::-1], return_all_layers=False)
             outputs.append(output)
         
-        if return_all:
+        if return_all_layers:
             outputs = torch.stack(outputs, dim=stack_dim)
         else:
             outputs = outputs[-1]
@@ -279,7 +279,7 @@ class EnsembleUNet2d(UNetBase):
         
         self.encoder, self.decoders = nn.ModuleList(encoder), nn.ModuleList(decoders)
         
-    def forward(self, input, stack_dim=1, return_all=True):
+    def forward(self, input, stack_dim=1, return_all_layers=True):
         """
         Args:
             input: (batch_size, in_channels, H, W)
@@ -294,10 +294,10 @@ class EnsembleUNet2d(UNetBase):
         for ensemble_idx in range(self.num_ensembles):
             x = self.encoder[ensemble_idx](x)
             skip.append(x)
-            output = self.decoders[ensemble_idx](x, skip[::-1])
+            output = self.decoders[ensemble_idx](x, skip[::-1], return_all_layers=False)
             outputs.append(output)
         
-        if return_all:
+        if return_all_layers:
             outputs = torch.stack(outputs, dim=stack_dim)
         else:
             outputs = outputs[-1]
@@ -449,16 +449,21 @@ class Decoder1d(nn.Module):
     
         self.net = nn.Sequential(*net)
             
-    def forward(self, input, skip):
+    def forward(self, input, skip, return_all_layers=False):
         """
         Args:
             input (batch_size, C, T)
             skip <list<torch.Tensor>>
+            return_all_layers <bool>
         Returns:
-            output: (batch_size, C_out, T_out)
+            outputs:
+                (batch_size, C_out, T_out)
+                <list<torch.Tensor>> if return_all_layers=True
+                <torch.Tensor> with shape of (batch_size, C_out, T_out) otherwise
         """
         num_blocks = self.num_blocks
         
+        outputs = []
         x = input
         
         for n in range(num_blocks):
@@ -466,9 +471,15 @@ class Decoder1d(nn.Module):
                 x = self.net[n](x)
             else:
                 x = self.net[n](x, skip[n])
-        output = x
+            
+            outputs.append(x)
         
-        return output
+        if return_all_layers:
+            outputs = outputs
+        else:
+            outputs = outputs[-1]
+        
+        return outputs
 
 class Decoder2d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, separable=False, nonlinear='relu', eps=EPS):
@@ -509,16 +520,20 @@ class Decoder2d(nn.Module):
         
         self.net = nn.Sequential(*net)
             
-    def forward(self, input, skip):
+    def forward(self, input, skip, return_all_layers=False):
         """
         Args:
             input (batch_size, C, H, W)
             skip <list<torch.Tensor>>
+            return_all_layers <bool>
         Returns:
-            output: (batch_size, C_out, H_out, W_out)
+            outputs:
+                <list<torch.Tensor>> if return_all_layers=True
+                <torch.Tensor> with shape of (batch_size, C_out, H_out, W_out) otherwise
         """
         num_blocks = self.num_blocks
         
+        outputs = []
         x = input
         
         for n in range(num_blocks):
@@ -526,21 +541,36 @@ class Decoder2d(nn.Module):
                 x = self.net[n](x)
             else:
                 x = self.net[n](x, skip[n])
+            
+            outputs.append(x)
         
-        output = x
+        if return_all_layers:
+            outputs = outputs
+        else:
+            outputs = outputs[-1]
         
-        return output
+        return outputs
 
 class BottleneckDecoder1d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear='relu', eps=EPS):
         super().__init__()
 
-        self.bottleneck_conv1d = nn.Conv1d(channels[0], channels[0], kernel_size=1, stride=1)
+        bottleneck_channels = channels[0]
+        self.bottleneck_conv1d = nn.Conv1d(bottleneck_channels, bottleneck_channels, kernel_size=1, stride=1)
         self.decoder = Decoder1d(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear, eps=eps)
     
-    def forward(self, input, skip):
+    def forward(self, input, skip, return_all_layers=False):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, C_in, T_in)
+            skip <list<torch.Tensor>>
+        Returns:
+            output:
+                <list<torch.Tensor>> if return_all_layers=True
+                <torch.Tensor> with shape of (batch_size, C_out, T_out) otherwise
+        """
         x = self.bottleneck_conv1d(input)
-        output = self.decoder(x, skip)
+        output = self.decoder(x, skip, return_all_layers=return_all_layers)
         
         return output
 
@@ -548,12 +578,22 @@ class BottleneckDecoder2d(nn.Module):
     def __init__(self, channels, kernel_size, stride=None, dilated=False, nonlinear='relu', eps=EPS):
         super().__init__()
         
-        self.bottleneck_conv2d = nn.Conv2d(channels[0], channels[0], kernel_size=1, stride=1)
+        bottleneck_channels = channels[0]
+        self.bottleneck_conv2d = nn.Conv2d(bottleneck_channels, bottleneck_channels, kernel_size=1, stride=1)
         self.decoder = Decoder2d(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=nonlinear, eps=eps)
     
-    def forward(self, input, skip):
+    def forward(self, input, skip, return_all_layers=False):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, C_in, H_in, W_in)
+            skip <list<torch.Tensor>>
+        Returns:
+            output:
+                <list<torch.Tensor>> if return_all_layers=True
+                <torch.Tensor> with shape of (batch_size, C_out, H_out, W_out) otherwise
+        """
         x = self.bottleneck_conv2d(input)
-        output = self.decoder(x, skip)
+        output = self.decoder(x, skip, return_all_layers=return_all_layers)
         
         return output
 
