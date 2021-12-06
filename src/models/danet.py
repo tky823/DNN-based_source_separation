@@ -16,7 +16,7 @@ class DANet(nn.Module):
         "wsj0-mix": {
             8000: {
                 2: "1PTBTUpz5DUZazQRWzhAknYfcUSS76SkI",
-                3: "1-BLJQKd2J6OxhwecmvESMbGc0xsI_X-Q"
+                3: "1-3bjp3Dm44CwWiJ36efS7wpIai5Bl95h"
             }
         },
         "librispeech": {
