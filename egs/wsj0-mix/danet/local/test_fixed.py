@@ -73,7 +73,7 @@ def main(args):
         computer.run()
     
     if args.estimate_all:
-        test_dataset = IdealMaskSpectrogramTestDataset(args.test_wav_root, args.test_list_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold)
+        test_dataset = IdealMaskSpectrogramTestDataset(args.test_wav_root, args.test_list_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, n_sources=args.n_sources)
         print("Test dataset includes {} samples.".format(len(test_dataset)))
         
         args.n_bins = args.n_fft // 2 + 1
