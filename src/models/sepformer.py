@@ -17,7 +17,8 @@ class SepFormer(nn.Module):
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1-2Ta0CdVw78GzmP1QCzvoKLF2xPOz_Kb"
+                2: "1-9pOv2B612IykvpA6kaGZSg4AUQPnoCg",
+                3: "1-Rz31CGWVVzYVHXgIdp7Tuc0__K2SCPs"
             }
         }
     }

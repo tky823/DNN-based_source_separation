@@ -27,6 +27,7 @@ A PyTorch implementation of DNN-based source separation.
 | MMDenseLSTM | [MMDenseLSTM: An Efficient Combination of Convolutional and Recurrent Neural Networks for Audio Source Separation](https://arxiv.org/abs/1805.02410) | ✔ |
 | Open-Unmix (UMX) | [Open-Unmix - A Reference Implementation for Music Source Separation](https://hal.inria.fr/hal-02293689/document) | ✔ |
 | Wavesplit | [Wavesplit: End-to-End Speech Separation by Speaker Clustering](https://arxiv.org/abs/2002.08933) |  |
+| Hydranet | [Hydranet: A Real-Time Waveform Separation Network](https://ieeexplore.ieee.org/document/9053357) |  |
 | Dual-Path Transformer Network (DPTNet) | [Dual-Path Transformer Network: Direct Context-Aware Modeling for End-to-End Monaural Speech Separation](https://arxiv.org/abs/2007.13975) | ✔ |
 | CrossNet-Open-Unmix (X-UMX) | [All for One and One for All: Improving Music Separation by Bridging Networks](https://arxiv.org/abs/2010.04228) | ✔ |
 | D3Net | [D3Net: Densely connected multidilated DenseNet for music source separation](https://arxiv.org/abs/2010.01733) | ✔ |
@@ -106,6 +107,7 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 | DANet | WSJ0-2mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | DANet | WSJ0-3mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DANet (fixed attractor) | WSJ0-2mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DANet (fixed attractor) | WSJ0-3mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DANet | LibriSpeech | `model = DANet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
 | ADANet | WSJ0-2mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | ADANet | WSJ0-3mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
@@ -131,6 +133,7 @@ model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, targ
 | D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
 | D3Net (bass, drums, other, vocals) | MUSDB18 | `model = ParallelD3Net.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 | SepFormer | WSJ0-2mix | `model = SepFormer.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| SepFormer | WSJ0-3mix | `model = SepFormer.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 
 See `egs/tutorials/hub/pretrained.ipynb` or click [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained.ipynb).
 
