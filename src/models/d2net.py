@@ -12,7 +12,7 @@ class D2BlockFixedDilation(nn.Module):
             in_channels <int>: # of input channels
             growth_rate <int> or <list<int>>: # of output channels
             kernel_size <int> or <tuple<int>>: Kernel size
-            dilation <int>: Dilataion od dilated convolution.
+            dilation <int>: Dilataion of dilated convolution.
             norm <bool> or <list<bool>>: Applies batch normalization.
             nonlinear <str> or <list<str>>: Applies nonlinear function.
             depth <int>: If `growth_rate` is given by list, len(growth_rate) must be equal to `depth`.
@@ -30,7 +30,7 @@ class D2BlockFixedDilation(nn.Module):
             raise ValueError("Not support growth_rate={}".format(growth_rate))
         
         if not type(dilation) is int:
-            raise ValueError("Not support dilated={}".format(dilated))
+            raise ValueError("Not support dilation={}".format(dilation))
         
         if type(norm) is bool:
             assert depth is not None, "Specify `depth`"

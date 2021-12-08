@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn as nn
 
@@ -8,6 +10,8 @@ EPS = 1e-12
 class DualPathTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.DualPathTransformer instead.", DeprecationWarning)
         
         # Network confguration
         net = []
@@ -31,6 +35,8 @@ class DualPathTransformer(nn.Module):
 class DualPathTransformerBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.DualPathTransformerBlock instead.", DeprecationWarning)
         
         self.intra_chunk_block = IntraChunkTransformer(
             num_features, hidden_channels, num_heads=num_heads,
@@ -59,6 +65,8 @@ class DualPathTransformerBlock(nn.Module):
 class IntraChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.IntraChunkTransformer instead.", DeprecationWarning)
         
         self.num_features = num_features
 
@@ -90,6 +98,8 @@ class IntraChunkTransformer(nn.Module):
 class InterChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.InterChunkTransformer instead.", DeprecationWarning)
         
         self.num_features = num_features
 
@@ -122,6 +132,8 @@ class ImprovedTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
 
+        warnings.warn("Use models.dptnet.ImprovedTransformer instead.", DeprecationWarning)
+
         self.multihead_attn_block = MultiheadAttentionBlock(num_features, num_heads, norm=norm, dropout=dropout, causal=causal, eps=eps)
         self.subnet = FeedForwardBlock(num_features, hidden_channels, norm=norm, nonlinear=nonlinear, causal=causal, eps=eps)
 
@@ -140,6 +152,8 @@ class ImprovedTransformer(nn.Module):
 class MultiheadAttentionBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, norm=True, dropout=0, causal=False, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.MultiheadAttentionBlock instead.", DeprecationWarning)
 
         if dropout == 0:
             self.dropout = False
@@ -184,6 +198,8 @@ class MultiheadAttentionBlock(nn.Module):
 class FeedForwardBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, norm=True, nonlinear='relu', causal=False, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.FeedForwardBlock instead.", DeprecationWarning)
 
         if causal:
             bidirectional = False

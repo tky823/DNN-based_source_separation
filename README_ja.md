@@ -42,6 +42,7 @@ DNNによる音源分離（PyTorch実装）
 | :---: | :---: | :---: |
 | Depthwise-separable convolution | [Xception: Deep Learning with Depthwise Separable Convolutions](https://arxiv.org/abs/1610.02357) | ✔ |
 | Gated Linear Units (GLU) | [Language Modeling with Gated Convolutional Networks](https://arxiv.org/abs/1612.08083) | ✔ |
+| Sigmoid Linear Units (SiLU) | [Sigmoid-Weighted Linear Units for Neural Network Function Approximation in Reinforcement Learning](https://arxiv.org/abs/1702.03118) | ✔ |
 | Feature-wise Linear Modulation (FiLM) | [FiLM: Visual Reasoning with a General Conditioning Layer](https://arxiv.org/abs/1709.07871) | ✔ |
 | Point-wise Convolutional Modulation (PoCM) | [LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation](https://arxiv.org/abs/2010.11631) | ✔ |
 
@@ -102,40 +103,7 @@ from models.conv_tasnet import ConvTasNet
 model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")
 ```
 
-| モデル | データセット | ダウンロードの例 |
-|:---:|:---:|:---:|
-| DANet | WSJ0-2mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| DANet | WSJ0-3mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
-| DANet (fixed attractor) | WSJ0-2mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| DANet (fixed attractor) | WSJ0-3mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
-| DANet | LibriSpeech | `model = DANet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
-| ADANet | WSJ0-2mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| ADANet | WSJ0-3mix | `model = ADANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
-| LSTM-TasNet | WSJ0-2mix | `model = LSTMTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| Conv-TasNet | WSJ0-2mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| Conv-TasNet | WSJ0-3mix | `model = ConvTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
-| Conv-TasNet | MUSDB18 | `model = ConvTasNet.build_from_pretrained(task="musdb18", sample_rate=44100)` |
-| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/separate-noisy", sample_rate=8000)` |
-| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/enhance-single", sample_rate=8000)` |
-| Conv-TasNet | WHAM | `model = ConvTasNet.build_from_pretrained(task="wham/enhance-both", sample_rate=8000)` |
-| Conv-TasNet | LibriSpeech | `model = ConvTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
-| DPRNN-TasNet | WSJ0-2mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| DPRNN-TasNet | WSJ0-3mix | `model = DPRNNTasNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
-| DPRNN-TasNet | LibriSpeech | `model = DPRNNTasNet.build_from_pretrained(task="librispeech", sample_rate=16000, n_sources=2)` |
-| MMDenseLSTM | MUSDB18 | `model = MMDenseLSTM.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
-| MMDenseLSTM (bass, drums, other, vocals) | MUSDB18 | `model = ParallelMMDenseLSTM.build_from_pretrained(task="musdb18", sample_rate=44100)` |
-| Open-Unmix | MUSDB18 | `model = OpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
-| Open-Unmix (bass, drums, other, vocals) | MUSDB18 | `model = ParallelOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
-| Open-Unmix | MUSDB18-HQ | `model = OpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100, target="vocals")` |
-| Open-Unmix (bass, drums, other, vocals) | MUSDB18-HQ | `model = ParallelOpenUnmix.build_from_pretrained(task="musdb18hq", sample_rate=44100)` |
-| DPTNet | WSJ0-2mix | `model = DPTNet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
-| D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
-| D3Net (bass, drums, other, vocals) | MUSDB18 | `model = ParallelD3Net.build_from_pretrained(task="musdb18", sample_rate=44100)` |
-| SepFormer | WSJ0-2mix | `model = SepFormer.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
-| SepFormer | WSJ0-3mix | `model = SepFormer.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
-
-`egs/tutorials/hub/pretrained_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained_ja.ipynb)にとんでください．
+詳細については，`PRETRAINED_ja.md`や`egs/tutorials/hub/pretrained_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/pretrained_ja.ipynb)にとんでください．
 
 ### 時間周波数領域モデルのための時間領域ラッパー
 `egs/tutorials/hub/time-domain_wrapper_ja.ipynb`を見るか， [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tky823/DNN-based_source_separation/blob/main/egs/tutorials/hub/time-domain_wrapper_ja.ipynb)にとんでください．

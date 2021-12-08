@@ -15,8 +15,9 @@ from models.glu import GLU2d
 from models.d2net import D2Block, D2BlockFixedDilation
 
 """
-Reference: D3Net: Densely connected multidilated DenseNet for music source separation
-See https://arxiv.org/abs/2010.01733
+D3Net
+    Reference: D3Net: Densely connected multidilated DenseNet for music source separation
+    See https://arxiv.org/abs/2010.01733
 """
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']

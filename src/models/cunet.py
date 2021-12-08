@@ -11,7 +11,11 @@ from models.pocm import PoCM2d, GPoCM2d
 EPS = 1e-12
 
 """
-Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations
+Conditioned UNet
+    Reference: "Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations"
+    See https://arxiv.org/abs/1907.01277
+    Reference: "LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation"
+    See https://arxiv.org/abs/2010.11631
 """
 
 class ConditionedUNetBase(nn.Module):
