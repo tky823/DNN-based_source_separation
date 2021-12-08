@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_audio import build_window, build_optimal_window
+from utils.audio import build_window, build_optimal_window
 
 EPS = 1e-12
 

@@ -20,7 +20,7 @@ class DPTNet(nn.Module):
         "wsj0-mix": {
             8000: {
                 2: "1QJnJEK8aed7_ED07jD7buyGb37giEDUx",
-                3: "" # TODO
+                3: "1Rfb_vS8r2_Oqpg_zAV9y4WMzv106yrSP"
             },
             16000: {
                 2: "", # TODO

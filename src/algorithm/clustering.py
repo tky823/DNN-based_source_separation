@@ -42,6 +42,13 @@ class KMeansBase(nn.Module):
         return cluster_ids
 
     def _init_kmeans(self, data):
+        """
+        Args:
+            data: (batch_size, num_samples, num_features)
+        Returns:
+            cluster_ids: (batch_size, num_samples)
+            centroids: (batch_size, K, num_features)
+        """
         K = self.K
         batch_size, num_samples, num_features = data.size()
 
@@ -50,9 +57,11 @@ class KMeansBase(nn.Module):
         else:
             centroid_ids = _init_centroids_random(data, K=K) # (batch_size, K)
         
-        centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
+        shift = torch.arange(0, K * batch_size, K).long().to(centroid_ids.device) # (batch_size,)
+        centroid_ids = centroid_ids + shift.unsqueeze(dim=1)
+        flatten_centroid_ids = centroid_ids.view(batch_size * K) # (batch_size * K)
         flatten_data = data.view(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
-        flatten_centroids = flatten_data[centroid_ids]
+        flatten_centroids = flatten_data[flatten_centroid_ids]
         centroids = flatten_centroids.view(batch_size, K, num_features) # (batch_size, K, num_features)
         
         distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
@@ -110,7 +119,7 @@ class KMeans(KMeansBase):
             self.cluster_ids, self.centroids = cluster_ids, centroids
 
         return self.cluster_ids
-        
+
     def update_once(self, data, cluster_ids=None, centroids=None):
         """
         Args:
@@ -158,7 +167,124 @@ class KMeans(KMeansBase):
 
         return cluster_ids
 
+"""
+Spherical KMeans algorithm
+    Reference: "Efficient clustering of very large document collections"
+    See https://link.springer.com/chapter/10.1007/978-1-4615-1733-7_20
+"""
+
+class SphericalKMeans(KMeansBase):
+    def __init__(self, K=2, init_centroids='kmeans++'):
+        """
+        Args:
+            K <int>: number of clusters
+        """
+        super().__init__(K=K, init_centroids=init_centroids)
+
+    def forward(self, data, iteration=None):
+        """
+        Args:
+            data <torch.Tensor>: (batch_size, num_samples, num_features) or (num_samples, num_features)
+        Returns:
+            cluster_ids <torch.Tensor>: (batch_size, num_samples) or (num_samples,)
+        """
+        n_dims = data.dim()
+
+        if n_dims == 2:
+            data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
+        
+        normalized_data = data / torch.norm(data, dim=2, keepdim=True)
+        
+        if self.training:
+            if self.cluster_ids is None or self.centroids is None:
+                cluster_ids, centroids = self._init_kmeans(normalized_data)
+                self.cluster_ids, self.centroids = cluster_ids, centroids
+            
+            if iteration is not None:
+                for idx in range(iteration):
+                    self.cluster_ids, self.centroids = self.update_once(normalized_data, cluster_ids=self.cluster_ids, centroids=self.centroids)
+            else:
+                while True:
+                    cluster_ids, centroids = self.update_once(normalized_data, cluster_ids=self.cluster_ids, centroids=self.centroids)
+                    distance = _euclid_distance(self.centroids, centroids, dim=-1)
+                    distance = distance.mean().item()
+
+                    self.cluster_ids, self.centroids = cluster_ids, centroids
+
+                    if distance == 0:
+                        break
+        else:
+            cluster_ids = self.infer(normalized_data)
+            centroids = self.centroids
+        
+        if n_dims == 2:
+            cluster_ids = cluster_ids.squeeze(dim=0) # (num_samples,)
+            centroids = centroids.squeeze(dim=0) # (K, num_features)
+
+            self.cluster_ids, self.centroids = cluster_ids, centroids
+
+        return self.cluster_ids
+    
+    def update_once(self, normalized_data, cluster_ids=None, centroids=None):
+        """
+        Args:
+            normalized_data: (batch_size, num_samples, num_features)
+            cluster_ids: (batch_size, num_samples)
+            centroids: (batch_size, K, num_features)
+        Returns:
+            cluster_ids: (batch_size, num_samples)
+            centroids: (batch_size, K, num_features)
+        """
+        K = self.K
+        mask = torch.eye(K)[cluster_ids] # (batch_size, num_samples, K)
+        mask = mask.to(normalized_data.device)
+
+        """
+        1. Calculate centroids
+        """
+        masked_data = mask.unsqueeze(dim=3) * normalized_data.unsqueeze(dim=2) # (batch_size, num_samples, K, num_features)
+        pseudo_centroids = masked_data.sum(dim=1) # (batch_size, K, num_features)
+        denominator = mask.sum(dim=1).unsqueeze(dim=2) # (batch_size, K, 1)
+        centroids = pseudo_centroids / denominator # (batch_size, K, num_features)
+        centroids = centroids / torch.norm(centroids, dim=2, keepdim=True)
+        
+        """
+        2. Put labels based on distance
+        """
+        distance = _neg_dot_product(normalized_data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
+        cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
+    
+        return cluster_ids, centroids
+
+    def infer(self, normalized_data):
+        """
+        Args:
+            normalized_data <torch.Tensor>: (batch_size, num_samples, num_features)
+        Returns:
+            cluster_ids <torch.Tensor>: (batch_size, num_samples)
+        """
+        centroids = self.centroids
+
+        if centroids.dim() == 2:
+            centroids = centroids.unsqueeze(dim=0) # Add batch dimension
+        
+        distance = _neg_dot_product(normalized_data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
+        cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
+
         return cluster_ids
+
+    def _init_kmeans(self, normalized_data):
+        """
+        Args:
+            normalized_data: (batch_size, num_samples, num_features)
+        Returns:
+            cluster_ids: (batch_size, num_samples)
+            centroids: (batch_size, K, num_features)
+        """
+        cluster_ids, centroids = super()._init_kmeans(normalized_data)
+        centroids = centroids / torch.norm(centroids, dim=2, keepdim=True)
+
+        return cluster_ids, centroids
 
 class GMMCluteringBase(nn.Module):
     def __init__(self, K=2, init_centroids='kmeans++', init_kmeans=True, diag_cov=False, tol=1e-5, eps=EPS):
@@ -223,10 +349,12 @@ class GMMCluteringBase(nn.Module):
                 centroid_ids = _init_kmeans_pp(data, K=K) # (batch_size, K)
             else:
                 centroid_ids = _init_centroids_random(data, K=K) # (batch_size, K)
-
-            centroid_ids  = centroid_ids.view(batch_size * K) # (batch_size * K)
+            
+            shift = torch.arange(0, K * batch_size, K).long().to(centroid_ids.device) # (batch_size,)
+            centroid_ids = centroid_ids + shift.unsqueeze(dim=1)
+            flatten_centroid_ids = centroid_ids.view(batch_size * K) # (batch_size * K)
             flatten_data = data.view(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
-            flatten_centroids = flatten_data[centroid_ids]
+            flatten_centroids = flatten_data[flatten_centroid_ids]
             centroids = flatten_centroids.view(batch_size, K, num_features) # (batch_size, K, num_features)
         
         cov_matrix, mix_coeff = torch.eye(num_features), torch.ones(K) / K # (num_features, num_features), (K,)
@@ -405,6 +533,9 @@ class GMMClustering(GMMCluteringBase):
 def _euclid_distance(x, y, dim=-1):
     return torch.norm(x - y, dim=dim)
 
+def _neg_dot_product(x, y, dim=-1):
+    return - torch.sum(x * y, dim=dim)
+
 def _init_centroids_random(data, K=2):
     """
     Args:
@@ -432,7 +563,7 @@ def _init_kmeans_pp(data, K=2, compute_distance=_euclid_distance):
     Returns:
         centroid_ids <torch.LongTensor>: (batch_size, K)
     """
-    _, num_samples, _ = data.size()
+    num_samples = data.size(1)
 
     centroid_ids = []
 
@@ -442,11 +573,10 @@ def _init_kmeans_pp(data, K=2, compute_distance=_euclid_distance):
 
         for _ in range(K - 1):
             centroids = _data[_centroid_ids] # (num_samples, num_features)
-
             distance = compute_distance(_data.unsqueeze(dim=1), centroids, dim=2) # (num_samples, K)
             distance, _ = torch.min(distance, dim=1)
             weights = distance / torch.sum(distance)
-            _centroid_id = torch.multinomial(weights, 1) # equals to categorical distribution.
+            _centroid_id = torch.multinomial(weights, 1) # Equals to categorical distribution.
             _centroid_ids = torch.cat([_centroid_ids, _centroid_id], dim=0)
         
         centroid_ids.append(_centroid_ids)
@@ -554,6 +684,53 @@ def _test_kmeans():
         plt.savefig("data/KMeans/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
         plt.close()
 
+def _test_spherical_kmeans():
+    seed = 111
+    torch.manual_seed(seed)
+
+    colors = ["red", "blue", "green", "orange", "lightblue", "pink"]
+    K = len(colors)
+    N = 150
+
+    loc = [[0, 0], [1, 1]]
+    covariance_matrix = [[[1, 0], [0, 1]], [[2, -0.5], [-0.5, 2]]]
+    data = []
+
+    for _loc, _covariance_matrix in zip(loc, covariance_matrix):
+        _loc = torch.tensor(_loc, dtype=float)
+        _covariance_matrix = torch.tensor(_covariance_matrix, dtype=float)
+        _sampler = torch.distributions.multivariate_normal.MultivariateNormal(_loc, covariance_matrix=_covariance_matrix)
+        _data = _sampler.sample((N,))
+        data.append(_data)
+    
+    data = torch.stack(data, dim=0)
+
+    for batch_idx, _ in enumerate(data):
+        os.makedirs("data/SphericalKMeans/None/{}".format(batch_idx + 1), exist_ok=True)
+
+    for batch_idx, _data in enumerate(data):
+        plt.figure()
+        x, y = torch.unbind(_data, dim=-1)
+        plt.scatter(x, y, color='black')
+        plt.savefig("data/SphericalKMeans/None/{}/faithful-0.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.close()
+
+    kmeans = SphericalKMeans(K=K)
+    cluster_ids = kmeans(data) # (batch_size,)
+
+    for batch_idx, (_data, _cluster_ids, _centroids) in enumerate(zip(data, cluster_ids, kmeans.centroids)):
+        plt.figure()
+
+        for cluster_id in range(K):
+            indices, = torch.nonzero(_cluster_ids == cluster_id, as_tuple=True)
+            x, y = torch.unbind(_data[indices], dim=-1)
+            plt.scatter(x, y, color=colors[cluster_id])
+        
+        x, y = torch.unbind(_centroids, dim=-1)
+        plt.scatter(x, y, marker="^", s=50, color="black")
+        plt.savefig("data/SphericalKMeans/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.close()
+
 def _test_gmm_clustering():
     K = 2
     seed = 111
@@ -605,6 +782,10 @@ if __name__ == '__main__':
 
     print("KMeans")
     _test_kmeans()
+    print()
+
+    print("Spehrical KMeans")
+    _test_spherical_kmeans()
     print()
 
     print("GMM clusteing")
