@@ -26,6 +26,7 @@ class AffinityLoss(nn.Module):
         """
         eps = self.eps
         V, Y = input, target
+
         if binary_mask is not None:
             V, Y = binary_mask.unsqueeze(dim=-1) * V, binary_mask.unsqueeze(dim=-1) * Y
         
@@ -40,7 +41,7 @@ class AffinityLoss(nn.Module):
         VDY = torch.bmm(VD, Y) # (batch_size, embed_dim, embed_dim2)
 
         loss = torch.sum(VDV**2, dim=(1, 2)) + torch.sum(YDY**2, dim=(1, 2)) - 2 * torch.sum(VDY**2, dim=(1, 2)) # (batch_size,)
-        loss = loss / binary_mask.sum(dim=1)
+        # TODO: divide by binary_mask.sum(dim=1) ?
         
         if batch_mean:
             loss = loss.mean(dim=0) # ()
