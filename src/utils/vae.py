@@ -3,7 +3,7 @@ import threading
 
 import torch
 import torch.nn as nn
-from torch.nn.parallel import get_a_var
+from torch.nn.parallel.parallel_apply import get_a_var
 from torch.cuda._utils import _get_device_index
 from torch.cuda.amp import autocast
 from torch._utils import ExceptionWrapper
