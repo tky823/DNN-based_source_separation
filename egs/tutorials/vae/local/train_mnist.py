@@ -8,6 +8,7 @@ import torch
 import torchvision
 
 from utils.utils import set_seed
+from utils.vae import DataParallelWrapper
 from adhoc_driver import Trainer
 from adhoc_utils import choose_vae
 
@@ -55,6 +56,7 @@ def main(args):
     
     if torch.cuda.is_available():
         model.cuda()
+        model = DataParallelWrapper(model)
         print("Use CUDA")
     else:
         print("Not use CUDA")
