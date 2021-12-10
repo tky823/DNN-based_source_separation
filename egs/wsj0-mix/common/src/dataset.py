@@ -426,6 +426,35 @@ def test_collate_fn(batch):
     
     return batched_mixture, batched_sources, batched_segment_ID
 
+class IdealMaskSpectrogramTestDataLoader(torch.utils.data.DataLoader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
+        
+        self.collate_fn = ideal_mask_spectrogram_test_collate_fn
+
+def ideal_mask_spectrogram_test_collate_fn(batch):
+    batched_mixture, batched_sources, batched_ideal_mask, batched_weight_threshold = [], [], [], []
+    batched_T = []
+    batched_segment_ID = []
+
+    for mixture, sources, ideal_mask, weight_threshold, T, segmend_ID in batch:
+        batched_mixture.append(mixture)
+        batched_sources.append(sources)
+        batched_ideal_mask.append(ideal_mask)
+        batched_weight_threshold.append(weight_threshold)
+
+        batched_T.append(T)
+        batched_segment_ID.append(segmend_ID)
+    
+    batched_mixture = torch.stack(batched_mixture, dim=0)
+    batched_sources = torch.stack(batched_sources, dim=0)
+    batched_ideal_mask = torch.stack(batched_ideal_mask, dim=0)
+    batched_weight_threshold = torch.stack(batched_weight_threshold, dim=0)
+    
+    return batched_mixture, batched_sources, batched_ideal_mask, batched_weight_threshold, batched_T, batched_segment_ID
+
 class AttractorTestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -458,7 +487,6 @@ def attractor_test_collate_fn(batch):
 """
 Dataset for unknown number of sources.
 """
-
 class MixedNumberSourcesWaveDataset(WSJ0Dataset):
     def __init__(self, wav_root, list_path, samples=32000, overlap=None, max_n_sources=3):
         super().__init__(wav_root, list_path)

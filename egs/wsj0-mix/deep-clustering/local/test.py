@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
-from dataset import IdealMaskSpectrogramTestDataset, TestDataLoader
+from dataset import IdealMaskSpectrogramTestDataset, IdealMaskSpectrogramTestDataLoader
 from adhoc_driver import AdhocTester
 from models.deep_clustering import DeepEmbedding
 from criterion.deep_clustering import AffinityLoss
@@ -41,7 +41,7 @@ def main(args):
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     args.n_bins = args.n_fft // 2 + 1
-    loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
+    loader = IdealMaskSpectrogramTestDataLoader(test_dataset, batch_size=1, shuffle=False)
     model = DeepEmbedding.build_model(args.model_path)
     
     print(model)
