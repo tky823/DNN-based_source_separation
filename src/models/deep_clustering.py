@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from utils.model import choose_rnn
+from transforms.stft import stft, istft
 
 EPS = 1e-12
 
@@ -171,6 +172,77 @@ class DeepEmbedding(nn.Module):
                 
         return _num_parameters
 
+class DeepEmbeddingTimeDomainWrapper(nn.Module):
+    def __init__(self, base_model: DeepEmbedding, n_fft, hop_length=None, window_fn='hann', eps=EPS):
+        super().__init__()
+
+        self.base_model = base_model
+
+        if hop_length is None:
+            hop_length = n_fft // 4
+        
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
+        self.register_buffer("window", window)
+
+        self.eps = eps
+    
+    def forward(self, input, threshold=None, n_sources=None, iter_clustering=None):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, 1, T)
+            threshold <float>: threshold [dB]
+            n_sources <int>: Number of sources
+            iter_clustering <int>: Number of iteration in KMeans
+        Returns:
+            output <torch.Tensor>: (batch_size, n_sources, T)
+        """
+        assert input.dim() == 3, "input is expected 3D input."
+
+        T = input.size(-1)
+
+        mixture_spectrogram = stft(input, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
+        mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
+
+        batch_size, _, n_bins, n_frames = mixture_spectrogram.size()
+
+        if threshold is not None:
+            log_amplitude = 20 * torch.log10(mixture_amplitude + self.eps)
+            max_log_amplitude = torch.max(log_amplitude)
+            threshold = 10**((max_log_amplitude - threshold) / 20)
+            threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
+        else:
+            threshold_weight = None
+        
+        latent = self.model(mixture_amplitude)
+        latent = latent.view(batch_size, n_bins * n_frames, latent.size(-1))
+
+        if threshold_weight is not None:
+            assert batch_size == 1, "KMeans is expected same number of samples among all batches, so if threshold_weight is given, batch_size should be 1."
+
+            salient_indices, = torch.nonzero(threshold_weight.flatten(), as_tuple=True)
+            latent_salient = latent[salient_indices]
+
+            kmeans = KMeans(K=n_sources)
+            kmeans.train()
+            _ = kmeans(latent_salient)
+
+            kmeans.eval()
+            cluster_ids = kmeans(latent, iteration=iter_clustering) # (n_bins * n_frames,)
+        else:
+            kmeans = KMeans(K=n_sources)
+            kmeans.train()
+            cluster_ids = kmeans(latent, iteration=iter_clustering) # (batch_size, n_bins * n_frames)
+
+        cluster_ids = cluster_ids.view(batch_size, n_bins, n_frames) # (batch_size, n_bins, n_frames)
+        mask = torch.eye(n_sources)[cluster_ids] # (batch_size, n_bins, n_frames, n_sources)
+        mask = mask.permute(0, 3, 1, 2) # (batch_size, n_sources, n_bins, n_frames)
+        estimated_amplitude = mask * mixture_amplitude
+        estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
+        output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
+
+        return output
+
 class DeepEmbedding_pp(nn.Module):
     def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=4, enh_hidden_channels=600, enh_num_layers=2, causal=False, rnn_type='lstm', eps=EPS, **kwargs):
         super().__init__()
@@ -209,7 +281,7 @@ class DeepEmbedding_pp(nn.Module):
         x = self.fc(x) # (batch_size, n_frames, n_bins * embed_dim)
         x = x.view(batch_size, n_frames, n_bins, embed_dim)
         x = x.permute(0, 3, 2, 1).contiguous() # (batch_size, embed_dim, n_bins, n_frames)
-        norm = torch.sum(x**2, dim=1, keepdim=True)
+        norm = torch.linalg.vector_norm(x, dim=-1, keepdim=True)
         x = x / (norm + eps)
         output = self.embed_nonlinear(x)
 
@@ -340,13 +412,11 @@ def _test_deep_embedding():
     kmeans.train()
     cluster_ids = kmeans(output)
 
-
 def _test_chimeranet():
     pass
 
 if __name__ == '__main__':
     from utils.audio import build_window
-    from transforms.stft import stft
     from algorithm.clustering import KMeans
     from algorithm.frequency_mask import compute_ideal_binary_mask
     from criterion.deep_clustering import AffinityLoss

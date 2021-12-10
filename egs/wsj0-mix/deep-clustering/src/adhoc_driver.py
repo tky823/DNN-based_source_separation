@@ -223,12 +223,10 @@ class AdhocTrainer(TrainerBase):
         torch.save(config, model_path)
 
 class AdhocTester(TesterBase):
-    def __init__(self, model, loader, metrics, args):
+    def __init__(self, model, loader, criterion, metrics, args):
         self.loader = loader
-        
         self.model = model
-        
-        self.metrics = metrics
+        self.criterion, self.metrics = criterion, metrics
         
         self._reset(args)
     
@@ -240,12 +238,15 @@ class AdhocTester(TesterBase):
         self.n_fft, self.hop_length = args.n_fft, args.hop_length
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
+
+        self.iter_clustering = args.iter_clustering
     
     def run(self):
         self.model.eval()
 
         n_sources = self.n_sources
-        
+
+        test_loss = 0
         test_sdr_improvement = 0
         test_sir_improvement = 0
         test_sar = 0
@@ -282,13 +283,15 @@ class AdhocTester(TesterBase):
                     ideal_mask = ideal_mask.cuda()
                     threshold_weight = threshold_weight.cuda()
                 
-                mixture_amplitude = torch.abs(mixture) # (1, 1, n_bins, n_frames)
+                batch_size, _, n_bins, n_frames = mixture.size()
                 
+                mixture_amplitude = torch.abs(mixture) # (1, 1, n_bins, n_frames)
                 latent = self.model(mixture_amplitude)
-
                 latent = latent.view(-1, latent.size(-1))
 
                 if threshold_weight is not None:
+                    assert batch_size == 1, "KMeans is expected same number of samples among all batches, so if threshold_weight is given, batch_size should be 1."
+                    
                     salient_indices, = torch.nonzero(threshold_weight.flatten(), as_tuple=True)
                     latent_salient = latent[salient_indices]
 
@@ -302,10 +305,9 @@ class AdhocTester(TesterBase):
                     kmeans.train()
                     cluster_ids = kmeans(latent)
                 
-                cluster_ids = cluster_ids.view(*threshold_weight.size()) # (1, n_bins, n_frames)
+                cluster_ids = cluster_ids.view(1, n_bins, n_frames) # (1, n_bins, n_frames)
                 mask = torch.eye(n_sources)[cluster_ids] # (1, n_bins, n_frames, n_sources)
                 mask = mask.permute(0, 3, 1, 2) # (1, n_sources, n_bins, n_frames)
-
                 estimated_sources = mask * mixture
                 
                 mixture = mixture[0].cpu()
@@ -408,6 +410,7 @@ class AdhocTester(TesterBase):
                 for key, result in results.items():
                     test_results[key] += result
         
+        test_loss /= n_test
         test_sdr_improvement /= n_test
         test_sir_improvement /= n_test
         test_sar /= n_test
