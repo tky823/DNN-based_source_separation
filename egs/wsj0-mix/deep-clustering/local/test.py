@@ -11,6 +11,7 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, IdealMaskSpectrogramTestDataLoader
 from adhoc_driver import AdhocTester
 from models.deep_clustering import DeepEmbedding
+from criterion.pit import PIT1d
 from criterion.deep_clustering import AffinityLoss
 from criterion.sdr import NegSISDR
 from adhoc_criterion import Metrics, AffinityLossWrapper
@@ -65,7 +66,8 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
 
     metrics = OrderedDict()
-    metrics['SISDR'] = NegSISDR()
+    metric = NegSISDR()
+    metrics['SISDR'] = PIT1d(metric, n_sources=args.n_sources)
     metrics = Metrics(metrics)
 
     if args.iter_clustering < 0:
