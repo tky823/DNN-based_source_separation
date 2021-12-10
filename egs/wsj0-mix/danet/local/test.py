@@ -12,7 +12,8 @@ from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
 from models.danet import DANet
 from criterion.pit import PIT2d
-from adhoc_criterion import SquaredError, PITNegSISDR, Metrics
+from criterion.sdr import NegSISDR
+from adhoc_criterion import SquaredError, Metrics
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet")
 
@@ -66,7 +67,7 @@ def main(args):
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
     metrics = OrderedDict()
-    metrics['SISDR'] = PITNegSISDR(n_sources=args.n_sources)
+    metrics['SISDR'] = NegSISDR()
     metrics = Metrics(metrics)
 
     if args.iter_clustering < 0:

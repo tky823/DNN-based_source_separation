@@ -2,9 +2,6 @@ from collections import OrderedDict
 
 import torch.nn as nn
 
-from criterion.pit import PIT
-from criterion.sdr import NegSISDR
-
 EPS = 1e-12
 
 class AffinityLossWrapper(nn.Module):
@@ -12,7 +9,7 @@ class AffinityLossWrapper(nn.Module):
         super().__init__()
 
         self.criterion = criterion
-        
+
     def forward(self, input, target, binary_mask=None, batch_mean=True):
         """
         Args:
@@ -31,18 +28,6 @@ class AffinityLossWrapper(nn.Module):
             binary_mask = binary_mask.view(batch_size, n_bins * n_frames)
 
         loss = self.criterion(input, target, binary_mask=binary_mask, batch_mean=batch_mean)
-        
-        return loss
-
-class PITNegSISDR(nn.Module):
-    def __init__(self, n_sources):
-        super().__init__()
-
-        sisdr = NegSISDR()
-        self.pit_sisdr = PIT(sisdr, n_sources=n_sources)
-
-    def forward(self, *args, **kwargs):
-        loss, _ = self.pit_sisdr(*args, **kwargs)
 
         return loss
 
@@ -52,9 +37,9 @@ class Metrics(nn.Module):
 
         if not isinstance(metrics, nn.ModuleDict):
             metrics = nn.ModuleDict(metrics)
-        
+
         self.metrics = metrics
-    
+
     def forward(self, mixture, estimated_sources, sources, batch_mean=True):
         results = OrderedDict()
 
@@ -62,11 +47,11 @@ class Metrics(nn.Module):
             loss_mixture = metric(mixture, sources, batch_mean=batch_mean)
             loss = metric(estimated_sources, sources, batch_mean=batch_mean)
             results[key] = loss_mixture - loss
-        
+
         return results
-    
+
     def keys(self):
         return self.metrics.keys()
-    
+
     def items(self):
         return self.metrics.items()
