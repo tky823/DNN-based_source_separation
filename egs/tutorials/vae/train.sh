@@ -22,6 +22,7 @@ overwrite=0
 seed=42
 
 . ./path.sh
+. parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/latent${latent_dim}_L${L}_H${H}_R${R}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
