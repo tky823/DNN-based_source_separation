@@ -231,7 +231,26 @@ class Trainer:
 
                     save_path = os.path.join(save_dir, "{}.png".format(epoch + 1))
                     output.save(save_path)
-        
+            
+            # Random image
+            latent_dim = self.model.latent_dim
+            latent = torch.randn((self.loader.batch_size, 1, latent_dim)) # (batch_size, num_samples, latent_dim), where num_samples = 1.
+
+            if self.use_cuda:
+                latent = latent.cuda()
+
+            output = self.model.decoder(latent) # (batch_size, num_samples, in_channels)
+
+            for idx, _output in enumerate(output):
+                _output = _output.cpu().view(1, 28, 28)
+                _output = torchvision.transforms.functional.to_pil_image(_output)
+
+                save_dir = os.path.join(self.sample_dir, "random-{}".format(idx + 1))
+                os.makedirs(save_dir, exist_ok=True)
+
+                save_path = os.path.join(save_dir, "{}.png".format(epoch + 1))
+                _output.save(save_path)
+
         valid_loss /= n_valid
         valid_kl_loss /= n_valid
         valid_reconstruction_loss /= n_valid
