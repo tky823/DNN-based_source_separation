@@ -87,20 +87,20 @@ class Trainer:
             self.no_improvement = 0
     
     def save_model(self, save_path, epoch=0):
-        package = {}
+        config = {}
 
-        package['epoch'] = epoch + 1
+        config['epoch'] = epoch + 1
 
-        package['state_dict'] = self.model.state_dict()
-        package['optim_dict'] = self.optimizer.state_dict()
+        config['state_dict'] = self.model.state_dict()
+        config['optim_dict'] = self.optimizer.state_dict()
 
-        package['train_loss'] = self.train_loss
-        package['valid_loss'] = self.valid_loss
-        package['best_loss'] = self.best_loss
+        config['train_loss'] = self.train_loss
+        config['valid_loss'] = self.valid_loss
+        config['best_loss'] = self.best_loss
 
-        package['no_improvement'] = self.no_improvement
+        config['no_improvement'] = self.no_improvement
         
-        torch.save(package, save_path)
+        torch.save(config, save_path)
         
     def run(self):
         for epoch in range(self.epochs):
@@ -131,7 +131,7 @@ class Trainer:
             self.prev_loss = valid_loss
             
             model_path = os.path.join(self.model_dir, "last.pth")
-            self.save_model(epoch, model_path)
+            self.save_model(model_path, epoch=epoch)
             
             for key in self.criterions:
                 save_path = os.path.join(self.loss_dir, "{}.png".format(key))
