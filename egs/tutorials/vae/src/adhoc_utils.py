@@ -19,7 +19,7 @@ def draw_loss_curve(train_loss, valid_loss=None, save_path="./loss.png"):
             valid_loss = valid_loss.numpy()
         plt.plot(epochs, valid_loss, label="valid")
 
-    plt.yaxis("log")
+    plt.yscale("log")
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.legend()
