@@ -107,7 +107,7 @@ class Trainer:
         for epoch in range(self.epochs):
             train_loss, valid_loss = self.run_one_epoch(epoch)
 
-            print("[Epoch {}/{}] Train Lower Bound:{:.5f}, (KL: {:.5f}, Reconstruction: {:.5f}), Valid Lower Bound: {:.5f} (KL: {:.5f}, Reconstruction: {:.5f})".format(epoch+1, self.epochs, train_loss["loss"], train_loss["kl"], train_loss["reconstrction"], valid_loss["loss"], valid_loss["kl"], valid_loss["reconstrction"]), flush=True)
+            print("[Epoch {}/{}] Train Lower Bound:{:.5f}, (KL: {:.5f}, Reconstruction: {:.5f}), Valid Lower Bound: {:.5f} (KL: {:.5f}, Reconstruction: {:.5f})".format(epoch+1, self.epochs, train_loss["loss"], train_loss["kl"], train_loss["reconstruction"], valid_loss["loss"], valid_loss["kl"], valid_loss["reconstruction"]), flush=True)
 
             for key, item in train_loss.items():
                 self.train_loss[key][epoch] = item
