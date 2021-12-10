@@ -4,6 +4,7 @@ exp_dir="./exp"
 continue_from=""
 tag=""
 
+dataset_root="../../../dataset"
 config_path="./config/baseline.yaml"
 
 latent_dim=10
@@ -37,6 +38,7 @@ loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
 
 train.py \
+--dataset_root "${dataset_root}" \
 --config_path "${config_path}" \
 --latent_dim ${latent_dim} \
 --hidden_channels ${H} \

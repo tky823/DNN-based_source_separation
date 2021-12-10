@@ -13,6 +13,7 @@ from adhoc_utils import choose_vae
 
 parser = argparse.ArgumentParser("Training of VAE")
 
+parser.add_argument("--dataset_root", type=str, default="../../../dataset", help="Path to dataset root")
 parser.add_argument("--config_path", type=str, default=None, help="Path to model configuration file")
 parser.add_argument("--latent_dim", type=int, default=None, help="Latent dimension")
 parser.add_argument("--hidden_channels", type=int, default=None, help="Number of hidden channels")
@@ -41,8 +42,8 @@ def main(args):
         torchvision.transforms.Lambda(lambda x: x.view(-1))
     ])
 
-    train_dataset = torchvision.datasets.MNIST("./data/MNIST", train=True, download=True, transform=transform)
-    valid_dataset = torchvision.datasets.MNIST("./data/MNIST", train=False, download=True, transform=transform)
+    train_dataset = torchvision.datasets.MNIST(args.dataset_root, train=True, download=True, transform=transform)
+    valid_dataset = torchvision.datasets.MNIST(args.dataset_root, train=False, download=True, transform=transform)
 
     loader = {}
     loader["train"] = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False)
