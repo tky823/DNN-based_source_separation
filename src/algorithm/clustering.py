@@ -2,6 +2,7 @@ import math
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 EPS = 1e-12
 
@@ -13,7 +14,7 @@ class KMeansBase(nn.Module):
         self.init_centroids = init_centroids
 
         self.cluster_ids, self.centroids = None, None
-    
+
     def forward(self, data):
         """
         Args:
@@ -25,14 +26,14 @@ class KMeansBase(nn.Module):
 
         if n_dims == 2:
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
-        
+
         if self.training:
             if self.cluster_ids is None or self.centroids is None:
                 cluster_ids, centroids = self._init_kmeans(data)
                 self.cluster_ids, self.centroids = cluster_ids, centroids
         else:
             raise NotImplementedError
-        
+
         if n_dims == 2:
             cluster_ids = cluster_ids.squeeze(dim=0) # (num_samples,)
             centroids = centroids.squeeze(dim=0) # (K, num_features)
@@ -56,14 +57,14 @@ class KMeansBase(nn.Module):
             centroid_ids = _init_kmeans_pp(data, K=K) # (batch_size, K)
         else:
             centroid_ids = _init_centroids_random(data, K=K) # (batch_size, K)
-        
+
         shift = torch.arange(0, K * batch_size, K).long().to(centroid_ids.device) # (batch_size,)
         centroid_ids = centroid_ids + shift.unsqueeze(dim=1)
         flatten_centroid_ids = centroid_ids.view(batch_size * K) # (batch_size * K)
         flatten_data = data.view(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
         flatten_centroids = flatten_data[flatten_centroid_ids]
         centroids = flatten_centroids.view(batch_size, K, num_features) # (batch_size, K, num_features)
-        
+
         distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
 
@@ -76,7 +77,7 @@ class KMeans(KMeansBase):
             K <int>: number of clusters
         """
         super().__init__(K=K, init_centroids=init_centroids)
-    
+
     def forward(self, data, iteration=None):
         """
         Args:
@@ -88,11 +89,11 @@ class KMeans(KMeansBase):
 
         if n_dims == 2:
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
-        
+
         if self.training:
             if self.cluster_ids is None or self.centroids is None:
                 self.cluster_ids, self.centroids = self._init_kmeans(data)
-            
+
             if iteration is not None:
                 for idx in range(iteration):
                     cluster_ids, centroids = self.update_once(data, cluster_ids=self.cluster_ids, centroids=self.centroids)
@@ -111,7 +112,7 @@ class KMeans(KMeansBase):
         else:
             cluster_ids = self.infer(data)
             centroids = self.centroids
-        
+
         if n_dims == 2:
             cluster_ids = cluster_ids.squeeze(dim=0) # (num_samples,)
             centroids = centroids.squeeze(dim=0) # (K, num_features)
@@ -131,8 +132,7 @@ class KMeans(KMeansBase):
             centroids: (batch_size, K, num_features)
         """
         K = self.K
-        mask = torch.eye(K)[cluster_ids] # (batch_size, num_samples, K)
-        mask = mask.to(data.device)
+        mask = F.one_hot(cluster_ids, num_classes=K) # (batch_size, num_samples, K)
 
         """
         1. Calculate centroids
@@ -141,13 +141,13 @@ class KMeans(KMeansBase):
         pseudo_centroids = masked_data.sum(dim=1) # (batch_size, K, num_features)
         denominator = mask.sum(dim=1).unsqueeze(dim=2) # (batch_size, K, 1)
         centroids = pseudo_centroids / denominator # (batch_size, K, num_features)
-        
+
         """
         2. Put labels based on distance
         """
         distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
-    
+
         return cluster_ids, centroids
 
     def infer(self, data):
@@ -161,18 +161,127 @@ class KMeans(KMeansBase):
 
         if centroids.dim() == 2:
             centroids = centroids.unsqueeze(dim=0) # Add batch dimension
-        
+
         distance = _euclid_distance(data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
 
         return cluster_ids
+
+class SoftKMeans(KMeansBase):
+    """
+    Reference: "Single-Channel Multi-Speaker Separation using Deep Clustering"
+    """
+    def __init__(self, K=2, alpha=1, init_centroids='kmeans++'):
+        """
+        Args:
+            K <int>: number of clusters
+            alpha <float>: Controls hardness of clustering
+        """
+        super().__init__(K=K, init_centroids=init_centroids)
+
+        del self.cluster_ids
+
+        self.cluster_probs = None
+        self.alpha = alpha
+
+    def forward(self, data, iteration=None):
+        """
+        Args:
+            data <torch.Tensor>: (batch_size, num_samples, num_features) or (num_samples, num_features)
+        Returns:
+            cluster_ids <torch.Tensor>: (batch_size, num_samples) or (num_samples,)
+        """
+        alpha = self.alpha
+        n_dims = data.dim()
+
+        if n_dims == 2:
+            data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
+
+        if self.training:
+            if self.cluster_probs is None or self.centroids is None:
+                _, centroids = self._init_kmeans(data)
+                distance = data.unsqueeze(dim=2) - centroids.unsqueeze(dim=1) # (batch_size, num_samples, K, num_features)
+                distance = torch.sum(distance**2, dim=3) # (batch_size, num_samples, K)
+                cluster_probs = F.softmax(- alpha * distance, dim=2) # responsibility (batch_size, num_samples, K)
+                self.cluster_probs, self.centroids = cluster_probs, centroids
+
+            if iteration is not None:
+                for idx in range(iteration):
+                    cluster_probs, centroids = self.update_once(data, cluster_probs=cluster_probs, centroids=self.centroids)
+
+                    self.centroids = centroids
+            else:
+                while True:
+                    cluster_probs, centroids = self.update_once(data, cluster_probs=cluster_probs, centroids=self.centroids)
+                    distance = _euclid_distance(self.centroids, centroids, dim=-1)
+                    distance = distance.mean().item()
+
+                    self.centroids = centroids
+
+                    if distance == 0:
+                        break
+        else:
+            cluster_probs = self.infer(data)
+            centroids = self.centroids
+
+        if n_dims == 2:
+            cluster_probs = cluster_probs.squeeze(dim=0) # (num_samples,)
+            centroids = centroids.squeeze(dim=0) # (K, num_features)
+
+            self.cluster_probs, self.centroids = cluster_probs, centroids
+
+        return self.cluster_probs
+
+    def update_once(self, data, cluster_probs=None, centroids=None):
+        """
+        Args:
+            data: (batch_size, num_samples, num_features)
+            cluster_probs: (batch_size, num_samples, K)
+            centroids: (batch_size, K, num_features)
+        Returns:
+            cluster_probs: (batch_size, num_samples, K)
+            centroids: (batch_size, K, num_features)
+        """
+        alpha = self.alpha
+
+        """
+        1. Calculate centroids
+        """
+        masked_data = cluster_probs.unsqueeze(dim=3) * data.unsqueeze(dim=2) # (batch_size, num_samples, K, num_features)
+        pseudo_centroids = masked_data.sum(dim=1) # (batch_size, K, num_features)
+        denominator = cluster_probs.sum(dim=1).unsqueeze(dim=2) # (batch_size, K, 1)
+        centroids = pseudo_centroids / denominator # (batch_size, K, num_features)
+        
+        distance = data.unsqueeze(dim=2) - centroids.unsqueeze(dim=1) # (batch_size, num_samples, K, num_features)
+        distance = torch.sum(distance**2, dim=3) # (batch_size, num_samples, K)
+        cluster_probs = F.softmax(- alpha * distance, dim=2) # responsibility (batch_size, num_samples, K)
+
+        return cluster_probs, centroids
+
+    def infer(self, data):
+        """
+        Args:
+            data <torch.Tensor>: (batch_size, num_samples, num_features)
+        Returns:
+            cluster_probs <torch.Tensor>: (batch_size, num_samples, K)
+        """
+        alpha = self.alpha
+        centroids = self.centroids
+
+        if centroids.dim() == 2:
+            centroids = centroids.unsqueeze(dim=0) # Add batch dimension
+
+        distance = data.unsqueeze(dim=2) - centroids.unsqueeze(dim=1) # (batch_size, num_samples, K, num_features)
+        distance = torch.sum(distance**2, dim=3) # (batch_size, num_samples, K)
+        cluster_probs = F.softmax(- alpha * distance, dim=2) # responsibility (batch_size, num_samples, K)
+
+        return cluster_probs
 
 """
 Spherical KMeans algorithm
     Reference: "Efficient clustering of very large document collections"
     See https://link.springer.com/chapter/10.1007/978-1-4615-1733-7_20
 """
-
 class SphericalKMeans(KMeansBase):
     def __init__(self, K=2, init_centroids='kmeans++'):
         """
@@ -192,14 +301,14 @@ class SphericalKMeans(KMeansBase):
 
         if n_dims == 2:
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
-        
+
         normalized_data = data / torch.norm(data, dim=2, keepdim=True)
-        
+
         if self.training:
             if self.cluster_ids is None or self.centroids is None:
                 cluster_ids, centroids = self._init_kmeans(normalized_data)
                 self.cluster_ids, self.centroids = cluster_ids, centroids
-            
+
             if iteration is not None:
                 for idx in range(iteration):
                     self.cluster_ids, self.centroids = self.update_once(normalized_data, cluster_ids=self.cluster_ids, centroids=self.centroids)
@@ -216,7 +325,7 @@ class SphericalKMeans(KMeansBase):
         else:
             cluster_ids = self.infer(normalized_data)
             centroids = self.centroids
-        
+
         if n_dims == 2:
             cluster_ids = cluster_ids.squeeze(dim=0) # (num_samples,)
             centroids = centroids.squeeze(dim=0) # (K, num_features)
@@ -224,7 +333,7 @@ class SphericalKMeans(KMeansBase):
             self.cluster_ids, self.centroids = cluster_ids, centroids
 
         return self.cluster_ids
-    
+
     def update_once(self, normalized_data, cluster_ids=None, centroids=None):
         """
         Args:
@@ -236,8 +345,7 @@ class SphericalKMeans(KMeansBase):
             centroids: (batch_size, K, num_features)
         """
         K = self.K
-        mask = torch.eye(K)[cluster_ids] # (batch_size, num_samples, K)
-        mask = mask.to(normalized_data.device)
+        mask = F.one_hot(cluster_ids, num_classes=K) # (batch_size, num_samples, K)
 
         """
         1. Calculate centroids
@@ -247,13 +355,13 @@ class SphericalKMeans(KMeansBase):
         denominator = mask.sum(dim=1).unsqueeze(dim=2) # (batch_size, K, 1)
         centroids = pseudo_centroids / denominator # (batch_size, K, num_features)
         centroids = centroids / torch.norm(centroids, dim=2, keepdim=True)
-        
+
         """
         2. Put labels based on distance
         """
         distance = _neg_dot_product(normalized_data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
-    
+
         return cluster_ids, centroids
 
     def infer(self, normalized_data):
@@ -267,7 +375,7 @@ class SphericalKMeans(KMeansBase):
 
         if centroids.dim() == 2:
             centroids = centroids.unsqueeze(dim=0) # Add batch dimension
-        
+
         distance = _neg_dot_product(normalized_data.unsqueeze(dim=2), centroids.unsqueeze(dim=1), dim=3) # (batch_size, num_samples, K)
         cluster_ids = torch.argmin(distance, dim=2) # (batch_size, num_samples)
 
@@ -673,7 +781,7 @@ def _test_kmeans():
     torch.manual_seed(seed)
 
     kmeans = KMeans(K=K)
-    _ = kmeans(data) # (batch_size, K), (batch_size, K, num_features)
+    _ = kmeans(data) # (batch_size, num_samples)
 
     for batch_idx, (_data, _centroids) in enumerate(zip(data, kmeans.centroids)):
         plt.figure()
@@ -682,6 +790,46 @@ def _test_kmeans():
         x, y = torch.unbind(_centroids, dim=-1)
         plt.scatter(x, y, color='red')
         plt.savefig("data/KMeans/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.close()
+
+def _test_soft_kmeans():
+    K = 2
+    seed = 111
+
+    df = pd.read_csv("data/faithful.csv")
+    x, y = torch.Tensor(df['waiting']).unsqueeze(dim=1), torch.Tensor(df['eruptions']).unsqueeze(dim=1)
+    data0 = torch.cat([x, y], dim=1)
+
+    mat = torch.Tensor([[1, -0.1], [-0.1, 0.8]])
+    data1 = torch.matmul(data0, mat)
+
+    data = torch.stack([data0, data1], dim=0)
+    mean = data.mean(dim=1, keepdim=True)
+    std = data.std(dim=1, keepdim=True)
+    data = (data - mean) / std
+
+    for batch_idx, _ in enumerate(data):
+        os.makedirs("data/SoftKMeans/None/{}".format(batch_idx + 1), exist_ok=True)
+
+    for batch_idx, _data in enumerate(data):
+        plt.figure()
+        x, y = torch.unbind(_data, dim=-1)
+        plt.scatter(x, y, color='black')
+        plt.savefig("data/SoftKMeans/None/{}/faithful-0.png".format(batch_idx + 1), bbox_inches='tight')
+        plt.close()
+
+    torch.manual_seed(seed)
+
+    kmeans = SoftKMeans(K=K)
+    _ = kmeans(data) # (batch_size, num_samples, K)
+
+    for batch_idx, (_data, _centroids) in enumerate(zip(data, kmeans.centroids)):
+        plt.figure()
+        x, y = torch.unbind(_data, dim=-1)
+        plt.scatter(x, y, color='black')
+        x, y = torch.unbind(_centroids, dim=-1)
+        plt.scatter(x, y, color='red')
+        plt.savefig("data/SoftKMeans/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
         plt.close()
 
 def _test_spherical_kmeans():
@@ -782,6 +930,10 @@ if __name__ == '__main__':
 
     print("KMeans")
     _test_kmeans()
+    print()
+
+    print("SoftKMeans")
+    _test_soft_kmeans()
     print()
 
     print("Spehrical KMeans")
