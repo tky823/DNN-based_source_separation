@@ -117,8 +117,8 @@ class Trainer:
             if valid_loss["loss"] < self.best_loss["loss"]:
                 self.best_loss = valid_loss
                 self.no_improvement = 0
-                save_path = os.path.join(self.save_dir, "best.pth")
-                self.save_model(save_path, epoch=epoch)
+                model_path = os.path.join(self.model_dir, "best.pth")
+                self.save_model(model_path, epoch=epoch)
             else:
                 self.no_improvement += 1
                 if self.no_improvement % 5 == 0:
