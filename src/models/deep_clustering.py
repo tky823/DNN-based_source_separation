@@ -3,7 +3,9 @@ import os
 import torch
 import torch.nn as nn
 
+from utils.audio import build_window
 from utils.model import choose_rnn
+from algorithm.clustering import KMeans
 from transforms.stft import stft, istft
 
 EPS = 1e-12
@@ -420,8 +422,6 @@ def _test_chimeranet():
     pass
 
 if __name__ == '__main__':
-    from utils.audio import build_window
-    from algorithm.clustering import KMeans
     from algorithm.frequency_mask import compute_ideal_binary_mask
     from criterion.deep_clustering import AffinityLoss
 
