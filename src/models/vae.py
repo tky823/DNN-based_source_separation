@@ -9,14 +9,14 @@ class VAE(nn.Module):
         self.latent_sampler = latent_sampler
         self.decoder = decoder
         
-    def forward(self, input, num_samples=1, return_params=False):
+    def forward(self, input, num_samples=1, return_params=False, **kwargs):
         """
         Args:
             input: (batch_size, *)
         Returns:
             output: (batch_size, num_samples, *)
         """
-        outputs = self.extract_latent(input, num_samples=num_samples)
+        outputs = self.extract_latent(input, num_samples=num_samples, **kwargs)
         output, latent = outputs[:2]
         params = output[2:]
         
@@ -25,7 +25,7 @@ class VAE(nn.Module):
         
         return output
     
-    def extract_latent(self, input, num_samples=1):
+    def extract_latent(self, input, num_samples=1, **kwargs):
         """
         Args:
             input: (batch_size, *)
@@ -37,7 +37,7 @@ class VAE(nn.Module):
         if type(params) is not tuple:
             params = (params,)
         
-        latent = self.latent_sampler(*params, num_samples=num_samples) # latent: (batch_size, num_samples, latent_dim)
+        latent = self.latent_sampler(*params, num_samples=num_samples, **kwargs) # latent: (batch_size, num_samples, latent_dim)
         output = self.decoder(latent)
         
         return output, latent, *params
@@ -113,7 +113,7 @@ class NormalLatentSampler(nn.Module):
         sample_shape = (batch_size, num_samples, latent_dim)
         epsilon = self.backend_sampler.sample(sample_shape)
         latent = mean + torch.sqrt(var) * epsilon
-            
+        
         return latent
 
 if __name__ == '__main__':

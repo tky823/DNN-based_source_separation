@@ -1,0 +1,5 @@
+name: "naive-normal"
+in_channels: 3
+hidden_channels: 200
+latent_dim: 40
+num_layers: 3
