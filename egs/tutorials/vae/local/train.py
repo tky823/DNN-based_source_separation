@@ -35,8 +35,6 @@ parser.add_argument("--seed", type=int, default=42, help="Random seed")
 def main(args):
     set_seed(args.seed)
     
-    args.in_channels = 28 * 28
-    
     # Preprocessing
     transform = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
