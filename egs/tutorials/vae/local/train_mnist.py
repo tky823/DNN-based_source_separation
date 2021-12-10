@@ -15,9 +15,6 @@ parser = argparse.ArgumentParser("Training of VAE")
 
 parser.add_argument("--dataset_root", type=str, default="../../../dataset", help="Path to dataset root")
 parser.add_argument("--config_path", type=str, default=None, help="Path to model configuration file")
-parser.add_argument("--latent_dim", type=int, default=None, help="Latent dimension")
-parser.add_argument("--hidden_channels", type=int, default=None, help="Number of hidden channels")
-parser.add_argument("--num_layers", type=int, default=None, help="Number of hidden layers")
 parser.add_argument("--num_samples", type=int, default=None, help="Number of samples")
 parser.add_argument("--optimizer", type=str, default="adam", choices=["sgd", "adam", "rmsprop"], help="Optimizer, [sgd, adam, rmsprop]")
 parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate. Default: 1e-3")
@@ -53,6 +50,8 @@ def main(args):
         kwargs = yaml.safe_load(f)
     model = choose_vae(**kwargs)
     print(model)
+
+    args.latent_dim = kwargs["latent_dim"]
     
     if torch.cuda.is_available():
         model.cuda()
@@ -79,5 +78,4 @@ def main(args):
 if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
-    
     main(args)

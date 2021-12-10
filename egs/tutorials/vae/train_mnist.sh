@@ -7,10 +7,7 @@ tag=""
 dataset_root="../../../dataset"
 config_path="./config/baseline_mnist.yaml"
 
-latent_dim=10
 L=1 # Number of samples
-H=200
-R=3
 
 optimizer="adam"
 lr=1e-3
@@ -28,7 +25,7 @@ seed=42
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/latent${latent_dim}_L${L}_H${H}_R${R}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -40,9 +37,6 @@ sample_dir="${save_dir}/sample"
 train_mnist.py \
 --dataset_root "${dataset_root}" \
 --config_path "${config_path}" \
---latent_dim ${latent_dim} \
---hidden_channels ${H} \
---num_layers ${R} \
 --num_samples ${L} \
 --optimizer ${optimizer} \
 --lr ${lr} \
