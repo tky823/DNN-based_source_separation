@@ -24,7 +24,7 @@ class Trainer:
         self.epochs = args.epochs
     
         self.kl_divergence = KLdivergence()
-        self.reconstruction = BinaryCrossEntropy(reduction="mean")
+        self.reconstruction = BinaryCrossEntropy(reduction="sum")
         
         # Loss
         self.criterions = ["loss", "kl", "reconstruction"]
@@ -115,6 +115,7 @@ class Trainer:
                     continue
                 s += "{}: {:.5e}, ".format(key, train_loss[key])
             
+            s = s[:-2]
             s += "), Valid Lower Bound:{:.5e}, (".format(valid_loss["loss"])
 
             for key in self.criterions:
@@ -122,6 +123,7 @@ class Trainer:
                     continue
                 s += "{}: {:.5e}, ".format(key, valid_loss[key])
 
+            s = s[:-2]
             s += ")"
             print(s, flush=True)
 
