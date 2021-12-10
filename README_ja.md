@@ -11,7 +11,8 @@ DNNによる音源分離（PyTorch実装）
 | :---: | :---: | :---: |
 | WaveNet | [WaveNet: A Generative Model for Raw Audio](https://arxiv.org/abs/1609.03499) | ✔ |
 | Wave-U-Net | [Wave-U-Net: A Multi-Scale Neural Network for End-to-End Audio Source Separation](https://arxiv.org/abs/1806.03185) |  |
-| Deep Clustering | [Deep Clustering: Discriminative Embeddings for Segmentation and Separation](https://arxiv.org/abs/1508.04306), [Single-Channel Multi-Speaker Separation using Deep Clustering](https://arxiv.org/abs/1607.02173) |  |
+| Deep Clustering | [Deep Clustering: Discriminative Embeddings for Segmentation and Separation](https://arxiv.org/abs/1508.04306) | ✔ |
+| Deep Clustering++ | [Single-Channel Multi-Speaker Separation using Deep Clustering](https://arxiv.org/abs/1607.02173) |  |
 | Chimera | [Alternative Objective Functions for Deep Clustering](https://www.merl.com/publications/docs/TR2018-005.pdf) |  |
 | DANet | [Deep Attractor Network for Single-microphone Apeaker Aeparation](https://arxiv.org/abs/1611.08930) | ✔ |
 | ADANet | [Speaker-independent Speech Separation with Deep Attractor Network](https://arxiv.org/abs/1707.03634) | ✔ |
@@ -65,24 +66,30 @@ DNNによる音源分離（PyTorch実装）
 ### 0. データセットの準備
 ```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
-. ./prepare_librispeech.sh --dataset_root <DATASET_DIR> --n_sources <#SPEAKERS>
+. ./prepare_librispeech.sh \
+--dataset_root <DATASET_DIR> \
+--n_sources <#SPEAKERS>
 ```
 
 ### 1. 学習
 ```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
-. ./train.sh --exp_dir <OUTPUT_DIR>
+. ./train.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 学習を途中から再開したい場合，
 ```sh
-. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
+. ./train.sh \
+--exp_dir <OUTPUT_DIR> \
+--continue_from <MODEL_PATH>
 ```
 
 ### 2. 評価
 ```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
-. ./test.sh --exp_dir <OUTPUT_DIR>
+. ./test.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. デモンストレーション
