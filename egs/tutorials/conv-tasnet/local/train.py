@@ -115,7 +115,7 @@ def main(args):
     
     trainer = Trainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
