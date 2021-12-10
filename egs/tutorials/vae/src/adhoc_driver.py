@@ -234,7 +234,7 @@ class Trainer:
             
             # Random image
             latent_dim = self.latent_dim
-            latent = torch.randn((self.loader.batch_size, 1, latent_dim)) # (batch_size, num_samples, latent_dim), where num_samples = 1.
+            latent = torch.randn((self.loader["valid"].batch_size, 1, latent_dim)) # (batch_size, num_samples, latent_dim), where num_samples = 1.
 
             if self.use_cuda:
                 latent = latent.cuda()
