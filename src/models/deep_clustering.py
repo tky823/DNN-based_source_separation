@@ -242,7 +242,7 @@ class DeepEmbeddingTimeDomainWrapper(nn.Module):
 
         cluster_ids = cluster_ids.view(batch_size, n_bins, n_frames) # (batch_size, n_bins, n_frames)
         mask = torch.eye(n_sources)[cluster_ids] # (batch_size, n_bins, n_frames, n_sources)
-        mask = mask.permute(0, 3, 1, 2) # (batch_size, n_sources, n_bins, n_frames)
+        mask = mask.permute(0, 3, 1, 2).contiguous() # (batch_size, n_sources, n_bins, n_frames)
         estimated_amplitude = mask * mixture_amplitude
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
         output = istft(estimated_spectrogram, self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
