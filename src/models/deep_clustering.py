@@ -226,6 +226,7 @@ class DeepEmbeddingTimeDomainWrapper(nn.Module):
         if threshold_weight is not None:
             assert batch_size == 1, "KMeans is expected same number of samples among all batches, so if threshold_weight is given, batch_size should be 1."
 
+            latent = latent.squeeze(dim=0) # (n_bins * n_frames, embed_dim)
             salient_indices, = torch.nonzero(threshold_weight.flatten(), as_tuple=True)
             latent_salient = latent[salient_indices]
 
