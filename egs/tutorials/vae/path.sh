@@ -1,4 +1,4 @@
 #!/usr/bin/bash
 
-export PATH="./local/:$PATH"
-export PYTHONPATH="./src:../common/src:../../src/:$PYTHONPATH"
+export PATH="../common/:./local/:$PATH"
+export PYTHONPATH="./src:../../src/:$PYTHONPATH"
