@@ -220,7 +220,7 @@ class DeepEmbeddingTimeDomainWrapper(nn.Module):
         else:
             threshold_weight = None
         
-        latent = self.model(mixture_amplitude)
+        latent = self.base_model(mixture_amplitude)
         latent = latent.view(batch_size, n_bins * n_frames, latent.size(-1))
 
         if threshold_weight is not None:
