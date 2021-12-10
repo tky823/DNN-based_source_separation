@@ -13,8 +13,7 @@ from adhoc_driver import AdhocTester
 from models.deep_clustering import DeepEmbedding
 from criterion.pit import PIT1d
 from criterion.deep_clustering import AffinityLoss
-from criterion.sdr import NegSISDR
-from adhoc_criterion import Metrics, AffinityLossWrapper
+from adhoc_criterion import AffinityLossWrapper, PITNegSISDR, Metrics
 
 parser = argparse.ArgumentParser(description="Evaluation of Deep Clustering")
 
@@ -66,8 +65,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
 
     metrics = OrderedDict()
-    metric = NegSISDR()
-    metrics['SISDR'] = PIT1d(metric, n_sources=args.n_sources)
+    metrics['SISDR'] = PITNegSISDR(n_sources=args.n_sources)
     metrics = Metrics(metrics)
 
     if args.iter_clustering < 0:
