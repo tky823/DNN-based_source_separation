@@ -2,6 +2,9 @@ from collections import OrderedDict
 
 import torch.nn as nn
 
+from criterion.pit import PIT
+from criterion.sdr import NegSISDR
+
 EPS = 1e-12
 
 class AffinityLossWrapper(nn.Module):
@@ -28,6 +31,18 @@ class AffinityLossWrapper(nn.Module):
             binary_mask = binary_mask.view(batch_size, n_bins * n_frames)
 
         loss = self.criterion(input, target, binary_mask=binary_mask, batch_mean=batch_mean)
+
+        return loss
+
+class PITNegSISDR(nn.Module):
+    def __init__(self, n_sources):
+        super().__init__()
+
+        sisdr = NegSISDR()
+        self.pit_sisdr = PIT(sisdr, n_sources=n_sources)
+
+    def forward(self, *args, **kwargs):
+        loss, _ = self.pit_sisdr(*args, **kwargs)
 
         return loss
 
