@@ -14,7 +14,7 @@ from adhoc_data_parallel import AdhocDataParallel
 from adhoc_driver import FixedAttractorComputer, FixedAttractorTester
 from models.danet import DANet, FixedAttractorDANet
 from criterion.pit import PIT2d
-from criterion.sdr import SISDR
+from criterion.sdr import NegSISDR
 from adhoc_criterion import Metrics, SquaredError
 
 parser = argparse.ArgumentParser(description="Evaluation of DANet using fixed attractor.")
@@ -104,7 +104,7 @@ def main(args):
         pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
         metrics = OrderedDict()
-        metrics['SISDR'] = SISDR()
+        metrics['SISDR'] = NegSISDR()
         metrics = Metrics(metrics)
 
         tester = FixedAttractorTester(model, loader, pit_criterion, metrics, args)

@@ -11,7 +11,7 @@ from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, AttractorTestDataLoader
 from adhoc_driver import AdhocTester
 from models.adanet import ADANet
-from criterion.sdr import SISDR
+from criterion.sdr import NegSISDR
 from criterion.pit import PIT2d
 from adhoc_criterion import Metrics, SquaredError
 
@@ -66,7 +66,7 @@ def main(args):
     pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
     metrics = OrderedDict()
-    metrics['SISDR'] = SISDR()
+    metrics['SISDR'] = NegSISDR()
     metrics = Metrics(metrics)
     
     tester = AdhocTester(model, loader, pit_criterion, metrics, args)
