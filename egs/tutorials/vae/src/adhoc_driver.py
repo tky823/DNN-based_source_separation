@@ -1,6 +1,7 @@
 import os
 
 import torch
+import torchvision
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
@@ -184,7 +185,7 @@ class Trainer:
         self.model.eval()
         
         with torch.no_grad():
-            for input, _ in self.loader['valid']:
+            for idx, (input, _) in enumerate(self.loader['valid']):
                 if torch.cuda.is_available():
                     input = input.cuda()
 
@@ -197,7 +198,22 @@ class Trainer:
                 valid_loss += loss.sum().item()
                 valid_kl_loss += kl_loss.sum().item()
                 valid_reconstruction_loss += reconstruction_loss.sum().item()
-        
+
+                if idx < 5:
+                    input = input[0].cpu().view(1, 28, 28)
+                    output = output[0, 0].cpu().view(1, 28, 28)
+                    input = torchvision.functional.to_pil_image(input)
+                    output = torchvision.functional.to_pil_image(output)
+                    
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
+                    os.makedirs(save_dir, exist_ok=True)
+
+                    save_path = os.path.join(save_dir, "input.png".format(epoch + 1))
+                    input.save(save_path)
+
+                    save_path = os.path.join(save_dir, "{}.png".format(epoch + 1))
+                    output.save(save_path)
+                    
         valid_loss /= n_valid
         valid_kl_loss /= n_valid
         valid_reconstruction_loss /= n_valid
