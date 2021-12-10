@@ -2,6 +2,9 @@ from collections import OrderedDict
 
 import torch.nn as nn
 
+from criterion.pit import PIT
+from criterion.sdr import NegSISDR
+
 class SquaredError(nn.Module):
     def __init__(self, sum_dim=None, mean_dim=None):
         super().__init__()
@@ -60,6 +63,18 @@ class SquaredError(nn.Module):
             _dims = _dims + mean_dim
         
         return _dims
+
+class PITNegSISDR(nn.Module):
+    def __init__(self, n_sources):
+        super().__init__()
+
+        sisdr = NegSISDR()
+        self.pit_sisdr = PIT(sisdr, n_sources=n_sources)
+    
+    def forward(self, *args, **kwargs):
+        loss, _ = self.pit_sisdr(*args, **kwargs)
+        
+        return loss
 
 class Metrics(nn.Module):
     def __init__(self, metrics):
