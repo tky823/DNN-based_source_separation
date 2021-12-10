@@ -18,8 +18,8 @@ class DataParallelWrapper(nn.DataParallel):
         except AttributeError:
             return getattr(self.module, name)
     
-    def parallel_apply(self, replicas, inputs, kwargs):
-        return parallel_apply(replicas, inputs, kwargs, self.device_ids[:len(replicas)])
+    def parallel_apply(self, replicas, inputs, kwargs, forward_fn="forward"):
+        return parallel_apply(replicas, inputs, kwargs, self.device_ids[:len(replicas)], forward_fn=forward_fn)
 
     def extract_latent(self, *inputs, **kwargs):
         with torch.autograd.profiler.record_function("DataParallelWrapper.extract_latent"):
@@ -44,7 +44,30 @@ class DataParallelWrapper(nn.DataParallel):
 
             return self.gather(outputs, self.output_device)
 
-def parallel_apply(modules, inputs, kwargs_tup=None, devices=None):
+    def decoder(self, *inputs, **kwargs):
+        with torch.autograd.profiler.record_function("DataParallelWrapper.decoder"):
+            if not self.device_ids:
+                return self.module.decoder(*inputs, **kwargs)
+
+            for t in chain(self.module.parameters(), self.module.buffers()):
+                if t.device != self.src_device_obj:
+                    raise RuntimeError("module must have its parameters and buffers on device {} (device_ids[0]) but found one of them on device: {}".format(self.src_device_obj, t.device))
+
+            inputs, kwargs = self.scatter(inputs, kwargs, self.device_ids)
+
+            if not inputs and not kwargs:
+                inputs = ((),)
+                kwargs = ({},)
+
+            if len(self.device_ids) == 1:
+                return self.module.decoder(*inputs[0], **kwargs[0])
+            
+            replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
+            outputs = self.parallel_apply(replicas, inputs, kwargs, forward_fn="decoder")
+
+            return self.gather(outputs, self.output_device)
+
+def parallel_apply(modules, inputs, kwargs_tup=None, devices=None, forward_fn="forward"):
     assert len(modules) == len(inputs)
     if kwargs_tup is not None:
         assert len(modules) == len(kwargs_tup)
@@ -68,7 +91,7 @@ def parallel_apply(modules, inputs, kwargs_tup=None, devices=None):
                 # this also avoids accidental slicing of `input` if it is a Tensor
                 if not isinstance(input, (list, tuple)):
                     input = (input,)
-                output = module.extract_latent(*input, **kwargs)
+                output = module.__getattr__(forward_fn)(*input, **kwargs)
             with lock:
                 results[i] = output
         except Exception:
