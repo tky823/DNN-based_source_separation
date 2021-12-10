@@ -333,7 +333,7 @@ class AdhocTester(TesterBase):
                 sdr_improvement = torch.mean(result_estimated[0] - result_mixed[0])
                 sir_improvement = torch.mean(result_estimated[1] - result_mixed[1])
                 sar = torch.mean(result_estimated[2])
-                perm_idx = result_mixed[3]
+                perm_idx = result_estimated[3]
 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
@@ -395,7 +395,7 @@ class AdhocTester(TesterBase):
 
                 pesq /= self.n_sources
 
-                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources.unsqueeze(dim=0), sources.unsqueeze(dim=0))
+                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources[perm_idx].unsqueeze(dim=0), sources.unsqueeze(dim=0))
 
                 s = "{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq)
                 for _, result in results.items():

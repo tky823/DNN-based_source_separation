@@ -360,7 +360,7 @@ class AdhocTester(TesterBase):
                     raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
 
                 estimated_sources_amplitude = self.model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=self.iter_clustering)
-                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
+                loss, _ = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
 
                 mixture = mixture[0].cpu()
@@ -372,7 +372,6 @@ class AdhocTester(TesterBase):
                 phase = torch.angle(mixture)
                 estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase) # (n_sources, n_bins, n_frames)
 
-                perm_idx = perm_idx[0] # (n_sources,)
                 T = T[0]  # ()
                 segment_IDs = segment_IDs[0] # (n_sources,)
                 mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # (T,)
@@ -392,6 +391,7 @@ class AdhocTester(TesterBase):
                 sdr_improvement = torch.mean(result_estimated[0] - result_mixed[0])
                 sir_improvement = torch.mean(result_estimated[1] - result_mixed[1])
                 sar = torch.mean(result_estimated[2])
+                perm_idx = result_estimated[3]
 
                 norm = torch.abs(mixture).max()
                 mixture /= norm
@@ -902,7 +902,6 @@ class FixedAttractorTester(TesterBase):
                 phase = torch.angle(mixture)
                 estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase) # (n_sources, n_bins, n_frames)
 
-                perm_idx = perm_idx[0] # (n_sources,)
                 T = T[0]  # ()
                 segment_IDs = segment_IDs[0] # (n_sources,)
                 mixture = istft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, normalized=self.normalize, window=self.window, length=T).squeeze(dim=0) # (T,)
@@ -922,6 +921,7 @@ class FixedAttractorTester(TesterBase):
                 sdr_improvement = torch.mean(result_estimated[0] - result_mixed[0])
                 sir_improvement = torch.mean(result_estimated[1] - result_mixed[1])
                 sar = torch.mean(result_estimated[2])
+                perm_idx = result_estimated[3]
 
                 norm = torch.abs(mixture).max()
                 mixture /= norm

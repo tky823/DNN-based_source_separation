@@ -12,7 +12,8 @@ from dataset import IdealMaskSpectrogramTestDataset, IdealMaskSpectrogramTestDat
 from adhoc_driver import AdhocTester
 from models.deep_clustering import DeepEmbedding
 from criterion.deep_clustering import AffinityLoss
-from adhoc_criterion import AffinityLossWrapper, PITNegSISDR, Metrics
+from criterion.sdr import NegSISDR
+from adhoc_criterion import AffinityLossWrapper, Metrics
 
 parser = argparse.ArgumentParser(description="Evaluation of Deep Clustering")
 
@@ -64,7 +65,7 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
 
     metrics = OrderedDict()
-    metrics['SISDR'] = PITNegSISDR(n_sources=args.n_sources)
+    metrics['SISDR'] = NegSISDR()
     metrics = Metrics(metrics)
 
     if args.iter_clustering < 0:
