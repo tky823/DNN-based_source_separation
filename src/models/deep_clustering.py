@@ -38,7 +38,7 @@ class DeepEmbedding(nn.Module):
             num_directions = 2
 
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
-        self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
+        self.fc = nn.Linear(num_directions * hidden_channels, n_bins*embed_dim)
     
     def forward(self, input):
         """
@@ -64,7 +64,7 @@ class DeepEmbedding(nn.Module):
         x = self.fc(x) # (batch_size, n_frames, n_bins * embed_dim)
         x = x.view(batch_size, n_frames, n_bins, embed_dim)
         x = x.permute(0, 2, 1, 3).contiguous() # (batch_size, n_bins, n_frames, embed_dim)
-        norm = torch.sum(x**2, dim=1, keepdim=True)
+        norm = torch.linalg.vector_norm(x, dim=-1, keepdim=True)
         output = x / (norm + eps)
 
         return output
