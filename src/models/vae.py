@@ -17,11 +17,10 @@ class VAE(nn.Module):
             output: (batch_size, num_samples, *)
         """
         outputs = self.extract_latent(input, num_samples=num_samples, **kwargs)
-        output, latent = outputs[:2]
-        params = output[2:]
+        output = outputs[0]
         
         if return_params:
-            return output, latent, *params
+            return outputs
         
         return output
     
@@ -39,8 +38,9 @@ class VAE(nn.Module):
         
         latent = self.latent_sampler(*params, num_samples=num_samples, **kwargs) # latent: (batch_size, num_samples, latent_dim)
         output = self.decoder(latent)
+        outputs = (output, latent) + params
         
-        return output, latent, *params
+        return outputs
         
 class Encoder(nn.Module):
     def __init__(self, in_channels, hidden_channels, latent_dim, num_layers=3):
