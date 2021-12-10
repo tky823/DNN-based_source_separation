@@ -890,7 +890,7 @@ class FixedAttractorTester(TesterBase):
                     raise NotImplementedError("Not support `target_type={}.`".format(self.target_type))
 
                 estimated_sources_amplitude = self.model(mixture_amplitude)
-                loss, perm_idx = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
+                loss, _ = self.pit_criterion(estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
 
                 mixture = mixture[0].cpu()
@@ -983,7 +983,7 @@ class FixedAttractorTester(TesterBase):
 
                 pesq /= self.n_sources
 
-                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources.unsqueeze(dim=0), sources.unsqueeze(dim=0))
+                results = self.metrics(repeated_mixture.unsqueeze(dim=0), estimated_sources[perm_idx].unsqueeze(dim=0), sources.unsqueeze(dim=0))
 
                 s = "{}, {:.3f}, {:.3f}, {:.3f}, {:.3f}, {:.3f}".format(mixture_ID, loss.item(), sdr_improvement.item(), sir_improvement.item(), sar.item(), pesq)
                 for _, result in results.items():
