@@ -4,6 +4,8 @@ exp_dir="./exp"
 continue_from=""
 tag=""
 
+config_path="./config/baseline.yaml"
+
 latent_dim=10
 L=1 # Number of samples
 H=200
@@ -35,6 +37,7 @@ loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
 
 train.py \
+--config_path "${config_path}" \
 --latent_dim ${latent_dim} \
 --hidden_channels ${H} \
 --num_layers ${R} \
