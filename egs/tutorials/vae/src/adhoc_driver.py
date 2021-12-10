@@ -21,7 +21,7 @@ class Trainer:
         
     def _reset(self, args):
         self.num_samples = args.num_samples
-        self.epochs = args.epochs
+        self.latent_dim = args.latent_dim
     
         self.kl_divergence = KLdivergence()
         self.reconstruction = BinaryCrossEntropy(reduction="sum")
@@ -233,7 +233,7 @@ class Trainer:
                     output.save(save_path)
             
             # Random image
-            latent_dim = self.model.latent_dim
+            latent_dim = self.latent_dim
             latent = torch.randn((self.loader.batch_size, 1, latent_dim)) # (batch_size, num_samples, latent_dim), where num_samples = 1.
 
             if self.use_cuda:
