@@ -213,7 +213,7 @@ class Trainer:
 
                     save_path = os.path.join(save_dir, "{}.png".format(epoch + 1))
                     output.save(save_path)
-                    
+        
         valid_loss /= n_valid
         valid_kl_loss /= n_valid
         valid_reconstruction_loss /= n_valid

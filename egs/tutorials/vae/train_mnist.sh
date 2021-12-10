@@ -5,7 +5,7 @@ continue_from=""
 tag=""
 
 dataset_root="../../../dataset"
-config_path="./config/baseline.yaml"
+config_path="./config/baseline_mnist.yaml"
 
 latent_dim=10
 L=1 # Number of samples
@@ -37,7 +37,7 @@ model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
 
-train.py \
+train_mnist.py \
 --dataset_root "${dataset_root}" \
 --config_path "${config_path}" \
 --latent_dim ${latent_dim} \
