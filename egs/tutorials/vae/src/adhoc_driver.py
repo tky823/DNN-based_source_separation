@@ -47,6 +47,8 @@ class Trainer:
         
         self.epochs = args.epochs
         self.use_cuda = args.use_cuda
+
+        self.best_loss, self.prev_loss = {}, {}
         
         if args.continue_from:
             config = torch.load(args.continue_from, map_location=lambda storage, loc: storage)
@@ -56,9 +58,9 @@ class Trainer:
             for key in self.criterions:
                 self.train_loss[key][:self.start_epoch] = config['train_loss'][key][:self.start_epoch]
                 self.valid_loss[key][:self.start_epoch] = config['valid_loss'][key][:self.start_epoch]
+                self.best_loss[key] = config['best_loss'][key]
+                self.prev_loss[key] = self.valid_loss[key][self.start_epoch - 1]
             
-            self.best_loss = config['best_loss']
-            self.prev_loss = self.valid_loss["loss"][self.start_epoch - 1]
             self.no_improvement = config['no_improvement']
             
             if isinstance(self.model, nn.DataParallel):
@@ -78,8 +80,10 @@ class Trainer:
             
             self.start_epoch = 0
             
-            self.best_loss = float('infinity')
-            self.prev_loss = float('infinity')
+            for key in self.criterions:
+                self.best_loss[key] = float('infinity')
+                self.prev_loss[key] = float('infinity')
+            
             self.no_improvement = 0
     
     def save_model(self, save_path, epoch=0):
@@ -110,7 +114,7 @@ class Trainer:
             for key, item in valid_loss.items():
                 self.valid_loss[key][epoch] = item
             
-            if valid_loss < self.best_loss:
+            if valid_loss["loss"] < self.best_loss["loss"]:
                 self.best_loss = valid_loss
                 self.no_improvement = 0
                 save_path = os.path.join(self.save_dir, "best.pth")
@@ -129,8 +133,9 @@ class Trainer:
             model_path = os.path.join(self.model_dir, "last.pth")
             self.save_model(epoch, model_path)
             
-            save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
+            for key in self.criterions:
+                save_path = os.path.join(self.loss_dir, "{}.png".format(key))
+                draw_loss_curve(train_loss=self.train_loss[key][:epoch + 1], valid_loss=self.valid_loss[key][:epoch + 1], save_path=save_path)
     
     def run_one_epoch_train(self, epoch):
         n_train_batch = len(self.loader['train'])
