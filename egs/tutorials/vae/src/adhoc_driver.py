@@ -23,7 +23,7 @@ class Trainer:
         self.epochs = args.epochs
     
         self.kl_divergence = KLdivergence()
-        self.reconstruction = BinaryCrossEntropy()
+        self.reconstruction = BinaryCrossEntropy(reduction="mean")
         
         # Loss
         self.criterions = ["loss", "kl", "reconstruction"]
@@ -152,7 +152,7 @@ class Trainer:
             output, _, mean, var = self.model(input, num_samples=self.num_samples, return_params=True)
 
             kl_loss = self.kl_divergence(mean, var)
-            reconstruction_loss = self.reconstruction(output, input)
+            reconstruction_loss = self.reconstruction(output, input.unsqueeze(dim=1))
             loss = kl_loss + reconstruction_loss
 
             self.optimizer.zero_grad()
@@ -191,7 +191,7 @@ class Trainer:
                 output, _, mean, var = self.model(input, return_params=True)
                 
                 kl_loss = self.kl_divergence(mean, var, batch_mean=False)
-                reconstruction_loss = self.reconstruction(output, input, batch_mean=False)
+                reconstruction_loss = self.reconstruction(output, input.unsqueeze(dim=1), batch_mean=False)
                 loss = kl_loss + reconstruction_loss
                 
                 valid_loss += loss.sum().item()
