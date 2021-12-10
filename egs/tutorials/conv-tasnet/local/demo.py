@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import argparse
 import os
+import argparse
 
 import numpy as np
 import pyaudio
@@ -20,8 +20,9 @@ parser.add_argument('--model_path', type=str, default='./best.pth', help='Path f
 parser.add_argument('--save_dir', type=str, default='./results', help='Directory to save estimation.')
 
 FORMAT = pyaudio.paInt16
-NUM_CHANNEL = 1
+NUM_CHANNELS = 1
 DEVICE_INDEX = 0
+BITS_PER_SAMPLE = 16
 
 def main(args):
     process_offline(args.sample_rate, args.num_chunk, duration=args.duration, model_path=args.model_path, save_dir=args.save_dir)
@@ -33,7 +34,7 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
     P = pyaudio.PyAudio()
     
     # Record
-    stream = P.open(format=FORMAT, channels=NUM_CHANNEL, rate=sample_rate, input_device_index=DEVICE_INDEX, frames_per_buffer=num_chunk, input=True, output=False)
+    stream = P.open(format=FORMAT, channels=NUM_CHANNELS, rate=sample_rate, input_device_index=DEVICE_INDEX, frames_per_buffer=num_chunk, input=True, output=False)
     
     for i in range(num_loop):
         input = stream.read(num_chunk)
@@ -59,12 +60,13 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
     
     save_path = os.path.join(save_dir, "mixture.wav")
     mixture = torch.Tensor(signal).float()
-    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=sample_rate)
+    torchaudio.save(save_path, mixture.unsqueeze(dim=0), sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE)
 
     # Separate by DNN
-    model = load_model(model_path)
+    model = ConvTasNet.build_model(model_path, load_state_dict=True)
     model.eval()
 
+    print("# Parameters: {}".format(model.num_parameters))
     print("Start separation...")
     
     with torch.no_grad():
@@ -82,18 +84,6 @@ def show_progress_bar(time, duration):
     rest = duration-time
     progress_bar = ">"*time + "-"*rest
     print("\rNow recording...", progress_bar, "{:2d}[sec]".format(rest), end="")
-
-    
-def load_model(model_path):
-    package = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
-    model = ConvTasNet.build_model(model_path)
-    model.load_state_dict(package['state_dict'])
-    
-    print("# Parameters: {}".format(model.num_parameters))
-
-    return model
-    
 
 if __name__ == '__main__':
     args = parser.parse_args()

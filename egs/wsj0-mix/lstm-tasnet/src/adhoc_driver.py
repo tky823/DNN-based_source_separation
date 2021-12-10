@@ -7,6 +7,8 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from driver import TrainerBase, TesterBase
 
+HALVE_LR = 3
+
 class AdhocTrainer(TrainerBase):
     def __init__(self, model, loader, pit_criterion, optimizer, args):
         super().__init__(model, loader, pit_criterion, optimizer, args)
@@ -30,7 +32,7 @@ class AdhocTrainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr
@@ -65,9 +67,7 @@ class FinetuneTrainer(TrainerBase):
         os.makedirs(self.sample_dir, exist_ok=True)
         
         self.epochs = args.epochs
-        
-        self.train_loss = torch.empty(self.epochs)
-        self.valid_loss = torch.empty(self.epochs)
+        self.train_loss, self.valid_loss = torch.empty(self.epochs), torch.empty(self.epochs)
         
         self.use_cuda = args.use_cuda
 
@@ -80,7 +80,6 @@ class FinetuneTrainer(TrainerBase):
             self.start_epoch = config['epoch']
             self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
             self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
-
             self.best_loss = config['best_loss']
         else:
             model_path = os.path.join(self.model_dir, "best.pth")
@@ -92,7 +91,6 @@ class FinetuneTrainer(TrainerBase):
                     raise ValueError("{} already exists. If you continue to run, set --overwrite to be True.".format(model_path))
             
             self.start_epoch = 0
-
             self.best_loss = float('infinity')
 
         if isinstance(self.model, nn.DataParallel):
@@ -121,7 +119,7 @@ class FinetuneTrainer(TrainerBase):
             else:
                 if valid_loss >= self.prev_loss:
                     self.no_improvement += 1
-                    if self.no_improvement >= 3:
+                    if self.no_improvement >= HALVE_LR:
                         for param_group in self.optimizer.param_groups:
                             prev_lr = param_group['lr']
                             lr = 0.5 * prev_lr

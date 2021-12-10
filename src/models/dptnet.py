@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,23 +12,22 @@ from models.dprnn_tasnet import Segment1d, OverlapAdd1d
 
 EPS = 1e-12
 
-__pretrained_model_ids__ = {
-    "wsj0-mix": {
-        8000: {
-            2: "1QJnJEK8aed7_ED07jD7buyGb37giEDUx",
-            3: "" # TODO
-        },
-        16000: {
-            2: "", # TODO
-            3: "" # TODO
-        }
-    }
-}
-
 class DPTNet(nn.Module):
     """
     Dual-path transformer based network
     """
+    pretrained_model_ids = {
+        "wsj0-mix": {
+            8000: {
+                2: "1QJnJEK8aed7_ED07jD7buyGb37giEDUx",
+                3: "1Rfb_vS8r2_Oqpg_zAV9y4WMzv106yrSP"
+            },
+            16000: {
+                2: "", # TODO
+                3: "" # TODO
+            }
+        }
+    }
     def __init__(
         self,
         n_basis, kernel_size, stride=None,
@@ -218,26 +219,33 @@ class DPTNet(nn.Module):
     
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
+        additional_attributes = {}
         
         if task in ['wsj0-mix', 'wsj0']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or 8000
+            sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
             model_choice = kwargs.get('model_choice') or 'best'
 
             model_id = pretrained_model_ids_task[sample_rate][n_sources]
             download_dir = os.path.join(root, cls.__name__, task, "sr{}/{}speakers".format(sample_rate, n_sources))
+
+            additional_attributes.update({
+                'n_sources': n_sources
+            })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
+        
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
         
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
@@ -245,6 +253,9 @@ class DPTNet(nn.Module):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
+    
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
 
         return model
     

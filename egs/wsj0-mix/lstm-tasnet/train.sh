@@ -7,7 +7,7 @@ tag=""
 n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sample_rate=${sr_k}000
-duration=4
+duration=0.5
 valid_duration=10
 max_or_min='min'
 
@@ -42,7 +42,8 @@ weight_decay=0
 max_norm=5
 
 batch_size=128
-epochs=100
+epochs_train=100
+epochs_finetune=100
 
 use_cuda=1
 overwrite=0
@@ -59,7 +60,8 @@ if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pin
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}"
+    save_dir="${save_dir}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs_train}+${epochs_finetune}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -78,10 +80,10 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
---train_list_path ${train_list_path} \
---valid_list_path ${valid_list_path} \
+--train_wav_root "${train_wav_root}" \
+--valid_wav_root "${valid_wav_root}" \
+--train_list_path "${train_list_path}" \
+--valid_list_path "${valid_list_path}" \
 --sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
@@ -102,7 +104,7 @@ train.py \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
---epochs ${epochs} \
+--epochs ${epochs_finetune} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \

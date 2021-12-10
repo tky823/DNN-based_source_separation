@@ -5,6 +5,7 @@ import torch
 import torchaudio
 import torch.nn.functional as F
 
+from transforms.stft import stft
 from dataset import SpectrogramDataset
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
@@ -17,10 +18,10 @@ class SpectrogramTrainDataset(SpectrogramDataset):
     Training dataset that returns randomly selected mixture spectrograms.
     In accordane with "D3Net: Densely connected multidilated DenseNet for music source separation," training dataset includes all 100 tracks.
     """
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
+    def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_samples=4*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, augmentation=None):
         super().__init__(
             musdb18_root,
-            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize,
+            n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize,
             sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources, target=target
         )
@@ -116,24 +117,12 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         else:
             mixture, target = self._getitem(idx)
         
-        n_dims = mixture.dim()
-
-        if n_dims > 2:
-            mixture_channels = mixture.size()[:-1]
-            target_channels = target.size()[:-1]
-            mixture = mixture.reshape(-1, mixture.size(-1))
-            target = target.reshape(-1, target.size(-1))
-        
         if self.pre_resampler is not None:
             mixture = self.pre_resampler(mixture)
             target = self.pre_resampler(target)
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        
-        if n_dims > 2:
-            mixture = mixture.reshape(*mixture_channels, *mixture.size()[-2:])
-            target = target.reshape(*target_channels, *target.size()[-2:])
+        mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
 
         return mixture, target
     
@@ -204,10 +193,10 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_size=256, max_samples=None, sources=__sources__, target=None):
         super().__init__(
             musdb18_root,
-            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize,
+            n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize,
             sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources, target=target
         )
@@ -300,8 +289,8 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             mixture = self.pre_resampler(mixture)
             target = self.pre_resampler(target)
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         n_frames = mixture.size(-1)
         padding = (patch_size - n_frames % patch_size) % patch_size
@@ -321,10 +310,10 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         return mixture, target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
-    def __init__(self, musdb18_root, fft_size, hop_size=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
+    def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_size=256, sources=__sources__, target=None):
         super().__init__(
             musdb18_root,
-            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize,
+            n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize,
             sample_rate=SAMPLE_RATE_MUSDB18, # WaveDataset's sample_rate is expected SAMPLE_RATE_MUSDB18
             sources=sources, target=target
         )
@@ -419,8 +408,8 @@ class SpectrogramTestDataset(SpectrogramDataset):
             mixture = self.pre_resampler(mixture)
             target = self.pre_resampler(target)
 
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        target = torch.stft(target, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
+        target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         
         n_frames = mixture.size(-1)
         padding = (patch_size - n_frames % patch_size) % patch_size

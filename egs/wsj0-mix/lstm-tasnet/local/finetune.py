@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import AdhocFinetuneTrainer
-from models.tasnet import TasNet as LSTMTasNet
+from models.lstm_tasnet import LSTMTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
@@ -66,8 +67,6 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
     
     model = LSTMTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
@@ -105,6 +104,9 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
     
     pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocFinetuneTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()

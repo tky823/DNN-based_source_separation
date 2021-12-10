@@ -29,36 +29,36 @@ def mu_law_compand(x, mu=255):
 def inv_mu_law_compand(y, mu=255):
     return np.sign(y) * ((1 + mu)**np.abs(y) - 1) / mu
 
-def build_Fourier_bases(fft_size, normalize=False):
+def build_Fourier_bases(n_fft, normalize=False):
     """
     Args:
-        fft_size <int>:
+        n_fft <int>:
         normalize <bool>:
     """
-    k = torch.arange(0, fft_size, dtype=torch.float)
-    n = torch.arange(0, fft_size, dtype=torch.float)
+    k = torch.arange(0, n_fft, dtype=torch.float)
+    n = torch.arange(0, n_fft, dtype=torch.float)
     k, n = torch.meshgrid(k, n)
 
-    cos_bases = torch.cos(2*math.pi*k*n/fft_size)
-    sin_bases = torch.sin(2*math.pi*k*n/fft_size)
+    cos_bases = torch.cos(2*math.pi*k*n/n_fft)
+    sin_bases = torch.sin(2*math.pi*k*n/n_fft)
     
     if normalize:
-        norm = math.sqrt(fft_size)
+        norm = math.sqrt(n_fft)
         cos_bases = cos_bases / norm
         sin_bases = sin_bases / norm
     
     return cos_bases, sin_bases
     
-def build_window(fft_size, window_fn='hann', **kwargs):
+def build_window(n_fft, window_fn='hann', **kwargs):
     warnings.warn("Use utils.audio.build_window instead.", DeprecationWarning)
     
-    return backend.build_window(fft_size, window_fn=window_fn, **kwargs)
+    return backend.build_window(n_fft, window_fn=window_fn, **kwargs)
     
-def build_optimal_window(window, hop_size=None):
+def build_optimal_window(window, hop_length=None):
     """
     Args:
         window: (window_length,)
     """
     warnings.warn("Use utils.audio.build_optimal_window instead.", DeprecationWarning)
     
-    return backend.build_optimal_window(window, hop_size=hop_size)
+    return backend.build_optimal_window(window, hop_length=hop_length)

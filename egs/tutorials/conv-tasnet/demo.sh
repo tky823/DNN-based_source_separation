@@ -44,6 +44,10 @@ max_norm=5
 batch_size=4
 epochs=100
 
+num_chunk=256
+duration=5
+model_choice="best"
+
 use_cuda=1
 overwrite=0
 seed=111
@@ -67,11 +71,7 @@ else
     save_dir="${exp_dir}/${tag}"
 fi
 
-model_choice="best"
 model_path="${save_dir}/model/${model_choice}.pth"
-
-num_chunk=256
-duration=5
 
 demo.py \
 --sample_rate ${sample_rate} \

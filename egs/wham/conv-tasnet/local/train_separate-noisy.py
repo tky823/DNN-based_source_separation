@@ -78,8 +78,6 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
     
     model = ConvTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
@@ -125,6 +123,9 @@ def main(args):
     
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
 if __name__ == '__main__':
     args = parser.parse_args()

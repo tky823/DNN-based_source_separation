@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from utils.utils_audio import build_window
+from utils.audio import build_window
 
 """
 Multiple input spectrogram inverse
@@ -11,19 +11,19 @@ Reference "Iterative Phase Estimation for the Synthesis of Separated Sources fro
 EPS = 1e-12
 
 class MISI(nn.Module):
-    def __init__(self, fft_size, hop_size=None, window=None, window_fn=None):
+    def __init__(self, n_fft, hop_length=None, window=None, window_fn=None):
         super().__init__()
 
-        if hop_size is None:
-            hop_size = fft_size // 2
+        if hop_length is None:
+            hop_length = n_fft // 2
 
-        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_fft, self.hop_length = n_fft, hop_length
 
         if window is not None:
             if window_fn is not None:
                 raise ValueError("Specify either window or window_fn")
         else:
-            window = build_window(fft_size, window_fn=window_fn)
+            window = build_window(n_fft, window_fn=window_fn)
 
         if not isinstance(window, nn.Parameter):
             window = nn.Parameter(window, requires_grad=False)
@@ -46,7 +46,7 @@ class MISI(nn.Module):
         if torch.is_complex(estimated_sources_amplitude):
             raise TypeError("estimated_sources_amplitude is expected complex tensor.")
         
-        fft_size, hop_size = self.fft_size, self.hop_size
+        n_fft, hop_length = self.n_fft, self.hop_length
         window = self.window
 
         phase = torch.angle(mixture)
@@ -54,7 +54,7 @@ class MISI(nn.Module):
 
         mixture_channels = mixture.size()[:-2]
         mixture = mixture.view(-1, *mixture.size()[-2:])
-        mixture = torch.istft(mixture, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=False)
+        mixture = torch.istft(mixture, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False)
         mixture = mixture.view(*mixture_channels, *mixture.size()[-1:])
 
         estimated_sources_all_iterations = []
@@ -75,14 +75,14 @@ class MISI(nn.Module):
             mixture <torch.Tensor>: Time domain signal with shape of (batch_size, 1, T).
             estimated_sources_amplitude <torch.Tensor>: Complex spectrogram with shape of (batch_size, n_sources, n_bins, n_frames).
         """
-        fft_size, hop_size = self.fft_size, self.hop_size
+        n_fft, hop_length = self.n_fft, self.hop_length
         window = self.window
 
         _, n_sources, _, _ = estimated_sources.size()
 
         estimated_sources_channels = estimated_sources.size()[:-2]
         estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-        estimated_sources = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=False)
+        estimated_sources = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False)
         estimated_sources = estimated_sources.view(*estimated_sources_channels, *estimated_sources.size()[-1:])
 
         delta = mixture - torch.sum(estimated_sources, dim=1, keepdim=True)
@@ -90,7 +90,7 @@ class MISI(nn.Module):
         estimated_sources = estimated_sources + delta / n_sources
 
         estimated_sources = estimated_sources.view(-1, estimated_sources.size(-1))
-        estimated_sources = torch.stft(estimated_sources, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=True)
+        estimated_sources = torch.stft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
         estimated_sources = estimated_sources.view(*estimated_sources_channels, *estimated_sources.size()[-2:])
 
         estimated_sources_phase = torch.angle(estimated_sources)
@@ -100,15 +100,15 @@ class MISI(nn.Module):
 def _test_danet():
     n_sources = 2
     sr = 8000
-    fft_size, hop_size = 256, 64
+    n_fft, hop_length = 256, 64
     threshold = 40
     iter_clustering = 10
     exp_dir = "../../egs/tutorials/danet/exp"
     model_path = os.path.join(exp_dir, "2mix/l2loss/stft256-64_hamming-window_ibm_threshold40/K20_H256_B4_causal0_mask-sigmoid/b4_e100_rmsprop-lr1e-4-decay0/seed111/model/last.pth")
 
     mixture, sr = torchaudio.load("./data/mixture-{}.wav".format(sr))
-    window = build_window(fft_size, window_fn='hann')
-    mixture = torch.stft(mixture, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=True)
+    window = build_window(n_fft, window_fn='hann')
+    mixture = torch.stft(mixture, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
 
     mixture = mixture.unsqueeze(dim=0)
     mixture_amplitude = torch.abs(mixture)
@@ -123,13 +123,13 @@ def _test_danet():
     with torch.no_grad():
         estimated_sources_amplitude = model(mixture_amplitude, assignment=None, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
 
-    misi = MISI(fft_size=fft_size, hop_size=hop_size, window_fn='hann')
+    misi = MISI(n_fft=n_fft, hop_length=hop_length, window_fn='hann')
 
     # Iteration 0
     iteration = 0
     estimated_sources = misi(mixture, estimated_sources_amplitude=estimated_sources_amplitude, iteration=iteration)
     estimated_sources = estimated_sources.squeeze(dim=0)
-    estimated_sources = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=False)
+    estimated_sources = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False)
 
     for idx, estimated_source in enumerate(estimated_sources):
         estimated_source = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
@@ -139,7 +139,7 @@ def _test_danet():
     iteration = 10
     estimated_sources = misi(mixture, estimated_sources_amplitude=estimated_sources_amplitude, iteration=iteration)
     estimated_sources = estimated_sources.squeeze(dim=0)
-    estimated_sources = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, onesided=True, return_complex=False)
+    estimated_sources = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False)
 
     for idx, estimated_source in enumerate(estimated_sources):
         estimated_source = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source

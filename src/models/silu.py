@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 """
 Sigmoid Linear Units
-Reference: "Sigmoid-Weighted Linear Units for Neural Network Function Approximation in Reinforcement Learning"
-See https://arxiv.org/abs/1702.03118
+    Reference: "Sigmoid-Weighted Linear Units for Neural Network Function Approximation in Reinforcement Learning"
+    See https://arxiv.org/abs/1702.03118
 """
 
 class SiLU1d(nn.Module):

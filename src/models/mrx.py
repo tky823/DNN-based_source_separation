@@ -15,14 +15,14 @@ class MultiResolutionCrossNet(nn.Module):
     """
     Reference "The Cocktail Fork Problem: Three-Stem Audio Separation for Real-World Soundtracks"
     """
-    def __init__(self, in_channels, hidden_channels=512, num_layers=3, fft_size=None, hop_size=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', sources=__sources__, eps=EPS):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_fft=None, hop_length=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', sources=__sources__, eps=EPS):
         """
         Args:
             in_channels <int>: Input channels
             hidden_channels <int>: Hidden channels in LSTM
             num_layers <list<int>> or <int>: # of LSTM layers
-            fft_size <list<int>>: FFT samples
-            hop_size <int>: Hop length
+            n_fft <list<int>>: FFT samples
+            hop_length <int>: Hop length
             window_fn <str>: Window function
             dropout <list<float>> or <float>: Dropout rate in LSTM
             causal <bool>: Causality
@@ -33,10 +33,10 @@ class MultiResolutionCrossNet(nn.Module):
         super().__init__()
 
         if type(num_layers) is int:
-            num_layers = [num_layers] * len(fft_size)
+            num_layers = [num_layers] * len(n_fft)
 
         if dropout is None:
-            dropout = [None] * len(fft_size)
+            dropout = [None] * len(n_fft)
             dropout = [
                 0.4 if _dropout is None and _num_layers > 1 else 0 for _num_layers, _dropout in zip(num_layers, dropout)
             ]
@@ -51,18 +51,18 @@ class MultiResolutionCrossNet(nn.Module):
             ]
         
         if type(rnn_type) is str:
-            rnn_type = [rnn_type] * len(fft_size)
+            rnn_type = [rnn_type] * len(n_fft)
 
         encoder_blocks, decoder_blocks = [], {}
 
-        for _fft_size, _num_layers, _dropout, _rnn_type in zip(fft_size, num_layers, dropout, rnn_type):
-            block = EncoderBlock(in_channels, hidden_channels, num_layers=_num_layers, dropout=_dropout, fft_size=_fft_size, hop_size=hop_size, window_fn=window_fn, causal=causal, rnn_type=_rnn_type, eps=eps)
+        for _n_fft, _num_layers, _dropout, _rnn_type in zip(n_fft, num_layers, dropout, rnn_type):
+            block = EncoderBlock(in_channels, hidden_channels, num_layers=_num_layers, dropout=_dropout, n_fft=_n_fft, hop_length=hop_length, window_fn=window_fn, causal=causal, rnn_type=_rnn_type, eps=eps)
             encoder_blocks.append(block)
 
         for source in sources:
             blocks = []
-            for _fft_size in fft_size:
-                block = DecoderBlock(2 * hidden_channels, in_channels, hidden_channels, _fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)
+            for _n_fft in n_fft:
+                block = DecoderBlock(2 * hidden_channels, in_channels, hidden_channels, _n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
                 blocks.append(block)
             decoder_blocks[source] = nn.ModuleList(blocks)
         
@@ -72,7 +72,7 @@ class MultiResolutionCrossNet(nn.Module):
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
 
-        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_fft, self.hop_length = n_fft, hop_length
         self.window_fn = window_fn
         
         self.num_layers = num_layers
@@ -91,8 +91,8 @@ class MultiResolutionCrossNet(nn.Module):
 
         latent, x_ffts = [], []
 
-        for idx, _fft_size in enumerate(self.fft_size):
-            n_bins = _fft_size // 2 + 1
+        for idx, _n_fft in enumerate(self.n_fft):
+            n_bins = _n_fft // 2 + 1
             x_latent = self.encoder_blocks[idx].stft(input)
             batch_size, _, _, _, n_frames = x_latent.size() # (batch_size, 1, in_channels, n_bins, n_frames)
             x_latent = x_latent.squeeze(dim=1)
@@ -104,27 +104,27 @@ class MultiResolutionCrossNet(nn.Module):
             x = x.view(batch_size, n_frames, hidden_channels)
             x_ffts.append(x)
 
-        x_fft_blocks = torch.stack(x_ffts, dim=0) # (len(fft_sizes), batch_size, n_frames, hidden_channels)
+        x_fft_blocks = torch.stack(x_ffts, dim=0) # (len(n_ffts), batch_size, n_frames, hidden_channels)
         x_mean = x_fft_blocks.mean(dim=0) # (batch_size, n_frames, hidden_channels)
 
         x_ffts = []
         
-        for idx, _fft_size in enumerate(self.fft_size):
+        for idx, _n_fft in enumerate(self.n_fft):
             x_fft = x_fft_blocks[idx]
             x_rnn = self.encoder_blocks[idx].forward_rnn(x_mean) # (batch_size, n_frames, out_channels), where out_channels = hidden_channels
             x = torch.cat([x_fft, x_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x = x.view(batch_size * n_frames, 2 * hidden_channels)
             x_ffts.append(x)
 
-        x_ffts = torch.stack(x_ffts, dim=0) # (len(fft_sizes), batch_size * n_frames, hidden_channels + out_channels)
+        x_ffts = torch.stack(x_ffts, dim=0) # (len(n_ffts), batch_size * n_frames, hidden_channels + out_channels)
         x_ffts = x_ffts.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
         output = []
         
         for source in self.sources:
             x_source = []
 
-            for idx, _fft_size in enumerate(self.fft_size):
-                n_bins = _fft_size // 2 + 1
+            for idx, _n_fft in enumerate(self.n_fft):
+                n_bins = _n_fft // 2 + 1
                 x_source_fft = self.decoder_blocks[source][idx].net(x_ffts) # (batch_size * n_frames, n_bins)
                 x_source_fft = x_source_fft.view(batch_size, n_frames, in_channels, n_bins)
                 x_source_fft = x_source_fft.permute(0, 2, 3, 1).contiguous() # (batch_size, in_channels, n_bins, n_frames)
@@ -147,7 +147,7 @@ class MultiResolutionCrossNet(nn.Module):
             'in_channels': self.in_channels,
             'hidden_channels': self.hidden_channels,
             'num_layers': self.num_layers,
-            'fft_size': self.fft_size, 'hop_size': self.hop_size,
+            'n_fft': self.n_fft, 'hop_length': self.hop_length,
             'window_fn': self.window_fn,
             'dropout': self.dropout,
             'causal': self.causal,
@@ -168,7 +168,7 @@ class MultiResolutionCrossNet(nn.Module):
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
         
-        fft_size, hop_size = config['fft_size'], config['hop_size']
+        n_fft, hop_length = config['n_fft'], config['hop_length']
         window_fn = config['window_fn']
 
         dropout = config['dropout']
@@ -183,7 +183,7 @@ class MultiResolutionCrossNet(nn.Module):
             in_channels,
             hidden_channels=hidden_channels,
             num_layers=num_layers,
-            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn,
+            n_fft=n_fft, hop_length=hop_length, window_fn=window_fn,
             dropout=dropout,
             causal=causal,
             rnn_type=rnn_type,
@@ -201,7 +201,7 @@ class MultiResolutionCrossNet(nn.Module):
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
 
-        fft_size, hop_size = config['fft_size'], config['hop_size']
+        n_fft, hop_length = config['n_fft'], config['hop_length']
         window_fn = config['window_fn']
 
         dropout = config['dropout']
@@ -216,7 +216,7 @@ class MultiResolutionCrossNet(nn.Module):
             in_channels,
             hidden_channels=hidden_channels,
             num_layers=num_layers,
-            fft_size=fft_size, hop_size=hop_size, window_fn=window_fn,
+            n_fft=n_fft, hop_length=hop_length, window_fn=window_fn,
             dropout=dropout,
             causal=causal,
             rnn_type=rnn_type,
@@ -240,12 +240,12 @@ class MultiResolutionCrossNet(nn.Module):
         return _num_parameters
 
 class EncoderBlock(nn.Module):
-    def __init__(self, in_channels, hidden_channels=512, num_layers=3, fft_size=None, hop_size=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', eps=EPS):
+    def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_fft=None, hop_length=None, window_fn='hann', dropout=None, causal=False, rnn_type='lstm', eps=EPS):
         super().__init__()
 
-        n_bins = fft_size // 2 + 1
+        n_bins = n_fft // 2 + 1
 
-        self.stft = STFT(fft_size, hop_size=hop_size, window_fn=window_fn)
+        self.stft = STFT(n_fft, hop_length=hop_length, window_fn=window_fn)
         self.block = TransformBlock1d(in_channels * n_bins, hidden_channels, bias=False, nonlinear='tanh')
 
         if causal:
@@ -299,10 +299,10 @@ class EncoderBlock(nn.Module):
         return output
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_channels, fft_size=None, hop_size=None, window_fn='hann', nonlinear='relu', eps=EPS):
+    def __init__(self, in_channels, out_channels, hidden_channels, n_fft=None, hop_length=None, window_fn='hann', nonlinear='relu', eps=EPS):
         super().__init__()
 
-        n_bins = fft_size // 2 + 1
+        n_bins = n_fft // 2 + 1
 
         net = []
         net.append(TransformBlock1d(in_channels, hidden_channels, bias=False, nonlinear=nonlinear))
@@ -310,7 +310,7 @@ class DecoderBlock(nn.Module):
 
         self.net = nn.Sequential(*net)
         self.relu2d = nn.ReLU()
-        self.istft = iSTFT(fft_size, hop_size=hop_size, window_fn=window_fn)
+        self.istft = iSTFT(n_fft, hop_length=hop_length, window_fn=window_fn)
 
         self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
     
@@ -335,15 +335,15 @@ class DecoderBlock(nn.Module):
         return output
 
 class STFT(nn.Module):
-    def __init__(self, fft_size, hop_size=None, window_fn='hann'):
+    def __init__(self, n_fft, hop_length=None, window_fn='hann'):
         super().__init__()
 
-        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_fft, self.hop_length = n_fft, hop_length
 
-        if hop_size == fft_size:
-            window = torch.ones(fft_size)
+        if hop_length == n_fft:
+            window = torch.ones(n_fft)
         else:
-            window = build_window(fft_size, window_fn=window_fn)
+            window = build_window(n_fft, window_fn=window_fn)
         
         self.window = nn.Parameter(window, requires_grad=False)
     
@@ -354,27 +354,27 @@ class STFT(nn.Module):
         Returns:
             output: (batch_size, *, n_bins, n_frames)
         """
-        fft_size, hop_size = self.fft_size, self.hop_size
+        n_fft, hop_length = self.n_fft, self.hop_length
 
         channels = input.size()[:-1]
 
         input = input.view(-1, input.size(-1))
-        input = F.pad(input, (fft_size // 2, fft_size // 2 + hop_size))
-        x = torch.stft(input, n_fft=fft_size, hop_length=hop_size, window=self.window, center=False, onesided=True, return_complex=True)
+        input = F.pad(input, (n_fft // 2, n_fft // 2 + hop_length))
+        x = torch.stft(input, n_fft=n_fft, hop_length=hop_length, window=self.window, center=False, onesided=True, return_complex=True)
         output = x.view(*channels, *x.size()[-2:])
 
         return output
 
 class iSTFT(nn.Module):
-    def __init__(self, fft_size, hop_size=None, window_fn='hann'):
+    def __init__(self, n_fft, hop_length=None, window_fn='hann'):
         super().__init__()
 
-        self.fft_size, self.hop_size = fft_size, hop_size
+        self.n_fft, self.hop_length = n_fft, hop_length
 
-        if hop_size == fft_size:
-            window = torch.ones(fft_size)
+        if hop_length == n_fft:
+            window = torch.ones(n_fft)
         else:
-            window = build_window(fft_size, window_fn=window_fn)
+            window = build_window(n_fft, window_fn=window_fn)
         
         self.window = nn.Parameter(window, requires_grad=False)
     
@@ -385,12 +385,12 @@ class iSTFT(nn.Module):
         Returns:
             output: (batch_size, *, T)
         """
-        fft_size, hop_size = self.fft_size, self.hop_size
+        n_fft, hop_length = self.n_fft, self.hop_length
 
         channels = input.size()[:-2]
 
         input = input.view(-1, *input.size()[-2:])
-        x = torch.istft(input, n_fft=fft_size, hop_length=hop_size, window=self.window, center=True, onesided=True, return_complex=False)
+        x = torch.istft(input, n_fft=n_fft, hop_length=hop_length, window=self.window, center=True, onesided=True, return_complex=False)
         output = x.view(*channels, -1)
 
         if length is not None:
@@ -402,9 +402,9 @@ def _test_mrx():
     batch_size = 6
     in_channels = 2
     T = 1025
-    fft_size, hop_size = [32, 64, 128], 32
+    n_fft, hop_length = [32, 64, 128], 32
 
-    model = MultiResolutionCrossNet(in_channels, fft_size=fft_size, hop_size=hop_size)
+    model = MultiResolutionCrossNet(in_channels, n_fft=n_fft, hop_length=hop_length)
 
     input = torch.randn(batch_size, 1, in_channels, T)
     output = model(input)

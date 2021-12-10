@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -77,8 +78,7 @@ def main(args):
     
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
+    
     model = ConvTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
         window_fn=args.window_fn, enc_onesided=args.enc_onesided, enc_return_complex=args.enc_return_complex,
@@ -94,11 +94,11 @@ def main(args):
         if torch.cuda.is_available():
             model.cuda()
             model = nn.DataParallel(model)
-            print("Use CUDA")
+            print("Use CUDA", flush=True)
         else:
             raise ValueError("Cannot use CUDA.")
     else:
-        print("Does NOT use CUDA")
+        print("Does NOT use CUDA", flush=True)
         
     # Optimizer
     if args.optimizer == 'sgd':
@@ -117,12 +117,13 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
     
     pit_criterion = ORPIT(criterion)
-    print(flush=True)
+    
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

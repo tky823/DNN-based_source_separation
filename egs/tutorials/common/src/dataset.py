@@ -4,9 +4,10 @@ import json
 import torch
 import torchaudio
 
-from algorithm.frequency_mask import ideal_binary_mask, ideal_ratio_mask, wiener_filter_mask
+from utils.audio import build_window
+from algorithm.frequency_mask import compute_ideal_binary_mask, compute_ideal_ratio_mask, compute_wiener_filter_mask
 
-EPS=1e-12
+EPS = 1e-12
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
     def __init__(self, wav_root, json_path):
@@ -38,8 +39,7 @@ class WaveDataset(LibriSpeechDataset):
             source_data = data[key]
             start, end = source_data['start'], source_data['end']
             wav_path = os.path.join(self.wav_root, source_data['path'])
-            wave, _ = torchaudio.load(wav_path)
-            wave = wave[:, start: end]
+            wave, _ = torchaudio.load(wav_path, frame_offset=start, num_frames=end - start)
             mixture = mixture + wave
         
             if sources is None:
@@ -88,22 +88,17 @@ class WaveTestDataset(WaveDataset):
         return mixture, sources, segment_IDs
 
 class SpectrogramDataset(WaveDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False):
         super().__init__(wav_root, json_path)
         
-        if hop_size is None:
-            hop_size = fft_size // 2
+        if hop_length is None:
+            hop_length = n_fft // 2
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        self.n_bins = fft_size // 2 + 1
+        self.n_fft, self.hop_length = n_fft, hop_length
+        self.n_bins = n_fft // 2 + 1
 
         if window_fn:
-            if window_fn == 'hann':
-                self.window = torch.hann_window(fft_size, periodic=True)
-            elif window_fn == 'hamming':
-                self.window = torch.hamming_window(fft_size, periodic=True)
-            else:
-                raise ValueError("Invalid argument.")
+            self.window = build_window(n_fft, window_fn=window_fn)
         else:
             self.window = None
         
@@ -121,14 +116,14 @@ class SpectrogramDataset(WaveDataset):
         
         T = mixture.size(-1)
         
-        mixture = torch.stft(mixture, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
-        sources = torch.stft(sources, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
+        mixture = torch.stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_bins, n_frames)
+        sources = torch.stft(sources, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (n_sources, n_bins, n_frames)
 
         return mixture, sources, T, segment_IDs
 
 class SpectrogramTrainDataset(SpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize)
     
     def __getitem__(self, idx):
         mixture, sources, _, _ = super().__getitem__(idx)
@@ -136,15 +131,15 @@ class SpectrogramTrainDataset(SpectrogramDataset):
         return mixture, sources
 
 class IdealMaskSpectrogramDataset(SpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, eps=EPS):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40, eps=EPS):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize)
         
         if mask_type == 'ibm':
-            self.generate_mask = ideal_binary_mask
+            self.generate_mask = compute_ideal_binary_mask
         elif mask_type == 'irm':
-            self.generate_mask = ideal_ratio_mask
+            self.generate_mask = compute_ideal_ratio_mask
         elif mask_type == 'wfm':
-            self.generate_mask = wiener_filter_mask
+            self.generate_mask = compute_wiener_filter_mask
         else:
             raise NotImplementedError("Not support mask {}".format(mask_type))
         
@@ -166,7 +161,7 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         
         mixture, sources, T, segment_IDs = super().__getitem__(idx) # (1, n_bins, n_frames), (n_sources, n_bins, n_frames)
         sources_amplitude = torch.abs(sources)
-        ideal_mask = self.generate_mask(sources_amplitude)
+        ideal_mask = self.generate_mask(sources_amplitude, source_dim=0)
         
         mixture_amplitude = torch.abs(mixture)
         log_amplitude = 20 * torch.log10(mixture_amplitude + eps)
@@ -177,8 +172,8 @@ class IdealMaskSpectrogramDataset(SpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
 class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
     
     def __getitem__(self, idx):
         """
@@ -193,8 +188,8 @@ class IdealMaskSpectrogramTrainDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
     
     def __getitem__(self, idx):
         """
@@ -209,8 +204,8 @@ class IdealMaskSpectrogramEvalDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight
 
 class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False, mask_type='ibm', threshold=40):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, mask_type=mask_type, threshold=threshold)
 
     def __getitem__(self, idx):
         """
@@ -227,8 +222,8 @@ class IdealMaskSpectrogramTestDataset(IdealMaskSpectrogramDataset):
         return mixture, sources, ideal_mask, threshold_weight, T, segment_IDs
 
 class ThresholdWeightSpectrogramDataset(SpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, threshold=40, eps=EPS):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False, threshold=40, eps=EPS):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize)
         
         self.threshold = threshold
         self.eps = eps
@@ -256,8 +251,8 @@ class ThresholdWeightSpectrogramDataset(SpectrogramDataset):
         return mixture, sources, threshold_weight, T, segment_IDs
 
 class ThresholdWeightSpectrogramTrainDataset(ThresholdWeightSpectrogramDataset):
-    def __init__(self, wav_root, json_path, fft_size, hop_size=None, window_fn='hann', normalize=False, threshold=40, eps=EPS):
-        super().__init__(wav_root, json_path, fft_size, hop_size=hop_size, window_fn=window_fn, normalize=normalize, threshold=threshold, eps=eps)
+    def __init__(self, wav_root, json_path, n_fft, hop_length=None, window_fn='hann', normalize=False, threshold=40, eps=EPS):
+        super().__init__(wav_root, json_path, n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, threshold=threshold, eps=eps)
 
     def __getitem__(self, idx):
         """

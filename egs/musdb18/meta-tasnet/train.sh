@@ -38,8 +38,8 @@ norm_name='generated'
 
 embed_dim=8
 embed_bottleneck_channels=5
-fft_size=1024
-hop_size=256
+n_fft=1024
+hop_length=256
 enc_compression_rate=4
 num_filters=6
 n_mels=256
@@ -118,8 +118,8 @@ train.py \
 --norm_name ${norm_name} \
 --embed_dim ${embed_dim} \
 --embed_bottleneck_channels ${embed_bottleneck_channels} \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 --enc_compression_rate ${enc_compression_rate} \
 --num_filters ${num_filters} \
 --n_mels ${n_mels} \

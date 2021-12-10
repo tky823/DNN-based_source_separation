@@ -10,8 +10,8 @@ musdb18_root="../../../dataset/MUSDB18"
 sample_rate=44100
 
 window_fn='hann'
-fft_size=4096
-hop_size=1024
+n_fft=4096
+hop_length=1024
 
 # Criterion
 criterion='mse'
@@ -42,7 +42,7 @@ model_choice="best" # 'last' or 'best'
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/sr${sample_rate}/${sources}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window"
+    save_dir="${exp_dir}/sr${sample_rate}/${sources}/patch${patch}/${criterion}/stft${n_fft}-${hop_length}_${window_fn}-window"
     if [ ${samples_per_epoch} -gt 0 ]; then
         save_dir="${save_dir}/b${batch_size}_e${epochs}-${anneal_epoch}-s${samples_per_epoch}_${optimizer}-lr${lr}-${anneal_lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
     else
@@ -72,8 +72,8 @@ test.py \
 --sample_rate ${sample_rate} \
 --patch_size ${patch} \
 --window_fn "${window_fn}" \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 --sources ${sources} \
 --criterion ${criterion} \
 --estimates_dir "${estimates_dir}" \

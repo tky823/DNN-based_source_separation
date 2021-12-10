@@ -1,26 +1,17 @@
+import os
+
 import yaml
 import torch
 import torch.nn as nn
 
 from utils.audio import build_window
 from algorithm.frequency_mask import multichannel_wiener_filter
+from transforms.stft import stft, istft
 from models.umx import OpenUnmix
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 SAMPLE_RATE_MUSDB18 = 44100
 EPS = 1e-12
-__pretrained_model_ids__ = {
-    "musdb18": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": "1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj"
-        }
-    },
-    "musdb18hq": {
-        SAMPLE_RATE_MUSDB18: {
-            "paper": None
-        }
-    }
-}
 
 """
 CrossNet-Open-Unmix
@@ -28,6 +19,18 @@ CrossNet-Open-Unmix
     See https://arxiv.org/abs/2010.04228
 """
 class CrossNetOpenUnmix(nn.Module):
+    pretrained_model_ids = {
+        "musdb18": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "1yQC00DFvHgs4U012Wzcg69lvRxw5K9Jj"
+            }
+        },
+        "musdb18hq": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": None
+            }
+        }
+    }
     def __init__(self, in_channels, hidden_channels=512, num_layers=3, n_bins=None, max_bin=None, dropout=None, causal=False, rnn_type='lstm', bridge=True, sources=__sources__, eps=EPS):
         """
         Args:
@@ -269,19 +272,18 @@ class CrossNetOpenUnmix(nn.Module):
     
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
-        import os
-        
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
-        if not task in __pretrained_model_ids__:
+        if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
             
-        pretrained_model_ids_task = __pretrained_model_ids__[task]
+        pretrained_model_ids_task = cls.pretrained_model_ids[task]
+        additional_attributes = {}
         
         if task in ['musdb18', 'musdb18hq']:
-            sample_rate = kwargs.get('sr') or kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
+            sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
             model_choice = kwargs.get('model_choice') or 'best'
 
@@ -289,19 +291,35 @@ class CrossNetOpenUnmix(nn.Module):
             download_dir = os.path.join(root, cls.__name__, task, "sr{}".format(sample_rate), config)
         else:
             raise NotImplementedError("Not support task={}.".format(task))
+
+        additional_attributes.update({
+            'sample_rate': sample_rate
+        })
         
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
         
+        config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
+
+        if task in ['musdb18']:
+            additional_attributes.update({
+                'sources': config['sources'],
+                'n_sources': len(config['sources']),
+                'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
+                'window_fn': config['window_fn'],
+            })
+    
+        for key, value in additional_attributes.items():
+            setattr(model, key, value)
 
         return model
 
     @classmethod
-    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann', eps=EPS):
-        return CrossNetOpenUnmixTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
+        return CrossNetOpenUnmixTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
     
     @property
     def num_parameters(self):
@@ -314,16 +332,16 @@ class CrossNetOpenUnmix(nn.Module):
         return _num_parameters
 
 class CrossNetOpenUnmixTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: CrossNetOpenUnmix, fft_size, hop_size=None, window_fn='hann', eps=EPS):
+    def __init__(self, base_model: CrossNetOpenUnmix, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         super().__init__()
 
         self.base_model = base_model
 
-        if hop_size is None:
-            hop_size = fft_size // 4
+        if hop_length is None:
+            hop_length = n_fft // 4
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        window = build_window(fft_size, window_fn=window_fn)
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
         self.sources = self.base_model.sources
@@ -339,20 +357,15 @@ class CrossNetOpenUnmixTimeDomainWrapper(nn.Module):
         """
         assert input.dim() == 4, "input is expected 4D input."
 
-        n_sources = len(self.sources)
-        batch_size, _, in_channels, T = input.size()
+        T = input.size(-1)
         eps = self.eps
 
-        input = input.reshape(batch_size * in_channels, T)
-        mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
-        mixture_spectrogram = mixture_spectrogram.reshape(batch_size, in_channels, *mixture_spectrogram.size()[-2:])
+        mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude = torch.abs(mixture_spectrogram)
 
         estimated_amplitude = self.base_model(mixture_amplitude)
         estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
-        estimated_spectrogram = estimated_spectrogram.reshape(batch_size * n_sources * in_channels, *estimated_spectrogram.size()[-2:])
-        output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
-        output = output.reshape(batch_size, n_sources, in_channels, T)
+        output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
 
         return output
 

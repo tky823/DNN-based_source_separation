@@ -8,6 +8,7 @@ import torchaudio
 import torch.nn as nn
 
 from utils.utils import draw_loss_curve
+from transforms.stft import istft
 from driver import TrainerBase, TesterBase
 
 BITS_PER_SAMPLE_MUSDB18 = 16
@@ -28,7 +29,7 @@ class AdhocTrainer(TrainerBase):
         # Override
         self.sample_rate = args.sample_rate
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length    
         self.window = self.valid_loader.dataset.window
         self.normalize = self.valid_loader.dataset.normalize
 
@@ -189,8 +190,8 @@ class AdhocTrainer(TrainerBase):
                     estimated_source = estimated_source.permute(1, 2, 0, 3).reshape(n_mics, n_bins, batch_size * n_frames)
 
                     mixture, estimated_source = mixture.cpu(), estimated_source.cpu()
-                    mixture = torch.istft(mixture, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # (n_mics, T)
-                    estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False) # (n_mics, T)
+                    mixture = istft(mixture, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False) # (n_mics, T)
+                    estimated_source = istft(estimated_source, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False) # (n_mics, T)
                     
                     save_dir = os.path.join(self.sample_dir, name)
 
@@ -217,7 +218,7 @@ class SingleTargetTester(TesterBase):
 
         self.musdb18_root = args.musdb18_root
 
-        self.fft_size, self.hop_size = args.fft_size, args.hop_size    
+        self.n_fft, self.hop_length = args.n_fft, args.hop_length    
         self.window = self.loader.dataset.window
         self.normalize = self.loader.dataset.normalize
         
@@ -306,7 +307,7 @@ class SingleTargetTester(TesterBase):
                 estimated_source_channels = estimated_source.size()[:-2]
 
                 estimated_source = estimated_source.view(-1, *estimated_source.size()[-2:])
-                estimated_source = torch.istft(estimated_source, self.fft_size, hop_length=self.hop_size, window=self.window, normalized=self.normalize, return_complex=False)
+                estimated_source = istft(estimated_source, self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=False)
                 estimated_source = estimated_source.view(*estimated_source_channels, -1) # -> (n_mics, T_pad)
 
                 track_dir = os.path.join(self.estimates_dir, name)

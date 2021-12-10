@@ -82,9 +82,6 @@ def main(args):
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
     
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
     model = SepFormer(
         args.n_basis, args.kernel_size, stride=args.stride,
         enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
@@ -131,6 +128,9 @@ def main(args):
         raise ValueError("Not support criterion {}".format(args.criterion))
     
     pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()

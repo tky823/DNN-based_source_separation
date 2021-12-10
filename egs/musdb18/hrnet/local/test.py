@@ -18,8 +18,8 @@ parser = argparse.ArgumentParser(description="Evaluation of HRNet")
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--sample_rate', '-sr', type=int, default=16000, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=64, help='Patch size')
-parser.add_argument('--fft_size', type=int, default=1024, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=512, help='Hop length')
+parser.add_argument('--n_fft', type=int, default=1024, help='FFT length')
+parser.add_argument('--hop_length', type=int, default=512, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--target', type=str, default=None, choices=['bass', 'drums', 'other', 'vocals'], help='Target name')
@@ -37,7 +37,7 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     
-    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, sources=args.sources, target=args.target)
+    test_dataset = SpectrogramTestDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, sources=args.sources, target=args.target)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)

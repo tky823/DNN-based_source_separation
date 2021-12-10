@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from utils.audio import build_window
 from utils.m_densenet import choose_layer_norm
 from algorithm.frequency_mask import multichannel_wiener_filter
+from transforms.stft import stft, istft
 from models.transform import BandSplit
 from models.glu import GLU2d
 from models.m_densenet import MDenseNetBackbone, DenseBlock
@@ -30,8 +31,9 @@ class ParallelMMDenseNet(nn.Module):
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
     
         in_channels = None
+        sources = list(modules.keys())
 
-        for key in modules.keys():
+        for key in sources:
             module = modules[key]
             if not isinstance(module, MMDenseNet):
                 raise ValueError("All modules must be MMDenseNet.")
@@ -44,18 +46,40 @@ class ParallelMMDenseNet(nn.Module):
         self.net = modules
 
         self.in_channels = in_channels
+        self.sources = sources
 
     def forward(self, input, target=None):
-        if type(target) is not str:
-            raise TypeError("`target` is expected str, but given {}".format(type(target)))
+        """
+        Args:
+            input: Nonnegative tensor with shape of
+                (batch_size, in_channels, n_bins, n_frames) if target is specified.
+                (batch_size, 1, in_channels, n_bins, n_frames) if target is None.
+        Returns:
+            output:
+                (batch_size, in_channels, n_bins, n_frames) if target is specified.
+                (batch_size, n_sources, in_channels, n_bins, n_frames) if target is None.
+        """
+        if target is None:
+            assert input.dim() == 5, "input is expected 5D, but given {}.".format(input.dim())
+            input = input.squeeze(dim=1)
+            output = []
+            for target in self.sources:
+                _output = self.net[target](input)
+                output.append(_output)
+            output = torch.stack(output, dim=1)
+        else:
+            if type(target) is not str:
+                raise TypeError("`target` is expected str, but given {}".format(type(target)))
+            
+            assert input.dim() == 4, "input is expected 4D, but given {}.".format(input.dim())
         
-        output = self.net[target](input)
+            output = self.net[target](input)
 
         return output
 
     @classmethod
-    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann', eps=EPS):
-        return ParallelMMDenseNetTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn, eps=eps)
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
+        return ParallelMMDenseNetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
     
     @property
     def num_parameters(self):
@@ -68,19 +92,18 @@ class ParallelMMDenseNet(nn.Module):
         return _num_parameters
 
 class ParallelMMDenseNetTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: ParallelMMDenseNet, fft_size, hop_size=None, window_fn='hann', eps=EPS):
+    def __init__(self, base_model: ParallelMMDenseNet, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         super().__init__()
 
         self.base_model = base_model
 
-        if hop_size is None:
-            hop_size = fft_size // 4
+        if hop_length is None:
+            hop_length = n_fft // 4
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        window = build_window(fft_size, window_fn=window_fn)
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
-        self.sources = list(self.base_model.net.keys())
         self.eps = eps
     
     def forward(self, input, iteration=1):
@@ -92,29 +115,28 @@ class ParallelMMDenseNetTimeDomainWrapper(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, in_channels, T)
         """
         assert input.dim() == 4, "input is expected 4D input."
-
-        n_sources = len(self.sources)
-        batch_size, _, in_channels, T = input.size()
+        
+        T = input.size(-1)
         eps = self.eps
 
-        input = input.reshape(batch_size * in_channels, T)
-        mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
-        mixture_spectrogram = mixture_spectrogram.reshape(batch_size, in_channels, *mixture_spectrogram.size()[-2:])
+        mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude = torch.abs(mixture_spectrogram)
 
         estimated_amplitude = []
 
         for target in self.sources:
-            _estimated_amplitude = self.base_model(mixture_amplitude, target=target)
+            _estimated_amplitude = self.base_model(mixture_amplitude.squeeze(dim=1), target=target)
             estimated_amplitude.append(_estimated_amplitude)
         
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
         estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
-        estimated_spectrogram = estimated_spectrogram.reshape(batch_size * n_sources * in_channels, *estimated_spectrogram.size()[-2:])
-        output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
-        output = output.reshape(batch_size, n_sources, in_channels, T)
+        output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
 
         return output
+
+    @property
+    def sources(self):
+        return list(self.base_model.sources)
 
 class MMDenseNet(nn.Module):
     """
@@ -398,8 +420,8 @@ class MMDenseNet(nn.Module):
         return model
     
     @classmethod
-    def TimeDomainWrapper(cls, base_model, fft_size, hop_size=None, window_fn='hann'):
-        return MMDenseNetTimeDomainWrapper(base_model, fft_size, hop_size=hop_size, window_fn=window_fn)
+    def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
+        return MMDenseNetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
 
     @property
     def num_parameters(self):
@@ -412,16 +434,16 @@ class MMDenseNet(nn.Module):
         return _num_parameters
 
 class MMDenseNetTimeDomainWrapper(nn.Module):
-    def __init__(self, base_model: nn.Module, fft_size, hop_size=None, window_fn='hann'):
+    def __init__(self, base_model: nn.Module, n_fft, hop_length=None, window_fn='hann'):
         super().__init__()
 
         self.base_model = base_model
 
-        if hop_size is None:
-            hop_size = fft_size // 4
+        if hop_length is None:
+            hop_length = n_fft // 4
         
-        self.fft_size, self.hop_size = fft_size, hop_size
-        window = build_window(fft_size, window_fn=window_fn)
+        self.n_fft, self.hop_length = n_fft, hop_length
+        window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
     
     def forward(self, input):
@@ -433,17 +455,13 @@ class MMDenseNetTimeDomainWrapper(nn.Module):
         """
         assert input.dim() == 3, "input is expected 3D input."
 
-        batch_size, in_channels, T = input.size()
+        T = input.size(-1)
 
-        input = input.reshape(batch_size * in_channels, T)
-        mixture_spectrogram = torch.stft(input, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=True)
-        mixture_spectrogram = mixture_spectrogram.reshape(batch_size, in_channels, *mixture_spectrogram.size()[-2:])
+        mixture_spectrogram = stft(input, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_angle = torch.abs(mixture_spectrogram), torch.angle(mixture_spectrogram)
         estimated_amplitude = self.base_model(mixture_amplitude)
         estimated_spectrogram = estimated_amplitude * torch.exp(1j * mixture_angle)
-        estimated_spectrogram = estimated_spectrogram.reshape(batch_size * in_channels, *estimated_spectrogram.size()[-2:])
-        output = torch.istft(estimated_spectrogram, n_fft=self.fft_size, hop_length=self.hop_size, window=self.window, onesided=True, return_complex=False, length=T)
-        output = output.reshape(batch_size, in_channels, T)
+        output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
 
         return output
 

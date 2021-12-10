@@ -18,8 +18,8 @@ parser = argparse.ArgumentParser(description="Evaluation of Open-Unmix")
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=6, help='Duration')
-parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--n_fft', type=int, default=4096, help='FFT length')
+parser.add_argument('--hop_length', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
@@ -38,10 +38,10 @@ def main(args):
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     samples = int(args.duration * args.sample_rate)
-    padding = 2 * (args.fft_size // 2)
-    patch_size = (samples + padding - args.fft_size) // args.hop_size + 1
+    padding = 2 * (args.n_fft // 2)
+    patch_size = (samples + padding - args.n_fft) // args.hop_length + 1
     
-    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=patch_size, sources=args.sources, target=args.sources)
+    test_dataset = SpectrogramTestDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=patch_size, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
     
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)

@@ -177,7 +177,8 @@ class Tester(TesterBase):
 
         print("ID, Loss, Loss improvement, SDR improvement, SIR improvement, SAR, PESQ", flush=True)
 
-        tmp_dir = os.path.join(os.getcwd(), 'tmp')
+        tmp_ID = str(uuid.uuid4())
+        tmp_dir = os.path.join(os.getcwd(), 'tmp-{}'.format(tmp_ID))
         os.makedirs(tmp_dir, exist_ok=True)
         shutil.copy('./PESQ', os.path.join(tmp_dir, 'PESQ'))
         os.chdir(tmp_dir)
@@ -296,6 +297,7 @@ class Tester(TesterBase):
                 test_pesq += pesq
         
         os.chdir("../") # back to the original directory
+        shutil.rmtree(tmp_dir)
 
         test_loss /= n_test
         test_loss_improvement /= n_test

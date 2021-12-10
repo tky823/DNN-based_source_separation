@@ -2,7 +2,6 @@
 
 model_id=""
 model_name="sr16000_L16_librispeech"
-file="model"
 
 . ./path.sh
 . parse_options.sh || exit 1

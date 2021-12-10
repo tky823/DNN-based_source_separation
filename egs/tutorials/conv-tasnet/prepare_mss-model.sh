@@ -2,7 +2,6 @@
 
 model_id=""
 model_name="sr44100_L20"
-file="model"
 
 . ./path.sh
 . parse_options.sh || exit 1

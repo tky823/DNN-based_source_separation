@@ -1,6 +1,12 @@
 import torch
 import torch.nn as nn
 
+"""
+Feature-wise Linear Modulation
+    Reference: "FiLM: Visual Reasoning with a General Conditioning Layer"
+    See https://arxiv.org/abs/1709.07871
+"""
+
 class FiLM(nn.Module):
     def __init__(self):
         super().__init__()
