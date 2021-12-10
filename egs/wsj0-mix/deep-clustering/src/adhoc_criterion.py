@@ -46,7 +46,7 @@ class Metrics(nn.Module):
         for key, metric in self.metrics.items():
             loss_mixture = metric(mixture, sources, batch_mean=batch_mean)
             loss = metric(estimated_sources, sources, batch_mean=batch_mean)
-            results[key] = loss_mixture - loss
+            results[key] = loss - loss_mixture
 
         return results
 
