@@ -4,7 +4,7 @@ import torch
 import torchvision
 import torch.nn as nn
 
-from adhoc_utils import draw_loss_curve
+from utils.utils import draw_loss_curve
 from criterion.entropy import BinaryCrossEntropy
 from adhoc_criterion import KLdivergence
 
@@ -165,7 +165,7 @@ class Trainer:
         self.model.train()
     
         for input, _ in self.loader['train']:
-            if torch.cuda.is_available():
+            if self.use_cuda:
                 input = input.cuda()
 
             output, _, mean, var = self.model(input, num_samples=self.num_samples, return_params=True)
@@ -204,7 +204,7 @@ class Trainer:
         
         with torch.no_grad():
             for idx, (input, _) in enumerate(self.loader['valid']):
-                if torch.cuda.is_available():
+                if self.use_cuda:
                     input = input.cuda()
 
                 output, _, mean, var = self.model(input, return_params=True)
