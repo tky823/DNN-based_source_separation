@@ -10,7 +10,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, IdealMaskSpectrogramTestDataLoader
 from adhoc_driver import AdhocTester
-from models.deep_clustering import DeepEmbedding
+from models.deep_clustering import DeepClustering
 from criterion.deep_clustering import AffinityLoss
 from criterion.sdr import NegSISDR
 from adhoc_criterion import AffinityLossWrapper, Metrics
@@ -42,7 +42,7 @@ def main(args):
     
     args.n_bins = args.n_fft // 2 + 1
     loader = IdealMaskSpectrogramTestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    model = DeepEmbedding.build_model(args.model_path)
+    model = DeepClustering.build_model(args.model_path)
     
     print(model)
     print("# Parameters: {}".format(model.num_parameters))

@@ -2,6 +2,7 @@ import os
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from utils.audio import build_window
 from utils.model import choose_rnn
@@ -250,13 +251,67 @@ class DeepEmbeddingTimeDomainWrapper(nn.Module):
 
         return output
 
+class DeepEmbeddingPlus(nn.Module):
+    def __init__(self, embedding_net, enhancement_net):
+        super().__init__()
+
+        self.embedding_net = embedding_net
+        self.enhancement_net = enhancement_net
+    
+    def forward(self, input, n_sources=None, iter_clustering=None):
+        """
+        Args:
+            input <torch.Tensor>: Amplitude with shape of (batch_size, 1, n_bins, n_frames).
+        Returns:
+            embedding <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
+            s_tilde <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
+        """
+        assert n_sources is None
+
+        batch_size, _, n_bins, n_frames = input.size()
+
+        embedding = self.embedding_net(input) # (batch_size, n_bins, n_frames, embed_dim)
+        embedding_reshaped = embedding.view(batch_size, n_bins * n_frames, -1)
+
+        kmeans = KMeans(K=n_sources)
+        kmeans.train()
+        cluster_ids = kmeans(embedding_reshaped, iteration=iter_clustering) # (batch_size, n_bins * n_frames)
+        mask = F.one_hot(cluster_ids, classes=n_sources) # (batch_size, n_bins * n_frames, n_sources)
+        mask = mask.view(batch_size, n_bins, n_frames, n_sources)
+        mask = mask.permute(0, 3, 1, 2) # (batch_size, n_sources, n_bins, n_frames)
+
+        s_hat = mask * input # (batch_size, n_sources, n_bins, n_frames)
+        s_hat = s_hat.view(batch_size * n_sources, 1, n_bins, n_frames)
+        repeated_input = torch.tile(input, (1, n_sources, 1, 1))
+        repeated_input = repeated_input.view(batch_size * n_sources, 1, n_bins, n_frames)
+        x = torch.cat([repeated_input, s_hat], dim=1) # (batch_size * n_sources, 2, n_bins, n_frames)
+
+        x = self.enhancement_net(x) # (batch_size * n_sources, n_bins, n_frames)
+        x = x.view(batch_size, n_sources, n_bins, n_frames)
+        mask_final = F.softmax(x, dim=1) # (batch_size, n_sources, n_bins, n_frames)
+        s_tilde = mask_final * input
+
+        return embedding, s_tilde
+    
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+        
+        for p in self.parameters():
+            if p.requires_grad:
+                _num_parameters += p.numel()
+                
+        return _num_parameters
+
 class DeepEmbedding_pp(nn.Module):
-    def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=4, enh_hidden_channels=600, enh_num_layers=2, causal=False, rnn_type='lstm', eps=EPS, **kwargs):
+    def __init__(self, n_bins, hidden_channels=300, embed_dim=40, num_layers=4, enh_hidden_channels=600, enh_num_layers=2, causal=False, rnn_type='lstm', take_log=True, take_db=False, eps=EPS, **kwargs):
         super().__init__()
 
         self.n_bins = n_bins
         self.hidden_channels, self.embed_dim = hidden_channels, embed_dim
 
+        self.rnn_type = rnn_type
+        self.take_log, self.take_db = take_log, take_db
         self.eps = eps
 
         if causal:
@@ -269,7 +324,7 @@ class DeepEmbedding_pp(nn.Module):
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(hidden_channels * num_directions, n_bins * embed_dim)
         self.embed_nonlinear = nn.Sigmoid()
-        self.net_enhancement = NaiveEnhancementNet(2 * n_bins, n_bins, hidden_channels=enh_hidden_channels, num_layers=enh_num_layers, causal=causal, eps=eps)
+        self.enhancement_net = NaiveEnhancementNet(2 * n_bins, n_bins, hidden_channels=enh_hidden_channels, num_layers=enh_num_layers, causal=causal, eps=eps)
     
     def forward(self, input):
         """
@@ -283,11 +338,18 @@ class DeepEmbedding_pp(nn.Module):
 
         batch_size, _, n_frames = input.size()
 
-        x = input.permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
+        if self.take_log:
+            x = torch.log(input + eps)
+        elif self.take_db:
+            x = 20 * torch.log10(input + eps)
+        else:
+            x = input
+
+        x = x.squeeze(dim=1).permute(0, 2, 1) # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x)
         x = self.fc(x) # (batch_size, n_frames, n_bins * embed_dim)
         x = x.view(batch_size, n_frames, n_bins, embed_dim)
-        x = x.permute(0, 3, 2, 1).contiguous() # (batch_size, embed_dim, n_bins, n_frames)
+        x = x.permute(0, 2, 1, 3).contiguous() # (batch_size, n_bins, n_frames, embed_dim)
         norm = torch.linalg.vector_norm(x, dim=-1, keepdim=True)
         x = x / (norm + eps)
         output = self.embed_nonlinear(x)
@@ -379,6 +441,8 @@ class ChimeraNet(nn.Module):
                 _num_parameters += p.numel()
                 
         return _num_parameters
+
+DeepClustering = DeepEmbedding
 
 def _test_deep_embedding():
     batch_size, T = 2, 512

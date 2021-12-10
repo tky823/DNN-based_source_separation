@@ -10,7 +10,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTrainDataset, IdealMaskSpectrogramEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import AdhocTrainer
-from models.deep_clustering import DeepEmbedding
+from models.deep_clustering import DeepClustering
 from criterion.deep_clustering import AffinityLoss
 from adhoc_criterion import AffinityLossWrapper
 
@@ -74,7 +74,7 @@ def main(args):
         loader['valid'] = None
     
     args.n_bins = args.n_fft // 2 + 1
-    model = DeepEmbedding(args.n_bins, hidden_channels=args.hidden_channels, embed_dim=args.embed_dim, num_layers=args.num_layers, causal=args.causal, take_log=args.take_log, take_db=args.take_db)
+    model = DeepClustering(args.n_bins, hidden_channels=args.hidden_channels, embed_dim=args.embed_dim, num_layers=args.num_layers, causal=args.causal, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
     
