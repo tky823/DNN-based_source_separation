@@ -202,13 +202,13 @@ class Trainer:
                 if idx < 5:
                     input = input[0].cpu().view(1, 28, 28)
                     output = output[0, 0].cpu().view(1, 28, 28)
-                    input = torchvision.functional.to_pil_image(input)
-                    output = torchvision.functional.to_pil_image(output)
+                    input = torchvision.transforms.functional.to_pil_image(input)
+                    output = torchvision.transforms.functional.to_pil_image(output)
                     
                     save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
 
-                    save_path = os.path.join(save_dir, "input.png".format(epoch + 1))
+                    save_path = os.path.join(save_dir, "input.png")
                     input.save(save_path)
 
                     save_path = os.path.join(save_dir, "{}.png".format(epoch + 1))
