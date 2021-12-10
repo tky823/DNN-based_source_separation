@@ -26,15 +26,13 @@ class Trainer:
         self.reconstruction = BinaryCrossEntropy()
         
         # Loss
+        self.criterions = ["loss", "kl", "reconstruction"]
+
         self.train_loss = {
-            "loss": torch.Tensor(self.epochs),
-            "kl": torch.Tensor(self.epochs),
-            "reconstruction": torch.Tensor(self.epochs)
+            key: torch.empty(self.epochs) for key in self.criterions
         }
         self.valid_loss = {
-            "loss": torch.Tensor(self.epochs),
-            "kl": torch.Tensor(self.epochs),
-            "reconstruction": torch.Tensor(self.epochs)
+            key: torch.empty(self.epochs) for key in self.criterions
         }
 
         self.max_norm = args.max_norm
@@ -48,10 +46,6 @@ class Trainer:
         os.makedirs(self.sample_dir, exist_ok=True)
         
         self.epochs = args.epochs
-        
-        self.train_loss = torch.empty(self.epochs)
-        self.valid_loss = torch.empty(self.epochs)
-        
         self.use_cuda = args.use_cuda
         
         if args.continue_from:
@@ -59,8 +53,9 @@ class Trainer:
             
             self.start_epoch = config['epoch']
             
-            self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
-            self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
+            for key in self.criterions:
+                self.train_loss[key][:self.start_epoch] = config['train_loss'][key][:self.start_epoch]
+                self.valid_loss[key][:self.start_epoch] = config['valid_loss'][key][:self.start_epoch]
             
             self.best_loss = config['best_loss']
             self.prev_loss = self.valid_loss[self.start_epoch - 1]
@@ -151,7 +146,7 @@ class Trainer:
 
             output, _, mean, var = self.model(input, num_samples=self.num_samples, return_params=True)
 
-            kl_loss = self.kl_divergence(mean=mean, var=var)
+            kl_loss = self.kl_divergence(mean, var)
             reconstruction_loss = self.reconstruction(output, input)
             loss = kl_loss + reconstruction_loss
 
@@ -184,14 +179,14 @@ class Trainer:
         self.model.eval()
         
         with torch.no_grad():
-            for x, t in self.loader['valid']:
+            for input, _ in self.loader['valid']:
                 if torch.cuda.is_available():
-                    x = x.cuda()
+                    input = input.cuda()
 
-                y, latent, mean, var = self.model(x, return_params=True)
+                output, _, mean, var = self.model(input, return_params=True)
                 
-                kl_loss = self.kl_divergence(mean=mean, var=var, batch_mean=False)
-                reconstruction_loss = self.reconstruction(input=y, target=x, batch_mean=False)
+                kl_loss = self.kl_divergence(mean, var, batch_mean=False)
+                reconstruction_loss = self.reconstruction(output, input, batch_mean=False)
                 loss = kl_loss + reconstruction_loss
                 
                 valid_loss += loss.sum().item()
