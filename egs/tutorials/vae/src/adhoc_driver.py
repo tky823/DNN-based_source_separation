@@ -22,19 +22,6 @@ class Trainer:
     def _reset(self, args):
         self.num_samples = args.num_samples
         self.latent_dim = args.latent_dim
-    
-        self.kl_divergence = KLdivergence()
-        self.reconstruction = BinaryCrossEntropy(reduction="sum")
-        
-        # Loss
-        self.criterions = ["loss", "kl", "reconstruction"]
-
-        self.train_loss = {
-            key: torch.empty(self.epochs) for key in self.criterions
-        }
-        self.valid_loss = {
-            key: torch.empty(self.epochs) for key in self.criterions
-        }
 
         self.max_norm = args.max_norm
         
@@ -48,6 +35,19 @@ class Trainer:
         
         self.epochs = args.epochs
         self.use_cuda = args.use_cuda
+
+        self.kl_divergence = KLdivergence()
+        self.reconstruction = BinaryCrossEntropy(reduction="sum")
+        
+        # Loss
+        self.criterions = ["loss", "kl", "reconstruction"]
+
+        self.train_loss = {
+            key: torch.empty(self.epochs) for key in self.criterions
+        }
+        self.valid_loss = {
+            key: torch.empty(self.epochs) for key in self.criterions
+        }
 
         self.best_loss, self.prev_loss = {}, {}
         
