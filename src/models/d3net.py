@@ -506,7 +506,7 @@ class D3Net(nn.Module):
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
-        if task in ['musdb18']:
+        if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "nnabla"
             model_choice = kwargs.get('model_choice') or 'best'
