@@ -221,6 +221,12 @@ class D3Net(nn.Module):
                 "paper": "1We9ea5qe3Hhcw28w1XZl2KKogW9wdzKF",
                 "nnabla": "1B4e4e-8-T1oKzSg8WJ8RIbZ99QASamPB"
             }
+        },
+        "musdb18hq": {
+            SAMPLE_RATE_MUSDB18: {
+                "paper": "1--LWjAkX_1e4oDUkBAchu1OU1AMgt5CH",
+                "nnabla": "1-5U73sNISmea_FAAaMsAjV0qjbJEaoZU"
+            }
         }
     }
     def __init__(
