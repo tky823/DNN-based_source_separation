@@ -1,7 +1,8 @@
 # 事前学習済みモデル
 | モデル | データセット | ダウンロードの例 |
 |:---:|:---:|:---:|
-| DeepClustering | WSJ0-2mix | `model = DeepEmbedding.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DeepClustering | WSJ0-2mix | `model = DeepClustering.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DeepClustering | WSJ0-3mix | `model = DeepClustering.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DANet | WSJ0-2mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | DANet | WSJ0-3mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DANet (fixed attractor) | WSJ0-2mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
