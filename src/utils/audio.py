@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 def build_window(n_fft, window_fn='hann', **kwargs):
@@ -35,3 +36,21 @@ def build_optimal_window(window, hop_length=None):
     optimal_window = window / norm
     
     return optimal_window
+
+def load_piano_roll(midi_path, sample_rate, hop_length, dtype=torch.uint8):
+    import pretty_midi
+
+    midi = pretty_midi.PrettyMIDI(path)
+    piano_roll_sample_rate = sample_rate / hop_length
+    piano_roll = midi.get_piano_roll(fs=piano_roll_sample_rate)
+    piano_roll = piano_roll.astype(np.uint8)
+    piano_roll = torch.from_numpy(piano_roll)
+
+    if dtype is torch.uint8:
+        pass
+    elif dtype in [torch.float, torch.float64]:
+        piano_roll = piano_roll / 128
+    else:
+        raise ValueError("Invalid dtype is specified.")
+
+    return piano_roll
