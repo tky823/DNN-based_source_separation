@@ -1005,8 +1005,16 @@ class FixedAttractorTester(TesterBase):
         test_sar /= n_test
         test_pesq /= n_test
 
+        for key in test_results.keys():
+            test_results[key] /= n_test
+
         os.chdir("../") # back to the original directory
         shutil.rmtree(tmp_dir)
 
-        print("Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq))
+        s = "Loss: {:.3f}, SDR improvement: {:3f}, SIR improvement: {:3f}, SAR: {:3f}, PESQ: {:.3f}".format(test_loss, test_sdr_improvement, test_sir_improvement, test_sar, test_pesq)
+        
+        for key, result in test_results.items():
+            s += ", {} improvement: {:.3f}".format(key, result)
+        
+        print(s)
         print("Evaluation of PESQ returns error {} times".format(n_pesq_error))
