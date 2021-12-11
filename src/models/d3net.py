@@ -101,7 +101,7 @@ class ParallelD3Net(nn.Module):
         pretrained_model_ids_task = D3Net.pretrained_model_ids[task]
         additional_attributes = {}
         
-        if task in ['musdb18']:
+        if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "nnabla"
             sources = __sources__
@@ -129,7 +129,7 @@ class ParallelD3Net(nn.Module):
             config = torch.load(model_path, map_location=lambda storage, loc: storage)
             modules[target] = D3Net.build_model(model_path, load_state_dict=load_state_dict)
 
-            if task in ['musdb18']:
+            if task in ['musdb18', 'musdb18hq']:
                 if n_fft is None:
                     n_fft = config['n_fft']
                 else:
