@@ -34,6 +34,7 @@ class AdhocTrainer(TrainerBase):
         self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         self.max_norm = args.max_norm
+        self.add_noise = args.add_noise
         
         self.model_dir = args.model_dir
         self.loss_dir = args.loss_dir
@@ -182,6 +183,14 @@ class AdhocTrainer(TrainerBase):
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
             
             self.optimizer.step()
+
+            if self.add_noise:
+                scale = torch.sqrt(self.add_noise)
+                for p in self.model.parameters():
+                    if p.requires_grad:
+                        noise = scale * torch.randn(*p.data.size())
+                        noise = noise.to(p.data.device)
+                        p.data.add_(noise)
             
             train_loss += loss.item()
             

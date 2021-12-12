@@ -38,6 +38,7 @@ lr=1e-5
 momentum=9e-1
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
+add_noise=6e-1
 
 batch_size=64
 epochs=100
@@ -63,9 +64,9 @@ if [ -z "${tag}" ]; then
         save_dir="${save_dir}/take_identity"
     fi
     if [ "${optimizer}" = "momentum-sgd" ]; then
-        save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-momentum${momentum}-decay${weight_decay}_clip${max_norm}"
+        save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-momentum${momentum}-decay${weight_decay}_clip${max_norm}_noise${add_noise}"
     else
-        save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}"
+        save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}_noise${add_noise}"
     fi
     save_dir="${save_dir}/seed${seed}"
 else
