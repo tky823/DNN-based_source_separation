@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import time
 import uuid
+import math
 from collections import OrderedDict
 
 import torch
@@ -185,7 +186,7 @@ class AdhocTrainer(TrainerBase):
             self.optimizer.step()
 
             if self.add_noise:
-                scale = torch.sqrt(self.add_noise)
+                scale = math.sqrt(self.add_noise)
                 for p in self.model.parameters():
                     if p.requires_grad:
                         noise = scale * torch.randn(*p.data.size())
