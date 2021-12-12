@@ -117,14 +117,14 @@ class TasNet(nn.Module):
         self.separator = Separator(
             n_basis, num_blocks=sep_num_blocks, num_layers=sep_num_layers, hidden_channels=sep_hidden_channels,
             causal=causal,
-            mask_nonilnear=mask_nonlinear,
+            mask_nonlinear=mask_nonlinear,
             rnn_type=rnn_type,
             n_sources=n_sources,
             eps=eps
         )
         self.decoder = decoder
 
-        self._init_weight()
+        self._init_weights()
 
     def forward(self, input):
         """
@@ -190,7 +190,7 @@ class TasNet(nn.Module):
 
         return output, latent
 
-    def _init_weight(self):
+    def _init_weights(self):
         for m in self.separator.modules():
             if isinstance(m, nn.RNN) or isinstance(m, nn.LSTM) or isinstance(m, nn.GRU):
                 for name, p in m.named_parameters():
@@ -314,7 +314,7 @@ class Separator(nn.Module):
     """
     Default separator of TasNet.
     """
-    def __init__(self, n_basis, num_blocks, num_layers, hidden_channels, causal=False, mask_nonilnear='softmax', rnn_type='lstm', n_sources=2, eps=EPS):
+    def __init__(self, n_basis, num_blocks, num_layers, hidden_channels, causal=False, mask_nonlinear='softmax', rnn_type='lstm', n_sources=2, eps=EPS):
         super().__init__()
         
         self.num_blocks, self.num_layers = num_blocks, num_layers
@@ -345,15 +345,14 @@ class Separator(nn.Module):
         self.rnn = nn.Sequential(*net)
         self.fc = nn.Linear(num_directions * hidden_channels, n_sources * n_basis)
 
-        if mask_nonilnear == 'sigmoid':
+        if mask_nonlinear == 'sigmoid':
             kwargs = {}
-            self.mask_nonlinear = nn.Sigmoid()
-        elif mask_nonilnear == 'softmax':
+        elif mask_nonlinear == 'softmax':
             kwargs = {
                 "dim": 1
             }
 
-        self.mask_nonlinear = choose_nonlinear(mask_nonilnear, **kwargs)
+        self.mask_nonlinear = choose_nonlinear(mask_nonlinear, **kwargs)
 
         self._reset_parameters()
 
@@ -410,8 +409,8 @@ def _test_tasnet_base():
     print(input.size(), output.size())
 
     plt.figure()
-    plt.plot(range(T), input[0, 0].detach().numpy())
-    plt.plot(range(T), output[0, 0].detach().numpy())
+    plt.plot(range(T), input[0, 0].detach())
+    plt.plot(range(T), output[0, 0].detach())
     plt.savefig('data/tasnet/Fourier.png', bbox_inches='tight')
     plt.close()
 
@@ -419,7 +418,7 @@ def _test_tasnet_base():
     print(basis.size())
 
     plt.figure()
-    plt.pcolormesh(basis.detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
+    plt.pcolormesh(basis.detach(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
     plt.savefig('data/tasnet/basis.png', bbox_inches='tight')
     plt.close()
@@ -429,7 +428,7 @@ def _test_tasnet_base():
     power = torch.abs(latent)
 
     plt.figure()
-    plt.pcolormesh(power[0].detach().cpu().numpy(), cmap='bwr')
+    plt.pcolormesh(power[0].detach(), cmap='bwr')
     plt.colorbar()
     plt.savefig('data/tasnet/power.png', bbox_inches='tight')
     plt.close()

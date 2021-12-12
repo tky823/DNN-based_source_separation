@@ -218,20 +218,26 @@ class Encoder(nn.Module):
             self.nonlinear = True
         else:
             self.nonlinear = False
-    
+
+        self._init_weights()
+
     def forward(self, input):
         x = self.conv1d(input)
-        
+
         if self.nonlinear:
             output = self.nonlinear1d(x)
         else:
             output = x
-        
+
         return output
-    
+
+    def _init_weights(self):
+        nn.init.xavier_normal_(self.conv1d.weight)
+        nn.init.zeros_(self.conv1d.bias)
+
     def get_basis(self):
         basis = self.conv1d.weight
-    
+
         return basis
 
 class Decoder(nn.Module):
@@ -241,15 +247,19 @@ class Decoder(nn.Module):
         self.kernel_size, self.stride = kernel_size, stride
         
         self.conv_transpose1d = nn.ConvTranspose1d(n_basis, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
-    
+
+        self._init_weights()
+
     def forward(self, input):
         output = self.conv_transpose1d(input)
-        
         return output
-    
+
+    def _init_weights(self):
+        nn.init.xavier_normal_(self.conv_transpose1d.weight)
+        nn.init.zeros_(self.conv_transpose1d.bias)
+
     def get_basis(self):
         basis = self.conv_transpose1d.weight
-        
         return basis
 
 class PinvDecoder(nn.Module):
@@ -281,7 +291,6 @@ class PinvDecoder(nn.Module):
         if isinstance(encoder, Encoder):
             weight = self.weight.permute(1, 0, 2).contiguous()
             weight_pinverse = torch.pinverse(weight).permute(2, 0, 1).contiguous() / duplicate
-
             output = F.conv_transpose1d(input, weight_pinverse, stride=stride)
         elif isinstance(encoder, FourierEncoder):
             if torch.is_complex(input):
@@ -289,33 +298,32 @@ class PinvDecoder(nn.Module):
             else:    
                 n_bins = input.size(1)
                 input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
-            
+
             n_basis = encoder.n_basis
             omega, n = encoder.frequency, encoder.time_seq
             window = encoder.window
 
             omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+
             if encoder.trainable_phase:
                 phi = self.encoder.phase
                 basis_real, basis_imag = torch.cos(omega_n + phi.unsqueeze(dim=1)), torch.sin(omega_n + phi.unsqueeze(dim=1))
             else:
                 basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
             basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
-            
+
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
             basis_real, basis_imag = window * basis_real, window * basis_imag
-
             basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
-
             output = F.conv_transpose1d(input_real, basis_real, stride=stride) - F.conv_transpose1d(input_imag, basis_imag, stride=stride)
         else:
             raise TypeError("Not support encoder {}.".format(type(encoder)))
 
         return output
-    
+
     def get_basis(self):
         kernel_size, stride = self.kernel_size, self.stride
         duplicate = kernel_size // stride

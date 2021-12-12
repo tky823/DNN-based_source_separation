@@ -42,33 +42,33 @@ class DPTNet(nn.Module):
         **kwargs
     ):
         super().__init__()
-        
+
         if stride is None:
             stride = kernel_size // 2
-        
+
         if sep_hop_size is None:
             sep_hop_size = sep_chunk_size // 2
-        
+
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
         assert n_basis % sep_num_heads == 0, "n_basis must be divisible by sep_num_heads"
-        
+
         # Encoder-decoder
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
-        
+
         if enc_basis == 'trainable' and not dec_basis == 'pinv':    
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
-        
+
         if enc_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase'] or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
             self.window_fn = kwargs['window_fn']
             self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
             self.enc_onesided, self.enc_return_complex = None, None
-        
+
         # Separator configuration
         self.sep_bottleneck_channels, self.sep_hidden_channels = sep_bottleneck_channels, sep_hidden_channels
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
@@ -80,13 +80,13 @@ class DPTNet(nn.Module):
 
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
-        
+
         self.n_sources = n_sources
         self.eps = eps
-        
+
         # Network configuration
         encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
-        
+
         self.encoder = encoder
         self.separator = Separator(
             n_basis, bottleneck_channels=sep_bottleneck_channels, hidden_channels=sep_hidden_channels,
@@ -98,12 +98,11 @@ class DPTNet(nn.Module):
             eps=eps
         )
         self.decoder = decoder
-        
+
     def forward(self, input):
         output, _ = self.extract_latent(input)
-        
         return output
-        
+
     def extract_latent(self, input):
         """
         Args:
@@ -115,9 +114,9 @@ class DPTNet(nn.Module):
         n_sources = self.n_sources
         n_basis = self.n_basis
         kernel_size, stride = self.kernel_size, self.stride
-        
+
         batch_size, C_in, T = input.size()
-        
+
         assert C_in == 1, "input.size() is expected (?, 1, ?), but given {}".format(input.size())
         
         padding = (stride - (T - kernel_size) % stride) % stride
@@ -136,15 +135,15 @@ class DPTNet(nn.Module):
             mask = self.separator(w)
             w = w.unsqueeze(dim=1)
             w_hat = w * mask
-        
+
         latent = w_hat
         w_hat = w_hat.view(batch_size*n_sources, n_basis, -1)
         x_hat = self.decoder(w_hat)
         x_hat = x_hat.view(batch_size, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
-        
+
         return output, latent
-    
+
     def get_config(self):
         config = {
             'n_basis': self.n_basis,
@@ -170,32 +169,32 @@ class DPTNet(nn.Module):
             'n_sources': self.n_sources,
             'eps': self.eps
         }
-    
+
         return config
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
+
         n_basis = config.get('n_bases') or config['n_basis']
         kernel_size, stride = config['kernel_size'], config['stride']
         enc_basis, dec_basis = config.get('enc_bases') or config['enc_basis'], config.get('dec_bases') or config['dec_basis']
         enc_nonlinear = config['enc_nonlinear']
         enc_onesided, enc_return_complex = config.get('enc_onesided') or None, config.get('enc_return_complex') or None
         window_fn = config['window_fn']
-        
+
         sep_hidden_channels, sep_bottleneck_channels = config['sep_hidden_channels'], config['sep_bottleneck_channels']
         sep_chunk_size, sep_hop_size = config['sep_chunk_size'], config['sep_hop_size']
         sep_num_blocks = config['sep_num_blocks']
         sep_num_heads = config['sep_num_heads']
         sep_norm, sep_nonlinear, sep_dropout = config['sep_norm'], config['sep_nonlinear'], config['sep_dropout']
-        
+
         sep_nonlinear, sep_norm = config['sep_nonlinear'], config['sep_norm']
         mask_nonlinear = config['mask_nonlinear']
 
         causal = config['causal']
         n_sources = config['n_sources']
-        
+
         eps = config['eps']
 
         model = cls(
@@ -211,12 +210,12 @@ class DPTNet(nn.Module):
             n_sources=n_sources,
             eps=eps
         )
-        
+
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
         from utils.utils import download_pretrained_model_from_google_drive
