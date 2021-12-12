@@ -35,6 +35,7 @@ class AdhocTrainer(TrainerBase):
         self.sample_rate = args.sample_rate
         self.n_sources = args.n_sources
         self.max_norm = args.max_norm
+        self.add_noise = args.add_noise
 
         self.model_dir = args.model_dir
         self.loss_dir = args.loss_dir
