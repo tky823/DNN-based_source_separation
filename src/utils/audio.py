@@ -37,8 +37,8 @@ def build_optimal_window(window, hop_length=None):
     
     return optimal_window
 
-def load_midi(midi_path, sample_rate, hop_length, load_type="midi", dtype=torch.uint8):
-    assert load_type == "midi"
+def load_midi(midi_path, sample_rate, hop_length, load_type="piano_roll", dtype=torch.uint8):
+    assert load_type in ["pianoroll", "piano_roll"]
 
     import pretty_midi
 
