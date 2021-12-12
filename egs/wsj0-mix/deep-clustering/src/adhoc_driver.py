@@ -104,7 +104,7 @@ class AdhocTrainer(TrainerBase):
             if self.valid_loader is not None:
                 s += ", loss (valid): {:.5f}".format(valid_loss)
                 self.valid_loss[epoch] = valid_loss
-            
+
             s += ", {:.3f} [sec]".format(end - start)
             print(s, flush=True)
 
@@ -160,21 +160,21 @@ class AdhocTrainer(TrainerBase):
         Training
         """
         self.model.train()
-        
+
         train_loss = 0
         n_train_batch = len(self.train_loader)
-        
+
         for idx, (mixture, _, mask, threshold_weight) in enumerate(self.train_loader):
             if self.use_cuda:
                 mixture = mixture.cuda()
                 mask = mask.cuda()
                 threshold_weight = threshold_weight.cuda()
-            
+
             mixture_amplitude = torch.abs(mixture)
-            
+
             embedding = self.model(mixture_amplitude)
             loss = self.criterion(embedding, mask, binary_mask=threshold_weight)
-            
+
             self.optimizer.zero_grad()
             loss.backward()
 
@@ -185,14 +185,14 @@ class AdhocTrainer(TrainerBase):
                         noise = scale * torch.randn(*p.data.size())
                         noise = noise.to(p.data.device)
                         p.data.add_(noise)
-            
+
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
 
             self.optimizer.step()
 
             train_loss += loss.item()
-            
+
             if (idx + 1) % 100 == 0:
                 print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
 
@@ -214,20 +214,20 @@ class AdhocTrainer(TrainerBase):
         else:
             config = self.model.get_config()
             config['state_dict'] = self.model.state_dict()
-            
+
         config['optim_dict'] = self.optimizer.state_dict()
-        
+
         if self.scheduler is not None:
             config['scheduler_dict'] = self.scheduler.state_dict()
-        
+
         config['best_loss'] = self.best_loss
         config['no_improvement'] = self.no_improvement
-        
+
         config['train_loss'] = self.train_loss
         config['valid_loss'] = self.valid_loss
-        
+
         config['epoch'] = epoch + 1
-        
+
         torch.save(config, model_path)
 
 class AdhocTester(TesterBase):
@@ -235,7 +235,7 @@ class AdhocTester(TesterBase):
         self.loader = loader
         self.model = model
         self.criterion, self.metrics = criterion, metrics
-        
+
         self._reset(args)
 
     def _reset(self, args):

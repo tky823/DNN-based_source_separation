@@ -233,7 +233,6 @@ class Encoder(nn.Module):
 
     def _init_weights(self):
         nn.init.xavier_normal_(self.conv1d.weight)
-        nn.init.zeros_(self.conv1d.bias)
 
     def get_basis(self):
         basis = self.conv1d.weight
@@ -256,7 +255,6 @@ class Decoder(nn.Module):
 
     def _init_weights(self):
         nn.init.xavier_normal_(self.conv_transpose1d.weight)
-        nn.init.zeros_(self.conv_transpose1d.bias)
 
     def get_basis(self):
         basis = self.conv_transpose1d.weight
