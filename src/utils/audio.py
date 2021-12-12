@@ -37,7 +37,9 @@ def build_optimal_window(window, hop_length=None):
     
     return optimal_window
 
-def load_piano_roll(midi_path, sample_rate, hop_length, dtype=torch.uint8):
+def load_midi(midi_path, sample_rate, hop_length, load_type="midi", dtype=torch.uint8):
+    assert load_type == "midi"
+
     import pretty_midi
 
     midi = pretty_midi.PrettyMIDI(midi_path)
@@ -50,6 +52,7 @@ def load_piano_roll(midi_path, sample_rate, hop_length, dtype=torch.uint8):
         pass
     elif dtype in [torch.float, torch.float64]:
         piano_roll = piano_roll / 128
+        piano_roll = piano_roll.to(torch.float)
     else:
         raise ValueError("Invalid dtype is specified.")
 
@@ -62,7 +65,7 @@ def _test_piano_roll():
     window = torch.hann_window(n_fft)
     spectrogram = torch.stft(waveform, n_fft, hop_length=hop_length, window=window, center=True, onesided=True, return_complex=True)
     log_spectrogram = 20 * torch.log10(torch.abs(spectrogram) + 1e-12)
-    piano_roll = load_piano_roll("data/midi/CDEFGGGAFCAGCG.mid", sample_rate=sample_rate, hop_length=hop_length, dtype=torch.float)
+    piano_roll = load_midi("data/midi/CDEFGGGAFCAGCG.mid", sample_rate=sample_rate, hop_length=hop_length, dtype=torch.float)
     
     print(piano_roll.size())
 
