@@ -177,6 +177,14 @@ class AdhocTrainer(TrainerBase):
             self.optimizer.zero_grad()
             loss.backward()
 
+            if self.add_noise:
+                scale = math.sqrt(self.add_noise)
+                for p in self.model.parameters():
+                    if p.requires_grad:
+                        noise = scale * torch.randn(*p.data.size())
+                        noise = noise.to(p.data.device)
+                        p.data.add_(noise)
+
             if self.max_norm:
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_norm)
 
