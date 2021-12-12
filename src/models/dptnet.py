@@ -224,7 +224,7 @@ class DPTNet(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
@@ -241,18 +241,18 @@ class DPTNet(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })
-        
+
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
-    
+
         for key, value in additional_attributes.items():
             setattr(model, key, value)
 
@@ -284,13 +284,13 @@ class Separator(nn.Module):
 
         if hop_size is None:
             hop_size = chunk_size // 2
-        
+
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
-        
+
         self.bottleneck_conv1d = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
         self.segment1d = Segment1d(chunk_size, hop_size)
-        
+
         norm_name = 'cLN' if causal else 'gLN'
         self.norm2d = choose_layer_norm(norm_name, bottleneck_channels, causal=causal, eps=eps)
 
@@ -304,7 +304,7 @@ class Separator(nn.Module):
         self.prelu = nn.PReLU()
         self.map = nn.Conv1d(bottleneck_channels, n_sources*num_features, kernel_size=1, stride=1)
         self.gtu = GTU1d(num_features, num_features, kernel_size=1, stride=1)
-        
+
         if mask_nonlinear in ['relu', 'sigmoid']:
             kwargs = {}
         elif mask_nonlinear == 'softmax':
@@ -313,9 +313,9 @@ class Separator(nn.Module):
             }
         else:
             raise ValueError("Cannot support {}".format(mask_nonlinear))
-        
+
         self.mask_nonlinear = choose_nonlinear(mask_nonlinear, **kwargs)
-            
+
     def forward(self, input):
         """
         Args:
@@ -326,11 +326,11 @@ class Separator(nn.Module):
         num_features, n_sources = self.num_features, self.n_sources
         chunk_size, hop_size = self.chunk_size, self.hop_size
         batch_size, num_features, n_frames = input.size()
-        
+
         padding = (hop_size - (n_frames - chunk_size) % hop_size) % hop_size
         padding_left = padding // 2
         padding_right = padding - padding_left
-        
+
         x = self.bottleneck_conv1d(input)
         x = F.pad(x, (padding_left, padding_right))
         x = self.segment1d(x) # -> (batch_size, C, S, chunk_size)
@@ -344,19 +344,19 @@ class Separator(nn.Module):
         x = self.gtu(x) # -> (batch_size*n_sources, num_features, n_frames)
         x = self.mask_nonlinear(x) # -> (batch_size*n_sources, num_features, n_frames)
         output = x.view(batch_size, n_sources, num_features, n_frames)
-        
+
         return output
 
 class DualPathTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
-        
+
         # Network confguration
         net = []
-        
+
         for _ in range(num_blocks):
             net.append(DualPathTransformerBlock(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps))
-        
+
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
@@ -373,7 +373,7 @@ class DualPathTransformer(nn.Module):
 class DualPathTransformerBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
-        
+
         self.intra_chunk_block = IntraChunkTransformer(
             num_features, hidden_channels, num_heads=num_heads,
             norm=norm, nonlinear=nonlinear, dropout=dropout,
@@ -385,7 +385,7 @@ class DualPathTransformerBlock(nn.Module):
             causal=causal,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -395,13 +395,13 @@ class DualPathTransformerBlock(nn.Module):
         """
         x = self.intra_chunk_block(input)
         output = self.inter_chunk_block(x)
-        
+
         return output
 
 class IntraChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
-        
+
         self.num_features = num_features
 
         self.transformer = ImprovedTransformer(
@@ -432,7 +432,7 @@ class IntraChunkTransformer(nn.Module):
 class InterChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
-        
+
         self.num_features = num_features
 
         self.transformer = ImprovedTransformer(
@@ -441,7 +441,7 @@ class InterChunkTransformer(nn.Module):
             causal=causal,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -451,7 +451,7 @@ class InterChunkTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         x = input.permute(2, 0, 3, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (S, batch_size, chunk_size, num_features)
         x = x.view(S, batch_size*chunk_size, num_features) # (S, batch_size, chunk_size, num_features) -> (S, batch_size*chunk_size, num_features)
         x = self.transformer(x) # -> (S, batch_size*chunk_size, num_features)
@@ -476,7 +476,7 @@ class ImprovedTransformer(nn.Module):
         """
         x = self.multihead_attn_block(input)
         output = self.subnet(x)
-        
+
         return output
 
 class MultiheadAttentionBlock(nn.Module):
@@ -487,18 +487,18 @@ class MultiheadAttentionBlock(nn.Module):
             self.dropout = False
         else:
             self.dropout = True
-        
+
         self.norm = norm
 
         self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
 
         if self.dropout:
             self.dropout1d = nn.Dropout(p=dropout)
-        
+
         if self.norm:
             norm_name = 'cLN' if causal else 'gLN'
             self.norm1d = choose_layer_norm(norm_name, embed_dim, causal=causal, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -514,12 +514,12 @@ class MultiheadAttentionBlock(nn.Module):
 
         if self.dropout:
             x = self.dropout1d(x)
-        
+
         if self.norm:
             x = x.permute(1, 2, 0) # (batch_size, embed_dim, T)
             x = self.norm1d(x) # (batch_size, embed_dim, T)
             x = x.permute(2, 0, 1).contiguous() # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
-        
+
         output = x
 
         return output
@@ -534,7 +534,7 @@ class FeedForwardBlock(nn.Module):
         else:
             bidirectional = True
             num_directions = 2 # bi-direction
-        
+
         self.norm = norm
 
         self.rnn = choose_rnn('lstm', input_size=num_features, hidden_size=hidden_channels, batch_first=False, bidirectional=bidirectional) # TODO: rnn_type
@@ -561,7 +561,7 @@ class FeedForwardBlock(nn.Module):
         x = self.nonlinear1d(x) # -> (T, batch_size, num_directions*hidden_channels)
         x = self.fc(x) # (T, batch_size, num_directions*hidden_channels) -> (T, batch_size, num_features)
         x = x + residual
-        
+
         if self.norm:
             x = x.permute(1, 2, 0) # (T, batch_size, num_features) -> (batch_size, num_features, T)
             x = self.norm1d(x) # (batch_size, num_features, T)
@@ -609,7 +609,7 @@ def _test_feedforward_block():
     print('-'*10, "Causal", '-'*10)
     causal = True
     nonlinear = 'relu'
-    
+
     model = FeedForwardBlock(num_features, hidden_channels, nonlinear=nonlinear, causal=causal)
     print(model)
 
@@ -626,7 +626,7 @@ def _test_improved_transformer():
 
     print('-'*10, "Non causal", '-'*10)
     causal = False
-    
+
     model = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal)
     print(model)
 
@@ -684,7 +684,7 @@ def _test_separator():
     num_heads = 4 # multihead attention in transformer
 
     input = torch.randn((batch_size, num_features, T_bin), dtype=torch.float)
-    
+
     causal = False
 
     separator = Separator(
@@ -716,7 +716,7 @@ def _test_dptnet():
     n_sources = 2
 
     input = torch.randn((batch_size, 1, T), dtype=torch.float)
-    
+
     causal = False
 
     model = DPTNet(
@@ -741,18 +741,18 @@ def _test_dptnet_paper():
     N, L = 64, 2
     enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = 'relu'
-    
+
     # Separator
     d = 32
     d_ff = 4 * d # depth of feed-forward network
     K = 10 # local chunk length
     B, h = 6, 4 # number of dual path transformer processing block, and multihead attention in transformer
-    
+
     mask_nonlinear = 'relu'
     n_sources = 2
 
     input = torch.randn((batch_size, 1, T), dtype=torch.float)
-    
+
     causal = False
 
     model = DPTNet(
@@ -781,7 +781,7 @@ if __name__ == '__main__':
     print('='*10, "improved transformer", '='*10)
     _test_improved_transformer()
     print()
-    
+
     print('='*10, "transformer block", '='*10)
     _test_transformer_block()
     print()

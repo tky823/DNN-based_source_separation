@@ -37,34 +37,34 @@ class SepFormer(nn.Module):
         **kwargs
     ):
         super().__init__()
-        
+
         if stride is None:
             stride = kernel_size // 2
-        
+
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
-        
+
         # Encoder-decoder
         self.in_channels = kwargs.get('in_channels', 1)
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
-        
+
         if enc_basis == 'trainable' and not dec_basis == 'pinv':    
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
-        
+
         if enc_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase'] or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
             self.window_fn = kwargs['window_fn']
             self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
             self.enc_onesided, self.enc_return_complex = None, None
-        
+
         # Separator configuration
         if sep_bottleneck_channels is None:
             sep_bottleneck_channels = n_basis
-        
+
         self.sep_bottleneck_channels = sep_bottleneck_channels
         self.sep_chunk_size, self.sep_hop_size = sep_chunk_size, sep_hop_size
         self.sep_num_blocks = sep_num_blocks
@@ -72,17 +72,17 @@ class SepFormer(nn.Module):
         self.sep_num_layers_intra, self.sep_num_layers_inter = sep_num_layers_intra, sep_num_layers_inter
         self.sep_num_heads_intra, self.sep_num_heads_inter = sep_num_heads_intra, sep_num_heads_inter
         self.sep_d_ff_intra, self.sep_d_ff_inter = sep_d_ff_intra, sep_d_ff_inter,
-        
+
         self.causal = causal
         self.sep_norm, self.sep_dropout = sep_norm, sep_dropout
         self.sep_nonlinear, self.mask_nonlinear = sep_nonlinear, mask_nonlinear
-        
+
         self.n_sources = n_sources
         self.eps = eps
-        
+
         # Network configuration
         encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
-        
+
         self.encoder = encoder
         self.separator = Separator(
             n_basis, sep_bottleneck_channels,
@@ -96,12 +96,12 @@ class SepFormer(nn.Module):
             eps=eps
         )
         self.decoder = decoder
-        
+
     def forward(self, input):
         output, _ = self.extract_latent(input)
-        
+
         return output
-        
+
     def extract_latent(self, input):
         """
         Args:
@@ -125,7 +125,7 @@ class SepFormer(nn.Module):
             input = input.view(batch_size, n_mics, T)
         else:
             raise ValueError("Not support {} dimension input".format(n_dims))
-        
+
         padding = (stride - (T - kernel_size) % stride) % stride
         padding_left = padding // 2
         padding_right = padding - padding_left
@@ -151,11 +151,11 @@ class SepFormer(nn.Module):
             x_hat = x_hat.view(batch_size, n_sources, -1)
         else: # n_dims == 4
             x_hat = x_hat.view(batch_size, n_sources, n_mics, -1)
-        
+
         output = F.pad(x_hat, (-padding_left, -padding_right))
-        
+
         return output, latent
-    
+
     def get_config(self):
         config = {
             'in_channels': self.in_channels,
@@ -174,9 +174,9 @@ class SepFormer(nn.Module):
             'n_sources': self.n_sources,
             'eps': self.eps
         }
-    
+
         return config
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
@@ -188,23 +188,23 @@ class SepFormer(nn.Module):
         enc_nonlinear = config['enc_nonlinear']
         enc_onesided, enc_return_complex = config['enc_onesided'], config['enc_return_complex']
         window_fn = config['window_fn']
-        
+
         sep_bottleneck_channels = config['sep_bottleneck_channels']
         sep_chunk_size, sep_hop_size = config['sep_chunk_size'], config['sep_hop_size']
         sep_num_blocks = config['sep_num_blocks']
         sep_num_layers_intra, sep_num_layers_inter = config['sep_num_layers_intra'], config['sep_num_layers_inter']
         sep_num_heads_intra, sep_num_heads_inter = config['sep_num_heads_intra'], config['sep_num_heads_inter']
         sep_d_ff_intra, sep_d_ff_inter = config['sep_d_ff_intra'], config['sep_d_ff_inter']
-        
+
         sep_norm = config['sep_norm']
         sep_dropout = config['sep_dropout']
         sep_nonlinear, mask_nonlinear = config['sep_nonlinear'], config['mask_nonlinear']
 
         causal = config['causal']
         n_sources = config['n_sources']
-        
+
         eps = config['eps']
-        
+
         model = cls(
             n_basis, in_channels=in_channels,
             kernel_size=kernel_size, stride=stride,
@@ -220,10 +220,10 @@ class SepFormer(nn.Module):
             n_sources=n_sources,
             eps=eps
         )
-        
+
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
 
     @classmethod
@@ -234,10 +234,10 @@ class SepFormer(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
@@ -251,7 +251,7 @@ class SepFormer(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })
@@ -260,7 +260,7 @@ class SepFormer(nn.Module):
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
         for key, value in additional_attributes.items():
@@ -292,15 +292,15 @@ class Separator(nn.Module):
         eps=EPS
     ):
         super().__init__()
-        
+
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
         self.norm = norm
-        
+
         norm_name = 'cLN' if causal else 'gLN'
         self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
         self.bottleneck_conv1d_in = nn.Conv1d(num_features, bottleneck_channels, kernel_size=1, stride=1)
-        
+
         self.segment1d = Segment1d(chunk_size, hop_size)
         self.dptransformer = SepFormerBackbone(
             num_blocks=num_blocks, num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
@@ -311,12 +311,12 @@ class Separator(nn.Module):
             eps=eps
         )
         self.overlap_add1d = OverlapAdd1d(chunk_size, hop_size)
-        
+
         self.prelu = nn.PReLU()
         self.map = nn.Conv1d(bottleneck_channels, n_sources * num_features, kernel_size=1, stride=1)
         self.gtu = GTU1d(num_features, num_features, kernel_size=1, stride=1)
         self.bottleneck_conv1d_out = nn.Conv1d(num_features, num_features, kernel_size=1, stride=1)
-        
+
         if mask_nonlinear in ['relu', 'sigmoid']:
             kwargs = {}
         elif mask_nonlinear == 'softmax':
@@ -325,9 +325,9 @@ class Separator(nn.Module):
             }
         else:
             raise ValueError("Cannot support {}".format(mask_nonlinear))
-        
+
         self.mask_nonlinear = choose_nonlinear(mask_nonlinear, **kwargs)
-    
+
     def forward(self, input):
         """
         Args:
@@ -338,11 +338,11 @@ class Separator(nn.Module):
         num_features, n_sources = self.num_features, self.n_sources
         chunk_size, hop_size = self.chunk_size, self.hop_size
         batch_size, num_features, n_frames = input.size()
-        
+
         padding = (hop_size - (n_frames - chunk_size) % hop_size) % hop_size
         padding_left = padding // 2
         padding_right = padding - padding_left
-        
+
         x = self.norm1d(input)
         x = self.bottleneck_conv1d_in(x)
         x = F.pad(x, (padding_left, padding_right))
@@ -357,7 +357,7 @@ class Separator(nn.Module):
         x = self.bottleneck_conv1d_out(x) # (batch_size * n_sources, num_features, n_frames)
         x = self.mask_nonlinear(x) # (batch_size * n_sources, num_features, n_frames)
         output = x.view(batch_size, n_sources, num_features, n_frames)
-        
+
         return output
 
 class SepFormerBackbone(nn.Module):
@@ -370,10 +370,10 @@ class SepFormerBackbone(nn.Module):
         eps=EPS
     ):
         super().__init__()
-        
+
         # Network confguration
         net = []
-        
+
         for _ in range(num_blocks):
             module = SepFormerBlock(
                 num_layers_intra=num_layers_intra, num_layers_inter=num_layers_inter,
@@ -384,7 +384,7 @@ class SepFormerBackbone(nn.Module):
                 eps=eps
             )
             net.append(module)
-        
+
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
@@ -409,7 +409,7 @@ class SepFormerBlock(nn.Module):
         eps=EPS
     ):
         super().__init__()
-        
+
         self.intra_transformer = IntraTransformer(
             d_intra,
             num_layers=num_layers_intra, num_heads=num_heads_intra, d_ff=d_ff_intra,
@@ -422,7 +422,7 @@ class SepFormerBlock(nn.Module):
             norm=norm, dropout=dropout, nonlinear=nonlinear, causal=causal,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -432,7 +432,7 @@ class SepFormerBlock(nn.Module):
         """
         x = self.intra_transformer(input)
         output = self.inter_transformer(x)
-        
+
         return output
 
 class IntraTransformer(nn.Module):
@@ -450,11 +450,11 @@ class IntraTransformer(nn.Module):
         else:
             norm_name = norm
             layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
-        
+
         self.positional_encoding = PositionalEncoding(num_features, batch_first=False)
         encoder_layer = nn.TransformerEncoderLayer(num_features, num_heads, d_ff, dropout=dropout, activation=nonlinear, layer_norm_eps=eps, batch_first=False, norm_first=norm_first)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers, norm=layer_norm)
-    
+
     def forward(self, input):
         """
         Args:
@@ -464,7 +464,7 @@ class IntraTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         residual = input
         x = input.permute(3, 0, 2, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (chunk_size, batch_size, S, num_features)
         x = x.view(chunk_size, batch_size * S, num_features) # (chunk_size, batch_size, S, num_features) -> (chunk_size, batch_size * S, num_features)
@@ -492,11 +492,11 @@ class InterTransformer(nn.Module):
         else:
             norm_name = norm
             layer_norm = LayerNormWrapper(norm_name, num_features, causal=False, batch_first=False, eps=eps)
-        
+
         self.positional_encoding = PositionalEncoding(num_features, batch_first=False)
         encoder_layer = nn.TransformerEncoderLayer(num_features, num_heads, d_ff, dropout=dropout, activation=nonlinear, layer_norm_eps=eps, batch_first=False, norm_first=norm_first)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers, norm=layer_norm)
-        
+
     def forward(self, input):
         """
         Args:
@@ -506,7 +506,7 @@ class InterTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         residual = input
         x = input.permute(2, 0, 3, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (S, batch_size, chunk_size, num_features)
         x = x.view(S, batch_size * chunk_size, num_features) # (S, batch_size, chunk_size, num_features) -> (S, batch_size * chunk_size, num_features)
@@ -531,9 +531,9 @@ class LayerNormWrapper(nn.Module):
             }
         else:
             kwargs = {}
-        
+
         self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps, **kwargs)
-    
+
     def forward(self, input):
         """
         Args:
@@ -545,14 +545,14 @@ class LayerNormWrapper(nn.Module):
             input = input.permute(0, 2, 1).contiguous()
         else:
             input = input.permute(1, 2, 0).contiguous()
-        
+
         output = self.norm1d(input)
 
         if self.batch_first:
             output = output.permute(0, 2, 1).contiguous()
         else:
             output = output.permute(2, 0, 1).contiguous()
-        
+
         return output
 
 def _test_intra_transformer():
