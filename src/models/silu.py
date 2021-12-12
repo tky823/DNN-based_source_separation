@@ -18,7 +18,7 @@ class SiLU1d(nn.Module):
             out_channels <int>
         """
         super().__init__()
-        
+
         if out_channels is None:
             out_channels = in_channels
 

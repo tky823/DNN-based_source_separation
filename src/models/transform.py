@@ -8,7 +8,7 @@ class Segment1d(nn.Module):
     """
     def __init__(self, chunk_size, hop_size):
         super().__init__()
-        
+
         self.chunk_size, self.hop_size = chunk_size, hop_size
 
     def forward(self, input):
