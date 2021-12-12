@@ -56,11 +56,11 @@ class ParallelMDenseNet(nn.Module):
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class MDenseNet(nn.Module):

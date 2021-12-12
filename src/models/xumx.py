@@ -320,15 +320,15 @@ class CrossNetOpenUnmix(nn.Module):
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         return CrossNetOpenUnmixTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class CrossNetOpenUnmixTimeDomainWrapper(nn.Module):

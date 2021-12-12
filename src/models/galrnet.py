@@ -25,29 +25,29 @@ class GALRNet(nn.Module):
         **kwargs
     ):
         super().__init__()
-        
+
         if stride is None:
             stride = kernel_size // 2
-        
+
         assert kernel_size % stride == 0, "kernel_size is expected divisible by stride"
-        
+
         # Encoder-decoder
         self.n_basis = n_basis
         self.kernel_size, self.stride = kernel_size, stride
         self.enc_basis, self.dec_basis = enc_basis, dec_basis
-        
+
         if enc_basis == 'trainable' and not dec_basis == 'pinv':    
             self.enc_nonlinear = kwargs['enc_nonlinear']
         else:
             self.enc_nonlinear = None
-        
+
         if enc_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase'] or dec_basis in ['Fourier', 'trainableFourier', 'trainableFourierTrainablePhase']:
             self.window_fn = kwargs['window_fn']
             self.enc_onesided, self.enc_return_complex = kwargs['enc_onesided'], kwargs['enc_return_complex']
         else:
             self.window_fn = None
             self.enc_onesided, self.enc_return_complex = None, None
-        
+
         # Separator configuration
         self.sep_hidden_channels = sep_hidden_channels
         self.sep_chunk_size, self.sep_hop_size, self.sep_down_chunk_size = sep_chunk_size, sep_hop_size, sep_down_chunk_size
@@ -56,14 +56,14 @@ class GALRNet(nn.Module):
         self.sep_norm = sep_norm
         self.sep_dropout = sep_dropout
         self.low_dimension = low_dimension
-        
+
         self.causal = causal
         self.sep_norm = sep_norm
         self.mask_nonlinear = mask_nonlinear
-        
+
         self.n_sources = n_sources
         self.eps = eps
-        
+
         # Network configuration
         encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
         
@@ -78,9 +78,7 @@ class GALRNet(nn.Module):
             eps=eps
         )
         self.decoder = decoder
-        
-        self.num_parameters = self._get_num_parameters()
-        
+
     def forward(self, input):
         output, _ = self.extract_latent(input)
         
@@ -155,14 +153,15 @@ class GALRNet(nn.Module):
     
         return config
     
-    def _get_num_parameters(self):
-        num_parameters = 0
-        
+    @property
+    def num_parameters(self):
+        _num_parameters = 0
+
         for p in self.parameters():
             if p.requires_grad:
-                num_parameters += p.numel()
-                
-        return num_parameters
+                _num_parameters += p.numel()
+
+        return _num_parameters
 
 class Separator(nn.Module):
     def __init__(
