@@ -22,13 +22,13 @@ class ADANet(DANet):
     }
     def __init__(self, n_bins, embed_dim=20, hidden_channels=600, num_blocks=4, num_anchors=6, dropout=5e-1, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, permute_anchors=False, eps=EPS, **kwargs):
         super().__init__(n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels, num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear, eps=eps, take_log=take_log, take_db=take_db, **kwargs)
-        
+
         self.num_anchors = num_anchors
         self.permute_anchors = permute_anchors
         self.anchor = nn.Parameter(torch.Tensor(num_anchors, embed_dim), requires_grad=True)
 
         self._reset_parameters()
-    
+
     def forward(self, input, threshold_weight=None, n_sources=None):
         """
         Args:
@@ -39,9 +39,9 @@ class ADANet(DANet):
             output (batch_size, n_sources, n_bins, n_frames)
         """
         output, _, _ = self.extract_latent(input, threshold_weight=threshold_weight, n_sources=n_sources)
-        
+
         return output
-    
+
     def extract_latent(self, input, threshold_weight=None, n_sources=None):
         """
         Args:
@@ -55,7 +55,7 @@ class ADANet(DANet):
         """
         if n_sources is None:
             raise ValueError("Specify n_sources!")
-        
+
         num_anchors = self.num_anchors
         embed_dim = self.embed_dim
         permute_anchors = self.permute_anchors
@@ -65,12 +65,12 @@ class ADANet(DANet):
             patterns = list(itertools.permutations(range(num_anchors), n_sources))
         else:
             patterns = list(itertools.combinations(range(num_anchors), n_sources))
-        
+
         n_patterns = len(patterns)
         patterns = torch.Tensor(patterns).long()
         patterns = patterns.to(self.anchor.device)
         anchor_combination = self.anchor[patterns] # (n_patterns, n_sources, embed_dim)
-        
+
         batch_size, _, n_bins, n_frames = input.size()
 
         self.rnn.flatten_parameters()
@@ -81,7 +81,7 @@ class ADANet(DANet):
             x = 20 * torch.log10(input + eps)
         else:
             x = input
-        
+
         x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
         x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
@@ -95,7 +95,7 @@ class ADANet(DANet):
         for anchor in anchor_combination:
             distance = torch.sum(anchor.unsqueeze(dim=1) * latent.unsqueeze(dim=1), dim=-1) # (batch_size, n_sources, n_bins * n_frames)
             distance_combination.append(distance)
-        
+
         distance_combination = torch.stack(distance_combination, dim=0) # (n_patterns, batch_size, n_sources, n_bins * n_frames)
         assignment_combination = torch.softmax(distance_combination, dim=2) # (n_patterns, batch_size, n_sources, n_bins * n_frames)
 
@@ -114,7 +114,7 @@ class ADANet(DANet):
 
             attractor_combination.append(attractor)
             max_similarity_combination.append(max_similarity)
-        
+
         attractor_combination = torch.stack(attractor_combination, dim=1) # (batch_size, n_patterns, n_sources, embed_dim)
         flatten_attractor_combination = attractor_combination.view(batch_size * n_patterns, n_sources, embed_dim)
         max_similarity_combination = torch.stack(max_similarity_combination, dim=1) # (batch_size, n_patterns)
@@ -131,36 +131,36 @@ class ADANet(DANet):
         latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
 
         return output, latent, attractor
-    
+
     def _reset_parameters(self):
         nn.init.orthogonal_(self.anchor.data)
-    
+
     def get_config(self):
         config = super().get_config()
         config['num_anchors'] = self.num_anchors
         config['permute_anchors'] = self.permute_anchors
-        
+
         return config
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
+
         n_bins = config['n_bins']
         embed_dim = config['embed_dim']
         hidden_channels = config['hidden_channels']
         num_blocks = config['num_blocks']
         dropout = config['dropout']
-        
+
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
         take_log, take_db = config['take_log'], config['take_db']
 
         num_anchors = config['num_anchors']
         permute_anchors = config.get('permute_anchors', False)
-        
+
         eps = config['eps']
-        
+
         model = cls(
             n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
             num_blocks=num_blocks, num_anchors=num_anchors,
@@ -172,23 +172,23 @@ class ADANet(DANet):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
         import os
-        
+
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
@@ -202,7 +202,7 @@ class ADANet(DANet):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })
@@ -211,7 +211,7 @@ class ADANet(DANet):
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -244,7 +244,7 @@ class ADANet(DANet):
 class ADANetTimeDomainWrapper(DANetTimeDomainWrapper):
     def __init__(self, base_model: ADANet, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         super().__init__(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
-    
+
     def forward(self, input, threshold=None, n_sources=None):
         """
         Args:
@@ -283,22 +283,22 @@ def _test_adanet():
     K = 10
     H = 32
     B = 4
-    
+
     n_bins, n_frames = 4, 128
     n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
-    
+
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
-    
+
     model = ADANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, num_anchors=N, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
     output = model(input, threshold_weight=threshold_weight, n_sources=n_sources)
-    
+
     print(input.size(), output.size())
 
 def _test_adanet_paper():
@@ -307,22 +307,22 @@ def _test_adanet_paper():
     K = 20
     H = 300
     B = 4
-    
+
     n_bins, n_frames = 129, 256
     n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
-    
+
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
-    
+
     model = ADANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, num_anchors=N, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
     output = model(input, threshold_weight=threshold_weight, n_sources=n_sources)
-    
+
     print(input.size(), output.size())
 
 if __name__ == '__main__':

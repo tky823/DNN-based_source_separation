@@ -26,7 +26,7 @@ class ParallelMDenseNet(nn.Module):
             modules = nn.ModuleDict(modules)
         else:
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
-    
+
         in_channels = None
         sources = list(modules.keys())
 
@@ -34,12 +34,12 @@ class ParallelMDenseNet(nn.Module):
             module = modules[key]
             if not isinstance(module, MDenseNet):
                 raise ValueError("All modules must be MDenseNet.")
-            
+
             if in_channels is None:
                 in_channels = module.in_channels
             else:
                 assert in_channels == module.in_channels, "`in_channels` are different among modules."
-        
+
         self.net = modules
 
         self.in_channels = in_channels
@@ -48,11 +48,11 @@ class ParallelMDenseNet(nn.Module):
     def forward(self, input, target=None):
         if type(target) is not str:
             raise TypeError("`target` is expected str, but given {}".format(type(target)))
-        
+
         output = self.net[target](input)
 
         return output
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -87,9 +87,9 @@ class MDenseNet(nn.Module):
         super().__init__()
 
         self.net = MDenseNetBackbone(in_channels, num_features, growth_rate, kernel_size, scale=scale, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
-        
+
         self.relu2d = nn.ReLU()
-        
+
         _in_channels = growth_rate[-1] # output channels of self.net
         self.dense_block = DenseBlock(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
@@ -114,9 +114,9 @@ class MDenseNet(nn.Module):
         self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
 
         self.eps = eps
-        
+
         self._reset_parameters()
-    
+
     def forward(self, input):
         """
         Args:
@@ -179,13 +179,13 @@ class MDenseNet(nn.Module):
         output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
 
         return output
-    
+
     def _reset_parameters(self):
         self.scale_in.data.fill_(1)
         self.bias_in.data.zero_()
         self.scale_out.data.fill_(1)
         self.bias_out.data.zero_()
-    
+
     def get_config(self):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
@@ -202,9 +202,9 @@ class MDenseNet(nn.Module):
             'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -245,13 +245,13 @@ class MDenseNet(nn.Module):
             norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
-        
+
         return model
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
         in_channels, num_features = config['in_channels'], config['num_features']
         growth_rate = config['growth_rate']
 
@@ -269,7 +269,7 @@ class MDenseNet(nn.Module):
         norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
         eps = config.get('eps') or EPS
-        
+
         model = cls(
             in_channels, num_features,
             growth_rate,
@@ -288,7 +288,7 @@ class MDenseNet(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
 
     @classmethod
@@ -313,11 +313,11 @@ class MDenseNetTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input):
         """
         Args:
@@ -383,7 +383,7 @@ class MDenseNetBackbone(nn.Module):
             dilated=dilated[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], norm=norm[num_encoder_blocks+1:], nonlinear=nonlinear[num_encoder_blocks+1:],
             eps=eps
         )
-        
+
         self.encoder = encoder
         self.bottleneck_conv2d = bottleneck_dense_block
         self.decoder = decoder
@@ -402,7 +402,7 @@ class MDenseNetBackbone(nn.Module):
 
         self.kernel_size = kernel_size
         self.out_channels = out_channels
-    
+
     def forward(self, input):
         Kh, Kw = self.kernel_size
         Ph, Pw = Kh - 1, Kw - 1
@@ -422,7 +422,7 @@ class MDenseNetBackbone(nn.Module):
             output = self.pointwise_conv2d(x)
         else:
             output = x
-        
+
         return output
 
 class Encoder(nn.Module):
@@ -465,7 +465,7 @@ class Encoder(nn.Module):
             assert num_dense_blocks == len(nonlinear), "Invalid length of `nonlinear`"
         else:
             raise ValueError("Invalid type of `nonlinear`.")
-        
+
         if depth is None:
             depth = [None] * num_dense_blocks
         elif type(depth) is int:
@@ -484,11 +484,11 @@ class Encoder(nn.Module):
             downsample_block = DownSampleDenseBlock(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(downsample_block)
             _in_channels = growth_rate[idx]
-        
+
         self.net = nn.Sequential(*net)
 
         self.num_dense_blocks = num_dense_blocks
-    
+
     def forward(self, input):
         num_dense_blocks = self.num_dense_blocks
 
@@ -498,7 +498,7 @@ class Encoder(nn.Module):
         for idx in range(num_dense_blocks):
             x, x_skip = self.net[idx](x)
             skip.append(x_skip)
-        
+
         output = x
 
         return output, skip
@@ -523,7 +523,7 @@ class Decoder(nn.Module):
         else:
             # TODO: implement
             raise ValueError("`growth_rate` must be list.")
-        
+
         if type(dilated) is bool:
             dilated = [dilated] * num_dense_blocks
         elif type(dilated) is list:
@@ -563,11 +563,11 @@ class Decoder(nn.Module):
             upsample_block = UpSampleDenseBlock(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(upsample_block)
             _in_channels = growth_rate[idx]
-        
+
         self.net = nn.Sequential(*net)
 
         self.num_dense_blocks = num_dense_blocks
-    
+
     def forward(self, input, skip):
         num_dense_blocks = self.num_dense_blocks
 
@@ -576,7 +576,7 @@ class Decoder(nn.Module):
         for idx in range(num_dense_blocks):
             x_skip = skip[idx]
             x = self.net[idx](x, x_skip)
-        
+
         output = x
 
         return output
@@ -593,7 +593,7 @@ class DownSampleDenseBlock(nn.Module):
         self.dense_block = DenseBlock(in_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
         self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
         self.out_channels = self.dense_block.out_channels
-    
+
     def forward(self, input):
         """
         Args:
@@ -617,7 +617,7 @@ class DownSampleDenseBlock(nn.Module):
         padding_right = Pw - padding_left
 
         input = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
-        
+
         x = self.dense_block(input)
         skip = x
         skip = F.pad(skip, (-padding_left, -padding_right, -padding_top, -padding_bottom))
@@ -637,7 +637,7 @@ class UpSampleDenseBlock(nn.Module):
         self.upsample2d = nn.ConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
         self.dense_block = DenseBlock(in_channels + skip_channels, growth_rate, kernel_size, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
         self.out_channels = self.dense_block.out_channels
-    
+
     def forward(self, input, skip):
         x = self.norm2d(input)
         x = self.upsample2d(x)
@@ -681,7 +681,7 @@ class DenseBlock(nn.Module):
             depth = len(growth_rate)
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
-        
+
         if type(dilated) is bool:
             assert depth is not None, "Specify `depth`"
             dilated = [dilated] * depth
@@ -691,7 +691,7 @@ class DenseBlock(nn.Module):
             depth = len(dilated)
         else:
             raise ValueError("Not support dilated={}".format(dilated))
-        
+
         if type(norm) is bool:
             assert depth is not None, "Specify `depth`"
             norm = [norm] * depth
@@ -711,7 +711,7 @@ class DenseBlock(nn.Module):
             depth = len(nonlinear)
         else:
             raise ValueError("Not support nonlinear={}".format(nonlinear))
-        
+
         self.growth_rate = growth_rate
         self.depth = depth
 
@@ -722,20 +722,20 @@ class DenseBlock(nn.Module):
                 _in_channels = in_channels
             else:
                 _in_channels = growth_rate[idx - 1]
-            
+
             _out_channels = sum(growth_rate[idx:])
 
             if dilated[idx]:
                 dilation = 2**idx
             else:
                 dilation = 1
-            
+
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
 
         self.net = nn.Sequential(*net)
         self.out_channels = _out_channels
-    
+
     def forward(self, input):
         """
         Args:
@@ -753,7 +753,7 @@ class DenseBlock(nn.Module):
                 _in_channels = growth_rate[idx - 1]
                 sections = [_in_channels, sum(growth_rate[idx:])]
                 x, x_residual = torch.split(x_residual, sections, dim=1)
-            
+
             x = self.net[idx](x)
             x_residual = x_residual + x
 
@@ -779,10 +779,10 @@ class ConvBlock2d(nn.Module):
             else:
                 name = self.norm
             self.norm2d = choose_layer_norm(name, in_channels, n_dims=2, eps=eps)
-        
+
         if self.nonlinear is not None:
             self.nonlinear2d = choose_nonlinear(self.nonlinear)
-        
+
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation)
 
     def forward(self, input):
@@ -808,7 +808,7 @@ class ConvBlock2d(nn.Module):
             x = self.norm2d(x)
         if self.nonlinear:
             x = self.nonlinear2d(x)
-        
+
         x = F.pad(x, (padding_left, padding_right, padding_up, padding_bottom))
         output = self.conv2d(x)
 
@@ -868,7 +868,7 @@ def _test_encoder():
 
     growth_rate = [2, 3, 4]
     kernel_size = 3
-    
+
     depth = [2, 2, 3]
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     encoder = Encoder(in_channels, growth_rate, kernel_size, depth=depth)
@@ -897,7 +897,7 @@ def _test_m_densenet_backbone():
 
     growth_rate = [2, 3, 4, 4, 2]
     kernel_size = 3
-    
+
     dilated = [True, True, True, True, True]
     norm = [True, True, True, True, True]
     nonlinear = ['relu', 'relu', 'relu', 'relu', 'relu']
@@ -918,7 +918,7 @@ def _test_m_densenet():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = MDenseNet.build_from_config(config_path)
-    
+
     output = model(input)
 
     print(model)
@@ -945,4 +945,3 @@ if __name__ == '__main__':
 
     print('='*10, "MDenseNet", '='*10)
     _test_m_densenet()
-    

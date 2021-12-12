@@ -538,50 +538,50 @@ def _test_danet():
     print("# Parameters: {}".format(model.num_parameters))
 
     output = model(input, assignment, threshold_weight=threshold_weight)
-    
+
     print(input.size(), output.size())
 
 def _test_danet_paper():
     batch_size = 2
     K = 20
-    
+
     H = 300
     B = 4
-    
+
     n_bins, n_frames = 129, 256
     n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
-    
+
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = compute_ideal_binary_mask(sources, source_dim=1)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
-    
+
     model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
 
     output = model(input, assignment, threshold_weight=threshold_weight)
-    
+
     print(input.size(), output.size())
 
 def _test_fixed_attractor_danet():
     batch_size = 2
     K = 10
-    
+
     H = 32
     B = 4
-    
+
     n_bins, n_frames = 4, 128
     n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
-    
+
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     attractor = torch.randn(n_sources, K)
-    
+
     base_model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear)
     model = FixedAttractorDANet(base_model, fixed_attractor=attractor)
 

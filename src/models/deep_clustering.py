@@ -44,7 +44,7 @@ class DeepEmbedding(nn.Module):
 
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(num_directions * hidden_channels, n_bins*embed_dim)
-    
+
     def forward(self, input):
         """
         Args:
@@ -85,13 +85,13 @@ class DeepEmbedding(nn.Module):
             'take_log': self.take_log, 'take_db': self.take_db,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
+
         n_bins = config['n_bins']
         embed_dim = config['embed_dim']
         hidden_channels = config['hidden_channels']
@@ -101,9 +101,9 @@ class DeepEmbedding(nn.Module):
         rnn_type = config['rnn_type']
 
         take_log, take_db = config['take_log'], config['take_db']
-        
+
         eps = config['eps']
-        
+
         model = cls(
             n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
             num_layers=num_layers, causal=causal, rnn_type=rnn_type,
@@ -113,7 +113,7 @@ class DeepEmbedding(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
 
     @classmethod

@@ -197,7 +197,7 @@ class ConvTasNet(nn.Module):
             'n_sources': self.n_sources,
             'eps': self.eps
         }
-        
+
         return config
 
     def get_package(self):
@@ -383,7 +383,7 @@ class Separator(nn.Module):
         x = self.mask_conv1d(x)
         x = self.mask_nonlinear(x)
         output = x.view(batch_size, n_sources, num_features, n_frames)
-        
+
         return output
 
     def _init_weights(self):

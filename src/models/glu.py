@@ -20,15 +20,15 @@ class GLU1d(nn.Module):
             out_channels <int>
         """
         super().__init__()
-        
+
         if out_channels is None:
             out_channels = in_channels
-            
+
         self.in_channels, self.out_channels = in_channels, out_channels
 
         self.map = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.map_gate = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
-        
+
     def forward(self, input):
         """
         Args:
@@ -39,9 +39,9 @@ class GLU1d(nn.Module):
         x_output = self.map(input)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
-        
+
         output = x_output * x_gate
-        
+
         return output
 
 class GLU2d(nn.Module):
@@ -55,15 +55,15 @@ class GLU2d(nn.Module):
             out_channels <int>
         """
         super().__init__()
-        
+
         if out_channels is None:
             out_channels = in_channels
-        
+
         self.in_channels, self.out_channels = in_channels, out_channels
 
         self.map = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.map_gate = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
-        
+
     def forward(self, input):
         """
         Args:
@@ -74,9 +74,9 @@ class GLU2d(nn.Module):
         x_output = self.map(input)
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
-        
+
         output = x_output * x_gate
-        
+
         return output
 
 def _test_glu1d():

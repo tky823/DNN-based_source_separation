@@ -22,13 +22,13 @@ class RNNBlock(nn.Module):
         else:
             num_directions = 2
             bidirectional = True
-        
+
         self.bottleneck_conv2d = nn.Conv2d(in_channels, 1, kernel_size=(1,1))
         self.rnn = choose_rnn(rnn_type, input_size=n_bins, hidden_size=hidden_channels, batch_first=True, bidirectional=bidirectional)
         self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
 
         self.out_channels = 1
-    
+
     def forward(self, input):
         """
         Args:
@@ -39,7 +39,7 @@ class RNNBlock(nn.Module):
         batch_size, _, H, W = input.size()
 
         self.rnn.flatten_parameters()
-        
+
         x = self.bottleneck_conv2d(input) # (batch_size, 1, H, W)
         x = x.squeeze(dim=1) # (batch_size, H, W)
         x = x.permute(0, 2, 1).contiguous() # (batch_size, W, H)
@@ -82,7 +82,7 @@ class RNNAfterDenseBlock(nn.Module):
         self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
 
         self.out_channels = self.dense_block.out_channels + 1
-    
+
     def forward(self, input):
         """
         Args:

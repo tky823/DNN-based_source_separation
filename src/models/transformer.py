@@ -37,7 +37,7 @@ class PositionalEncoding(nn.Module):
         else:
             T = input.size(0)
             x = input + self.positional_encoding[:T]
-        
+
         output = self.dropout(x)
 
         return output

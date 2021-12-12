@@ -18,7 +18,7 @@ class ResidualBlock2d(nn.Module):
         self.conv2d = nn.Conv2d(bottleneck_channels, bottleneck_channels, kernel_size=kernel_size, stride=(1,1), bias=False)
         self.norm2d = nn.BatchNorm2d(bottleneck_channels, eps=eps)
         self.nonlinear2d = choose_nonlinear(nonlinear)
-        
+
         self.bottleneck_conv2d_out = nn.Conv2d(bottleneck_channels, out_channels, kernel_size=1, bias=False)
         self.bottleneck_norm2d_out = nn.BatchNorm2d(out_channels, eps=eps)
 
@@ -49,7 +49,7 @@ class ResidualBlock2d(nn.Module):
             x_residual = self.pointwise_conv2d(input)
         else:
             x_residual = input
-        
+
         x = x + x_residual
         output = self.nonlinear2d(x)
 

@@ -118,7 +118,7 @@ class DPTNet(nn.Module):
         batch_size, C_in, T = input.size()
 
         assert C_in == 1, "input.size() is expected (?, 1, ?), but given {}".format(input.size())
-        
+
         padding = (stride - (T - kernel_size) % stride) % stride
         padding_left = padding // 2
         padding_right = padding - padding_left
@@ -410,7 +410,7 @@ class IntraChunkTransformer(nn.Module):
             causal=False,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -420,7 +420,7 @@ class IntraChunkTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         x = input.permute(3, 0, 2, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (chunk_size, batch_size, S, num_features)
         x = x.view(chunk_size, batch_size*S, num_features) # (chunk_size, batch_size, S, num_features) -> (chunk_size, batch_size*S, num_features)
         x = self.transformer(x) # -> (chunk_size, batch_size*S, num_features)

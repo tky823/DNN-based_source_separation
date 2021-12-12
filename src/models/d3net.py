@@ -35,7 +35,7 @@ class ParallelD3Net(nn.Module):
             modules = nn.ModuleDict(modules)
         else:
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
-    
+
         in_channels = None
         sources = list(modules.keys())
 
@@ -43,12 +43,12 @@ class ParallelD3Net(nn.Module):
             module = modules[key]
             if not isinstance(module, D3Net):
                 raise ValueError("All modules must be D3Net.")
-            
+
             if in_channels is None:
                 in_channels = module.in_channels
             else:
                 assert in_channels == module.in_channels, "`in_channels` are different among modules."
-        
+
         self.net = modules
 
         self.in_channels = in_channels
@@ -76,9 +76,9 @@ class ParallelD3Net(nn.Module):
         else:
             if type(target) is not str:
                 raise TypeError("`target` is expected str, but given {}".format(type(target)))
-            
+
             assert input.dim() == 4, "input is expected 4D, but given {}.".format(input.dim())
-        
+
             output = self.net[target](input)
 
         return output
@@ -97,10 +97,10 @@ class ParallelD3Net(nn.Module):
 
         if not task in D3Net.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = D3Net.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "nnabla"
@@ -125,7 +125,7 @@ class ParallelD3Net(nn.Module):
 
             if not os.path.exists(model_path):
                 download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-            
+
             config = torch.load(model_path, map_location=lambda storage, loc: storage)
             modules[target] = D3Net.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -134,17 +134,17 @@ class ParallelD3Net(nn.Module):
                     n_fft = config['n_fft']
                 else:
                     assert n_fft == config['n_fft'], "`n_fft` is different among models."
-                
+
                 if hop_length is None:
                     hop_length = config['hop_length']
                 else:
                     assert hop_length == config['hop_length'], "`hop_length` is different among models."
-                
+
                 if window_fn is None:
                     window_fn = config['window_fn']
                 else:
                     assert window_fn == config['window_fn'], "`window_fn` is different among models."
-        
+
         additional_attributes.update({
             'n_fft': n_fft, 'hop_length': hop_length,
             'window_fn': window_fn,
@@ -156,7 +156,7 @@ class ParallelD3Net(nn.Module):
             setattr(model, key, value)
 
         return model
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -175,7 +175,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
@@ -191,7 +191,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, in_channels, T)
         """
         assert input.dim() == 4, "input is expected 4D input."
-        
+
         T = input.size(-1)
         eps = self.eps
 
@@ -203,13 +203,13 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
         for target in self.sources:
             _estimated_amplitude = self.base_model(mixture_amplitude.squeeze(dim=1), target=target)
             estimated_amplitude.append(_estimated_amplitude)
-        
+
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
         estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
         output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
 
         return output
-    
+
     @property
     def sources(self):
         return list(self.base_model.sources)
@@ -268,7 +268,7 @@ class D3Net(nn.Module):
         self.net = nn.ModuleDict(net)
 
         _in_channels = out_channels + growth_rate[FULL][-1] # channels for 'low' & 'middle' + channels for 'full'
-        
+
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
@@ -287,7 +287,7 @@ class D3Net(nn.Module):
         self.num_d2blocks = num_d2blocks
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
         self.depth = depth
-        
+
         self.growth_rate_final = growth_rate_final
         self.kernel_size_final = kernel_size_final
         self.dilated_final = dilated_final
@@ -295,7 +295,7 @@ class D3Net(nn.Module):
         self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
 
         self.eps = eps
-        
+
         self._reset_parameters()
     
     def forward(self, input):
@@ -321,9 +321,9 @@ class D3Net(nn.Module):
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
-        
+
         x_bands = torch.cat(x_bands, dim=2)
-    
+
         x_full = self.net[FULL](x_valid)
 
         x = torch.cat([x_bands, x_full], dim=1)
@@ -357,15 +357,15 @@ class D3Net(nn.Module):
 
     def transform_affine_out(self, input):
         output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
-        
+
         return output
-    
+
     def _reset_parameters(self):
         self.scale_in.data.fill_(1)
         self.bias_in.data.zero_()
         self.scale_out.data.fill_(1)
         self.bias_out.data.zero_()
-    
+
     def get_config(self):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
@@ -383,9 +383,9 @@ class D3Net(nn.Module):
             'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -448,13 +448,13 @@ class D3Net(nn.Module):
             norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
-        
+
         return model
     
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
         in_channels, num_features = config['in_channels'], config['num_features']
         growth_rate = config['growth_rate']
 
@@ -472,7 +472,7 @@ class D3Net(nn.Module):
         norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
         eps = config.get('eps') or EPS
-        
+
         model = cls(
             in_channels, num_features,
             growth_rate,
@@ -491,7 +491,7 @@ class D3Net(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
     
     @classmethod
@@ -502,7 +502,7 @@ class D3Net(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
         
@@ -519,16 +519,16 @@ class D3Net(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })
-        
+
         model_path = os.path.join(download_dir, "model", target, "{}.pth".format(model_choice))
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -539,7 +539,7 @@ class D3Net(nn.Module):
                 'sources': config['sources'],
                 'n_sources': len(config['sources'])
             })
-        
+
         for key, value in additional_attributes.items():
             setattr(model, key, value)
 
@@ -548,15 +548,15 @@ class D3Net(nn.Module):
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
         return D3NetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class D3NetTimeDomainWrapper(nn.Module):
@@ -567,11 +567,11 @@ class D3NetTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input):
         """
         Args:
@@ -637,7 +637,7 @@ class D3NetBackbone(nn.Module):
             dilated=dilated[num_encoder_blocks+1:], depth=depth[num_encoder_blocks+1:], norm=norm[num_encoder_blocks+1:], nonlinear=nonlinear[num_encoder_blocks+1:],
             eps=eps
         )
-        
+
         self.encoder = encoder
         self.bottleneck_conv2d = bottleneck_d3block
         self.decoder = decoder
@@ -676,7 +676,7 @@ class D3NetBackbone(nn.Module):
             output = self.pointwise_conv2d(x)
         else:
             output = x
-        
+
         return output
 
 class Encoder(nn.Module):
@@ -698,7 +698,7 @@ class Encoder(nn.Module):
         else:
             # TODO: implement
             raise ValueError("`growth_rate` must be list.")
-        
+
         if num_d2blocks is None:
             num_d2blocks = [None] * num_d3blocks
         elif type(num_d2blocks) is int:
@@ -728,7 +728,7 @@ class Encoder(nn.Module):
             assert num_d3blocks == len(nonlinear), "Invalid length of `nonlinear`"
         else:
             raise ValueError("Invalid type of `nonlinear`.")
-        
+
         if depth is None:
             depth = [None] * num_d3blocks
         elif type(depth) is int:
@@ -747,11 +747,11 @@ class Encoder(nn.Module):
             downsample_block = DownSampleD3Block(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(downsample_block)
             _in_channels = downsample_block.out_channels
-        
+
         self.net = nn.Sequential(*net)
 
         self.num_d3blocks = num_d3blocks
-    
+
     def forward(self, input):
         num_d3blocks = self.num_d3blocks
 
@@ -761,7 +761,7 @@ class Encoder(nn.Module):
         for idx in range(num_d3blocks):
             x, x_skip = self.net[idx](x)
             skip.append(x_skip)
-        
+
         output = x
 
         return output, skip
@@ -786,7 +786,7 @@ class Decoder(nn.Module):
         else:
             # TODO: implement
             raise ValueError("`growth_rate` must be list.")
-        
+
         if num_d2blocks is None:
             num_d2blocks = [None] * num_d3blocks
         elif type(num_d2blocks) is int:
@@ -835,12 +835,12 @@ class Decoder(nn.Module):
             upsample_block = UpSampleD3Block(_in_channels, skip_channels[idx], growth_rate[idx], kernel_size=kernel_size, up_scale=up_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
             net.append(upsample_block)
             _in_channels = upsample_block.out_channels
-        
+
         self.net = nn.Sequential(*net)
 
         self.num_d3blocks = num_d3blocks
         self.out_channels = _in_channels
-    
+
     def forward(self, input, skip):
         num_d3blocks = self.num_d3blocks
 
@@ -849,7 +849,7 @@ class Decoder(nn.Module):
         for idx in range(num_d3blocks):
             x_skip = skip[idx]
             x = self.net[idx](x, x_skip)
-        
+
         output = x
 
         return output
@@ -867,7 +867,7 @@ class DownSampleD3Block(nn.Module):
         self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
 
         self.out_channels = self.d3block.out_channels
-    
+
     def forward(self, input):
         """
         Args:
@@ -891,7 +891,7 @@ class DownSampleD3Block(nn.Module):
         padding_right = Pw - padding_left
 
         input = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
-        
+
         x = self.d3block(input)
         skip = x
         skip = F.pad(skip, (-padding_left, -padding_right, -padding_top, -padding_bottom))
@@ -912,7 +912,7 @@ class UpSampleD3Block(nn.Module):
         self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
 
         self.out_channels = self.d3block.out_channels
-    
+
     def forward(self, input, skip):
         x = self.norm2d(input)
         x = self.upsample2d(x)
@@ -959,7 +959,7 @@ class D3Block(nn.Module):
             raise ValueError("Not support growth_rate={}".format(growth_rate))
 
         naive_dilated = False
-        
+
         if type(dilated) is str:
             if dilated == 'multi':
                 pass # naive_dilated = False
@@ -967,7 +967,7 @@ class D3Block(nn.Module):
                 naive_dilated = True
             else:
                 raise ValueError("Not support dilated={}".format(dilated))
-        
+
         if not naive_dilated:
             # w/o dilation or multi dilation
             if type(dilated) is bool:
@@ -989,7 +989,7 @@ class D3Block(nn.Module):
             num_blocks = len(norm)
         else:
             raise ValueError("Not support norm={}".format(norm))
-        
+
         if type(nonlinear) is str:
             assert num_blocks is not None, "Specify `num_blocks`"
             nonlinear = [nonlinear] * num_blocks
@@ -999,13 +999,12 @@ class D3Block(nn.Module):
             num_blocks = len(nonlinear)
         else:
             raise ValueError("Not support nonlinear={}".format(nonlinear))
-    
+
         self.growth_rate = growth_rate
         self.num_blocks = num_blocks
         self.out_channels = growth_rate[-1]
 
         net = []
-        
 
         for idx in range(num_blocks):
             if idx == 0:
@@ -1020,9 +1019,9 @@ class D3Block(nn.Module):
             else:
                 d2block = D2Block(_in_channels, _out_channels, kernel_size=kernel_size, dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth, eps=eps)
             net.append(d2block)
-        
+
         self.net = nn.Sequential(*net)
-    
+
     def forward(self, input):
         """
         Args:
@@ -1134,7 +1133,7 @@ def _test_d3net_backbone():
     growth_rate = [2, 3, 4, 3, 2]
     kernel_size = 3
     num_d2blocks = [2, 2, 2, 2, 2]
-    
+
     dilated = [True, True, True, True, True]
     norm = [True, True, True, True, True]
     nonlinear = ['relu', 'relu', 'relu', 'relu', 'relu']
@@ -1155,7 +1154,7 @@ def _test_d3net_wo_dilation():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = D3Net.build_from_config(config_path)
-    
+
     output = model(input)
 
     print(model)
@@ -1167,7 +1166,7 @@ def _test_d3net_naive_dilation():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = D3Net.build_from_config(config_path)
-    
+
     output = model(input)
 
     print(model)
@@ -1179,7 +1178,7 @@ def _test_d3net():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = D3Net.build_from_config(config_path)
-    
+
     output = model(input)
 
     print(model)

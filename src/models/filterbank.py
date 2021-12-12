@@ -22,14 +22,14 @@ class FourierEncoder(nn.Module):
         n = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
-        
+
         self.frequency, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(n, requires_grad=False)
         self.window = nn.Parameter(window)
 
         if self.trainable_phase:
             phi = torch.zeros(n_basis // 2 + 1)
             self.phase = nn.Parameter(phi, requires_grad=True)
-    
+
     def forward(self, input):
         """
         Args:
@@ -195,7 +195,7 @@ class FourierDecoder(nn.Module):
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
-        
+
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
         basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
         basis = torch.cat([basis_real, basis_imag], dim=0)
@@ -205,10 +205,10 @@ class FourierDecoder(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, nonlinear=None):
         super().__init__()
-        
+
         self.kernel_size, self.stride = kernel_size, stride
         self.nonlinear = nonlinear
-        
+
         self.conv1d = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         if nonlinear is not None:
             if nonlinear == 'relu':
@@ -242,9 +242,9 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, n_basis, out_channels, kernel_size=16, stride=8):
         super().__init__()
-        
+
         self.kernel_size, self.stride = kernel_size, stride
-        
+
         self.conv_transpose1d = nn.ConvTranspose1d(n_basis, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
 
         self._init_weights()
@@ -293,7 +293,7 @@ class PinvDecoder(nn.Module):
         elif isinstance(encoder, FourierEncoder):
             if torch.is_complex(input):
                 input_real, input_imag = input.real, input.imag
-            else:    
+            else:
                 n_bins = input.size(1)
                 input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
 
@@ -335,10 +335,10 @@ class PinvDecoder(nn.Module):
 class GatedEncoder(nn.Module):
     def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, eps=EPS):
         super().__init__()
-        
+
         self.kernel_size, self.stride = kernel_size, stride
         self.eps = eps
-        
+
         self.conv1d_U = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         self.conv1d_V = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         self.relu = nn.ReLU()

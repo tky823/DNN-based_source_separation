@@ -81,9 +81,9 @@ class GALRNet(nn.Module):
 
     def forward(self, input):
         output, _ = self.extract_latent(input)
-        
+
         return output
-        
+
     def extract_latent(self, input):
         """
         Args:
@@ -95,18 +95,18 @@ class GALRNet(nn.Module):
         n_sources = self.n_sources
         n_basis = self.n_basis
         kernel_size, stride = self.kernel_size, self.stride
-        
+
         batch_size, C_in, T = input.size()
-        
+
         assert C_in == 1, "input.size() is expected (?, 1, ?), but given {}".format(input.size())
-        
+
         padding = (stride - (T - kernel_size) % stride) % stride
         padding_left = padding // 2
         padding_right = padding - padding_left
 
         input = F.pad(input, (padding_left, padding_right))
         w = self.encoder(input)
-        
+
         if torch.is_complex(w):
             amplitude, phase = torch.abs(w), torch.angle(w)
             mask = self.separator(amplitude)
@@ -122,9 +122,9 @@ class GALRNet(nn.Module):
         x_hat = self.decoder(w_hat)
         x_hat = x_hat.view(batch_size, n_sources, -1)
         output = F.pad(x_hat, (-padding_left, -padding_right))
-        
+
         return output, latent
-    
+
     def get_config(self):
         config = {
             'n_basis': self.n_basis,
@@ -150,9 +150,9 @@ class GALRNet(nn.Module):
             'n_sources': self.n_sources,
             'eps': self.eps
         }
-    
+
         return config
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
@@ -175,10 +175,10 @@ class Separator(nn.Module):
         eps=EPS
     ):
         super().__init__()
-        
+
         self.num_features, self.n_sources = num_features, n_sources
         self.chunk_size, self.hop_size = chunk_size, hop_size
-        
+
         self.segment1d = Segment1d(chunk_size, hop_size)
         norm_name = 'cLN' if causal else 'gLN'
         self.norm2d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
@@ -218,7 +218,7 @@ class Separator(nn.Module):
             self.mask_nonlinear = nn.Softmax(dim=1)
         else:
             raise ValueError("Cannot support {}".format(mask_nonlinear))
-            
+
     def forward(self, input):
         """
         Args:
@@ -229,11 +229,11 @@ class Separator(nn.Module):
         num_features, n_sources = self.num_features, self.n_sources
         chunk_size, hop_size = self.chunk_size, self.hop_size
         batch_size, num_features, n_frames = input.size()
-        
+
         padding = (hop_size-(n_frames-chunk_size)%hop_size)%hop_size
         padding_left = padding//2
         padding_right = padding - padding_left
-        
+
         x = F.pad(input, (padding_left, padding_right))
         x = self.segment1d(x) # -> (batch_size, C, S, chunk_size)
         x = self.norm2d(x)
@@ -246,7 +246,7 @@ class Separator(nn.Module):
         x = self.gtu(x) # -> (batch_size*n_sources, num_features, n_frames)
         x = self.mask_nonlinear(x) # -> (batch_size*n_sources, num_features, n_frames)
         output = x.view(batch_size, n_sources, num_features, n_frames)
-        
+
         return output
 
 def _test_separator():
@@ -254,16 +254,16 @@ def _test_separator():
     M, H = 16, 32 # H is the number of channels for each direction
     K, P, Q = 3, 2, 2
     N = 3
-    
+
     sep_norm = True
     mask_nonlinear = 'sigmoid'
     low_dimension = True
-    
+
     causal = True
     n_sources = 2
-    
+
     input = torch.randn((batch_size, M, n_frames), dtype=torch.float)
-    
+
     separator = Separator(
         M, hidden_channels=H,
         chunk_size=K, hop_size=P, down_chunk_size=Q,
@@ -285,24 +285,24 @@ def _test_galrnet():
 
     # Encoder & decoder
     M, D = 8, 16
-    
+
     # Separator
     H = 32 # for each direction
     N, J = 4, 4
     sep_norm = True
 
     low_dimension=True
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
-    
+
     print("-"*10, "Trainable Basis & Non causal", "-"*10)
     enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = 'relu'
-    
+
     causal = False
     mask_nonlinear = 'sigmoid'
     n_sources = 2
-    
+
     model = GALRNet(
         D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_hidden_channels=H,
@@ -315,19 +315,19 @@ def _test_galrnet():
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     output = model(input)
     print(input.size(), output.size())
     print()
-    
+
     print("-"*10, "Fourier Basis & Causal", "-"*10)
     enc_basis, dec_basis = 'Fourier', 'Fourier'
     window_fn = 'hamming'
-    
+
     causal = True
     mask_nonlinear = 'softmax'
     n_sources = 3
-    
+
     model = GALRNet(
         D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, window_fn=window_fn,
         sep_hidden_channels=H,
@@ -339,18 +339,18 @@ def _test_galrnet():
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     output = model(input)
     print(input.size(), output.size())
-    
+
 def _test_galrnet_paper():
     batch_size = 2
     K, P, Q = 100, 50, 32
-    
+
     # Encoder & decoder
     C, T = 1, 1024
     M, D = 16, 64
-    
+
     # Separator
     H = 128 # for each direction
     N = 6
@@ -358,16 +358,16 @@ def _test_galrnet_paper():
     sep_norm = True
 
     low_dimension=True
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
-    
+
     enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = None
-    
+
     causal = False
     mask_nonlinear = 'relu'
     n_sources = 2
-    
+
     model = GALRNet(
         D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_hidden_channels=H,
@@ -380,18 +380,18 @@ def _test_galrnet_paper():
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     output = model(input)
     print(input.size(), output.size())
-   
+
 def _test_big_galrnet_paper():
     batch_size = 2
     K, P, Q = 100, 50, 32
-    
+
     # Encoder & decoder
     C, T = 1, 1024
     M, D = 16, 128
-    
+
     # Separator
     H = 128 # for each direction
     N = 6
@@ -399,16 +399,16 @@ def _test_big_galrnet_paper():
     sep_norm = True
 
     low_dimension=True
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
-    
+
     enc_basis, dec_basis = 'trainable', 'trainable'
     enc_nonlinear = None
-    
+
     causal = False
     mask_nonlinear = 'relu'
     n_sources = 2
-    
+
     model = GALRNet(
         D, kernel_size=M, enc_basis=enc_basis, dec_basis=dec_basis, enc_nonlinear=enc_nonlinear,
         sep_hidden_channels=H,
@@ -421,7 +421,7 @@ def _test_big_galrnet_paper():
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     output = model(input)
     print(input.size(), output.size())
 
@@ -429,7 +429,7 @@ if __name__ == '__main__':
     print("="*10, "Separator", "="*10)
     _test_separator()
     print()
-    
+
     print("="*10, "GALRNet", "="*10)
     _test_galrnet()
     print()

@@ -286,7 +286,7 @@ class TasNet(nn.Module):
                 _num_parameters += p.numel()
 
         return _num_parameters
-    
+
     def get_config(self):
         config = {
             'in_channels': self.in_channels,

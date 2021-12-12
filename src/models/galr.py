@@ -9,13 +9,13 @@ EPS = 1e-12
 class GALR(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=8, norm=True, dropout=1e-1, low_dimension=True, causal=False, eps=EPS, **kwargs):
         super().__init__()
-        
+
         # Network confguration
         net = []
-        
+
         for _ in range(num_blocks):
             net.append(GALRBlock(num_features, hidden_channels, num_heads=num_heads, norm=norm, dropout=dropout, low_dimension=low_dimension, causal=causal, eps=eps, **kwargs))
-            
+
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
@@ -32,7 +32,7 @@ class GALR(nn.Module):
 class GALRBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=8, causal=False, norm=True, dropout=1e-1, low_dimension=True, eps=EPS, **kwargs):
         super().__init__()
-        
+
         self.intra_chunk_block = LocallyRecurrentBlock(num_features, hidden_channels=hidden_channels, norm=norm, eps=eps)
 
         if low_dimension:
@@ -41,7 +41,7 @@ class GALRBlock(nn.Module):
             self.inter_chunk_block = LowDimensionGloballyAttentiveBlock(num_features, chunk_size=chunk_size, down_chunk_size=down_chunk_size, num_heads=num_heads, causal=causal, norm=norm, dropout=dropout, eps=eps)
         else:
             self.inter_chunk_block = GloballyAttentiveBlock(num_features, num_heads=num_heads, causal=causal, norm=norm, dropout=dropout, eps=eps)
-        
+
     def forward(self, input):
         """
         Args:
@@ -51,7 +51,7 @@ class GALRBlock(nn.Module):
         """
         x = self.intra_chunk_block(input)
         output = self.inter_chunk_block(x)
-        
+
         return output
 
 class GloballyAttentiveBlockBase(nn.Module):
@@ -74,7 +74,7 @@ class GloballyAttentiveBlockBase(nn.Module):
         index = index.unsqueeze(dim=0) # (1, dimension // 2)
         indices = position / base**index
         output = torch.cat([torch.sin(indices), torch.cos(indices)], dim=1)
-        
+
         return output
 
 class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
@@ -93,11 +93,11 @@ class GloballyAttentiveBlock(GloballyAttentiveBlockBase):
             self.dropout1d = nn.Dropout(p=dropout)
         else:
             self.dropout = False
-        
+
         if self.norm:
             norm_name = 'cLN' if causal else 'gLN'
             self.norm2d_out = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
-        
+
     def forward(self, input):
         """
         Args:
@@ -151,11 +151,11 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
             self.dropout1d = nn.Dropout(p=dropout)
         else:
             self.dropout = False
-        
+
         if self.norm:
             norm_name = 'cLN' if causal else 'gLN'
             self.norm2d_out = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
-        
+
         self.fc_inv = nn.Linear(down_chunk_size, chunk_size)
 
     def forward(self, input):
@@ -172,7 +172,7 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
 
         if self.norm:
             x = self.norm2d_in(x) # -> (batch_size, num_features, S, Q)
-        
+
         encoding = self.positional_encoding(length=S*Q, dimension=num_features).permute(1,0).view(num_features, S, Q).to(x.device)
         x = x + encoding # -> (batch_size, num_features, S, Q)
         x = x.permute(2, 0, 3, 1).contiguous() # -> (S, batch_size, Q, num_features)
@@ -189,7 +189,7 @@ class LowDimensionGloballyAttentiveBlock(GloballyAttentiveBlockBase):
 
         if self.norm:
             x = self.norm2d_out(x) # -> (batch_size, num_features, S, Q)
-        
+
         x = self.fc_inv(x) # (batch_size, num_features, S, Q) -> (batch_size, num_features, S, K)
         x = x + input
         output = x.view(batch_size, num_features, S, K)
@@ -202,9 +202,9 @@ class LayerNormAlongChannel(nn.Module):
 
         self.num_features = num_features
         self.eps = eps
-        
+
         self.norm = nn.LayerNorm(num_features, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -221,11 +221,11 @@ class LayerNormAlongChannel(nn.Module):
         output = x.permute(*permuted_dims).contiguous()
 
         return output
-    
+
     def __repr__(self):
         s = '{}'.format(self.__class__.__name__)
         s += '({num_features}, eps={eps})'
-        
+
         return s.format(**self.__dict__)
 
 def _test_globally_attentive_block():
@@ -253,26 +253,26 @@ def _test_galr():
     num_features, chunk_size, S = 64, 10, 4
     hidden_channels = 32
     num_blocks = 3
-    
+
     input = torch.randint(0, 10, (batch_size, num_features, S, chunk_size), dtype=torch.float)
 
     # Causal
     print('-'*10, "Causal and Non Low dimension", '-'*10)
     low_dimension = False
     causal = True
-    
+
     model = GALR(num_features, hidden_channels, num_blocks=num_blocks, low_dimension=low_dimension, causal=causal)
     print(model)
     output = model(input)
     print(input.size(), output.size())
     print()
-    
+
     # Non causal
     print('-'*10, "Non causal and Low dimension", '-'*10)
     low_dimension = True
     chunk_size, down_chunk_size = 10, 5
     causal = False
-    
+
     model = GALR(num_features, hidden_channels, chunk_size=chunk_size, down_chunk_size=down_chunk_size, num_blocks=num_blocks, low_dimension=low_dimension, causal=causal)
     print(model)
     output = model(input)
