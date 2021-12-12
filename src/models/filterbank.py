@@ -115,8 +115,8 @@ class FourierDecoder(nn.Module):
         n = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
-        optimal_window = build_optimal_window(window, hop_size=stride)
-        
+        optimal_window = build_optimal_window(window, hop_length=stride)
+
         self.frequency, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(n, requires_grad=False)
         self.optimal_window = nn.Parameter(optimal_window)
 
