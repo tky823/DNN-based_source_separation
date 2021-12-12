@@ -42,7 +42,6 @@ parser.add_argument('--lr', type=float, default=1e-5, help='Learning rate. Defau
 parser.add_argument('--momentum', type=float, default=9e-1, help='Momentum of optimizer.')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--add_noise', type=float, default=0.6, help='Gaussian noise variance.')
 parser.add_argument('--scheduler_path', type=str, default=None, help='Path to scheduler.yaml')
 parser.add_argument('--batch_size', type=int, default=64, help='Batch size. Default: 64')
 parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
