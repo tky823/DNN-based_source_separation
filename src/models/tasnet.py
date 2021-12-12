@@ -191,9 +191,9 @@ class TasNet(nn.Module):
         return output, latent
 
     def _init_weight(self):
-        for m in self.modules:
-            if isinstance(m, nn.RNNbase):
-                for name, p in self.named_parameters():
+        for m in self.separator.modules():
+            if isinstance(m, nn.RNN) or isinstance(m, nn.LSTM) or isinstance(m, nn.GRU):
+                for name, p in m.named_parameters():
                     if name[:6] == "weight":
                         nn.init.xavier_normal_(p)
                     elif name[:4] == "bias":
@@ -358,7 +358,7 @@ class Separator(nn.Module):
         self._reset_parameters()
 
     def _reset_parameters(self):
-        self.gamma.data.ones_()
+        self.gamma.data.fill_(1)
         self.beta.data.zero_()
 
     def forward(self, input):
@@ -454,7 +454,7 @@ def _test_tasnet():
 
     model = TasNet(
         n_basis, kernel_size=kernel_size, stride=stride,
-        enc_basis='trainable', dec_basis='trainable', enc_nonlinear=None,
+        enc_basis='trainableGated', dec_basis='trainable', enc_nonlinear=None,
         sep_num_blocks=sep_num_blocks, sep_num_layers=sep_num_layers, sep_hidden_channels=sep_hidden_channels,
         causal=causal, n_sources=n_sources
     )

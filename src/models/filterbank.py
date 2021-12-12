@@ -337,17 +337,23 @@ class GatedEncoder(nn.Module):
         self.conv1d_V = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-    
+
+        self._init_weights()
+
     def forward(self, input):
         eps = self.eps
-        
-        norm = torch.norm(input, dim=2, keepdim=True)
+
+        norm = torch.linalg.norm(input, dim=2, keepdim=True)
         x = input / (norm + eps)
         x_U = self.conv1d_U(x)
         x_V = self.conv1d_V(x)
         output = x_U * x_V
-        
+
         return output
+
+    def _init_weights(self):
+        nn.init.xavier_normal_(self.conv1d_U.weight)
+        nn.init.xavier_normal_(self.conv1d_V.weight)
 
 def _test_filterbank():
     batch_size = 2
