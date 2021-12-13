@@ -391,7 +391,7 @@ class Separator(nn.Module):
             if isinstance(m, nn.Conv1d):
                 nn.init.xavier_normal_(m.weight)
                 if m.bias is not None:
-                    nn.init.zeros_(m.bias)
+                    nn.init.xavier_normal_(m.bias)
 
 def _test_conv_tasnet():
     batch_size = 4

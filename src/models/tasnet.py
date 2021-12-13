@@ -124,8 +124,6 @@ class TasNet(nn.Module):
         )
         self.decoder = decoder
 
-        self._init_weights()
-
     def forward(self, input):
         """
         Args:
@@ -189,15 +187,6 @@ class TasNet(nn.Module):
         output = F.pad(x_hat, (-padding_left, -padding_right))
 
         return output, latent
-
-    def _init_weights(self):
-        for m in self.separator.modules():
-            if isinstance(m, nn.RNN) or isinstance(m, nn.LSTM) or isinstance(m, nn.GRU):
-                for name, p in m.named_parameters():
-                    if name[:6] == "weight":
-                        nn.init.xavier_normal_(p)
-                    elif name[:4] == "bias":
-                        nn.init.zeros_(p)
 
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
