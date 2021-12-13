@@ -344,7 +344,7 @@ class GatedEncoder(nn.Module):
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
-        # self._init_weights()
+        self._init_weights()
 
     def forward(self, input):
         eps = self.eps
@@ -353,7 +353,7 @@ class GatedEncoder(nn.Module):
         x = input / (norm + eps)
         x_U = self.conv1d_U(x)
         x_V = self.conv1d_V(x)
-        output = x_U * x_V
+        output = self.relu(x_U) * self.sigmoid(x_V)
 
         return output
 
