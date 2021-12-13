@@ -363,8 +363,6 @@ class Separator(nn.Module):
 
         self.mask_nonlinear = choose_nonlinear(mask_nonlinear, **kwargs)
 
-        self._init_weights()
-
     def forward(self, input):
         """
         Args:
@@ -385,13 +383,6 @@ class Separator(nn.Module):
         output = x.view(batch_size, n_sources, num_features, n_frames)
 
         return output
-
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv1d):
-                nn.init.xavier_normal_(m.weight)
-                if m.bias is not None:
-                    nn.init.xavier_normal_(m.bias)
 
 def _test_conv_tasnet():
     batch_size = 4
