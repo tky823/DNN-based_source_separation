@@ -58,7 +58,7 @@ def beta_divergence(input, target, beta=2):
     assert beta_minus1 != 0, "Use generalized_kl_divergence instead."
 
     loss = target * (target**beta_minus1 - input**beta_minus1) / beta_minus1 - (target**beta - input**beta) / beta
-    
+
     return loss
 
 class KLdivergence(nn.Module):
@@ -68,7 +68,7 @@ class KLdivergence(nn.Module):
         self.reduction = reduction
         self.maximize = False
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -92,10 +92,10 @@ class KLdivergence(nn.Module):
             loss = loss.mean(dim=dims)
         else:
             raise NotImplementedError("Not support {} for reduction".format(reduction))
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
 
 class ISdivergence(nn.Module):
@@ -105,7 +105,7 @@ class ISdivergence(nn.Module):
         self.reduction = reduction
         self.maximize = False
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -127,7 +127,7 @@ class ISdivergence(nn.Module):
             loss = loss.mean(dim=dims)
         else:
             raise NotImplementedError("Not support {} for reduction".format(reduction))
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
 
@@ -140,7 +140,7 @@ class GeneralizedKLdivergence(nn.Module):
         self.reduction = reduction
         self.maximize = False
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -162,7 +162,7 @@ class GeneralizedKLdivergence(nn.Module):
             loss = loss.mean(dim=dims)
         else:
             raise NotImplementedError("Not support {} for reduction".format(reduction))
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
 
@@ -185,12 +185,12 @@ if __name__ =='__main__':
     target = torch.rand(batch_size, F_bin, T_bin, dtype=torch.float)
     criterion = GeneralizedKLdivergence()
     loss = criterion(input, target)
-    
+
     print(loss)
 
     input = torch.rand(batch_size, C, F_bin, T_bin, dtype=torch.float)
     target = torch.rand(batch_size, C, F_bin, T_bin, dtype=torch.float)
     criterion = KLdivergence()
     loss = criterion(input, target)
-    
+
     print(loss)

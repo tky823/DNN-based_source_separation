@@ -27,9 +27,9 @@ class MISI(nn.Module):
 
         if not isinstance(window, nn.Parameter):
             window = nn.Parameter(window, requires_grad=False)
-        
+
         self.window = window
-        
+
     def forward(self, mixture, estimated_sources_amplitude, iteration=10, return_all_iterations=False, iteration_dim=0):
         """
         Args:
@@ -42,10 +42,10 @@ class MISI(nn.Module):
         """
         if not torch.is_complex(mixture):
             raise TypeError("mixture is expected complex tensor.")
-        
+
         if torch.is_complex(estimated_sources_amplitude):
             raise TypeError("estimated_sources_amplitude is expected complex tensor.")
-        
+
         n_fft, hop_length = self.n_fft, self.hop_length
         window = self.window
 
@@ -63,12 +63,12 @@ class MISI(nn.Module):
             estimated_sources = estimated_sources_amplitude * torch.exp(1j * phase)
             if return_all_iterations:
                 estimated_sources_all_iterations.append(estimated_sources)
-        
+
         if return_all_iterations:
             estimated_sources = torch.stack(estimated_sources_all_iterations, dim=iteration_dim)
-        
+
         return estimated_sources
-    
+
     def update_phase_once(self, mixture, estimated_sources):
         """
         Args:

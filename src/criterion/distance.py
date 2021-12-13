@@ -7,13 +7,13 @@ EPS = 1e-12
 class L1Loss(nn.Module):
     def __init__(self, dim=1, reduction='mean'):
         super().__init__()
-        
+
         self.dim = dim
         self.reduction = reduction
-        
+
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-        
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -27,7 +27,7 @@ class L1Loss(nn.Module):
 
         n_dims = loss.dim()
         dim = tuple(range(1, n_dims))
-        
+
         if n_dims > 1:
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
@@ -35,10 +35,10 @@ class L1Loss(nn.Module):
                 loss = loss.sum(dim=dim)
             else:
                 raise ValueError("Invalid reduction type")
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
 
     @property
@@ -52,13 +52,13 @@ class L2Loss(nn.Module):
             dim <int> or <tuple<int>>
         """
         super().__init__()
-        
+
         self.dim = dim
         self.reduction = reduction
-        
+
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-        
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -70,7 +70,7 @@ class L2Loss(nn.Module):
         loss = torch.abs(input - target) # (batch_size, *)
         loss = torch.sum(loss**2, dim=self.dim)
         loss = torch.sqrt(loss)
-        
+
         n_dims = loss.dim()
         if n_dims > 1:
             dim = tuple(range(1, n_dims))
@@ -81,12 +81,12 @@ class L2Loss(nn.Module):
                 loss = loss.sum(dim=dim)
             else:
                 raise ValueError("Invalid reduction type")
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
-    
+
     @property
     def maximize(self):
         return False
@@ -98,35 +98,35 @@ class L12Loss(nn.Module):
             dim <int> or <tuple<int>>
         """
         super().__init__()
-        
+
         self.dim1, self.dim2 = dim1, dim2
         self.reduction = reduction
-        
+
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-    
+
     def forward(self, input, target, batch_mean=False):
         loss = torch.abs(input - target) # (batch_size, *)
         loss = torch.sum(loss, dim=self.dim1, keepdim=True)
         loss = torch.sum(loss**2, dim=self.dim2, keepdim=True)
         loss = torch.sqrt(loss)
-        
+
         n_dims = loss.dim()
         if n_dims > 1:
             dim = tuple(range(1, n_dims))
-            
+
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
             elif self.reduction == 'sum':
                 loss = loss.sum(dim=dim)
             else:
                 raise ValueError("Invalid reduction type")
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
-    
+
     @property
     def maximize(self):
         return False
@@ -138,33 +138,33 @@ class L21Loss(nn.Module):
             dim <int> or <tuple<int>>
         """
         super().__init__()
-        
+
         self.dim1, self.dim2 = dim1, dim2
         self.reduction = reduction
-        
+
         if not reduction in ['mean', 'sum']:
             raise ValueError("Invalid reduction type")
-    
+
     def forward(self, input, target, batch_mean=False):
         loss = torch.abs(input - target) # (batch_size, *)
         loss = torch.sum(loss**2, dim=self.dim2, keepdim=True)
         loss = torch.sqrt(loss)
         loss = torch.sum(loss, dim=self.dim1, keepdim=True)
-        
+
         n_dims = loss.dim()
         if n_dims > 1:
             dim = tuple(range(1, n_dims))
-            
+
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
             elif self.reduction == 'sum':
                 loss = loss.sum(dim=dim)
             else:
                 raise ValueError("Invalid reduction type")
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
 
     @property
@@ -177,7 +177,7 @@ class SquaredError(nn.Module):
 
         self.reduction = reduction
         self.reduction_dim = reduction_dim
-        
+
     def forward(self, input, target, batch_mean=True):
         loss = (input - target)**2
 
@@ -187,7 +187,7 @@ class SquaredError(nn.Module):
             else:
                 n_dims = loss.dim()
                 reduction_dim = tuple(range(1, n_dims))
-            
+
             if self.reduction == 'mean':
                 loss = loss.mean(dim=reduction_dim)
             elif self.reduction == 'sum':
@@ -197,9 +197,9 @@ class SquaredError(nn.Module):
 
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
-    
+
     @property
     def maximize(self):
         return False
@@ -211,10 +211,10 @@ class MeanAbsoluteError(nn.Module):
             dim <int> or <tuple<int>>
         """
         super().__init__()
-        
+
         self.dim = dim
         self.reduction = reduction
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -223,7 +223,7 @@ class MeanAbsoluteError(nn.Module):
         """
         loss = torch.abs(input - target) # (batch_size, *)
         loss = torch.mean(loss, dim=self.dim)
-        
+
         n_dims = loss.dim()
 
         if self.reduction:
@@ -234,10 +234,10 @@ class MeanAbsoluteError(nn.Module):
                 loss = loss.sum(dim=dim)
             else:
                 raise NotImplementedError("Not support self.reduction={}.".format(self.reduction))
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
 
     @property
@@ -251,10 +251,10 @@ class MeanSquaredError(nn.Module):
             dim <int> or <tuple<int>>
         """
         super().__init__()
-        
+
         self.dim = dim
         self.reduction = reduction
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -263,7 +263,7 @@ class MeanSquaredError(nn.Module):
         """
         loss = (input - target)**2 # (batch_size, *)
         loss = torch.mean(loss, dim=self.dim)
-        
+
         n_dims = loss.dim()
 
         if self.reduction:
@@ -274,10 +274,10 @@ class MeanSquaredError(nn.Module):
                 loss = loss.sum(dim=dim)
             else:
                 raise NotImplementedError("Not support self.reduction={}.".format(self.reduction))
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
 
     @property
@@ -291,7 +291,7 @@ class CosineSimilarityLoss(nn.Module):
         self.dim = dim
         self.maximize = maximize
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=False):
         loss = F.cosine_similarity(input, target, dim=self.dim, eps=self.eps)
 
@@ -307,7 +307,7 @@ class NegCosineSimilarityLoss(nn.Module):
         self.dim = dim
         self.maximize = maximize
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=False):
         loss = - F.cosine_similarity(input, target, dim=self.dim, eps=self.eps)
 

@@ -11,10 +11,10 @@ EPS = 1e-12
 class AffinityLoss(nn.Module):
     def __init__(self, eps=EPS):
         super().__init__()
-        
+
         self.maximize = False
         self.eps = eps
-        
+
     def forward(self, input, target, binary_mask=None, batch_mean=True):
         """
         Args:
@@ -29,7 +29,7 @@ class AffinityLoss(nn.Module):
 
         if binary_mask is not None:
             V, Y = binary_mask.unsqueeze(dim=-1) * V, binary_mask.unsqueeze(dim=-1) * Y
-        
+
         trans_V, trans_Y = V.permute(0, 2, 1), Y.permute(0, 2, 1) # (batch_size, embed_dim1, n_samples), (batch_size, embed_dim2, n_samples)
 
         Ysum = Y.sum(dim=1, keepdim=True) # (batch_size, n_samples, 1)
@@ -41,11 +41,10 @@ class AffinityLoss(nn.Module):
         VDY = torch.bmm(VD, Y) # (batch_size, embed_dim, embed_dim2)
 
         loss = torch.sum(VDV**2, dim=(1, 2)) + torch.sum(YDY**2, dim=(1, 2)) - 2 * torch.sum(VDY**2, dim=(1, 2)) # (batch_size,)
-        # TODO: divide by binary_mask.sum(dim=1) ?
-        
+
         if batch_mean:
             loss = loss.mean(dim=0) # ()
-        
+
         return loss
 
 def _test_equality():
