@@ -344,7 +344,7 @@ class GatedEncoder(nn.Module):
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
-        self._init_weights()
+        # self._init_weights()
 
     def forward(self, input):
         eps = self.eps
