@@ -135,7 +135,7 @@ class RNNBeforeDenseBlock(nn.Module):
             eps=eps
         )
         self.out_channels = self.dense_block.out_channels
-    
+
     def forward(self, input):
         """
         Args:
@@ -188,7 +188,7 @@ class DenseRNNParallelBlock(nn.Module):
         self.linear = nn.Linear(num_directions * hidden_channels, n_bins)
 
         self.out_channels = self.dense_block.out_channels + 1
-    
+
     def forward(self, input):
         """
         Args:

@@ -39,7 +39,7 @@ class ParallelMMDenseRNN(nn.Module):
             module = modules[key]
             if not isinstance(module, MMDenseRNN):
                 raise ValueError("All modules must be MMDenseRNN.")
-            
+
             if in_channels is None:
                 in_channels = module.in_channels
             else:
@@ -257,7 +257,7 @@ class MMDenseRNN(nn.Module):
         self.eps = eps
 
         self._reset_parameters()
-    
+
     def forward(self, input):
         """
         Args:

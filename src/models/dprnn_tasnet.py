@@ -194,7 +194,7 @@ class DPRNNTasNet(nn.Module):
         sep_hidden_channels, sep_bottleneck_channels = config['sep_hidden_channels'], config['sep_bottleneck_channels']
         sep_chunk_size, sep_hop_size = config['sep_chunk_size'], config['sep_hop_size']
         sep_num_blocks = config['sep_num_blocks']
-        
+
         sep_norm = config['sep_norm']
         mask_nonlinear = config['mask_nonlinear']
 
@@ -258,7 +258,7 @@ class DPRNNTasNet(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })

@@ -90,7 +90,7 @@ class ParallelD3Net(nn.Module):
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
         import os
-        
+
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
@@ -115,7 +115,7 @@ class ParallelD3Net(nn.Module):
         additional_attributes.update({
             'sample_rate': sample_rate
         })
-        
+
         modules = {}
         n_fft, hop_length = None, None
         window_fn = None
@@ -181,7 +181,7 @@ class ParallelD3NetTimeDomainWrapper(nn.Module):
         self.window = nn.Parameter(window, requires_grad=False)
 
         self.eps = eps
-    
+
     def forward(self, input, iteration=1):
         """
         Args:
@@ -297,7 +297,7 @@ class D3Net(nn.Module):
         self.eps = eps
 
         self._reset_parameters()
-    
+
     def forward(self, input):
         """
         Args:
@@ -348,7 +348,7 @@ class D3Net(nn.Module):
             output = torch.cat([x, x_invalid], dim=2)
 
         return output
-    
+
     def transform_affine_in(self, input):
         eps = self.eps
         output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
@@ -450,7 +450,7 @@ class D3Net(nn.Module):
         )
 
         return model
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
@@ -493,7 +493,7 @@ class D3Net(nn.Module):
             model.load_state_dict(config['state_dict'])
 
         return model
-    
+
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
         from utils.utils import download_pretrained_model_from_google_drive
@@ -505,7 +505,7 @@ class D3Net(nn.Module):
 
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "nnabla"
@@ -656,7 +656,7 @@ class D3NetBackbone(nn.Module):
 
         self.kernel_size = kernel_size
         self.out_channels = out_channels
-    
+
     def forward(self, input):
         Kh, Kw = self.kernel_size
         Ph, Pw = Kh - 1, Kw - 1
@@ -795,7 +795,7 @@ class Decoder(nn.Module):
             assert num_d3blocks == len(num_d2blocks), "Invalid length of `num_d2blocks`"
         else:
             raise ValueError("Invalid type of `num_d2blocks`.")
-        
+
         if type(dilated) is bool:
             dilated = [dilated] * num_d3blocks
         elif type(dilated) is list:
@@ -1039,10 +1039,10 @@ class D3Block(nn.Module):
                 _in_channels = growth_rate[idx - 1]
                 sections = [_in_channels, sum(growth_rate[idx:])]
                 x, x_residual = torch.split(x_residual, sections, dim=1)
-            
+
             x = self.net[idx](x)
             x_residual = x_residual + x
-        
+
         output = x_residual
 
         return output

@@ -37,7 +37,7 @@ class ParallelMMDenseNet(nn.Module):
             module = modules[key]
             if not isinstance(module, MMDenseNet):
                 raise ValueError("All modules must be MMDenseNet.")
-            
+
             if in_channels is None:
                 in_channels = module.in_channels
             else:

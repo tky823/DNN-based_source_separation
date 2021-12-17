@@ -67,7 +67,7 @@ class IntraChunkTransformer(nn.Module):
         super().__init__()
 
         warnings.warn("Use models.dptnet.IntraChunkTransformer instead.", DeprecationWarning)
-        
+
         self.num_features = num_features
 
         self.transformer = ImprovedTransformer(
@@ -119,7 +119,7 @@ class InterChunkTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         x = input.permute(2, 0, 3, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (S, batch_size, chunk_size, num_features)
         x = x.view(S, batch_size*chunk_size, num_features) # (S, batch_size, chunk_size, num_features) -> (S, batch_size*chunk_size, num_features)
         x = self.transformer(x) # -> (S, batch_size*chunk_size, num_features)
@@ -146,7 +146,7 @@ class ImprovedTransformer(nn.Module):
         """
         x = self.multihead_attn_block(input)
         output = self.subnet(x)
-        
+
         return output
 
 class MultiheadAttentionBlock(nn.Module):
@@ -359,7 +359,7 @@ if __name__ == '__main__':
     print('='*10, "improved transformer", '='*10)
     _test_improved_transformer()
     print()
-    
+
     print('='*10, "transformer block", '='*10)
     _test_transformer_block()
     print()

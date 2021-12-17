@@ -28,10 +28,10 @@ class D2BlockFixedDilation(nn.Module):
             depth = len(growth_rate)
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
-        
+
         if not type(dilation) is int:
             raise ValueError("Not support dilation={}".format(dilation))
-        
+
         if type(norm) is bool:
             assert depth is not None, "Specify `depth`"
             norm = [norm] * depth
@@ -51,7 +51,7 @@ class D2BlockFixedDilation(nn.Module):
             depth = len(nonlinear)
         else:
             raise ValueError("Not support nonlinear={}".format(nonlinear))
-        
+
         self.growth_rate = growth_rate
         self.depth = depth
 
@@ -64,12 +64,12 @@ class D2BlockFixedDilation(nn.Module):
             else:
                 _in_channels = growth_rate[idx - 1]
             _out_channels = sum(growth_rate[idx:])
-            
+
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
-        
+
         self.net = nn.Sequential(*net)
-    
+
     def forward(self, input):
         """
         Args:
@@ -88,10 +88,10 @@ class D2BlockFixedDilation(nn.Module):
                 _in_channels = growth_rate[idx - 1]
                 sections = [_in_channels, sum(growth_rate[idx:])]
                 x, x_residual = torch.split(x_residual, sections, dim=1)
-            
+
             x = self.net[idx](x)
             x_residual = x_residual + x
-        
+
         output = x_residual
 
         return output
@@ -119,7 +119,7 @@ class D2Block(nn.Module):
             depth = len(growth_rate)
         else:
             raise ValueError("Not support growth_rate={}".format(growth_rate))
-        
+
         if type(dilated) is bool:
             assert depth is not None, "Specify `depth`"
             dilated = [dilated] * depth
@@ -129,7 +129,7 @@ class D2Block(nn.Module):
             depth = len(dilated)
         else:
             raise ValueError("Not support dilated={}".format(dilated))
-        
+
         if type(norm) is bool:
             assert depth is not None, "Specify `depth`"
             norm = [norm] * depth
@@ -149,7 +149,7 @@ class D2Block(nn.Module):
             depth = len(nonlinear)
         else:
             raise ValueError("Not support nonlinear={}".format(nonlinear))
-        
+
         self.growth_rate = growth_rate
         self.depth = depth
 
@@ -162,17 +162,17 @@ class D2Block(nn.Module):
             else:
                 _in_channels = growth_rate[idx - 1]
             _out_channels = sum(growth_rate[idx:])
-            
+
             if dilated[idx]:
                 dilation = 2**idx
             else:
                 dilation = 1
-            
+
             conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
-        
+
         self.net = nn.Sequential(*net)
-    
+
     def forward(self, input):
         """
         Args:
@@ -190,10 +190,10 @@ class D2Block(nn.Module):
                 _in_channels = growth_rate[idx - 1]
                 sections = [_in_channels, sum(growth_rate[idx:])]
                 x, x_residual = torch.split(x_residual, sections, dim=1)
-            
+
             x = self.net[idx](x)
             x_residual = x_residual + x
-        
+
         output = x_residual
 
         return output

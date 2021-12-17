@@ -112,7 +112,7 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
             x_sources.append(x_source)
-        
+
         x_sources_block = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
         x_sources = []
 
@@ -278,7 +278,7 @@ class CrossNetOpenUnmix(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
 

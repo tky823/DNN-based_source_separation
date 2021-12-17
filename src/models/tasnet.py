@@ -56,15 +56,15 @@ class TasNetBase(nn.Module):
         output = F.pad(output, (-padding_left, -padding_right))
 
         return output, latent
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class TasNet(nn.Module):
@@ -293,7 +293,7 @@ class TasNet(nn.Module):
             'n_sources': self.n_sources,
             'eps': self.eps
         }
-        
+
         return config
 
 """

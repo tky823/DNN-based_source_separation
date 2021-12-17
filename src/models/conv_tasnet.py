@@ -174,22 +174,15 @@ class ConvTasNet(nn.Module):
         config = {
             'in_channels': self.in_channels,
             'n_basis': self.n_basis,
-            'kernel_size': self.kernel_size,
-            'stride': self.stride,
-            'enc_basis': self.enc_basis,
-            'dec_basis': self.dec_basis,
+            'kernel_size': self.kernel_size, 'stride': self.stride,
+            'enc_basis': self.enc_basis, 'dec_basis': self.dec_basis,
             'enc_nonlinear': self.enc_nonlinear,
             'window_fn': self.window_fn,
-            'enc_onesided': self.enc_onesided,
-            'enc_return_complex': self.enc_return_complex,
-            'sep_hidden_channels': self.sep_hidden_channels,
-            'sep_bottleneck_channels': self.sep_bottleneck_channels,
-            'sep_skip_channels': self.sep_skip_channels,
+            'enc_onesided': self.enc_onesided, 'enc_return_complex': self.enc_return_complex,
+            'sep_hidden_channels': self.sep_hidden_channels, 'sep_bottleneck_channels': self.sep_bottleneck_channels, 'sep_skip_channels': self.sep_skip_channels,
             'sep_kernel_size': self.sep_kernel_size,
-            'sep_num_blocks': self.sep_num_blocks,
-            'sep_num_layers': self.sep_num_layers,
-            'dilated': self.dilated,
-            'separable': self.separable,
+            'sep_num_blocks': self.sep_num_blocks, 'sep_num_layers': self.sep_num_layers,
+            'dilated': self.dilated, 'separable': self.separable,
             'causal': self.causal,
             'sep_nonlinear': self.sep_nonlinear,
             'sep_norm': self.sep_norm,
@@ -388,7 +381,7 @@ def _test_conv_tasnet():
     batch_size = 4
     C = 1
     T = 64
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
 
     H, B, Sc = 128, 64, 64
@@ -421,9 +414,9 @@ def _test_conv_tasnet():
     output = model(input)
     print(input.size(), output.size())
     print()
-    
+
     basis = model.encoder.get_basis()
-    
+
     plt.figure()
     plt.pcolormesh(basis.squeeze(dim=1).detach(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
@@ -451,7 +444,7 @@ def _test_conv_tasnet():
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     output = model(input)
     print(input.size(), output.size())
     print()

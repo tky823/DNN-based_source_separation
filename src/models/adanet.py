@@ -74,7 +74,7 @@ class ADANet(DANet):
         batch_size, _, n_bins, n_frames = input.size()
 
         self.rnn.flatten_parameters()
-        
+
         if self.take_log:
             x = torch.log(input + eps)
         elif self.take_db:

@@ -65,7 +65,7 @@ class ParallelMMDenseLSTM(nn.Module):
         else:
             if type(target) is not str:
                 raise TypeError("`target` is expected str, but given {}".format(type(target)))
-            
+
             assert input.dim() == 4, "input is expected 4D, but given {}.".format(input.dim())
 
             output = self.net[target](input)
@@ -98,7 +98,7 @@ class ParallelMMDenseLSTM(nn.Module):
         additional_attributes.update({
             'sample_rate': sample_rate
         })
-        
+
         modules = {}
         n_fft, hop_length = None, None
         window_fn = None
@@ -335,7 +335,7 @@ class MMDenseLSTM(MMDenseRNN):
             rnn_position=rnn_position,
             eps=eps
         )
-        
+
         return model
 
     @classmethod
@@ -483,7 +483,7 @@ def _test_mm_dense_lstm():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = MMDenseLSTM.build_from_config(config_path)
-    
+
     output = model(input)
 
     print(model)

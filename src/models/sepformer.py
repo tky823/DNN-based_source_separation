@@ -113,7 +113,7 @@ class SepFormer(nn.Module):
         n_sources = self.n_sources
         n_basis = self.n_basis
         kernel_size, stride = self.kernel_size, self.stride
-        
+
         n_dims = input.dim()
 
         if n_dims == 3:

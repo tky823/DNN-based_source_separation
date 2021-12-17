@@ -13,7 +13,7 @@ class UNetBase(nn.Module):
         super().__init__()
 
         self.eps = eps
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
@@ -79,7 +79,7 @@ class UNet1d(UNetBase):
         self.encoder = Encoder1d(enc_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=enc_nonlinear, eps=eps)
         self.bottleneck = nn.Conv1d(channels[-1], channels[-1], kernel_size=1, stride=1)
         self.decoder = Decoder1d(dec_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, nonlinear=dec_nonlinear, eps=eps)
-        
+
     def forward(self, input):
         """
         Args:
@@ -172,7 +172,7 @@ class EnsembleUNet1d(UNetBase):
         stride = stride if type(stride) is list else [stride] * num_ensembles
         enc_nonlinear = enc_nonlinear if type(enc_nonlinear) is list else [enc_nonlinear] * num_ensembles
         dec_nonlinear = dec_nonlinear if type(dec_nonlinear) is list else [dec_nonlinear] * num_ensembles
-        
+
         self.channels = channels
         self.kernel_size, self.stride, self.dilated = kernel_size, stride, dilated
         self.enc_nonlinear, self.dec_nonlinear = enc_nonlinear, dec_nonlinear
@@ -240,7 +240,7 @@ class EnsembleUNet2d(UNetBase):
             eps <float>
         """
         super().__init__()
-        
+
         num_ensembles = len(channels) - 1
 
         dec_channels = channels[::-1] if out_channels is None else channels[:0:-1] + [out_channels]
@@ -250,7 +250,7 @@ class EnsembleUNet2d(UNetBase):
         stride = stride if type(stride) is list else [stride] * num_ensembles
         enc_nonlinear = enc_nonlinear if type(enc_nonlinear) is list else [enc_nonlinear] * num_ensembles
         dec_nonlinear = dec_nonlinear if type(dec_nonlinear) is list else [dec_nonlinear] * num_ensembles
-        
+
         self.channels = channels
         self.kernel_size, self.stride, self.dilated = kernel_size, stride, dilated
         self.enc_nonlinear, self.dec_nonlinear = enc_nonlinear, dec_nonlinear

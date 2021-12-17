@@ -107,7 +107,7 @@ class Transition2d(nn.Module):
         self.relu = nn.ReLU()
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1), bias=False)
         self.pool2d = nn.AvgPool2d(kernel_size=(2,2), stride=(2,2))
-    
+
     def forward(self, input):
         x = self.norm2d(input)
         x = self.relu(x)

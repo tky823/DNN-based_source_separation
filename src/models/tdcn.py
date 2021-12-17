@@ -77,7 +77,7 @@ class TimeDilatedConvBlock1d(nn.Module):
 class ResidualBlock1d(nn.Module):
     def __init__(self, num_features, hidden_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, separable=False, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
-        
+
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
         self.separable, self.causal = separable, causal
         self.norm = norm
@@ -119,7 +119,7 @@ class ResidualBlock1d(nn.Module):
             x = self.nonlinear1d(x)
         if norm:
             x = self.norm1d(x)
-        
+
         padding = (T_original - 1) * stride - T_original + (kernel_size - 1) * dilation + 1
 
         if causal:
@@ -149,7 +149,7 @@ class ResidualBlock1d(nn.Module):
 class DepthwiseSeparableConv1d(nn.Module):
     def __init__(self, in_channels, out_channels=256, skip_channels=256, kernel_size=3, stride=2, dilation=1, causal=True, nonlinear=None, norm=True, dual_head=True, eps=EPS):
         super().__init__()
-        
+
         self.dual_head = dual_head
         self.norm = norm
         self.eps = eps

@@ -41,25 +41,25 @@ class DANet(nn.Module):
         else:
             num_directions = 2
             bidirectional = True
-        
+
         self.mask_nonlinear = mask_nonlinear
-        
+
         self.rnn = nn.LSTM(n_bins, hidden_channels, num_layers=num_blocks, batch_first=True, bidirectional=bidirectional, dropout=dropout)
         self.fc = nn.Linear(num_directions*hidden_channels, n_bins*embed_dim)
-        
+
         kwargs = {}
 
         if mask_nonlinear == 'softmax':
             kwargs["dim"] = 1
-        
+
         self.mask_nonlinear2d = choose_nonlinear(mask_nonlinear, **kwargs)
-        
+
         self.take_log, self.take_db = take_log, take_db
         self.eps = eps
 
         if self.take_log and self.take_db:
             raise ValueError("Either take_log or take_db should be False.")
-    
+
     def forward(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
@@ -70,9 +70,9 @@ class DANet(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
         """
         output, _, _ = self.extract_latent(input, assignment, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering)
-        
+
         return output
-    
+
     def extract_latent(self, input, assignment=None, threshold_weight=None, n_sources=None, iter_clustering=None):
         """
         Args:
@@ -91,10 +91,10 @@ class DANet(nn.Module):
             if assignment is None:
                 raise ValueError("Specify assignment, given None!")
             n_sources = assignment.size(1)
-        
+
         embed_dim = self.embed_dim
         eps = self.eps
-        
+
         batch_size, _, n_bins, n_frames = input.size()
 
         self.rnn.flatten_parameters()
@@ -105,7 +105,7 @@ class DANet(nn.Module):
             x = 20 * torch.log10(input + eps)
         else:
             x = input
-        
+
         x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
         x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
@@ -113,20 +113,20 @@ class DANet(nn.Module):
         x = x.permute(0, 2, 3, 1).contiguous()  # (batch_size, embed_dim, n_bins, n_frames)
         latent = x.view(batch_size, embed_dim, n_bins * n_frames)
         latent = latent.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embed_dim)
-        
+
         if assignment is None:
             if self.training:
                 raise ValueError("assignment is required.")
-            
+
             if threshold_weight is not None:
                 assert batch_size == 1, "KMeans is expected same number of samples among all batches, so if threshold_weight is given, batch_size should be 1."
-                
+
                 flatten_latent = latent.view(batch_size * n_bins * n_frames, embed_dim) # (batch_size * n_bins * n_frames, embed_dim)
                 flatten_threshold_weight = threshold_weight.view(-1) # (batch_size * n_bins * n_frames)
                 nonzero_indices, = torch.nonzero(flatten_threshold_weight, as_tuple=True) # (n_nonzeros,)
                 latent_nonzero = flatten_latent[nonzero_indices] # (n_nonzeros, embed_dim)
                 latent_nonzero = latent_nonzero.view(batch_size, -1, embed_dim) # (batch_size, n_nonzeros, embed_dim)
-            
+
             kmeans = KMeans(K=n_sources)
             _ = kmeans(latent, iteration=iter_clustering) # (batch_size, n_bins * n_frames)
             attractor = kmeans.centroids # (batch_size, n_sources, embed_dim)
@@ -135,7 +135,7 @@ class DANet(nn.Module):
             assignment = assignment.view(batch_size, n_sources, n_bins * n_frames) # (batch_size, n_sources, n_bins * n_frames)
             assignment = threshold_weight * assignment
             attractor = torch.bmm(assignment, latent) / (assignment.sum(dim=2, keepdim=True) + eps) # (batch_size, n_sources, embed_dim)
-        
+
         similarity = torch.bmm(attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
         mask = self.mask_nonlinear2d(similarity) # (batch_size, n_sources, n_bins, n_frames)
@@ -144,7 +144,7 @@ class DANet(nn.Module):
         latent = latent.view(batch_size, n_bins, n_frames, embed_dim)
 
         return output, latent, attractor
-    
+
     def extract_latent_by_attractor(self, input, attractor):
         """
         Args:
@@ -155,7 +155,7 @@ class DANet(nn.Module):
             latent <torch.Tensor>: (batch_size, n_bins, n_frames, embed_dim)
         """
         eps = self.eps
-        
+
         batch_size, _, n_bins, n_frames = input.size()
         n_sources, embed_dim = attractor.size()
 
@@ -167,7 +167,7 @@ class DANet(nn.Module):
             x = 20 * torch.log10(input + eps)
         else:
             x = input
-        
+
         x = x.squeeze(dim=1).permute(0, 2, 1).contiguous() # (batch_size, n_frames, n_bins)
         x, _ = self.rnn(x) # (batch_size, n_frames, n_bins)
         x = self.fc(x) # (batch_size, n_frames, embed_dim * n_bins)
@@ -175,7 +175,7 @@ class DANet(nn.Module):
         x = x.permute(0, 2, 3, 1).contiguous()  # (batch_size, embed_dim, n_bins, n_frames)
         latent = x.view(batch_size, embed_dim, n_bins * n_frames)
         latent = latent.permute(0, 2, 1).contiguous() # (batch_size, n_bins * n_frames, embed_dim)
-    
+
         batch_fixed_attractor = attractor.expand(batch_size, -1, -1)
         similarity = torch.bmm(batch_fixed_attractor, latent.permute(0, 2, 1)) # (batch_size, n_sources, n_bins * n_frames)
         similarity = similarity.view(batch_size, n_sources, n_bins, n_frames)
@@ -198,25 +198,25 @@ class DANet(nn.Module):
             'take_log': self.take_log, 'take_db': self.take_db,
             'eps': self.eps
         }
-        
+
         return config
 
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-        
+
         n_bins = config['n_bins']
         embed_dim = config['embed_dim']
         hidden_channels = config['hidden_channels']
         num_blocks = config['num_blocks']
         dropout = config['dropout']
-        
+
         causal = config['causal']
         mask_nonlinear = config['mask_nonlinear']
         take_log, take_db = config['take_log'], config['take_db']
-        
+
         eps = config['eps']
-        
+
         model = cls(
             n_bins, embed_dim=embed_dim, hidden_channels=hidden_channels,
             num_blocks=num_blocks, dropout=dropout, causal=causal, mask_nonlinear=mask_nonlinear,
@@ -226,7 +226,7 @@ class DANet(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
 
     @classmethod
@@ -237,10 +237,10 @@ class DANet(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-        
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
@@ -265,7 +265,7 @@ class DANet(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })
@@ -274,7 +274,7 @@ class DANet(nn.Module):
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -289,7 +289,7 @@ class DANet(nn.Module):
             setattr(model, key, value)
 
         return model
-    
+
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         return DANetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
@@ -378,9 +378,9 @@ class FixedAttractorDANet(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, n_bins, n_frames)
         """
         output, _ = self.extract_latent(input)
-        
+
         return output
-    
+
     def extract_latent(self, input):
         """
         Args:
@@ -392,13 +392,13 @@ class FixedAttractorDANet(nn.Module):
         output, latent = self.base_model.extract_latent_by_attractor(input, self.fixed_attractor)
 
         return output, latent
-    
+
     def get_config(self):
         config = self.base_model.get_config()
         config["attractor_size"] = self.fixed_attractor.size()
 
         return config
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
@@ -411,13 +411,13 @@ class FixedAttractorDANet(nn.Module):
             model.load_state_dict(config['state_dict'])
         else:
             raise ValueError("Set load_state_dict=True")
-        
+
         return model
-    
+
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
         from utils.utils import download_pretrained_model_from_google_drive
-        
+
         # For pretrained FixedAttractorDANet, pretrained attractor is saved separately from state dict of base DANet,
         base_model = DANet.build_from_pretrained(root, quiet=quiet, load_state_dict=load_state_dict, **kwargs)
 
@@ -425,10 +425,10 @@ class FixedAttractorDANet(nn.Module):
 
         if not task in cls.pretrained_attractor_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-        
+
         pretrained_attractor_ids_task = cls.pretrained_attractor_ids[task]
         additional_attributes = {}
-        
+
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
@@ -442,7 +442,7 @@ class FixedAttractorDANet(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })

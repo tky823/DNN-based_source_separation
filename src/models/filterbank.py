@@ -76,7 +76,7 @@ class FourierEncoder(nn.Module):
         s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
         if self.trainable_phase:
             s += ", trainable_phase={trainable_phase}"
-        
+
         return s.format(**self.__dict__)
 
     def get_basis(self):
@@ -90,16 +90,16 @@ class FourierEncoder(nn.Module):
             basis_real, basis_imag = torch.cos(-(omega_n + phi.unsqueeze(dim=1))), torch.sin(-(omega_n + phi.unsqueeze(dim=1)))
         else:
             basis_real, basis_imag = torch.cos(-omega_n), torch.sin(-omega_n)
-        
+
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
-        
+
         basis_real, basis_imag = window * basis_real, window * basis_imag
         basis = torch.cat([basis_real, basis_imag], dim=0)
-    
+
         return basis
 
 class FourierDecoder(nn.Module):
@@ -142,10 +142,10 @@ class FourierDecoder(nn.Module):
 
         if torch.is_complex(input):
             input_real, input_imag = input.real, input.imag
-        else:    
+        else:
             n_bins = input.size(1)
             input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
-        
+
         omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
         if self.trainable_phase:
             phi = self.phase
@@ -175,7 +175,7 @@ class FourierDecoder(nn.Module):
         s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
         if self.trainable_phase:
             s += ", trainable_phase={trainable_phase}"
-        
+
         return s.format(**self.__dict__)
 
     def get_basis(self):
@@ -367,7 +367,7 @@ def _test_filterbank():
     T = 64
     kernel_size, stride = 8, 2
     n_basis = kernel_size
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
 
     print("-"*10, "Trainable Encoder", "-"*10)
@@ -375,7 +375,7 @@ def _test_filterbank():
     decoder = Decoder(2*kernel_size, C, kernel_size=kernel_size, stride=stride)
 
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
-    
+
     plt.figure()
     plt.pcolormesh(enc_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
@@ -399,7 +399,7 @@ def _test_filterbank():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, onesided=True)
 
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
-    
+
     plt.figure()
     plt.pcolormesh(enc_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
@@ -459,7 +459,7 @@ def _test_fourier():
     T = 64
     kernel_size, stride = 8, 2
     onesided, return_complex = True, True
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
 
     print("-"*10, "Fourier Encoder", "-"*10)
@@ -493,7 +493,7 @@ def _test_fourier():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
     spectrogram = encoder(input)
     output = decoder(spectrogram)
-    
+
     plt.figure()
     plt.plot(input[0, 0].detach().numpy())
     plt.plot(output[0, 0].detach().numpy())
@@ -505,7 +505,7 @@ def _test_fourier():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
     spectrogram = encoder(input)
     output = decoder(spectrogram)
-    
+
     plt.figure()
     plt.plot(input[0, 0].detach().numpy())
     plt.plot(output[0, 0].detach().numpy())
@@ -517,7 +517,7 @@ def _test_fourier():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
     spectrogram = encoder(input)
     output = decoder(spectrogram)
-    
+
     plt.figure()
     plt.plot(input[0, 0].detach().numpy())
     plt.plot(output[0, 0].detach().numpy())
@@ -527,7 +527,7 @@ def _test_fourier():
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from matplotlib.colors import Normalize
-    
+
     print("="*10, "Filterbank", "="*10)
     _test_filterbank()
     print()

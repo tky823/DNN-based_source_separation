@@ -124,10 +124,10 @@ class DeepEmbedding(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-        
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
@@ -141,7 +141,7 @@ class DeepEmbedding(nn.Module):
             })
         else:
             raise NotImplementedError("Not support task={}.".format(task))
-        
+
         additional_attributes.update({
             'sample_rate': sample_rate
         })
@@ -150,7 +150,7 @@ class DeepEmbedding(nn.Module):
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -188,13 +188,13 @@ class DeepEmbeddingTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.register_buffer("window", window)
 
         self.eps = eps
-    
+
     def forward(self, input, threshold=None, n_sources=None, iter_clustering=None):
         """
         Args:
@@ -221,7 +221,7 @@ class DeepEmbeddingTimeDomainWrapper(nn.Module):
             threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
         else:
             threshold_weight = None
-        
+
         latent = self.base_model(mixture_amplitude)
         latent = latent.view(batch_size, n_bins * n_frames, latent.size(-1))
 
@@ -258,7 +258,7 @@ class DeepEmbeddingPlus(nn.Module):
 
         self.embedding_net = embedding_net
         self.enhancement_net = enhancement_net
-    
+
     def forward(self, input, n_sources=None, iter_clustering=None):
         """
         Args:
@@ -293,15 +293,15 @@ class DeepEmbeddingPlus(nn.Module):
         s_tilde = mask_final * input
 
         return embedding, s_tilde
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class DeepEmbedding_pp(nn.Module):
@@ -326,7 +326,7 @@ class DeepEmbedding_pp(nn.Module):
         self.fc = nn.Linear(hidden_channels * num_directions, n_bins * embed_dim)
         self.embed_nonlinear = nn.Sigmoid()
         self.enhancement_net = NaiveEnhancementNet(2 * n_bins, n_bins, hidden_channels=enh_hidden_channels, num_layers=enh_num_layers, causal=causal, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -356,15 +356,15 @@ class DeepEmbedding_pp(nn.Module):
         output = self.embed_nonlinear(x)
 
         return output
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class NaiveEnhancementNet(nn.Module):
@@ -379,11 +379,11 @@ class NaiveEnhancementNet(nn.Module):
         else:
             bidirectional = True
             num_directions = 2
-        
+
         self.rnn = choose_rnn(rnn_type, input_size=num_features, hidden_size=hidden_channels, num_layers=num_layers, batch_first=True, bidirectional=bidirectional)
         self.fc = nn.Linear(hidden_channels * num_directions, n_bins)
         self.nonlinear = nn.Softmax(dim=1)
-    
+
     def forward(self, input):
         return input
 
@@ -410,7 +410,7 @@ class ChimeraNet(nn.Module):
 
         self.mask_fc = nn.Linear(hidden_channels, n_bins*n_sources)
         self.mask_nonlinear = nn.Softmax(dim=1)
-    
+
     def forward(self, input):
         """
         Args:
@@ -432,15 +432,15 @@ class ChimeraNet(nn.Module):
         output = x / (norm + eps)
 
         return output
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 DeepClustering = DeepEmbedding
@@ -469,7 +469,7 @@ def _test_deep_embedding():
     model = DeepEmbedding(n_bins, hidden_channels=hidden_channels, embed_dim=embed_dim, causal=False)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     output = model(input)
     print(input.size(), output.size(), target.size())
 
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     from criterion.deep_clustering import AffinityLoss
 
     torch.manual_seed(111)
-    
+
     print("="*10, "Deep embedding", "="*10)
     _test_deep_embedding()
     print()

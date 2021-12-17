@@ -37,7 +37,7 @@ class HRNet(nn.Module):
         output = mask * input
 
         return output
-    
+
     def estimate_mask(self, input):
         x = self.conv2d_in(input)
         x = self.backbone(x)
@@ -86,7 +86,7 @@ class HRNet(nn.Module):
         in_num_stacks, out_num_stacks = config['in_num_stacks'], config['out_num_stacks']
 
         eps = config['eps']
-        
+
         model = cls(
             in_channels,
             hidden_channels=hidden_channels, bottleneck_channels=bottleneck_channels,
@@ -101,9 +101,9 @@ class HRNet(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -147,7 +147,7 @@ class HRNet(nn.Module):
 class HRNetBackbone(nn.Module):
     def __init__(self, hidden_channels, bottleneck_channels, kernel_size=(3,3), scale=(2,2), upsample='bilinear', downsample='conv', nonlinear='relu', num_stacks=1, eps=EPS):
         super().__init__()
-        
+
         num_stages = len(hidden_channels)
 
         if type(num_stacks) is int:
@@ -162,21 +162,21 @@ class HRNetBackbone(nn.Module):
                 block = StackedParallelResidualBlock2d(hidden_channels[:idx + 1], 0, bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks[idx], eps=eps)
             else:
                 block = StackedParallelResidualBlock2d(hidden_channels[:idx + 1], hidden_channels[idx + 1], bottleneck_channels=bottleneck_channels, kernel_size=kernel_size, scale=scale, upsample=upsample, downsample=downsample, nonlinear=nonlinear, num_stacks=num_stacks[idx], eps=eps)
-            
+
             net.append(block)
-        
+
         self.net = nn.Sequential(*net)
         self.concat_mix_block2d = ConcatMixBlock2d(hidden_channels, scale=scale, upsample=upsample, eps=eps)
 
         self.num_stages = num_stages
-    
+
     def forward(self, input):
         x = [input]
         for idx in range(self.num_stages):
             x = self.net[idx](x)
-        
+
         output = self.concat_mix_block2d(x)
-        
+
         return output
 
 class StackedParallelResidualBlock2d(nn.Module):
@@ -195,11 +195,11 @@ class StackedParallelResidualBlock2d(nn.Module):
                 blocks.append(block)
             blocks = nn.ModuleList(blocks)
             residual_block2d.append(blocks)
-        
+
         self.residual_block2d = nn.ModuleList(residual_block2d)
-        
+
         self.mix_block2d = MixBlock2d(in_channels, additional_channels, scale=scale, upsample=upsample, downsample=downsample, eps=eps)
-    
+
     def forward(self, input):
         x_in = input
 
@@ -210,7 +210,7 @@ class StackedParallelResidualBlock2d(nn.Module):
                 x = module[level_idx](x_in[level_idx])
                 x_out.append(x)
             x_in = x_out
-        
+
         output = self.mix_block2d(x_out)
 
         return output
@@ -228,15 +228,15 @@ class StackedResidualBlock2d(nn.Module):
             else:
                 block = ResidualBlock2d(out_channels, out_channels, bottleneck_channels, kernel_size=kernel_size, nonlinear=nonlinear, eps=eps)
             net.append(block)
-        
+
         self.net = nn.ModuleList(net)
-    
+
     def forward(self, input):
         x = input
 
         for idx in range(self.num_stacks):
             x = self.net[idx](x)
-        
+
         output = x
 
         return output
@@ -254,7 +254,7 @@ class MixBlock2d(nn.Module):
         else:
             out_channels = in_channels
             max_level_out = max_level_in
-        
+
         for idx_out in range(max_level_out + 1):
             interpolate_block = []
             _out_channels = out_channels[idx_out]
@@ -272,16 +272,16 @@ class MixBlock2d(nn.Module):
                     block = UpsampleBlock2d(_in_channels, _out_channels, scale=_scale, mode=upsample, eps=eps)
                 else:
                     block = nn.Identity()
-                
+
                 interpolate_block.append(block)
-            
+
             interpolate_block = nn.ModuleList(interpolate_block)
             blocks.append(interpolate_block)
-        
+
         self.blocks = nn.ModuleList(blocks)
 
         self.max_level_in, self.max_level_out = max_level_in, max_level_out
-    
+
     def forward(self, input):
         output = []
 
@@ -298,17 +298,17 @@ class MixBlock2d(nn.Module):
                     padding_top, padding_left = Ph // 2, Pw // 2
                     padding_bottom, padding_right = Ph - padding_top, Pw - padding_left
                     x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
-                
+
                 x_level_out = x_level_out + x
-            
+
             output.append(x_level_out)
-        
+
         return output
 
 class ConcatMixBlock2d(nn.Module):
     def __init__(self, in_channels, scale=(2,2), upsample='bilinear', eps=EPS):
         super().__init__()
-    
+
         max_level_in = len(in_channels) - 1
         net = []
 
@@ -323,12 +323,12 @@ class ConcatMixBlock2d(nn.Module):
                 block = nn.Identity()
             else:
                 block = UpsampleBlock2d(_in_channels, _in_channels, scale=_scale, mode=upsample, eps=eps)
-            
+
             net.append(block)
-        
+
         self.net = nn.ModuleList(net)
         self.max_level_in = max_level_in
-    
+
     def forward(self, input):
         output = []
 
@@ -343,9 +343,9 @@ class ConcatMixBlock2d(nn.Module):
                 padding_top, padding_left = Ph // 2, Pw // 2
                 padding_bottom, padding_right = Ph - padding_top, Pw - padding_left
                 x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
-            
+
             output.append(x)
-        
+
         output = torch.cat(output, dim=1)
 
         return output
@@ -359,7 +359,7 @@ class DownsampleBlock2d(nn.Module):
 
         if mode != 'conv':
             raise NotImplementedError("Invalid upsample mode.")
-        
+
         self.conv2d = nn.Conv2d(out_channels, out_channels, kernel_size=(3,3), stride=scale)
         self.nonlinear2d = choose_nonlinear(nonlinear)
 
@@ -415,7 +415,7 @@ def _test_mix_block():
 
     for _input, _output in zip(input, output):
         print(_input.size(), _output.size())
-    
+
     print()
 
     additional_channels = 9
@@ -430,7 +430,7 @@ def _test_mix_block():
 
     for _input, _output in zip(input, output):
         print(_input.size(), _output.size())
-    
+
     print(output[-1].size())
 
 def _test_stacked_parallel_residual_block():
@@ -451,7 +451,7 @@ def _test_stacked_parallel_residual_block():
     print(model)
     for _input, _output in zip(input, output):
         print(_input.size(), _output.size())
-    
+
     print()
 
     num_stacks = 1
@@ -463,7 +463,7 @@ def _test_stacked_parallel_residual_block():
     for _input, _output in zip(input, output):
         print(_input.size(), _output.size())
     print(output[-1].size())
-    
+
     print()
 
     num_stacks = 2
@@ -535,7 +535,7 @@ def _test_hrnet_from_config():
 
 if __name__ == '__main__':
     torch.manual_seed(111)
-    
+
     print("="*10, "MixBlock2d", "="*10)
     _test_mix_block()
     print()

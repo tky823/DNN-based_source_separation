@@ -227,7 +227,7 @@ class DPTNet(nn.Module):
 
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['wsj0-mix', 'wsj0']:
             sample_rate = kwargs.get('sample_rate') or 8000
             n_sources = kwargs.get('n_sources') or 2
@@ -544,7 +544,7 @@ class FeedForwardBlock(nn.Module):
         if self.norm:
             norm_name = 'cLN' if causal else 'gLN'
             self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -581,7 +581,7 @@ def _test_multihead_attn_block():
     print('-'*10, "Non causal & No dropout", '-'*10)
     causal = False
     dropout = 0
-    
+
     model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, dropout=dropout, causal=causal)
     print(model)
 
@@ -592,7 +592,7 @@ def _test_multihead_attn_block():
     print('-'*10, "Causal & Dropout (p=0.3)", '-'*10)
     causal = True
     dropout = 0.3
-    
+
     model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, dropout=dropout, causal=causal)
     print(model)
 

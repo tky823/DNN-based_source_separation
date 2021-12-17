@@ -66,7 +66,7 @@ class GALRNet(nn.Module):
 
         # Network configuration
         encoder, decoder = choose_filterbank(n_basis, kernel_size=kernel_size, stride=stride, enc_basis=enc_basis, dec_basis=dec_basis, **kwargs)
-        
+
         self.encoder = encoder
         self.separator = Separator(
             n_basis, hidden_channels=sep_hidden_channels,
