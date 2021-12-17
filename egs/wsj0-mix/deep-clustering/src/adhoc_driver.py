@@ -397,7 +397,7 @@ class AdhocTester(TesterBase):
                         pesq += MIN_PESQ
                     else:
                         pesq += float(pesq_output)
-                    
+
                     subprocess.call("rm {}".format(source_path), shell=True)
                     subprocess.call("rm {}".format(estimated_path), shell=True)
 
