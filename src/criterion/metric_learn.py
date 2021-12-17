@@ -101,7 +101,7 @@ class ContrastiveWithDistanceLoss(nn.Module):
 
         if self.distance_fn is None:
             raise ValueError("Specify `distance_fn`.")
-    
+
     def forward(self, input_left, input_right, is_same, batch_mean=True):
         """
         Args:
@@ -202,7 +202,6 @@ def _test_triplet_loss():
 
     print(batch_anchor.size(), batch_positive.size(), batch_negative.size())
     print(loss)
-
 
 def _test_triplet_with_distance_loss():
     import random
@@ -310,7 +309,6 @@ def _test_contrastive_loss():
     print(is_same)
     print(distance)
     print(loss)
-
 
 def _test_contrastive_with_distance_loss():
     import random

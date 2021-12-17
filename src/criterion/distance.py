@@ -74,7 +74,7 @@ class L2Loss(nn.Module):
         n_dims = loss.dim()
         if n_dims > 1:
             dim = tuple(range(1, n_dims))
-            
+
             if self.reduction == 'mean':
                 loss = loss.mean(dim=dim)
             elif self.reduction == 'sum':

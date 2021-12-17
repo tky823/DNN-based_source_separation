@@ -142,7 +142,7 @@ class ORPIT(nn.Module):
                     possible_loss = loss
                 else:
                     possible_loss = torch.cat([possible_loss, loss], dim=0)
-            
+
             if hasattr(criterion, "maximize") and criterion.maximize:
                 loss, indices = torch.max(possible_loss, dim=0, keepdim=True) # loss (1,), indices (1,)
             else:
