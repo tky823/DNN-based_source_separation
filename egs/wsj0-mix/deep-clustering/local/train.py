@@ -56,7 +56,7 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     samples = int(args.sample_rate * args.duration)
     overlap = 0
 
@@ -73,12 +73,12 @@ def main(args):
         print("Valid dataset includes {} samples.".format(len(valid_dataset)))
     else:
         loader['valid'] = None
-    
+
     args.n_bins = args.n_fft // 2 + 1
     model = DeepClustering(args.n_bins, hidden_channels=args.hidden_channels, embed_dim=args.embed_dim, num_layers=args.num_layers, causal=args.causal, take_log=args.take_log, take_db=args.take_db)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -88,7 +88,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA", flush=True)
-        
+
     # Optimizer
     if args.optimizer == 'sgd':
         if args.momentum > 0:
@@ -110,12 +110,12 @@ def main(args):
     # Scheduler
     with open(args.scheduler_path) as f:
         config_scheduler = yaml.safe_load(f)
-    
+
     if config_scheduler['scheduler'] is None:
         scheduler = None
     else:
         raise NotImplementedError("Not support schduler {}.".format(args.scheduler))
-    
+
     # Criterion
     if args.criterion == 'affinity':
         criterion = AffinityLoss()
@@ -128,10 +128,10 @@ def main(args):
 
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
-    
+
     trainer = AdhocTrainer(model, loader, wrapper_criterion, optimizer, scheduler, args)
     trainer.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
