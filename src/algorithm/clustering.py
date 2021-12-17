@@ -251,7 +251,7 @@ class SoftKMeans(KMeansBase):
         pseudo_centroids = masked_data.sum(dim=1) # (batch_size, K, num_features)
         denominator = cluster_probs.sum(dim=1).unsqueeze(dim=2) # (batch_size, K, 1)
         centroids = pseudo_centroids / denominator # (batch_size, K, num_features)
-        
+
         distance = data.unsqueeze(dim=2) - centroids.unsqueeze(dim=1) # (batch_size, num_samples, K, num_features)
         distance = torch.sum(distance**2, dim=3) # (batch_size, num_samples, K)
         cluster_probs = F.softmax(- alpha * distance, dim=2) # responsibility (batch_size, num_samples, K)
@@ -408,7 +408,7 @@ class GMMCluteringBase(nn.Module):
 
         if self.init_kmeans:
             self.kmeans = KMeans(K=K, init_centroids=init_centroids)
-        
+
         self.tol = tol
         self.eps = eps
 
@@ -457,18 +457,18 @@ class GMMCluteringBase(nn.Module):
                 centroid_ids = _init_kmeans_pp(data, K=K) # (batch_size, K)
             else:
                 centroid_ids = _init_centroids_random(data, K=K) # (batch_size, K)
-            
+
             shift = torch.arange(0, K * batch_size, K).long().to(centroid_ids.device) # (batch_size,)
             centroid_ids = centroid_ids + shift.unsqueeze(dim=1)
             flatten_centroid_ids = centroid_ids.view(batch_size * K) # (batch_size * K)
             flatten_data = data.view(batch_size * num_samples, num_features) # (batch_size * num_samples, num_features)
             flatten_centroids = flatten_data[flatten_centroid_ids]
             centroids = flatten_centroids.view(batch_size, K, num_features) # (batch_size, K, num_features)
-        
+
         cov_matrix, mix_coeff = torch.eye(num_features), torch.ones(K) / K # (num_features, num_features), (K,)
         cov_matrix, mix_coeff = torch.tile(cov_matrix, (batch_size, K, 1, 1)), torch.tile(mix_coeff, (batch_size, 1)) # (batch_size, K, num_features, num_features), (batch_size, K)
         cov_matrix, mix_coeff = cov_matrix.to(data.device), mix_coeff.to(data.device)
-        
+
         return centroids, cov_matrix, mix_coeff
 
     def compute_prob(self, data, centroids=None, cov_matrix=None, mix_coeff=None):
@@ -502,7 +502,7 @@ class GMMCluteringBase(nn.Module):
         prob = torch.sum(mix_coeff.unsqueeze(dim=2) * prob, dim=1) # (batch_size, num_samples)
 
         return prob
-    
+
     def compute_responsibility(self, data, centroids=None, cov_matrix=None, mix_coeff=None):
         """
         Args:
@@ -558,7 +558,7 @@ class GMMClustering(GMMCluteringBase):
         if self.training:
             if self.centroids is None or self.cov_matrix is None or self.mix_coeff is None:
                 self.centroids, self.cov_matrix, self.mix_coeff = self._init_GMM(data)
-            
+
             self.cluster_probs = self.compute_responsibility(data, self.centroids, cov_matrix=self.cov_matrix, mix_coeff=self.mix_coeff)
 
             if iteration is not None:
@@ -581,7 +581,7 @@ class GMMClustering(GMMCluteringBase):
         else:
             cluster_ids = self.infer(data)
             centroids = self.centroids
-        
+
         if n_dims == 2:
             cluster_probs = cluster_probs.squeeze(dim=0) # (num_samples,)
             centroids, cov_matrix, mix_coeff = centroids.squeeze(dim=0).squeeze(dim=0), mix_coeff.squeeze(dim=0) # (K, num_features), (K, num_features, num_features), (K,)
@@ -658,7 +658,7 @@ def _init_centroids_random(data, K=2):
     for _ in range(batch_size):
         _centroid_ids = torch.randperm(num_samples)[:K]
         centroid_ids.append(_centroid_ids)
-    
+
     centroid_ids = torch.stack(centroid_ids, dim=0) # (batch_size, K)
     centroid_ids = centroid_ids.to(data.device)
 
@@ -686,9 +686,9 @@ def _init_kmeans_pp(data, K=2, compute_distance=_euclid_distance):
             weights = distance / torch.sum(distance)
             _centroid_id = torch.multinomial(weights, 1) # Equals to categorical distribution.
             _centroid_ids = torch.cat([_centroid_ids, _centroid_id], dim=0)
-        
+
         centroid_ids.append(_centroid_ids)
-    
+
     centroid_ids = torch.stack(centroid_ids, dim=0)
 
     return centroid_ids
@@ -850,7 +850,7 @@ def _test_spherical_kmeans():
         _sampler = torch.distributions.multivariate_normal.MultivariateNormal(_loc, covariance_matrix=_covariance_matrix)
         _data = _sampler.sample((N,))
         data.append(_data)
-    
+
     data = torch.stack(data, dim=0)
 
     for batch_idx, _ in enumerate(data):
@@ -873,7 +873,7 @@ def _test_spherical_kmeans():
             indices, = torch.nonzero(_cluster_ids == cluster_id, as_tuple=True)
             x, y = torch.unbind(_data[indices], dim=-1)
             plt.scatter(x, y, color=colors[cluster_id])
-        
+
         x, y = torch.unbind(_centroids, dim=-1)
         plt.scatter(x, y, marker="^", s=50, color="black")
         plt.savefig("data/SphericalKMeans/None/{}/faithful-last.png".format(batch_idx + 1), bbox_inches='tight')
