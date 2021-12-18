@@ -13,7 +13,7 @@ from algorithm.frequency_mask import multichannel_wiener_filter
 from transforms.stft import stft, istft
 from conv import QuantizableConvTranspose2d
 from models.transform import BandSplit
-from models.glu import GLU2d
+from models.glu import GLU2d, QuantizableGLU2d
 from models.d2net import D2Block, D2BlockFixedDilation, QuantizableD2Block
 
 """
@@ -1097,9 +1097,9 @@ class QuantizableD3Net(nn.Module):
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
-        self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
+        self.d2block = QuantizableD2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
-        self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1, 1), stride=(1, 1))
+        self.glu2d = QuantizableGLU2d(growth_rate_final, in_channels, kernel_size=(1, 1), stride=(1, 1))
         self.affine_out = nn.Conv1d(sum(sections), sum(sections), kernel_size=1, groups=sum(sections))
         self.relu2d = nn.ReLU()
 
@@ -1372,7 +1372,7 @@ class QuantizableD3NetBackbone(nn.Module):
 
         # encoder.net[-1].out_channels == skip_channels[0]
         _in_channels, _growth_rate = encoder.net[-1].out_channels, growth_rate[num_encoder_blocks]
-        bottleneck_d3block = D3Block(_in_channels, _growth_rate, kernel_size=kernel_size, num_blocks=num_d2blocks[num_encoder_blocks], dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks], depth=depth[num_encoder_blocks])
+        bottleneck_d3block = QuantizableD3Block(_in_channels, _growth_rate, kernel_size=kernel_size, num_blocks=num_d2blocks[num_encoder_blocks], dilated=dilated[num_encoder_blocks], norm=norm[num_encoder_blocks], nonlinear=nonlinear[num_encoder_blocks], depth=depth[num_encoder_blocks])
 
         _in_channels = bottleneck_d3block.out_channels
         decoder = QuantizableDecoder(
@@ -1652,7 +1652,7 @@ class QuantizableUpSampleD3Block(nn.Module):
 
         self.norm2d = choose_layer_norm('BN', in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
         self.upsample2d = QuantizableConvTranspose2d(in_channels, in_channels, kernel_size=up_scale, stride=up_scale)
-        self.d3block = D3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
+        self.d3block = QuantizableD3Block(in_channels + skip_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
 
         self.out_channels = self.d3block.out_channels
 
