@@ -275,7 +275,7 @@ class D3Net(nn.Module):
 
         self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
-        self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
+        self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1, 1), stride=(1, 1))
         self.relu2d = nn.ReLU()
 
         self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True), nn.Parameter(torch.Tensor(sum(sections),), requires_grad=True)
@@ -614,7 +614,7 @@ class D3NetBackbone(nn.Module):
         num_encoder_blocks = len(growth_rate) // 2
 
         # Network
-        self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size, stride=(1,1))
+        self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size, stride=(1, 1))
 
         encoder, decoder = [], []
         encoder = Encoder(
@@ -649,7 +649,7 @@ class D3NetBackbone(nn.Module):
             net = []
             norm2d = choose_layer_norm('BN', _in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
             net.append(norm2d)
-            net.append(nn.Conv2d(_in_channels, out_channels, kernel_size=(1,1), stride=(1,1)))
+            net.append(nn.Conv2d(_in_channels, out_channels, kernel_size=(1, 1), stride=(1, 1)))
 
             self.pointwise_conv2d = nn.Sequential(*net)
         else:
@@ -1098,7 +1098,7 @@ class QuantizableD3Net(nn.Module):
 
         self.d2block = D2Block(_in_channels, growth_rate_final, kernel_size_final, dilated=dilated_final, depth=depth_final, norm=norm_final, nonlinear=nonlinear_final, eps=eps)
         self.norm2d = choose_layer_norm('BN', growth_rate_final, n_dims=2, eps=eps) # nn.BatchNorm2d
-        self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1,1), stride=(1,1))
+        self.glu2d = GLU2d(growth_rate_final, in_channels, kernel_size=(1, 1), stride=(1, 1))
         self.affine_out = nn.Conv1d(sum(sections), sum(sections), kernel_size=1, groups=sum(sections))
         self.relu2d = nn.ReLU()
 
@@ -1355,10 +1355,10 @@ class QuantizableD3NetBackbone(nn.Module):
         num_encoder_blocks = len(growth_rate) // 2
 
         # Network
-        self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size, stride=(1,1))
+        self.conv2d = nn.Conv2d(in_channels, num_features, kernel_size, stride=(1, 1))
 
         encoder, decoder = [], []
-        encoder = Encoder(
+        encoder = QuantizableEncoder(
             num_features, growth_rate[:num_encoder_blocks], kernel_size=kernel_size, down_scale=scale, num_d2blocks=num_d2blocks[:num_encoder_blocks],
             dilated=dilated[:num_encoder_blocks], norm=norm[:num_encoder_blocks], nonlinear=nonlinear[:num_encoder_blocks], depth=depth[:num_encoder_blocks],
             eps=eps
@@ -1390,7 +1390,7 @@ class QuantizableD3NetBackbone(nn.Module):
             net = []
             norm2d = choose_layer_norm('BN', _in_channels, n_dims=2, eps=eps) # nn.BatchNorm2d
             net.append(norm2d)
-            net.append(nn.Conv2d(_in_channels, out_channels, kernel_size=(1,1), stride=(1,1)))
+            net.append(nn.Conv2d(_in_channels, out_channels, kernel_size=(1, 1), stride=(1, 1)))
 
             self.pointwise_conv2d = nn.Sequential(*net)
         else:
@@ -1420,6 +1420,93 @@ class QuantizableD3NetBackbone(nn.Module):
             output = x
 
         return output
+
+class QuantizableEncoder(nn.Module):
+    def __init__(self, in_channels, growth_rate, kernel_size, down_scale=(2,2), num_d2blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
+        """
+        Args:
+            in_channels <int>: 
+            growth_rate <list<int>>:
+            kernel_size <tuple<int>> or <int>:
+            num_d2blocks <list<int>> or <int>:
+            dilated <list<bool>> or <bool>:
+            norm <list<bool>> or <bool>:
+            nonlinear <list<str>> or <str>:
+        """
+        super().__init__()
+
+        if type(growth_rate) is list:
+            num_d3blocks = len(growth_rate)
+        else:
+            # TODO: implement
+            raise ValueError("`growth_rate` must be list.")
+
+        if num_d2blocks is None:
+            num_d2blocks = [None] * num_d3blocks
+        elif type(num_d2blocks) is int:
+            num_d2blocks = [num_d2blocks] * num_d3blocks
+        elif type(num_d2blocks) is list:
+            assert num_d3blocks == len(num_d2blocks), "Invalid length of `num_d2blocks`"
+        else:
+            raise ValueError("Invalid type of `num_d2blocks`.")
+
+        if type(dilated) is bool:
+            dilated = [dilated] * num_d3blocks
+        elif type(dilated) is list:
+            assert num_d3blocks == len(dilated), "Invalid length of `dilated`"
+        else:
+            raise ValueError("Invalid type of `dilated`.")
+
+        if type(norm) is bool:
+            norm = [norm] * num_d3blocks
+        elif type(norm) is list:
+            assert num_d3blocks == len(norm), "Invalid length of `norm`"
+        else:
+            raise ValueError("Invalid type of `norm`.")
+
+        if type(nonlinear) is str:
+            nonlinear = [nonlinear] * num_d3blocks
+        elif type(nonlinear) is list:
+            assert num_d3blocks == len(nonlinear), "Invalid length of `nonlinear`"
+        else:
+            raise ValueError("Invalid type of `nonlinear`.")
+
+        if depth is None:
+            depth = [None] * num_d3blocks
+        elif type(depth) is int:
+            depth = [depth] * num_d3blocks
+        elif type(depth) is list:
+            assert num_d3blocks == len(depth), "Invalid length of `depth`"
+        else:
+            raise ValueError("Invalid type of `depth`.")
+
+        num_d3blocks = len(growth_rate)
+        net = []
+
+        _in_channels = in_channels
+
+        for idx in range(num_d3blocks):
+            downsample_block = QuantizableDownSampleD3Block(_in_channels, growth_rate[idx], kernel_size=kernel_size, down_scale=down_scale, num_blocks=num_d2blocks[idx], dilated=dilated[idx], norm=norm[idx], nonlinear=nonlinear[idx], depth=depth[idx], eps=eps)
+            net.append(downsample_block)
+            _in_channels = downsample_block.out_channels
+
+        self.net = nn.Sequential(*net)
+
+        self.num_d3blocks = num_d3blocks
+
+    def forward(self, input):
+        num_d3blocks = self.num_d3blocks
+
+        x = input
+        skip = []
+
+        for idx in range(num_d3blocks):
+            x, x_skip = self.net[idx](x)
+            skip.append(x_skip)
+
+        output = x
+
+        return output, skip
 
 class QuantizableDecoder(nn.Module):
     def __init__(self, in_channels, skip_channels, growth_rate, kernel_size, up_scale=(2,2), num_d2blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
@@ -1508,6 +1595,52 @@ class QuantizableDecoder(nn.Module):
         output = x
 
         return output
+
+class QuantizableDownSampleD3Block(nn.Module):
+    """
+    D3Block + down sample
+    """
+    def __init__(self, in_channels, growth_rate, kernel_size=(3,3), down_scale=(2,2), num_blocks=None, dilated=True, norm=True, nonlinear='relu', depth=None, eps=EPS):
+        super().__init__()
+
+        self.down_scale = _pair(down_scale)
+
+        self.d3block = QuantizableD3Block(in_channels, growth_rate, kernel_size, num_blocks=num_blocks, dilated=dilated, norm=norm, nonlinear=nonlinear, depth=depth, eps=eps)
+        self.downsample2d = nn.AvgPool2d(kernel_size=self.down_scale, stride=self.down_scale)
+
+        self.out_channels = self.d3block.out_channels
+
+    def forward(self, input):
+        """
+        Args:
+            input (batch_size, in_channels, H, W)
+        Returns:
+            output:
+                (batch_size, growth_rate[-1], H_down, W_down) if type(growth_rate) is list<int>
+                or (batch_size, growth_rate, H_down, W_down) if type(growth_rate) is int
+                where H_down = H // down_scale[0] and W_down = W // down_scale[1]
+            skip:
+                (batch_size, growth_rate[-1], H, W) if type(growth_rate) is list<int>
+                or (batch_size, growth_rate, H, W) if type(growth_rate) is int
+        """
+        _, _, n_bins, n_frames = input.size()
+
+        Kh, Kw = self.down_scale
+        Ph, Pw = (Kh - n_bins % Kh) % Kh, (Kw - n_frames % Kw) % Kw
+        padding_top = Ph // 2
+        padding_bottom = Ph - padding_top
+        padding_left = Pw // 2
+        padding_right = Pw - padding_left
+
+        input = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
+
+        x = self.d3block(input)
+        skip = x
+        skip = F.pad(skip, (-padding_left, -padding_right, -padding_top, -padding_bottom))
+
+        output = self.downsample2d(x)
+
+        return output, skip
 
 class QuantizableUpSampleD3Block(nn.Module):
     """
