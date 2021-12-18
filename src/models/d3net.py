@@ -1194,7 +1194,7 @@ class QuantizableD3Net(nn.Module):
         self.affine_in.weight.data.fill_(1)
         self.affine_in.bias.data.fill_(0)
         self.affine_out.weight.data.fill_(1)
-        self.affine_out.bias.data.fill_(1)
+        self.affine_out.bias.data.fill_(0)
 
     def get_config(self):
         config = {

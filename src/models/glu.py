@@ -76,7 +76,7 @@ class GLU2d(nn.Module):
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
 
-        output = self.float_ops.mul(x_output, x_gate)
+        output = x_output * x_gate
 
         return output
 
@@ -151,7 +151,7 @@ class QuantizableGLU2d(nn.Module):
         x_gate = self.map_gate(input)
         x_gate = torch.sigmoid(x_gate)
 
-        output = x_output * x_gate
+        output = self.float_ops.mul(x_output, x_gate)
 
         return output
 
