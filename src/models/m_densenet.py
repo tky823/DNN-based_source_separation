@@ -2,7 +2,7 @@ import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.quantized as qnn
+import torch.nn.quantized as nnq
 from torch.nn.modules.utils import _pair
 
 from utils.audio import build_window
@@ -876,7 +876,7 @@ class QuantizableDenseBlock(nn.Module):
 
         self.growth_rate = growth_rate
         self.depth = depth
-        self.float_ops = qnn.FloatFunctional()
+        self.float_ops = nnq.FloatFunctional()
 
         net = []
 

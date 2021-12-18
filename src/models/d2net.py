@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.quantized as qnn
+import torch.nn.quantized as nnq
 
 from models.m_densenet import ConvBlock2d
 
@@ -258,7 +258,7 @@ class QuantizableD2Block(nn.Module):
 
         self.growth_rate = growth_rate
         self.depth = depth
-        self.float_ops = qnn.FloatFunctional()
+        self.float_ops = nnq.FloatFunctional()
 
         net = []
         _in_channels = in_channels - sum(growth_rate)

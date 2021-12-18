@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.quantized as qnn
+import torch.nn.quantized as nnq
 
 """
 Gated Linear Units
@@ -100,7 +100,7 @@ class QuantizableGLU1d(nn.Module):
 
         self.in_channels, self.out_channels = in_channels, out_channels
 
-        self.float_ops = qnn.FloatFunctional()
+        self.float_ops = nnq.FloatFunctional()
         self.map = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.map_gate = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
 
@@ -136,7 +136,7 @@ class QuantizableGLU2d(nn.Module):
 
         self.in_channels, self.out_channels = in_channels, out_channels
 
-        self.float_ops = qnn.FloatFunctional()
+        self.float_ops = nnq.FloatFunctional()
         self.map = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.map_gate = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
 

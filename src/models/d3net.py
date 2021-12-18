@@ -4,7 +4,7 @@ import yaml
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.quantized as qnn
+import torch.nn.quantized as nnq
 from torch.nn.modules.utils import _pair
 
 from utils.audio import build_window
@@ -1746,7 +1746,7 @@ class QuantizableD3Block(nn.Module):
         self.growth_rate = growth_rate
         self.num_blocks = num_blocks
         self.out_channels = growth_rate[-1]
-        self.float_ops = qnn.FloatFunctional()
+        self.float_ops = nnq.FloatFunctional()
 
         net = []
 
