@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.quantized as nnq
 
-from models.m_densenet import ConvBlock2d
+from models.m_densenet import ConvBlock2d, QuantizableConvBlock2d
 
 EPS = 1e-12
 
@@ -275,7 +275,7 @@ class QuantizableD2Block(nn.Module):
             else:
                 dilation = 1
 
-            conv_block = ConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
+            conv_block = QuantizableConvBlock2d(_in_channels, _out_channels, kernel_size=kernel_size, stride=1, dilation=dilation, norm=norm[idx], nonlinear=nonlinear[idx], eps=eps)
             net.append(conv_block)
 
         self.net = nn.Sequential(*net)
