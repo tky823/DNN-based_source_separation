@@ -303,7 +303,7 @@ class QuantizableD2Block(nn.Module):
             if x_residual is None:
                 x_residual = x
             else:
-                x_residual = self.float_ops.f_add(x_residual, x)
+                x_residual = self.float_ops.add(x_residual, x)
 
         output = x_residual
 
