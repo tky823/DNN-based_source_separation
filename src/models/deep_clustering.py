@@ -15,8 +15,8 @@ class DeepEmbedding(nn.Module):
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1tNL5-3uPfJZY1WOXzMOZkgFpSX1nS4jO",
-                3: "1-ACFRHGFu2S44DxUKj35tCBI0V8W__iQ"
+                2: "111Q6FLpLXSahK3YVO0m0JE5XieYLBsG4",
+                3: "1-27Q01Ie5K3dezaUv9AYTnQ9Xxr2dF87"
             }
         }
     }
