@@ -314,6 +314,57 @@ class MultiDilatedConv2d(nn.Module):
             s += ", bias=False"
         return s
 
+"""
+    Quantization
+"""
+class QuantizableConvTranspose1d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
+        super().__init__()
+
+        assert in_channels == out_channels and padding == 0 and dilation == 1 and groups == 1 and padding_mode == 'zeros', "Only supports the operation convertible into torch.nn.Conv1d."
+
+        num_features = in_channels
+        self.backend = nn.Conv1d(num_features, num_features, kernel_size, stride=1, padding=padding, dilation=1, groups=groups, bias=bias, padding_mode=padding_mode)
+
+        self.kernel_size, self.stride = kernel_size, stride
+
+    def forward(self, input):
+        kernel_size, stride = self.kernel_size, self.stride
+
+        input_pad = F.pad(input.unsqueeze(dim=-1), (0, stride - 1))
+        input_pad = input_pad.view(*input_pad.size()[:-2], -1)
+        input_pad = F.pad(input_pad, (kernel_size - 1, kernel_size - stride))
+
+        output = self.backend(input_pad)
+
+        return output
+
+class QuantizableConvTranspose2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
+        super().__init__()
+
+        kernel_size, stride = _pair(kernel_size), _pair(stride)
+        padding = _pair(padding)
+        dilation = _pair(dilation)
+
+        assert in_channels == out_channels and padding == (0, 0) and dilation == (1, 1) and groups == 1 and padding_mode == 'zeros', "Only supports the operation convertible into torch.nn.Conv2d."
+
+        num_features = in_channels
+        self.backend = nn.Conv2d(num_features, num_features, kernel_size, stride=1, padding=padding, dilation=1, groups=groups, bias=bias, padding_mode=padding_mode)
+
+        self.kernel_size, self.stride = kernel_size, stride
+
+    def forward(self, input):
+        (Kh, Kw), (Sh, Sw) = self.kernel_size, self.stride
+
+        input_pad = F.pad(input.unsqueeze(dim=-1), (0, Sw - 1, 0, Sh - 1))
+        input_pad = input_pad.view(*input_pad.size()[:-2], -1)
+        input_pad = F.pad(input_pad, (Kw - 1, Kw - Sw, Kh - 1, Kh - Sh))
+
+        output = self.backend(input_pad)
+
+        return output
+
 def _test_multidilated_conv1d():
     torch.manual_seed(111)
 
