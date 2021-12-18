@@ -64,32 +64,32 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     args.sources = args.sources.replace('[','').replace(']','').split(',')
     args.n_sources = len(args.sources)
 
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
-    
+
     with open(args.augmentation_path) as f:
         config_augmentation = yaml.safe_load(f)
-    
+
     augmentation = SequentialAugmentation()
     for name in config_augmentation['augmentation']:
         augmentation.append(choose_augmentation(name, **config_augmentation[name]))
-    
+
     train_dataset = AugmentationWaveTrainDataset(args.musdb18_root, sample_rate=args.sample_rate, duration=args.duration, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.sources, augmentation=augmentation)
     valid_dataset = WaveEvalDataset(args.musdb18_root, sample_rate=args.sample_rate, max_duration=args.valid_duration, sources=args.sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
-    
+
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
-    
+
     if not args.stride:
         args.stride = args.kernel_size // 2
-    
+
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
 
@@ -103,7 +103,7 @@ def main(args):
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -113,7 +113,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-        
+
     # Optimizer
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -123,7 +123,7 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
-    
+
     # Criterion
     if args.criterion == 'mae':
         criterion = MeanAbsoluteError(dim=-1, reduction='mean')
@@ -142,10 +142,10 @@ def main(args):
 
     if args.max_norm is not None and args.max_norm == 0:
         args.max_norm = None
-    
+
     trainer = AdhocFinetuneTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
