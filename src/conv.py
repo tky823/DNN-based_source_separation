@@ -13,27 +13,27 @@ from torch.nn.modules.utils import _pair
 class DepthwiseSeparableConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, padding=0, dilation=1, bias=True):
         super().__init__()
-        
+
         if stride is None:
             stride = kernel_size
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
-        
+
         self.depthwise_conv1d = nn.Conv1d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=in_channels, bias=bias)
         self.pointwise_conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)
 
     def forward(self, input):
         x = self.depthwise_conv1d(input)
         output = self.pointwise_conv1d(x)
-        
+
         return output
 
 class DepthwiseSeparableConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, padding=(0,0), dilation=(1,1), bias=True):
         super().__init__()
-        
+
         kernel_size = _pair(kernel_size)
-            
+
         if stride is None:
             stride = kernel_size
 
@@ -41,14 +41,14 @@ class DepthwiseSeparableConv2d(nn.Module):
         dilation = _pair(dilation)
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
-        
+
         self.depthwise_conv2d = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=in_channels, bias=bias)
         self.pointwise_conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1), bias=bias)
 
     def forward(self, input):
         x = self.depthwise_conv2d(input)
         output = self.pointwise_conv2d(x)
-        
+
         return output
 
 """
@@ -62,23 +62,22 @@ class DepthwiseSeparableConvTranspose1d(nn.Module):
             stride = kernel_size
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
-        
+
         self.pointwise_conv1d = nn.Conv1d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)
         self.depthwise_conv1d = nn.Conv1d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=out_channels, bias=bias)
-        
 
     def forward(self, input):
         x = self.pointwise_conv1d(input)
         output = self.depthwise_conv1d(x)
-        
+
         return output
-        
+
 class DepthwiseSeparableConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, bias=True):
         super().__init__()
-        
+
         kernel_size = _pair(kernel_size)
-            
+
         if stride is None:
             stride = kernel_size
 
@@ -86,14 +85,14 @@ class DepthwiseSeparableConvTranspose2d(nn.Module):
         dilation = _pair(dilation)
 
         self.kernel_size, self.stride, self.dilation = kernel_size, stride, dilation
-        
+
         self.pointwise_conv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1), bias=bias)
         self.depthwise_conv2d = nn.ConvTranspose2d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, groups=out_channels, bias=bias)
 
     def forward(self, input):
         x = self.pointwise_conv2d(input)
         output = self.depthwise_conv2d(x)
-        
+
         return output
 
 """
@@ -106,17 +105,17 @@ class ComplexConv1d(nn.Module):
         super().__init__()
 
         raise NotImplementedError
-        
+
         self.in_channels, self.out_channels = in_channels, out_channels
         self.kernel_size, self.stride = kernel_size, stride
         self.padding, self.dilation = padding, dilation
         self.groups = groups
-        
+
         self.weight_real = nn.Parameter(torch.Tensor(out_channels, in_channels, kernel_size))
         self.weight_imag = nn.Parameter(torch.Tensor(out_channels, in_channels, kernel_size))
-        
+
         self._reset_parameters()
-        
+
     def _reset_parameters(self):
         nn.init.kaiming_uniform_(self.weight_real, a=math.sqrt(5))
         nn.init.kaiming_uniform_(self.weight_imag, a=math.sqrt(5))
@@ -132,7 +131,7 @@ class ComplexConv1d(nn.Module):
         kernel_size, stride = self.kernel_size, self.stride
         padding, dilation = self.padding, self.dilation
         groups = self.groups
-        
+
         input_real, input_imag = input[:,:in_channels], input[:,in_channels:]
         output_real = F.conv1d(input_real, self.weight_real, stride=stride, padding=padding, groups=groups) - F.conv1d(input_imag, self.weight_imag, stride=stride, padding=padding, groups=groups)
         output_imag = F.conv1d(input_real, self.weight_imag, stride=stride, padding=padding, groups=groups) + F.conv1d(input_imag, self.weight_real, stride=stride, padding=padding, groups=groups)
@@ -178,16 +177,16 @@ class MultiDilatedConv1d(nn.Module):
                     biases.append(torch.Tensor(out_channels,))
         else:
             raise ValueError("Not support `in_channels`={}".format(in_channels))
-        
+
         weights = torch.cat(weights, dim=1)
         self.weights = nn.Parameter(weights)
 
         if self.bias:
             biases = torch.cat(biases, dim=0)
             self.biases = nn.Parameter(biases)
-        
+
         self._reset_parameters()
-    
+
     def forward(self, input):
         kernel_size = self.kernel_size
 
@@ -210,14 +209,14 @@ class MultiDilatedConv1d(nn.Module):
             output = output + F.conv1d(x, weight=weights[idx], bias=biases[idx], stride=1, dilation=dilation)
 
         return output
-    
+
     def _reset_parameters(self):
         nn.modules.conv.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
         if self.bias is not None:
             fan_in, _ = nn.modules.conv.init._calculate_fan_in_and_fan_out(self.weights)
             bound = 1 / math.sqrt(fan_in)
             nn.modules.conv.init.uniform_(self.biases, -bound, bound)
-    
+
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
         s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
@@ -272,9 +271,9 @@ class MultiDilatedConv2d(nn.Module):
         if self.bias:
             biases = torch.cat(biases, dim=0)
             self.biases = nn.Parameter(biases)
-    
+
         self._reset_parameters()
-    
+
     def forward(self, input):
         kernel_size = self.kernel_size
 
@@ -300,14 +299,14 @@ class MultiDilatedConv2d(nn.Module):
             output = output + F.conv2d(x, weight=weights[idx], bias=biases[idx], stride=(1,1), dilation=dilation)
 
         return output
-    
+
     def _reset_parameters(self):
         nn.modules.conv.init.kaiming_uniform_(self.weights, a=math.sqrt(5))
         if self.bias is not None:
             fan_in, _ = nn.modules.conv.init._calculate_fan_in_and_fan_out(self.weights)
             bound = 1 / math.sqrt(fan_in)
             nn.modules.conv.init.uniform_(self.biases, -bound, bound)
-    
+
     def extra_repr(self):
         s = "{}, {}".format(sum(self.sections), self.out_channels)
         s += ", kernel_size={kernel_size}, dilations={dilations}".format(kernel_size=self.kernel_size, dilations=self.dilations)
@@ -364,4 +363,3 @@ if __name__ == '__main__':
     print()
 
     _test_multidilated_conv2d()
-    

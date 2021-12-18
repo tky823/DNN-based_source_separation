@@ -425,16 +425,16 @@ class GMMCluteringBase(nn.Module):
 
         if n_dims == 2:
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
-        
+
         if self.training:
             if self.centroids is None or self.mix_coeff is None or self.mix_coeff is None:
                 centroids, cov_matrix, mix_coeff = self._init_GMM(data)
                 self.centroids, self.cov_matrix, self.mix_coeff = centroids, cov_matrix, mix_coeff
         else:
             raise NotImplementedError
-        
+
         cluster_probs = None
-        
+
         if n_dims == 2:
             cluster_probs = cluster_probs.squeeze(dim=0) # (num_samples, K)
             centroids = centroids.squeeze(dim=0) # (K, num_features)

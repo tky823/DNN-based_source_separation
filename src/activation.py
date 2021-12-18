@@ -9,7 +9,7 @@ class ConcatenatedReLU(nn.Module):
         super().__init__()
 
         self.dim = dim
-    
+
     def forward(self, input):
         positive, negative = F.relu(input), F.relu(-input)
         output = torch.cat([positive, negative], dim=self.dim)
@@ -22,10 +22,10 @@ class ConcatenatedReLU(nn.Module):
 class ModReLU1d(nn.Module):
     def __init__(self, num_features):
         super().__init__()
-        
+
         self.num_features = num_features
         self.bias = nn.Parameter(torch.Tensor((num_features,)), requires_grad=True)
-        
+
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -46,24 +46,24 @@ class ModReLU1d(nn.Module):
 
         if not is_complex:
             input = torch.view_as_complex(input)
-        
+
         magnitude = torch.abs(input)
         angle = torch.angle(input)
         magnitude = F.relu(magnitude + self.bias.unsqueeze(dim=-1))
         output = magnitude * torch.exp(1j * angle)
-        
+
         if not is_complex:
             output = torch.view_as_real(output)
-        
+
         return output
 
 class ModReLU2d(nn.Module):
     def __init__(self, num_features):
         super().__init__()
-        
+
         self.num_features = num_features
         self.bias = nn.Parameter(torch.Tensor((num_features,)), requires_grad=True)
-        
+
         self._reset_parameters()
 
     def _reset_parameters(self):
@@ -84,15 +84,15 @@ class ModReLU2d(nn.Module):
 
         if not is_complex:
             input = torch.view_as_complex(input)
-        
+
         magnitude = torch.abs(input)
         angle = torch.angle(input)
         magnitude = F.relu(magnitude + self.bias.unsqueeze(dim=-1).unsqueeze(dim=-1))
         output = magnitude * torch.exp(1j * angle)
-        
+
         if not is_complex:
             output = torch.view_as_real(output)
-        
+
         return output
 
 """
@@ -103,7 +103,7 @@ class ModReLU2d(nn.Module):
 class ComplexReLU(nn.Module):
     def __init__(self):
         super().__init__()
-    
+
     def forward(self, input):
         """
         Args:
@@ -115,7 +115,7 @@ class ComplexReLU(nn.Module):
 
         if not is_complex:
             input = torch.view_as_complex(input)
-        
+
         real, imag = input.real, input.imag
         real, imag = F.relu(real), F.relu(imag)
 
@@ -123,7 +123,7 @@ class ComplexReLU(nn.Module):
 
         if not is_complex:
             output = torch.view_as_real(output)
-        
+
         return output
 """
     z ReLU
@@ -135,7 +135,7 @@ class ComplexReLU(nn.Module):
 class ZReLU(nn.Module):
     def __init__(self):
         super().__init__()
-    
+
     def forward(self, input):
         """
         Args:
@@ -147,9 +147,9 @@ class ZReLU(nn.Module):
 
         if not is_complex:
             input = torch.view_as_complex(input)
-        
+
         real, imag = input.real, input.imag
-        
+
         condition = torch.logical_and(real > 0, imag > 0)
         real = torch.where(condition, real, torch.zeros_like(real))
         imag = torch.where(condition, imag, torch.zeros_like(imag))
