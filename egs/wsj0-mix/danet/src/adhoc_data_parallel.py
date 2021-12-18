@@ -11,7 +11,7 @@ from torch.nn.parallel.parallel_apply import get_a_var
 class AdhocDataParallel(nn.DataParallel):
     def __init__(self, module, device_ids=None, output_device=None, dim=0):
         super().__init__(module, device_ids=device_ids, output_device=output_device, dim=dim)
-    
+
     def extract_latent(self, *inputs, **kwargs):
         with torch.autograd.profiler.record_function("DataParallel.extract_latent"):
             if not self.device_ids:
@@ -30,7 +30,7 @@ class AdhocDataParallel(nn.DataParallel):
 
             if len(self.device_ids) == 1:
                 return self.module.extract_latent(*inputs[0], **kwargs[0])
-            
+
             replicas = self.replicate(self.module, self.device_ids[:len(inputs)])
             outputs = self.parallel_apply_extract_latent(replicas, inputs, kwargs)
 
@@ -60,12 +60,12 @@ def parallel_apply_extract_latent(modules, inputs, kwargs_tup=None, devices=None
         assert len(modules) == len(kwargs_tup)
     else:
         kwargs_tup = ({},) * len(modules)
-    
+
     if devices is not None:
         assert len(modules) == len(devices)
     else:
         devices = [None] * len(modules)
-    
+
     devices = [_get_device_index(x, True) for x in devices]
     lock = threading.Lock()
     results = {}
@@ -96,7 +96,7 @@ def parallel_apply_extract_latent(modules, inputs, kwargs_tup=None, devices=None
 
         for thread in threads:
             thread.start()
-        
+
         for thread in threads:
             thread.join()
     else:
