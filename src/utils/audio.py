@@ -15,9 +15,9 @@ def build_window(n_fft, window_fn='hann', **kwargs):
         window = torch.kaiser_window(n_fft, beta=kwargs['beta'], periodic=True)
     else:
         raise ValueError("Not support {} window.".format(window_fn))
-    
+
     return window
-    
+
 def build_optimal_window(window, hop_length=None):
     """
     Args:
@@ -31,20 +31,26 @@ def build_optimal_window(window, hop_length=None):
     windows = torch.cat([
         torch.roll(window.unsqueeze(dim=0), hop_length*idx) for idx in range(window_length // hop_length)
     ], dim=0)
-    
+
     norm = torch.sum(windows**2, dim=0)
     optimal_window = window / norm
-    
+
     return optimal_window
 
-def load_midi(midi_path, sample_rate, hop_length, load_type="piano_roll", dtype=torch.uint8):
+def load_midi(midi_path, sample_rate, hop_length, frame_offset=0, num_frames=-1, load_type="piano_roll", dtype=torch.uint8):
     assert load_type in ["pianoroll", "piano_roll"]
 
     import pretty_midi
 
     midi = pretty_midi.PrettyMIDI(midi_path)
+
+    if num_frames >= 0:
+        times = frame_offset / sample_rate + np.arange(0, num_frames / sample_rate, hop_length / sample_rate)
+    else:
+        times = np.linspace(frame_offset / sample_rate, midi.get_end_time(), hop_length / sample_rate)
+
     piano_roll_sample_rate = sample_rate / hop_length
-    piano_roll = midi.get_piano_roll(fs=piano_roll_sample_rate)
+    piano_roll = midi.get_piano_roll(fs=piano_roll_sample_rate, times=times)
     piano_roll = piano_roll.astype(np.uint8)
     piano_roll = torch.from_numpy(piano_roll)
 
