@@ -47,7 +47,7 @@ def load_midi(midi_path, sample_rate, hop_length, frame_offset=0, num_frames=-1,
     if num_frames >= 0:
         times = frame_offset / sample_rate + np.arange(0, num_frames / sample_rate, hop_length / sample_rate)
     else:
-        times = np.linspace(frame_offset / sample_rate, midi.get_end_time(), hop_length / sample_rate)
+        times = np.arange(frame_offset / sample_rate, midi.get_end_time(), hop_length / sample_rate)
 
     piano_roll_sample_rate = sample_rate / hop_length
     piano_roll = midi.get_piano_roll(fs=piano_roll_sample_rate, times=times)
