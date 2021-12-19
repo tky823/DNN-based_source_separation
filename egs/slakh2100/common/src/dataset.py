@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 
 import yaml
 import torch
@@ -108,58 +109,41 @@ class WaveTrainDataset(WaveDataset):
         """
         super().__init__(slakh2100_root, sample_rate=sample_rate, sources=sources, target=target)
 
-        track_dirs = sorted(glob.glob(os.path.join(slakh2100_root, "train", "*")))
-        names = [
-            os.path.basename(name) for name in track_dirs
-        ]
+        json_path = os.path.join(slakh2100_root, "train.json")
 
-        if overlap is None:
-            overlap = samples // 2
+        with open(json_path, "w") as f:
+            json_data = json.load(f)
 
-        self.tracks = []
-        self.json_data = []
+        trackID = 0
 
-        for trackID, name in enumerate(names):
-            mixture_path = os.path.join(slakh2100_root, "train", name, "mix.flac")
-            yaml_path = os.path.join(slakh2100_root, "train", name, "metadata.yaml")
-
-            with open(yaml_path) as f:
-                yaml_data = yaml.safe_load(f)
+        for track_json_data in json_data:
+            track_name = track_json_data["name"]
+            mixture_path = os.path.join(slakh2100_root, "train", track_name, "mix.flac")
 
             if type(target) is str:
-                stemIDs = {
-                    source: [] for source in sources
-                }
-                inst_classes = set()
-
-                for stemID, data in yaml_data["stems"].items():
-                    inst_class = data["inst_class"]
-                    inst_classes.add(inst_class)
-                    stemIDs[inst_class].append(stemID)
-
-                if not target in inst_classes:
+                if len(track_json_data["sources"][target]) == 0:
                     continue
-
-                for inst_class in inst_classes:
-                    if len(stemIDs[inst_class]) == 0:
-                        del stemIDs[inst_class]
             else:
                 raise NotImplementedError
 
             audio_info = torchaudio.info(mixture_path)
             track_samples = audio_info.num_frames
             track = {
-                "name": name,
+                "name": track_name,
                 "samples": track_samples,
                 "path": {
                     "mixture": mixture_path
                 }
             }
 
-            for inst_class, inst_stemID in stemIDs.items():
+            for inst_class in sources:
+                if len(track_json_data["sources"][inst_class]) == 0:
+                    continue
+
                 track["path"][inst_class] = []
-                for stemID in inst_stemID:
-                    source_path = os.path.join(slakh2100_root, "train", name, "stems", "{}.flac".format(stemID))
+
+                for stemID in track_json_data["sources"][inst_class]:
+                    source_path = os.path.join(slakh2100_root, "train", track_name, "stems", "{}.flac".format(stemID))
                     track["path"][inst_class].append(source_path)
 
             self.tracks.append(track)
@@ -167,12 +151,15 @@ class WaveTrainDataset(WaveDataset):
             for start in range(0, track_samples, samples - overlap):
                 if start + samples >= track_samples:
                     break
+
                 data = {
                     "trackID": trackID,
                     "start": start,
                     "samples": samples,
                 }
                 self.json_data.append(data)
+
+            trackID += 1
 
     def __getitem__(self, idx):
         """
