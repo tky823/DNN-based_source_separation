@@ -117,6 +117,9 @@ class WaveTrainDataset(WaveDataset):
         if overlap is None:
             overlap = samples // 2
 
+        self.tracks = []
+        self.json_data = []
+
         trackID = 0
 
         for track_json_data in json_data:
