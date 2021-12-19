@@ -154,7 +154,7 @@ class WaveTrainDataset(WaveDataset):
                     if os.path.exists(source_path):
                         track["path"][inst_class].append(source_path)
                     else:
-                        warnings.warn("{} is NOT found.".format(source_path), FileNotFoundError)
+                        warnings.warn("{} is NOT found.".format(source_path), UserWarning)
 
             self.tracks.append(track)
 
