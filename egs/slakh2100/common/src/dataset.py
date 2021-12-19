@@ -1,12 +1,10 @@
 import os
-import glob
 import json
 
-import yaml
 import torch
 import torchaudio
 
-SAMPLE_RATE_SLAKH2100 = 16000
+SAMPLE_RATE_SLAKH2100 = 44100
 __sources__ = [
     "Piano", "Chromatic Percussion", "Organ", "Guitar", "Bass", "Strings", "Strings (continued)", "Brass", "Reed", "Pipe", "Synth Lead", "Synth Pad", "Sound Effects", "Ethnic", "Percussive", "Sound effects", "Drums"
 ]
