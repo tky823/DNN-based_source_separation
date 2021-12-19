@@ -73,7 +73,7 @@ class WaveDataset(Slakh2100Dataset):
         else:
             waveform_sources = []
 
-            for _source in self.sources:
+            for _source in track["path"].keys():
                 waveforms_source = []
                 for source_path in paths[_source]:
                     waveform_source, _ = torchaudio.load(source_path, frame_offset=start, num_frames=samples)
