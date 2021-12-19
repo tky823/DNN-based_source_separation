@@ -137,6 +137,7 @@ class WaveTrainDataset(WaveDataset):
             track = {
                 "name": track_name,
                 "samples": track_samples,
+                "sources": [],
                 "path": {
                     "mixture": mixture_path
                 }
@@ -146,6 +147,7 @@ class WaveTrainDataset(WaveDataset):
                 if len(track_json_data["sources"][inst_class]) == 0:
                     continue
 
+                track["sources"][inst_class].append(inst_class)
                 track["path"][inst_class] = []
 
                 for stemID in track_json_data["sources"][inst_class]:
