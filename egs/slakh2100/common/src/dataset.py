@@ -111,7 +111,7 @@ class WaveTrainDataset(WaveDataset):
 
         json_path = os.path.join(slakh2100_root, "train.json")
 
-        with open(json_path, "w") as f:
+        with open(json_path, "r") as f:
             json_data = json.load(f)
 
         trackID = 0
