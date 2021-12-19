@@ -118,7 +118,7 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
-    
+
     # Criterion
     if args.criterion == 'sisdr':
         criterion = NegSISDR()
