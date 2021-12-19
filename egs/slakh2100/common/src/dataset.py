@@ -1,5 +1,6 @@
 import os
 import json
+import warnings
 
 import torch
 import torchaudio
@@ -150,7 +151,10 @@ class WaveTrainDataset(WaveDataset):
 
                 for stemID in track_json_data["sources"][inst_class]:
                     source_path = os.path.join(slakh2100_root, "train", track_name, "stems", "{}.flac".format(stemID))
-                    track["path"][inst_class].append(source_path)
+                    if os.path.exists(source_path):
+                        track["path"][inst_class].append(source_path)
+                    else:
+                        warnings.warn("{} is NOT found.".format(source_path), FileNotFoundError)
 
             self.tracks.append(track)
 
