@@ -18,9 +18,9 @@ class SpectrogramEvalDataset(SpectrogramDataset):
         super().__init__(musdb18_root, n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
 
         assert_sample_rate(sample_rate)
-        
+
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
-        
+
         with open(valid_txt_path, 'r') as f:
             names = [line.strip() for line in f]
 
@@ -47,13 +47,13 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-            
+
             track_data = {
                 'trackID': trackID,
                 'start': 0,
                 'samples': samples
             }
-            
+
             self.tracks.append(track)
             self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
 
@@ -82,7 +82,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
                 sources.append(source.unsqueeze(dim=0))
             sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
             mixture = sources.sum(dim=0) # (n_mics, T)
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -100,7 +100,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        
+
         n_frames = mixture.size(-1)
         padding = (patch_size - n_frames % patch_size) % patch_size
 
@@ -115,7 +115,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
         mixture = mixture.reshape(-1, *mixture_channels, *mixture.size()[-2:]) # (batch_size, 1, n_mics, n_bins, n_frames) or # (batch_size, n_mics, n_bins, n_frames)
         target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
-        
+
         return mixture, target, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
@@ -129,7 +129,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             for line in f:
                 name = line.strip()
                 names.append(name)
-        
+
         self.patch_size = patch_size
 
         self.tracks = []
@@ -151,16 +151,16 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
-            
+
             track_data = {
                 'trackID': trackID,
                 'start': 0,
                 'samples': track_samples
             }
-            
+
             self.tracks.append(track)
             self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
-        
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -187,7 +187,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
                 sources.append(source.unsqueeze(dim=0))
             sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
             mixture = sources.sum(dim=0) # (n_mics, T)
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -205,7 +205,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
         mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
         target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
-        
+
         n_frames = mixture.size(-1)
         padding = (patch_size - n_frames % patch_size) % patch_size
 
@@ -220,16 +220,16 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
         mixture = mixture.reshape(-1, *mixture_channels, *mixture.size()[-2:]) # (batch_size, 1, n_mics, n_bins, n_frames) or # (batch_size, n_mics, n_bins, n_frames)
         target = target.reshape(-1, *target_channels, *target.size()[-2:]) # (batch_size, len(target), n_mics, n_bins, n_frames) or (batch_size, n_mics, n_bins, n_frames)
-        
+
         return mixture, target, samples, name
 
 """
-Data loader
+    Data loader
 """
 class EvalDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
 
         self.collate_fn = eval_collate_fn
@@ -237,17 +237,17 @@ class EvalDataLoader(torch.utils.data.DataLoader):
 class TestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
 
         self.collate_fn = test_collate_fn
 
 def eval_collate_fn(batch):
     mixture, sources, name = batch[0]
-    
+
     return mixture, sources, name
 
 def test_collate_fn(batch):
     mixture, sources, samples, name = batch[0]
-    
+
     return mixture, sources, samples, name

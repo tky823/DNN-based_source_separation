@@ -35,24 +35,24 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
 
     test_dataset = SpectrogramTestDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
-    
+
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    
+
     modules = {}
     for source in args.sources:
         model_path = os.path.join(args.model_dir, source, "{}.pth".format(args.model_choice))
         modules[source] = MMDenseLSTM.build_model(model_path)
-    
+
     model = ParallelMMDenseLSTM(modules)
-    
+
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -62,17 +62,17 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-    
+
     # Criterion
     if args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
         args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     tester = AdhocTester(model, loader, criterion, args)
     tester.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
