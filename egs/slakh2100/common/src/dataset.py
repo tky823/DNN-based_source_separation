@@ -114,6 +114,9 @@ class WaveTrainDataset(WaveDataset):
         with open(json_path, "r") as f:
             json_data = json.load(f)
 
+        if overlap is None:
+            overlap = samples // 2
+
         trackID = 0
 
         for track_json_data in json_data:
