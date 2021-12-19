@@ -159,7 +159,7 @@ class WaveTrainDataset(WaveDataset):
             for inst_class, inst_stemID in stemIDs.items():
                 track["path"][inst_class] = []
                 for stemID in inst_stemID:
-                    source_path = os.path.join(slakh2100_root, "train", name, "{}.flac".format(stemID))
+                    source_path = os.path.join(slakh2100_root, "train", name, "stems", "{}.flac".format(stemID))
                     track["path"][inst_class].append(source_path)
 
             self.tracks.append(track)
