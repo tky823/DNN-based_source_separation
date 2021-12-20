@@ -69,13 +69,13 @@ class TasNetBase(nn.Module):
 
 class TasNet(nn.Module):
     """
-    LSTM-TasNet
+        LSTM-TasNet
     """
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1kq6WyNygiYDABIx7IoqmyJd3dj5b4Cjv",
-                3: ""
+                2: "1-0QWF_2nOH8t3OhYeJaKk7wiwu3NlshL",
+                3: "1-ASveV6xM-6Ltd5yPqdN1fQdltXicq1M"
             }
         }
     }
@@ -301,7 +301,7 @@ class TasNet(nn.Module):
 """
 class Separator(nn.Module):
     """
-    Default separator of TasNet.
+        Default separator of TasNet.
     """
     def __init__(self, n_basis, num_blocks, num_layers, hidden_channels, causal=False, mask_nonlinear='softmax', rnn_type='lstm', n_sources=2, eps=EPS):
         super().__init__()

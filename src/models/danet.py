@@ -20,14 +20,14 @@ class DANet(nn.Module):
             }
         },
         "librispeech": {
-            16000: {
+            SAMPLE_RATE_LIBRISPEECH: {
                 2: "18FJrUHawpxsJovgb26V8IuHZ5gannwQm"
             }
         }
     }
     def __init__(self, n_bins, embed_dim=20, hidden_channels=300, num_blocks=4, dropout=0, causal=False, mask_nonlinear='sigmoid', take_log=True, take_db=False, eps=EPS):
         super().__init__()
-        
+
         self.n_bins = n_bins
         self.hidden_channels, self.embed_dim = hidden_channels, embed_dim
         self.num_blocks = num_blocks
@@ -491,11 +491,11 @@ class FixedAttractorDANetTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input):
         """
         Args:
@@ -519,20 +519,20 @@ class FixedAttractorDANetTimeDomainWrapper(nn.Module):
 def _test_danet():
     batch_size = 2
     K = 10
-    
+
     H = 32
     B = 4
-    
+
     n_bins, n_frames = 4, 128
     n_sources = 2
     causal = False
     mask_nonlinear = 'sigmoid'
-    
+
     sources = torch.randn((batch_size, n_sources, n_bins, n_frames), dtype=torch.float)
     input = sources.sum(dim=1, keepdim=True)
     assignment = compute_ideal_binary_mask(sources, source_dim=1)
     threshold_weight = torch.randint(0, 2, (batch_size, 1, n_bins, n_frames), dtype=torch.float)
-    
+
     model = DANet(n_bins, embed_dim=K, hidden_channels=H, num_blocks=B, causal=causal, mask_nonlinear=mask_nonlinear)
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
