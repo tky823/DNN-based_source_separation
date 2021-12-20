@@ -142,9 +142,6 @@ class AdhocTrainer(TrainerBase):
                 draw_loss_curve(train_loss=self.train_loss[:epoch + 1], save_path=save_path)
 
     def run_one_epoch(self, epoch):
-        """
-        Training
-        """
         train_loss = self.run_one_epoch_train(epoch)
 
         if self.valid_loader is not None:
@@ -157,7 +154,7 @@ class AdhocTrainer(TrainerBase):
     def run_one_epoch_train(self, epoch):
         # Override
         """
-        Training
+            Training
         """
         self.model.train()
 
@@ -203,7 +200,7 @@ class AdhocTrainer(TrainerBase):
     def run_one_epoch_eval(self, epoch):
         # Override
         """
-        Validation
+            Validation
         """
         raise NotImplementedError("Not support evaluation.")
 
@@ -316,6 +313,7 @@ class AdhocTester(TesterBase):
                 cluster_ids = cluster_ids.view(1, n_bins, n_frames) # (1, n_bins, n_frames)
                 mask = torch.eye(n_sources)[cluster_ids] # (1, n_bins, n_frames, n_sources)
                 mask = mask.permute(0, 3, 1, 2) # (1, n_sources, n_bins, n_frames)
+                mask = mask.to(mixture.device)
                 estimated_sources = mask * mixture
 
                 mixture = mixture[0].cpu()
