@@ -18,7 +18,7 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
 
     model = load_pretrained_conv_tasnet(model_path)
     config = load_experiment_config(model_path)
-    
+
     if use_cuda:
         model.cuda()
         print("Uses CUDA")
@@ -71,13 +71,13 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
                 estimated_sources = estimated_sources.mean(dim=0, keepdim=True)
             else:
                 raise NotImplementedError("Not support {} channels input.".format(n_mics))
-            
+
             max_value = torch.max(torch.abs(estimated_sources))
             max_value = max_value.item()
 
             if max_value >= 1:
                 estimated_sources = 0.9 * (estimated_sources / max_value)
-            
+
             estimated_sources = estimated_sources.cpu()
 
             estimated_sources_channels = estimated_sources.size()[:-1]
@@ -85,7 +85,7 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
 
             if post_resampler is not None:
                 y = post_resampler(y)
-            
+
             y = y.view(*estimated_sources_channels, -1) # -> (n_mics, n_sources, T_pad)
             y = y.squeeze(dim=0) # -> (n_sources, n_mics, T_pad)
             T_pad = y.size(-1)
@@ -98,14 +98,14 @@ def separate_by_conv_tasnet(model_path, file_paths, out_dirs):
                 path = os.path.join(out_dir, "{}.wav".format(target))
                 torchaudio.save(path, estimated_source, sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 _estimated_paths[target] = path
-            
+
             estimated_paths.append(_estimated_paths)
-            
+
     return estimated_paths
 
 def load_pretrained_conv_tasnet(model_path):
     model = ConvTasNet.build_model(model_path, load_state_dict=True)
-    
+
     return model
 
 def load_experiment_config(config_path):

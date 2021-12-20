@@ -39,49 +39,49 @@ def main(args):
 def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_dir="results", args=None):
     num_loop = int(duration * sample_rate / num_chunk)
     sequence = []
-    
+
     P = pyaudio.PyAudio()
-    
+
     # Record
     stream = P.open(format=FORMAT, channels=NUM_CHANNELS, rate=sample_rate, input_device_index=DEVICE_INDEX, frames_per_buffer=num_chunk, input=True, output=False)
-    
+
     for i in range(num_loop):
         input = stream.read(num_chunk)
         sequence.append(input)
         time = int(i * num_chunk / sample_rate)
         show_progress_bar(time, duration)
-    
+
     show_progress_bar(duration, duration)
     print()
-    
+
     stream.stop_stream()
     stream.close()
     P.terminate()
-    
+
     print("Stop recording")
-    
+
     os.makedirs(save_dir, exist_ok=True)
-    
+
     # Save
     signal = b"".join(sequence)
     signal = np.frombuffer(signal, dtype=np.int16)
     signal = signal / 32768
-    
+
     save_path = os.path.join(save_dir, "mixture.wav")
     mixture = torch.Tensor(signal).float()
-    mixture.unsqueeze(dim=0) = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
+    mixture = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
     torchaudio.save(save_path, mixture, sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE)
 
     # Separate by DNN
     model = DANet.build_model(model_path, load_state_dict=True)
     model.eval()
-    
+
     n_fft, hop_length = args.n_fft, args.hop_length
     window = build_window(n_fft, window_fn=args.window_fn)
-    
+
     if hop_length is None:
         hop_length = n_fft // 2
-    
+
     threshold = args.threshold
     n_sources = args.n_sources
     iter_clustering = args.iter_clustering
@@ -89,7 +89,7 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
 
     print("# Parameters: {}".format(model.num_parameters))
     print("Start separation...")
-    
+
     with torch.no_grad():
         mixture = stft(mixture, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
         mixture_amplitude, mixture_phase = torch.abs(mixture), torch.angle(mixture)
@@ -99,19 +99,19 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
         max_log_amplitude = torch.max(log_amplitude)
         threshold = 10**((max_log_amplitude - threshold) / 20)
         threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
-        
+
         estimated_sources_amplitude = model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering) # TODO: Args, threshold
         estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=0)
         estimated_sources = estimated_sources_amplitude * torch.exp(1j * mixture_phase)
         estimated_sources = istft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False, length=T)
-    
+
     print("Finished separation...")
-    
+
     for idx, estimated_source in enumerate(estimated_sources):
         save_path = os.path.join(save_dir, "estimated-{}.wav".format(idx))
         estimated_source = estimated_source.unsqueeze(dim=0) if estimated_source.dim() == 1 else estimated_source
         torchaudio.save(save_path, estimated_source.unsqueeze(dim=0), sample_rate=sample_rate)
-    
+
 def show_progress_bar(time, duration):
     rest = duration-time
     progress_bar = ">"*time + "-"*rest
