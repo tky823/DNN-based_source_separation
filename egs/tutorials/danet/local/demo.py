@@ -72,38 +72,26 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
     mixture = mixture.unsqueeze(dim=0) if mixture.dim() == 1 else mixture
     torchaudio.save(save_path, mixture, sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE)
 
-    # Separate by DNN
-    model = DANet.build_model(model_path, load_state_dict=True)
-    model.eval()
-
     n_fft, hop_length = args.n_fft, args.hop_length
-    window = build_window(n_fft, window_fn=args.window_fn)
+    window_fn = args.window_fn
 
     if hop_length is None:
         hop_length = n_fft // 2
 
+    # Separate by DNN
+    model = DANet.build_model(model_path, load_state_dict=True)
+    wrapper_model = DANet.TimeDomainWrapper(model, n_fft, hop_length=hop_length, window_fn=window_fn)
+    wrapper_model.eval()
+
     threshold = args.threshold
     n_sources = args.n_sources
     iter_clustering = args.iter_clustering
-    T = mixture.size(-1)
 
     print("# Parameters: {}".format(model.num_parameters))
     print("Start separation...")
 
     with torch.no_grad():
-        mixture = stft(mixture, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=True)
-        mixture_amplitude, mixture_phase = torch.abs(mixture), torch.angle(mixture)
-        mixture_amplitude = mixture_amplitude.unsqueeze(dim=0)
-
-        log_amplitude = 20 * torch.log10(mixture_amplitude + EPS)
-        max_log_amplitude = torch.max(log_amplitude)
-        threshold = 10**((max_log_amplitude - threshold) / 20)
-        threshold_weight = torch.where(mixture_amplitude > threshold, torch.ones_like(mixture_amplitude), torch.zeros_like(mixture_amplitude))
-
-        estimated_sources_amplitude = model(mixture_amplitude, threshold_weight=threshold_weight, n_sources=n_sources, iter_clustering=iter_clustering) # TODO: Args, threshold
-        estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=0)
-        estimated_sources = estimated_sources_amplitude * torch.exp(1j * mixture_phase)
-        estimated_sources = istft(estimated_sources, n_fft, hop_length=hop_length, window=window, onesided=True, return_complex=False, length=T)
+        estimated_sources = wrapper_model(mixture, threshold=threshold, n_sources=n_sources, iter_clustering=iter_clustering)
 
     print("Finished separation...")
 
