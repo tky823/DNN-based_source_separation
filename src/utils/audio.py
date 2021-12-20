@@ -1,5 +1,10 @@
+import subprocess
+
 import numpy as np
 import torch
+import torchaudio
+
+MIN_PESQ = -0.5
 
 def build_window(n_fft, window_fn='hann', **kwargs):
     if window_fn=='hann':
@@ -63,6 +68,27 @@ def load_midi(midi_path, sample_rate, hop_length, frame_offset=0, num_frames=-1,
         raise ValueError("Invalid dtype is specified.")
 
     return piano_roll
+
+def evaluate_pesq(pesq_path, reference_path, estimated_path, sample_rate=None):
+    if sample_rate is None:
+        reference_audio_info = torchaudio.info(reference_path)
+        estimated_audio_info = torchaudio.info(estimated_path)
+        sample_rate = reference_audio_info.sample_rate
+        
+        assert sample_rate == estimated_audio_info.sample_rate, "Sampling rate is different."
+    
+    command = "{} +{} {} {}".format(pesq_path, sample_rate, reference_path, estimated_path)
+    command += " | grep Prediction | awk '{print $5}'"
+    pesq_output = subprocess.check_output(command, shell=True)
+    pesq_output = pesq_output.decode().strip()
+
+    if pesq_output == '':
+        # If processing error occurs in PESQ software, it is regarded as PESQ score is -0.5. (minimum of PESQ)
+        raise ValueError("Error occured during PESQ evaluation.")
+    else:
+        pesq = float(pesq_output)
+    
+    return pesq
 
 def _test_piano_roll():
     n_fft, hop_length = 4096, 1024
