@@ -219,7 +219,7 @@ class Encoder(nn.Module):
         else:
             self.nonlinear = False
 
-        self._init_weights()
+        # self._init_weights()
 
     def forward(self, input):
         x = self.conv1d(input)
@@ -247,7 +247,7 @@ class Decoder(nn.Module):
 
         self.conv_transpose1d = nn.ConvTranspose1d(n_basis, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
 
-        self._init_weights()
+        # self._init_weights()
 
     def forward(self, input):
         output = self.conv_transpose1d(input)
@@ -344,7 +344,7 @@ class GatedEncoder(nn.Module):
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
-        self._init_weights()
+        # self._init_weights()
 
     def forward(self, input):
         eps = self.eps
