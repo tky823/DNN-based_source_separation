@@ -40,7 +40,7 @@ class MultiResolutionCrossNet(nn.Module):
             dropout = [
                 0.4 if _dropout is None and _num_layers > 1 else 0 for _num_layers, _dropout in zip(num_layers, dropout)
             ]
-        
+
         if type(dropout) is float:
             dropout = [
                 _dropout for _dropout in dropout
@@ -49,7 +49,7 @@ class MultiResolutionCrossNet(nn.Module):
             dropout = [
                 0.4 if _dropout is None and _num_layers > 1 else 0 for _num_layers, _dropout in zip(num_layers, dropout)
             ]
-        
+
         if type(rnn_type) is str:
             rnn_type = [rnn_type] * len(n_fft)
 
@@ -65,7 +65,7 @@ class MultiResolutionCrossNet(nn.Module):
                 block = DecoderBlock(2 * hidden_channels, in_channels, hidden_channels, _n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
                 blocks.append(block)
             decoder_blocks[source] = nn.ModuleList(blocks)
-        
+
         self.encoder_blocks = nn.ModuleList(encoder_blocks)
         self.decoder_blocks = nn.ModuleDict(decoder_blocks)
 
@@ -74,7 +74,7 @@ class MultiResolutionCrossNet(nn.Module):
 
         self.n_fft, self.hop_length = n_fft, hop_length
         self.window_fn = window_fn
-        
+
         self.num_layers = num_layers
         self.dropout = dropout
         self.causal = causal
@@ -83,7 +83,7 @@ class MultiResolutionCrossNet(nn.Module):
         self.sources = sources
 
         self.eps = eps
-    
+
     def forward(self, input):
         in_channels = self.in_channels
         hidden_channels = self.hidden_channels
@@ -108,7 +108,7 @@ class MultiResolutionCrossNet(nn.Module):
         x_mean = x_fft_blocks.mean(dim=0) # (batch_size, n_frames, hidden_channels)
 
         x_ffts = []
-        
+
         for idx, _n_fft in enumerate(self.n_fft):
             x_fft = x_fft_blocks[idx]
             x_rnn = self.encoder_blocks[idx].forward_rnn(x_mean) # (batch_size, n_frames, out_channels), where out_channels = hidden_channels
@@ -119,7 +119,7 @@ class MultiResolutionCrossNet(nn.Module):
         x_ffts = torch.stack(x_ffts, dim=0) # (len(n_ffts), batch_size * n_frames, hidden_channels + out_channels)
         x_ffts = x_ffts.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
         output = []
-        
+
         for source in self.sources:
             x_source = []
 
@@ -133,11 +133,11 @@ class MultiResolutionCrossNet(nn.Module):
                 x_source_fft = mask * latent[idx]
                 x_source_fft = self.decoder_blocks[source][idx].istft(x_source_fft, length=T)
                 x_source.append(x_source_fft)
-            
+
             x_source = torch.stack(x_source, dim=0)
             x_source = x_source.sum(dim=0)
             output.append(x_source)
-        
+
         output = torch.stack(output, dim=1)
 
         return output
@@ -155,9 +155,9 @@ class MultiResolutionCrossNet(nn.Module):
             'sources': self.sources,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -167,7 +167,7 @@ class MultiResolutionCrossNet(nn.Module):
 
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
-        
+
         n_fft, hop_length = config['n_fft'], config['hop_length']
         window_fn = config['window_fn']
 
@@ -190,13 +190,13 @@ class MultiResolutionCrossNet(nn.Module):
             sources=sources,
             eps=eps
         )
-        
+
         return model
 
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
         in_channels = config['in_channels']
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
@@ -211,7 +211,7 @@ class MultiResolutionCrossNet(nn.Module):
         sources = config['sources']
 
         eps = config.get('eps') or EPS
-        
+
         model = cls(
             in_channels,
             hidden_channels=hidden_channels,
@@ -223,20 +223,20 @@ class MultiResolutionCrossNet(nn.Module):
             sources=sources,
             eps=eps
         )
-        
+
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-        
+
         return _num_parameters
 
 class EncoderBlock(nn.Module):
@@ -258,20 +258,20 @@ class EncoderBlock(nn.Module):
             rnn_hidden_channels = hidden_channels // 2
 
         self.rnn = choose_rnn(rnn_type, input_size=hidden_channels, hidden_size=rnn_hidden_channels, num_layers=num_layers, bidirectional=bidirectional, batch_first=True, dropout=dropout)
-        
+
         self.scale_in, self.bias_in = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
 
         self.eps = eps
 
         self._reset_parameters()
-    
+
     def _reset_parameters(self):
         self.scale_in.data.fill_(1)
         self.bias_in.data.zero_()
 
     def forward(self, input):
         raise NotImplementedError
-    
+
     def transform_affine(self, input):
         """
         Args:
@@ -284,7 +284,7 @@ class EncoderBlock(nn.Module):
         output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps) # (batch_size, n_channels, n_bins, n_frames)
 
         return output
-    
+
     def forward_rnn(self, input):
         """
         Args:
@@ -313,9 +313,9 @@ class DecoderBlock(nn.Module):
         self.istft = iSTFT(n_fft, hop_length=hop_length, window_fn=window_fn)
 
         self.scale_out, self.bias_out = nn.Parameter(torch.Tensor(n_bins,), requires_grad=True), nn.Parameter(torch.Tensor(n_bins,), requires_grad=True)
-    
+
         self._reset_parameters()
-    
+
     def _reset_parameters(self):
         self.scale_out.data.fill_(1)
         self.bias_out.data.zero_()
@@ -344,9 +344,9 @@ class STFT(nn.Module):
             window = torch.ones(n_fft)
         else:
             window = build_window(n_fft, window_fn=window_fn)
-        
+
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input):
         """
         Args:
@@ -375,9 +375,9 @@ class iSTFT(nn.Module):
             window = torch.ones(n_fft)
         else:
             window = build_window(n_fft, window_fn=window_fn)
-        
+
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input, length=None):
         """
         Args:

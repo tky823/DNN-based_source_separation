@@ -49,14 +49,14 @@ def main(args):
     if args.compute_attractor:
         test_dataset = IdealMaskSpectrogramTrainDataset(args.test_wav_root, args.test_list_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, n_sources=args.n_sources)
         print("Test dataset includes {} samples.".format(len(test_dataset)))
-        
+
         args.n_bins = args.n_fft // 2 + 1
         loader = TrainDataLoader(test_dataset, batch_size=1, shuffle=False)
-        
+
         model = DANet.build_model(args.base_model_path)
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
-        
+
         if args.use_cuda:
             if torch.cuda.is_available():
                 model.cuda()
@@ -66,25 +66,25 @@ def main(args):
                 raise ValueError("Cannot use CUDA.")
         else:
             print("Does NOT use CUDA", flush=True)
-        
+
         args.wrapper_class = FixedAttractorDANet
 
         computer = FixedAttractorComputer(model, loader, args)
         computer.run()
-    
+
     if args.estimate_all:
         test_dataset = IdealMaskSpectrogramTestDataset(args.test_wav_root, args.test_list_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, n_sources=args.n_sources)
         print("Test dataset includes {} samples.".format(len(test_dataset)))
-        
+
         args.n_bins = args.n_fft // 2 + 1
         loader = AttractorTestDataLoader(test_dataset, batch_size=1, shuffle=False)
-        
+
         base_model_filename = os.path.basename(args.base_model_path)
         args.model_path = os.path.join(args.wrapper_model_dir, base_model_filename)
         model = FixedAttractorDANet.build_model(args.model_path, load_state_dict=True)
         print(model)
         print("# Parameters: {}".format(model.num_parameters))
-        
+
         if args.use_cuda:
             if torch.cuda.is_available():
                 model.cuda()
@@ -94,13 +94,13 @@ def main(args):
                 raise ValueError("Cannot use CUDA.")
         else:
             print("Does NOT use CUDA", flush=True)
-        
+
         # Criterion
         if args.criterion == 'se':
             criterion = SquaredError(sum_dim=2, mean_dim=(1,3)) # (batch_size, n_sources, n_bins, n_frames)
         else:
             raise ValueError("Not support criterion {}".format(args.criterion))
-        
+
         pit_criterion = PIT2d(criterion, n_sources=args.n_sources)
 
         metrics = OrderedDict()

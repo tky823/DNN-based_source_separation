@@ -22,33 +22,33 @@ class PCA(nn.Module):
 
         if n_dims == 2:
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
-        
+
         if self.training:
             if self.standardize:
                 self.mean, self.std = torch.mean(data, dim=1), torch.std(data, dim=1)
                 standardized = self.preprocess(data)
             else:
                 standardized = data
-            
+
             cov = torch.bmm(standardized.permute(0, 2, 1), standardized) / standardized.size(1)
             _, proj_matrix = torch.linalg.eigh(cov) # Computed by assending order
             self.proj_matrix = torch.flip(proj_matrix, dims=(-1,))
         else:
             if self.proj_matrix is None:
                 raise RuntimeError("proj_matrix is computed in advance.")
-            
+
             if self.standardize:
                 standardized = self.preprocess(data)
             else:
                 standardized = data
-        
+
         output = torch.bmm(standardized, self.proj_matrix)
 
         if n_dims == 2:
             output = output.squeeze(dim=0)
 
         return output
-    
+
     def preprocess(self, input):
         return (input - self.mean.unsqueeze(dim=1)) / self.std.unsqueeze(dim=1)
 
@@ -63,7 +63,7 @@ def _test_pca():
         [-0.5, 0, 0, 1, 0],
         [0, 0, 0, 0, 1]
     ], dtype=torch.float)
-    
+
     sampler = torch.distributions.MultivariateNormal(loc, cov)
     data = sampler.sample((num_samples,))
 

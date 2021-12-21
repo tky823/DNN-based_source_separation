@@ -27,7 +27,7 @@ class ParallelOpenUnmix(nn.Module):
             modules = nn.ModuleDict(modules)
         else:
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
-    
+
         in_channels = None
         sources = list(modules.keys())
 
@@ -35,12 +35,12 @@ class ParallelOpenUnmix(nn.Module):
             module = modules[key]
             if not isinstance(module, OpenUnmix):
                 raise ValueError("All modules must be OpenUnmix.")
-            
+
             if in_channels is None:
                 in_channels = module.in_channels
             else:
                 assert in_channels == module.in_channels, "`in_channels` are different among modules."
-        
+
         self.net = modules
 
         self.in_channels = in_channels
@@ -68,9 +68,9 @@ class ParallelOpenUnmix(nn.Module):
         else:
             if type(target) is not str:
                 raise TypeError("`target` is expected str, but given {}".format(type(target)))
-            
+
             assert input.dim() == 4, "input is expected 4D, but given {}.".format(input.dim())
-        
+
             output = self.net[target](input)
 
         return output
@@ -111,7 +111,7 @@ class ParallelOpenUnmix(nn.Module):
 
             if not os.path.exists(model_path):
                 download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-            
+
             config = torch.load(model_path, map_location=lambda storage, loc: storage)
             modules[target] = OpenUnmix.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -120,12 +120,12 @@ class ParallelOpenUnmix(nn.Module):
                     n_fft = config['n_fft']
                 else:
                     assert n_fft == config['n_fft'], "`n_fft` is different among models."
-                
+
                 if hop_length is None:
                     hop_length = config['hop_length']
                 else:
                     assert hop_length == config['hop_length'], "`hop_length` is different among models."
-                
+
                 if window_fn is None:
                     window_fn = config['window_fn']
                 else:
@@ -150,11 +150,11 @@ class ParallelOpenUnmix(nn.Module):
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
@@ -171,7 +171,7 @@ class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
         self.window = nn.Parameter(window, requires_grad=False)
 
         self.eps = eps
-    
+
     def forward(self, input, iteration=1):
         """
         Args:
@@ -193,7 +193,7 @@ class ParallelOpenUnmixTimeDomainWrapper(nn.Module):
         for target in self.sources:
             _estimated_amplitude = self.base_model(mixture_amplitude.squeeze(dim=1), target=target)
             estimated_amplitude.append(_estimated_amplitude)
-        
+
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
         estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
         output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
@@ -241,7 +241,7 @@ class OpenUnmix(nn.Module):
 
         if max_bin is None:
             max_bin = n_bins
-        
+
         if dropout is None:
             dropout = 0.4 if num_layers > 1 else 0
 
@@ -281,11 +281,11 @@ class OpenUnmix(nn.Module):
         self.dropout = dropout
         self.causal = causal
         self.rnn_type = rnn_type
-        
+
         self.eps = eps
 
         self._reset_parameters()
-    
+
     def _reset_parameters(self):
         self.scale_in.data.fill_(1)
         self.bias_in.data.zero_()
@@ -367,9 +367,9 @@ class OpenUnmix(nn.Module):
             'rnn_type': self.rnn_type,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -397,13 +397,13 @@ class OpenUnmix(nn.Module):
             rnn_type=rnn_type,
             eps=eps
         )
-        
+
         return model
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
         in_channels = config['in_channels']
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
@@ -414,7 +414,7 @@ class OpenUnmix(nn.Module):
         rnn_type = config.get('rnn_type') or 'lstm'
 
         eps = config.get('eps') or EPS
-        
+
         model = cls(
             in_channels,
             hidden_channels=hidden_channels,
@@ -425,26 +425,26 @@ class OpenUnmix(nn.Module):
             rnn_type=rnn_type,
             eps=eps
         )
-        
+
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", target='vocals', quiet=False, load_state_dict=True, **kwargs):
         import os
-        
+
         from utils.utils import download_pretrained_model_from_google_drive
 
         task = kwargs.get('task')
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
@@ -467,7 +467,7 @@ class OpenUnmix(nn.Module):
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -483,19 +483,19 @@ class OpenUnmix(nn.Module):
             setattr(model, key, value)
 
         return model
-    
+
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
         return OpenUnmixTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-        
+
         return _num_parameters
 
 class OpenUnmixTimeDomainWrapper(nn.Module):
@@ -506,11 +506,11 @@ class OpenUnmixTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input):
         """
         Args:
@@ -541,7 +541,7 @@ class TransformBlock1d(nn.Module):
         else:
             self.nonlinear = True
             self.nonlinear1d = choose_nonlinear(nonlinear)
-    
+
     def forward(self, input):
         """
         Args:

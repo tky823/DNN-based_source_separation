@@ -20,12 +20,12 @@ def compute_ideal_binary_mask(input, source_dim=-3):
     """
     if torch.is_complex(input):
         input = torch.abs(input)
-    
+
     n_dims = input.dim()
 
     if source_dim < 0:
         source_dim = n_dims + source_dim
-    
+
     n_sources = input.size(dim=source_dim)
 
     permutation_dims = tuple(range(0, source_dim)) + (n_dims - 1,) + tuple(range(source_dim, n_dims - 1))
@@ -46,9 +46,9 @@ def compute_ideal_ratio_mask(input, source_dim=None, eps=EPS):
     """
     if torch.is_complex(input):
         input = torch.abs(input)
-    
+
     n_dims = input.dim()
-    
+
     if n_dims == 3:
         source_dim = 0 if source_dim is None else source_dim
         norm = input.sum(dim=source_dim, keepdim=True) # (1, n_bins, n_frames)
@@ -57,9 +57,9 @@ def compute_ideal_ratio_mask(input, source_dim=None, eps=EPS):
         norm = input.sum(dim=source_dim, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
         raise ValueError("Not support {}-dimension".format(n_dims))
-    
+
     mask = input / (norm + eps) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
-    
+
     return mask
 
 def compute_wiener_filter_mask(input, source_dim=None, domain=1, eps=EPS):
@@ -72,10 +72,10 @@ def compute_wiener_filter_mask(input, source_dim=None, domain=1, eps=EPS):
     """
     if torch.is_complex(input):
         input = torch.abs(input)
-    
+
     n_dims = input.dim()
     power = input**(2 / domain) # (n_sources, n_bins, n_frames) or (batch_size, n_sources, n_bins, n_frames)
-    
+
     if n_dims == 3:
         source_dim = 0 if source_dim is None else source_dim
         norm = power.sum(dim=source_dim, keepdim=True) # (1, n_bins, n_frames)
@@ -84,7 +84,7 @@ def compute_wiener_filter_mask(input, source_dim=None, domain=1, eps=EPS):
         norm = power.sum(dim=source_dim, keepdim=True) # (batch_size, 1, n_bins, n_frames)
     else:
         raise ValueError("Not support {}-dimension".format(n_dims))
-    
+
     mask = power / (norm + eps)
 
     return mask
@@ -106,7 +106,7 @@ def compute_ideal_amplitude_mask(input, source_dim=None, eps=EPS):
         mixture = input.sum(dim=source_dim, keepdim=True)
     else:
         raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
-    
+
     mask = torch.abs(input) / (torch.abs(mixture) + eps)
 
     return mask
@@ -132,12 +132,12 @@ def compute_phase_sensitive_mask(input, source_dim=None, eps=EPS):
         mixture = input.sum(dim=source_dim, keepdim=True)
     else:
         raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
-    
+
     angle_mixture, angle_input = torch.angle(mixture), torch.angle(input)
     angle = angle_mixture - angle_input
 
     mask = (torch.abs(input) / (torch.abs(mixture) + eps)) * torch.cos(angle)
-    
+
     return mask
 
 def compute_ideal_complex_mask(input, source_dim=None, eps=EPS):
@@ -157,7 +157,7 @@ def compute_ideal_complex_mask(input, source_dim=None, eps=EPS):
         mixture = input.sum(dim=source_dim, keepdim=True)
     else:
         raise ValueError("3-D or 4-D input is accepted, but given {}.".format(n_dims))
-    
+
     angle = torch.angle(mixture)
     denominator = (torch.abs(mixture) + eps) * torch.exp(1j * angle)
     mask = input / denominator
@@ -218,7 +218,7 @@ def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1
             mixture = mixture.squeeze(dim=1) # (n_channels, n_bins, n_frames)
         elif n_dims_mixture != 3:
             raise ValueError("mixture.dim() is expected 3 or 4, but given {}.".format(mixture.dim()))
-        
+
         # Use soft mask
         ratio = estimated_sources_amplitude / (estimated_sources_amplitude.sum(dim=0) + eps)
         estimated_sources = ratio * mixture
@@ -236,7 +236,7 @@ def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1
             mixture = mixture.squeeze(dim=1) # (batch_size, n_channels, n_bins, n_frames)
         elif n_dims_mixture != 4:
             raise ValueError("mixture.dim() is expected 4 or 5, but given {}.".format(mixture.dim()))
-        
+
         estimated_sources = []
 
         for _mixture, _estimated_sources_amplitude in zip(mixture, estimated_sources_amplitude):
@@ -251,7 +251,7 @@ def multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=1
             _estimated_sources = norm * _estimated_sources
 
             estimated_sources.append(_estimated_sources.unsqueeze(dim=0))
-        
+
         estimated_sources = torch.cat(estimated_sources, dim=0)
     else:
         raise ValueError("estimated_sources_amplitude.dim() is expected 4 or 5, but given {}.".format(estimated_sources_amplitude.dim()))
@@ -285,9 +285,9 @@ def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, bi
                 Cxx = Cxx + v_n.unsqueeze(dim=2).unsqueeze(dim=3) * R_n.unsqueeze(dim=1) # (n_bins, n_frames, n_channels, n_channels)
                 v.append(v_n.unsqueeze(dim=0))
                 R.append(R_n.unsqueeze(dim=0))
-        
+
             v, R = torch.cat(v, dim=0), torch.cat(R, dim=0) # (n_sources, n_bins, n_frames), (n_sources, n_bins, n_channels, n_channels)
-       
+
         v, R = v.unsqueeze(dim=3), R.unsqueeze(dim=2) # (n_sources, n_bins, n_frames, 1), (n_sources, n_bins, 1, n_channels, n_channels)
 
         if bin_parallel:
@@ -301,7 +301,7 @@ def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, bi
                     _Cxx = Cxx[:, frame_idx]
                     _inv_Cxx = torch.linalg.inv(_Cxx + math.sqrt(eps) * torch.eye(n_channels)) # (n_bins, n_frames, n_channels, n_channels)
                     inv_Cxx.append(_inv_Cxx)
-                
+
                 inv_Cxx = torch.stack(inv_Cxx, dim=1)
         else:
             inv_Cxx = []
@@ -334,7 +334,7 @@ def update_em(mixture, estimated_sources, iteration=1, source_parallel=False, bi
                 gain_n = gain_n.permute(2, 3, 0, 1) # (n_channels, n_channels, n_bins, n_frames)
                 estimated_source = torch.sum(gain_n * mixture, dim=1) # (n_channels, n_bins, n_frames)
                 estimated_sources.append(estimated_source.unsqueeze(dim=0))
-            
+
             estimated_sources = torch.cat(estimated_sources, dim=0) # (n_sources, n_channels, n_bins, n_frames)
 
     return estimated_sources
@@ -363,7 +363,7 @@ def get_stats(spectrogram, eps=EPS):
         covariance = spectrogram.unsqueeze(dim=2) * spectrogram.unsqueeze(dim=1).conj() # (n_sources, n_mics, n_mics, n_bins, n_frames)
         covariance = covariance.sum(dim=4) # (n_sources, n_mics, n_mics, n_bins)
         denominator = psd.sum(dim=2) + eps # (n_sources, n_bins)
-        
+
         covariance = covariance / denominator.unsqueeze(dim=1).unsqueeze(dim=2) # (n_sources, n_mics, n_mics, n_bins)
         covariance = covariance.permute(0, 3, 1, 2) # (n_sources, n_bins, n_mics, n_mics)
     else:
@@ -378,11 +378,11 @@ def _prepare_data():
     source1, _ = torchaudio.load("data/single-channel/man-44100.wav")
     source1 = resampler(source1)
     torchaudio.save("data/single-channel/man-{}.wav".format(sample_rate), source1, sample_rate=sample_rate, bits_per_sample=16)
-    
+
     source2, _ = torchaudio.load("data/single-channel/woman-44100.wav")
     source2 = resampler(source2)
     torchaudio.save("data/single-channel/woman-{}.wav".format(sample_rate), source2, sample_rate=sample_rate, bits_per_sample=16)
-    
+
     mixture = source1 + source2
     torchaudio.save("data/single-channel/mixture-{}.wav".format(sample_rate), mixture, sample_rate=sample_rate, bits_per_sample=16)
 
@@ -395,12 +395,12 @@ def _test_amplitude(amplitude, method='IBM'):
         mask = compute_wiener_filter_mask(amplitude)
     else:
         raise NotImplementedError("Not support {}".format(method))
-    
+
     estimated_amplitude = amplitude * mask
     estimated_spectrgram = estimated_amplitude * torch.exp(1j * torch.angle(spectrogram_mixture))
     estimated_signal = torch.istft(estimated_spectrgram, n_fft=n_fft, hop_length=hop_length, length=T)
     estimated_signal = estimated_signal.detach().cpu()
-    
+
     for signal, tag in zip(estimated_signal, ['man', 'woman']):
         torchaudio.save("data/frequency_mask/{}-estimated_{}.wav".format(tag, method), signal.unsqueeze(dim=0), sample_rate=16000, bits_per_sample=16)
 
@@ -413,12 +413,12 @@ def _test_spectrogram(spectrogram, method='PSM'):
         mask = compute_ideal_complex_mask(spectrogram)
     else:
         raise NotImplementedError("Not support {}".format(method))
-    
+
     estimated_amplitude = amplitude * mask
     estimated_spectrgram = estimated_amplitude * torch.exp(1j * torch.angle(spectrogram_mixture))
     estimated_signal = torch.istft(estimated_spectrgram, n_fft=n_fft, hop_length=hop_length, length=T)
     estimated_signal = estimated_signal.detach().cpu()
-    
+
     for signal, tag in zip(estimated_signal, ['man', 'woman']):
         torchaudio.save("data/frequency_mask/{}-estimated_{}.wav".format(tag, method), signal.unsqueeze(dim=0), sample_rate=16000, bits_per_sample=16)
 
@@ -426,24 +426,24 @@ if __name__ == '__main__':
     import os
 
     import torchaudio
-    
+
     os.makedirs("data/frequency_mask", exist_ok=True)
 
     # _prepare_data()
-    
+
     n_fft, hop_length = 1024, 256
-    
+
     source1, sr = torchaudio.load("data/single-channel/man-16000.wav")
     source2, sr = torchaudio.load("data/single-channel/woman-16000.wav")
     mixture = source1 + source2
     T = mixture.size(-1)
-    
+
     spectrogram_mixture = torch.stft(mixture, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_mixture = torch.abs(spectrogram_mixture)
-    
+
     spectrogram_source1 = torch.stft(source1, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_source1 = torch.abs(spectrogram_source1)
-    
+
     spectrogram_source2 = torch.stft(source2, n_fft=n_fft, hop_length=hop_length, return_complex=True)
     amplitude_source2 = torch.abs(spectrogram_source2)
 

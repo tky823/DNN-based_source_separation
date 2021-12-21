@@ -16,7 +16,7 @@ def stft(input, n_fft, hop_length=None, win_length=None, window=None, center=Tru
     elif n_dims > 2:
         channels = input.size()[:-1]
         input = input.view(-1, input.size(-1))
-    
+
     output = torch.stft(
         input,
         n_fft, hop_length=hop_length, win_length=win_length, window=window,
@@ -34,7 +34,7 @@ def stft(input, n_fft, hop_length=None, win_length=None, window=None, center=Tru
             output = output.squeeze(dim=0)
         elif n_dims > 2:
             output = output.view(*channels, *output.size()[-3:])
-    
+
     return output
 
 def istft(input, n_fft, hop_length=None, win_length=None, window=None, center=True, normalized=False, onesided=None, length=None, return_complex=False):
@@ -47,7 +47,7 @@ def istft(input, n_fft, hop_length=None, win_length=None, window=None, center=Tr
     """
     if not torch.is_complex(input):
         raise TypeError("Not support real input.")
-    
+
     n_dims = input.dim()
 
     if n_dims == 2:
@@ -55,7 +55,7 @@ def istft(input, n_fft, hop_length=None, win_length=None, window=None, center=Tr
     elif n_dims > 3:
         channels = input.size()[:-2]
         input = input.view(-1, *input.size()[-2:])
-    
+
     output = torch.istft(
         input,
         n_fft, hop_length=hop_length, win_length=win_length, window=window,
@@ -67,7 +67,7 @@ def istft(input, n_fft, hop_length=None, win_length=None, window=None, center=Tr
         output = output.squeeze(dim=0)
     elif n_dims > 3:
         output = output.view(*channels, -1)
-    
+
     return output
 
 def _test_stft_istft():

@@ -27,7 +27,7 @@ class CombinationLoss(nn.Module):
 
         if max_pair is None:
             max_pair = n_sources - 1
-        
+
         input = torch.unbind(input, dim=combination_dim)
         target = torch.unbind(target, dim=combination_dim)
 
@@ -52,7 +52,7 @@ class CombinationLoss(nn.Module):
             loss = loss.mean(dim=dim)
         elif reduction == 'sum':
             loss = loss.sum(dim=dim)
-        
+
         return loss
 
 def _test_cl():

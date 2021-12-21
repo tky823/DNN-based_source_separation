@@ -22,14 +22,14 @@ class FourierEncoder(nn.Module):
         n = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
-        
+
         self.frequency, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(n, requires_grad=False)
         self.window = nn.Parameter(window)
 
         if self.trainable_phase:
             phi = torch.zeros(n_basis // 2 + 1)
             self.phase = nn.Parameter(phi, requires_grad=True)
-    
+
     def forward(self, input):
         """
         Args:
@@ -76,7 +76,7 @@ class FourierEncoder(nn.Module):
         s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}, return_complex={return_complex}"
         if self.trainable_phase:
             s += ", trainable_phase={trainable_phase}"
-        
+
         return s.format(**self.__dict__)
 
     def get_basis(self):
@@ -90,16 +90,16 @@ class FourierEncoder(nn.Module):
             basis_real, basis_imag = torch.cos(-(omega_n + phi.unsqueeze(dim=1))), torch.sin(-(omega_n + phi.unsqueeze(dim=1)))
         else:
             basis_real, basis_imag = torch.cos(-omega_n), torch.sin(-omega_n)
-        
+
         if not self.onesided:
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
-        
+
         basis_real, basis_imag = window * basis_real, window * basis_imag
         basis = torch.cat([basis_real, basis_imag], dim=0)
-    
+
         return basis
 
 class FourierDecoder(nn.Module):
@@ -115,8 +115,8 @@ class FourierDecoder(nn.Module):
         n = torch.arange(kernel_size)
 
         window = build_window(kernel_size, window_fn=window_fn)
-        optimal_window = build_optimal_window(window, hop_size=stride)
-        
+        optimal_window = build_optimal_window(window, hop_length=stride)
+
         self.frequency, self.time_seq = nn.Parameter(omega, requires_grad=trainable), nn.Parameter(n, requires_grad=False)
         self.optimal_window = nn.Parameter(optimal_window)
 
@@ -142,10 +142,10 @@ class FourierDecoder(nn.Module):
 
         if torch.is_complex(input):
             input_real, input_imag = input.real, input.imag
-        else:    
+        else:
             n_bins = input.size(1)
             input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
-        
+
         omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
         if self.trainable_phase:
             phi = self.phase
@@ -175,7 +175,7 @@ class FourierDecoder(nn.Module):
         s = "{n_basis}, kernel_size={kernel_size}, stride={stride}, trainable={trainable}, onesided={onesided}"
         if self.trainable_phase:
             s += ", trainable_phase={trainable_phase}"
-        
+
         return s.format(**self.__dict__)
 
     def get_basis(self):
@@ -195,7 +195,7 @@ class FourierDecoder(nn.Module):
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
-        
+
         basis_real, basis_imag = optimal_window * basis_real, optimal_window * basis_imag
         basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
         basis = torch.cat([basis_real, basis_imag], dim=0)
@@ -205,10 +205,10 @@ class FourierDecoder(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, nonlinear=None):
         super().__init__()
-        
+
         self.kernel_size, self.stride = kernel_size, stride
         self.nonlinear = nonlinear
-        
+
         self.conv1d = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         if nonlinear is not None:
             if nonlinear == 'relu':
@@ -218,38 +218,46 @@ class Encoder(nn.Module):
             self.nonlinear = True
         else:
             self.nonlinear = False
-    
+
+        self._init_weights()
+
     def forward(self, input):
         x = self.conv1d(input)
-        
+
         if self.nonlinear:
             output = self.nonlinear1d(x)
         else:
             output = x
-        
+
         return output
-    
+
+    def _init_weights(self):
+        nn.init.xavier_normal_(self.conv1d.weight)
+
     def get_basis(self):
         basis = self.conv1d.weight
-    
+
         return basis
 
 class Decoder(nn.Module):
     def __init__(self, n_basis, out_channels, kernel_size=16, stride=8):
         super().__init__()
-        
+
         self.kernel_size, self.stride = kernel_size, stride
-        
+
         self.conv_transpose1d = nn.ConvTranspose1d(n_basis, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
-    
+
+        self._init_weights()
+
     def forward(self, input):
         output = self.conv_transpose1d(input)
-        
         return output
-    
+
+    def _init_weights(self):
+        nn.init.xavier_normal_(self.conv_transpose1d.weight)
+
     def get_basis(self):
         basis = self.conv_transpose1d.weight
-        
         return basis
 
 class PinvDecoder(nn.Module):
@@ -281,41 +289,39 @@ class PinvDecoder(nn.Module):
         if isinstance(encoder, Encoder):
             weight = self.weight.permute(1, 0, 2).contiguous()
             weight_pinverse = torch.pinverse(weight).permute(2, 0, 1).contiguous() / duplicate
-
             output = F.conv_transpose1d(input, weight_pinverse, stride=stride)
         elif isinstance(encoder, FourierEncoder):
             if torch.is_complex(input):
                 input_real, input_imag = input.real, input.imag
-            else:    
+            else:
                 n_bins = input.size(1)
                 input_real, input_imag = torch.split(input, [n_bins // 2, n_bins // 2], dim=1)
-            
+
             n_basis = encoder.n_basis
             omega, n = encoder.frequency, encoder.time_seq
             window = encoder.window
 
             omega_n = omega.unsqueeze(dim=1) * n.unsqueeze(dim=0)
+
             if encoder.trainable_phase:
                 phi = self.encoder.phase
                 basis_real, basis_imag = torch.cos(omega_n + phi.unsqueeze(dim=1)), torch.sin(omega_n + phi.unsqueeze(dim=1))
             else:
                 basis_real, basis_imag = torch.cos(omega_n), torch.sin(omega_n)
             basis_real, basis_imag = basis_real.unsqueeze(dim=1), basis_imag.unsqueeze(dim=1)
-            
+
             _, basis_real_conj, _ = torch.split(basis_real, [1, n_basis // 2 - 1, 1], dim=0)
             _, basis_imag_conj, _ = torch.split(basis_imag, [1, n_basis // 2 - 1, 1], dim=0)
             basis_real_conj, basis_imag_conj = torch.flip(basis_real_conj, dims=(0,)), torch.flip(basis_imag_conj, dims=(0,))
             basis_real, basis_imag = torch.cat([basis_real, basis_real_conj], dim=0), torch.cat([basis_imag, - basis_imag_conj], dim=0)
             basis_real, basis_imag = window * basis_real, window * basis_imag
-
             basis_real, basis_imag = basis_real / n_basis, basis_imag / n_basis
-
             output = F.conv_transpose1d(input_real, basis_real, stride=stride) - F.conv_transpose1d(input_imag, basis_imag, stride=stride)
         else:
             raise TypeError("Not support encoder {}.".format(type(encoder)))
 
         return output
-    
+
     def get_basis(self):
         kernel_size, stride = self.kernel_size, self.stride
         duplicate = kernel_size // stride
@@ -329,25 +335,31 @@ class PinvDecoder(nn.Module):
 class GatedEncoder(nn.Module):
     def __init__(self, in_channels, n_basis, kernel_size=16, stride=8, eps=EPS):
         super().__init__()
-        
+
         self.kernel_size, self.stride = kernel_size, stride
         self.eps = eps
-        
+
         self.conv1d_U = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         self.conv1d_V = nn.Conv1d(in_channels, n_basis, kernel_size=kernel_size, stride=stride, bias=False)
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
-    
+
+        self._init_weights()
+
     def forward(self, input):
         eps = self.eps
-        
-        norm = torch.norm(input, dim=2, keepdim=True)
+
+        norm = torch.linalg.norm(input, dim=2, keepdim=True)
         x = input / (norm + eps)
         x_U = self.conv1d_U(x)
         x_V = self.conv1d_V(x)
-        output = x_U * x_V
-        
+        output = self.relu(x_U) * self.sigmoid(x_V)
+
         return output
+
+    def _init_weights(self):
+        nn.init.xavier_normal_(self.conv1d_U.weight)
+        nn.init.xavier_normal_(self.conv1d_V.weight)
 
 def _test_filterbank():
     batch_size = 2
@@ -355,7 +367,7 @@ def _test_filterbank():
     T = 64
     kernel_size, stride = 8, 2
     n_basis = kernel_size
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
 
     print("-"*10, "Trainable Encoder", "-"*10)
@@ -363,7 +375,7 @@ def _test_filterbank():
     decoder = Decoder(2*kernel_size, C, kernel_size=kernel_size, stride=stride)
 
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
-    
+
     plt.figure()
     plt.pcolormesh(enc_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
@@ -387,7 +399,7 @@ def _test_filterbank():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, onesided=True)
 
     enc_basis, dec_basis = encoder.get_basis(), decoder.get_basis()
-    
+
     plt.figure()
     plt.pcolormesh(enc_basis.squeeze(dim=1).detach().cpu().numpy(), cmap='bwr', norm=Normalize(vmin=-1, vmax=1))
     plt.colorbar()
@@ -447,7 +459,7 @@ def _test_fourier():
     T = 64
     kernel_size, stride = 8, 2
     onesided, return_complex = True, True
-    
+
     input = torch.randn((batch_size, C, T), dtype=torch.float)
 
     print("-"*10, "Fourier Encoder", "-"*10)
@@ -481,7 +493,7 @@ def _test_fourier():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
     spectrogram = encoder(input)
     output = decoder(spectrogram)
-    
+
     plt.figure()
     plt.plot(input[0, 0].detach().numpy())
     plt.plot(output[0, 0].detach().numpy())
@@ -493,7 +505,7 @@ def _test_fourier():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
     spectrogram = encoder(input)
     output = decoder(spectrogram)
-    
+
     plt.figure()
     plt.plot(input[0, 0].detach().numpy())
     plt.plot(output[0, 0].detach().numpy())
@@ -505,7 +517,7 @@ def _test_fourier():
     decoder = FourierDecoder(n_basis, kernel_size, stride=stride, window_fn='hann', onesided=onesided)
     spectrogram = encoder(input)
     output = decoder(spectrogram)
-    
+
     plt.figure()
     plt.plot(input[0, 0].detach().numpy())
     plt.plot(output[0, 0].detach().numpy())
@@ -515,7 +527,7 @@ def _test_fourier():
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from matplotlib.colors import Normalize
-    
+
     print("="*10, "Filterbank", "="*10)
     _test_filterbank()
     print()

@@ -9,7 +9,7 @@ class BinaryCrossEntropy(nn.Module):
 
         self.reduction = reduction
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -30,10 +30,10 @@ class BinaryCrossEntropy(nn.Module):
             loss = loss.mean(dim=dim)
         elif reduction == "sum":
             loss = loss.sum(dim=dim)
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss
 
 class CategoricalCrossEntropy(nn.Module):
@@ -43,7 +43,7 @@ class CategoricalCrossEntropy(nn.Module):
         self.class_dim = class_dim
         self.reduction = reduction
         self.eps = eps
-    
+
     def forward(self, input, target, batch_mean=True):
         """
         Args:
@@ -65,8 +65,8 @@ class CategoricalCrossEntropy(nn.Module):
             loss = loss.mean(dim=dim)
         elif reduction == "sum":
             loss = loss.sum(dim=dim)
-        
+
         if batch_mean:
             loss = loss.mean(dim=0)
-        
+
         return loss

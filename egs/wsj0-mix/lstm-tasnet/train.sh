@@ -42,8 +42,7 @@ weight_decay=0
 max_norm=5
 
 batch_size=128
-epochs_train=100
-epochs_finetune=100
+epochs=100
 
 use_cuda=1
 overwrite=0
@@ -61,7 +60,7 @@ fi
 
 if [ -z "${tag}" ]; then
     save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}"
-    save_dir="${save_dir}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs_train}+${epochs_finetune}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${save_dir}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -104,7 +103,7 @@ train.py \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
 --batch_size ${batch_size} \
---epochs ${epochs_finetune} \
+--epochs ${epochs} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
 --sample_dir "${sample_dir}" \

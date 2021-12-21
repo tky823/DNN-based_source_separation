@@ -18,14 +18,14 @@ class SiLU1d(nn.Module):
             out_channels <int>
         """
         super().__init__()
-        
+
         if out_channels is None:
             out_channels = in_channels
-            
+
         self.in_channels, self.out_channels = in_channels, out_channels
 
         self.map = nn.Conv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
-        
+
     def forward(self, input):
         """
         Args:
@@ -35,9 +35,9 @@ class SiLU1d(nn.Module):
         """
         x = self.map(input)
         x_gate = torch.sigmoid(x)
-        
+
         output = x * x_gate
-        
+
         return output
 
 class SiLU2d(nn.Module):
@@ -51,14 +51,14 @@ class SiLU2d(nn.Module):
             out_channels <int>
         """
         super().__init__()
-        
+
         if out_channels is None:
             out_channels = in_channels
-            
+
         self.in_channels, self.out_channels = in_channels, out_channels
 
         self.map = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation)
-        
+
     def forward(self, input):
         """
         Args:
@@ -68,9 +68,9 @@ class SiLU2d(nn.Module):
         """
         x = self.map(input)
         x_gate = torch.sigmoid(x)
-        
+
         output = x * x_gate
-        
+
         return output
 
 def _test_silu1d():

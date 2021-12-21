@@ -447,7 +447,7 @@ class AdhocTester(TesterBase):
 
                 for key, result in results.items():
                     test_results[key] += result
-        
+
         test_loss /= n_test
         test_sdr_improvement /= n_test
         test_sir_improvement /= n_test
@@ -491,7 +491,7 @@ class AdhocFinetuner(TrainerBase):
         os.makedirs(self.model_dir, exist_ok=True)
         os.makedirs(self.loss_dir, exist_ok=True)
         os.makedirs(self.sample_dir, exist_ok=True)
-        
+
         self.epochs = args.epochs
         self.train_loss, self.valid_loss = torch.empty(self.epochs), torch.empty(self.epochs)
 
@@ -666,7 +666,7 @@ class AdhocFinetuner(TrainerBase):
                 loss, _ = pit(self.criterion, estimated_sources_amplitude, target_amplitude, batch_mean=False)
                 loss = loss.sum(dim=0)
                 valid_loss += loss.item()
-                
+
                 if idx < 5:
                     mixture = mixture[0].cpu() # (1, n_bins, n_frames, 2)
                     mixture_amplitude = mixture_amplitude[0].cpu() # (1, n_bins, n_frames)

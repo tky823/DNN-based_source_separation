@@ -47,9 +47,9 @@ class CrossNetOpenUnmix(nn.Module):
             eps <float>: Small value for numerical stability
         """
         super().__init__()
-        
+
         net = {}
-        
+
         for source in sources:
             net[source] = OpenUnmix(in_channels, hidden_channels, num_layers=num_layers, n_bins=n_bins, max_bin=max_bin, dropout=dropout, causal=causal, rnn_type=rnn_type, eps=eps)
 
@@ -86,7 +86,7 @@ class CrossNetOpenUnmix(nn.Module):
         else:
             sections = [max_bin, n_bins - max_bin]
             x_valid, _ = torch.split(input, sections, dim=2)
-        
+
         for source in self.sources:
             self.backbone[source].rnn.flatten_parameters()
 
@@ -94,7 +94,7 @@ class CrossNetOpenUnmix(nn.Module):
             output = self.forward_bridge(input, x_valid)
         else:
             output = self.forward_no_bridge(input, x_valid)
-        
+
         return output
 
     def forward_no_bridge(self, input, x_valid):
@@ -112,7 +112,7 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
             x_sources.append(x_source)
-        
+
         x_sources_block = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
         x_sources = []
 
@@ -122,7 +122,7 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = torch.cat([x_source, x_source_lstm], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
             x_sources.append(x_source)
-        
+
         x_sources = torch.stack(x_sources, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
         output = []
 
@@ -135,11 +135,11 @@ class CrossNetOpenUnmix(nn.Module):
             x_source_full = self.backbone[source].relu2d(x_source_full)
             x_source = x_source_full * input
             output.append(x_source)
-        
+
         output = torch.stack(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
 
         return output
-    
+
     def forward_bridge(self, input, x_valid):
         n_bins, max_bin = self.n_bins, self.max_bin
         in_channels, hidden_channels, out_channels = self.in_channels, self.hidden_channels, self.out_channels
@@ -155,7 +155,7 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = self.backbone[source].block(x_source) # (batch_size * n_frames, hidden_channels)
             x_source = x_source.view(batch_size, n_frames, hidden_channels)
             x_sources.append(x_source)
-        
+
         x_sources_block = torch.stack(x_sources, dim=0) # (n_sources, batch_size, n_frames, hidden_channels)
         x_mean = x_sources_block.mean(dim=0) # (batch_size, n_frames, hidden_channels)
         x_sources = []
@@ -166,7 +166,7 @@ class CrossNetOpenUnmix(nn.Module):
             x_source = torch.cat([x_source, x_source_rnn], dim=2) # (batch_size, n_frames, hidden_channels + out_channels)
             x_source = x_source.view(batch_size * n_frames, hidden_channels + out_channels)
             x_sources.append(x_source)
-        
+
         x_sources = torch.stack(x_sources, dim=0) # (n_sources, batch_size * n_frames, hidden_channels + out_channels)
         x = x_sources.mean(dim=0) # (batch_size * n_frames, hidden_channels + out_channels)
         output = []
@@ -179,11 +179,11 @@ class CrossNetOpenUnmix(nn.Module):
             x_source_full = self.backbone[source].relu2d(x_source_full)
             x_source = x_source_full * input
             output.append(x_source)
-        
+
         output = torch.stack(output, dim=1) # (batch_size, n_sources, in_channels, n_bins, n_frames)
 
         return output
-    
+
     def get_config(self):
         config = {
             'in_channels': self.in_channels,
@@ -198,9 +198,9 @@ class CrossNetOpenUnmix(nn.Module):
             'sources': self.sources,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -232,13 +232,13 @@ class CrossNetOpenUnmix(nn.Module):
             bridge=bridge,
             eps=eps
         )
-        
+
         return model
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
         in_channels = config['in_channels']
         hidden_channels = config['hidden_channels']
         num_layers = config['num_layers']
@@ -251,7 +251,7 @@ class CrossNetOpenUnmix(nn.Module):
         sources = config['sources']
 
         eps = config.get('eps') or EPS
-        
+
         model = cls(
             in_channels,
             hidden_channels=hidden_channels,
@@ -267,9 +267,9 @@ class CrossNetOpenUnmix(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @classmethod
     def build_from_pretrained(cls, root="./pretrained", quiet=False, load_state_dict=True, **kwargs):
         from utils.utils import download_pretrained_model_from_google_drive
@@ -278,10 +278,10 @@ class CrossNetOpenUnmix(nn.Module):
 
         if not task in cls.pretrained_model_ids:
             raise KeyError("Invalid task ({}) is specified.".format(task))
-            
+
         pretrained_model_ids_task = cls.pretrained_model_ids[task]
         additional_attributes = {}
-        
+
         if task in ['musdb18', 'musdb18hq']:
             sample_rate = kwargs.get('sample_rate') or SAMPLE_RATE_MUSDB18
             config = kwargs.get('config') or "paper"
@@ -295,12 +295,12 @@ class CrossNetOpenUnmix(nn.Module):
         additional_attributes.update({
             'sample_rate': sample_rate
         })
-        
+
         model_path = os.path.join(download_dir, "model", "{}.pth".format(model_choice))
 
         if not os.path.exists(model_path):
             download_pretrained_model_from_google_drive(model_id, download_dir, quiet=quiet)
-        
+
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
         model = cls.build_model(model_path, load_state_dict=load_state_dict)
 
@@ -311,7 +311,7 @@ class CrossNetOpenUnmix(nn.Module):
                 'n_fft': config['n_fft'], 'hop_length': config['hop_length'],
                 'window_fn': config['window_fn'],
             })
-    
+
         for key, value in additional_attributes.items():
             setattr(model, key, value)
 
@@ -320,15 +320,15 @@ class CrossNetOpenUnmix(nn.Module):
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         return CrossNetOpenUnmixTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class CrossNetOpenUnmixTimeDomainWrapper(nn.Module):
@@ -339,14 +339,14 @@ class CrossNetOpenUnmixTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
         self.sources = self.base_model.sources
         self.eps = eps
-    
+
     def forward(self, input, iteration=1):
         """
         Args:

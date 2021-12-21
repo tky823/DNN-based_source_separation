@@ -31,7 +31,7 @@ class LaSAFT(nn.Module):
         self.key = nn.Parameter(torch.Tensor(hidden_dim, num_heads), requires_grad=True)
         self.transform_query = transform_query
         self.transform_value = transform_value
-        
+
         self._init_weights()
 
     def _init_weights(self):
@@ -65,7 +65,7 @@ class TFCLaSAFT(nn.Module):
         super().__init__()
 
         self.tfc2d = TFC2d(in_channels, growth_rate=growth_rate, kernel_size=kernel_size, num_layers=num_layers, nonlinear=nonlinear)
-        
+
         # LaSAFT
         transform_query = nn.Linear(embed_dim, hidden_dim)
         transform_value = nn.Sequential(
@@ -115,7 +115,7 @@ def _test_tfc_lasaft():
 
     model = TFCLaSAFT(in_channels, growth_rate=growth_rate, embed_dim=embed_dim, hidden_dim=hidden_dim, n_bins=n_bins, bottleneck_bins=bottleneck_bins, kernel_size=kernel_size, num_layers=num_layers, num_heads=num_heads)
     output = model(input, embedding=embedding)
-    
+
     print(model)
     print(input.size(), output.size())
 
@@ -134,7 +134,7 @@ def _test_tfc_light_saft():
 
     model = TFCLightSAFT(in_channels, growth_rate=growth_rate, embed_dim=embed_dim, hidden_dim=hidden_dim, n_bins=n_bins, bottleneck_bins=bottleneck_bins, kernel_size=kernel_size, num_layers=num_layers, num_heads=num_heads)
     output = model(input, embedding=embedding)
-    
+
     print(model)
     print(input.size(), output.size())
 

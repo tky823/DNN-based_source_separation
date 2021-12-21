@@ -25,10 +25,10 @@ parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 
 def main(args):
     test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
-    
+
     args.n_bins = args.n_fft // 2 + 1
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    
+
     if args.method == 'ibm':
         method = IdealBinaryMasking(args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn)
     elif args.method == 'irm':
@@ -43,7 +43,7 @@ def main(args):
         criterion = NegSISDR()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     tester = AdhocTester(method, loader, criterion, args)
     tester.run()
 

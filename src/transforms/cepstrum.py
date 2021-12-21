@@ -7,12 +7,12 @@ EPS = 1e-12
 def real_cepstrum(input, n_fft=None, minimum_distortion=False, eps=EPS):
     if torch.is_complex(input):
         raise ValueError("input should be real.")
-    
+
     if n_fft is None:
         n_fft = input.size(-1)
-    
+
     cepstrum = torch.fft.irfft(torch.log(torch.abs(torch.fft.rfft(input, n_fft)) + eps), n_fft)
-    
+
     if minimum_distortion:
         odd = n_fft % 2
         ones_left, ones_center, ones_right = torch.ones(1), torch.ones((n_fft + odd) // 2 - 1), torch.ones(1 - odd)
@@ -20,7 +20,7 @@ def real_cepstrum(input, n_fft=None, minimum_distortion=False, eps=EPS):
         window = torch.cat([ones_left, 2 * ones_center, ones_right, zeros])
         window = window.to(cepstrum.device)
         cepstrum = torch.fft.irfft(torch.exp(torch.fft.rfft(window * cepstrum, n_fft)), n_fft)
-    
+
     return cepstrum
 
 def compute_cepsptrogram(input, n_fft, hop_length=None, win_length=None, window=None, center=True, pad_mode='reflect', normalized=False, eps=EPS):
@@ -32,12 +32,12 @@ def compute_cepsptrogram(input, n_fft, hop_length=None, win_length=None, window=
     """
     if torch.is_complex(input):
         raise ValueError("input should be real.")
-    
+
     assert not normalized, "normalized is expected to be False."
-    
+
     spectrogram = stft(input, n_fft, hop_length=hop_length, win_length=win_length, window=window, center=center, pad_mode=pad_mode, normalized=normalized, onesided=True, return_complex=True)
     output = spectrogram_to_cepsptrogram(spectrogram, n_fft=n_fft, domain=1, onesided=True, eps=eps)
-    
+
     return output
 
 def spectrogram_to_cepsptrogram(input, n_fft=None, domain=1, onesided=True, eps=EPS):
@@ -54,7 +54,7 @@ def spectrogram_to_cepsptrogram(input, n_fft=None, domain=1, onesided=True, eps=
         amplitude_spectrogram = torch.abs(input)
     else:
         amplitude_spectrogram = input ** (1 / domain)
-    
+
     if n_fft is None:
         n_bins = input.size(-2)
         n_fft = 2 * (n_bins - 1)
@@ -66,7 +66,7 @@ def spectrogram_to_cepsptrogram(input, n_fft=None, domain=1, onesided=True, eps=
 
     sections = [n_bins, n_fft - n_bins]
     output, _ = torch.split(cepsptrogram, sections, dim=-2)
-    
+
     return output
 
 def cepsptrogram_to_amplitude(input, n_fft=None, onesided=True):
@@ -79,7 +79,7 @@ def cepsptrogram_to_amplitude(input, n_fft=None, onesided=True):
     assert onesided, "onesided should be True."
 
     n_bins = input.size(-2)
-    
+
     if n_fft is None:
         n_fft = 2 * (n_bins - 1)
     else:
@@ -90,7 +90,7 @@ def cepsptrogram_to_amplitude(input, n_fft=None, onesided=True):
     sections = [n_bins, n_fft - n_bins]
     log_amplitude_spectrogram, _ = torch.split(log_amplitude_spectrogram, sections, dim=-2)
     output = torch.exp(log_amplitude_spectrogram)
-    
+
     return output
 
 def _test_rceps():

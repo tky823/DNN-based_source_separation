@@ -10,7 +10,7 @@ import torch.nn as nn
 from utils.utils import set_seed
 from dataset import IdealMaskSpectrogramTestDataset, IdealMaskSpectrogramTestDataLoader
 from adhoc_driver import AdhocTester
-from models.deep_clustering import DeepEmbedding
+from models.deep_clustering import DeepClustering
 from criterion.deep_clustering import AffinityLoss
 from criterion.sdr import NegSISDR
 from adhoc_criterion import AffinityLossWrapper, Metrics
@@ -36,17 +36,17 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     test_dataset = IdealMaskSpectrogramTestDataset(args.test_wav_root, args.test_list_path, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, mask_type=args.ideal_mask, threshold=args.threshold, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
-    
+
     args.n_bins = args.n_fft // 2 + 1
     loader = IdealMaskSpectrogramTestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    model = DeepEmbedding.build_model(args.model_path)
-    
+    model = DeepClustering.build_model(args.model_path)
+
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -56,7 +56,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA", flush=True)
-    
+
     # Criterion
     if args.criterion == 'affinity':
         criterion = AffinityLoss()
@@ -70,7 +70,7 @@ def main(args):
 
     if args.iter_clustering < 0:
         args.iter_clustering = None # Iterates until convergence
-    
+
     tester = AdhocTester(model, loader, wrapper_criterion, metrics, args)
     tester.run()
 

@@ -29,7 +29,7 @@ class ParallelMMDenseNet(nn.Module):
             modules = nn.ModuleDict(modules)
         else:
             raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
-    
+
         in_channels = None
         sources = list(modules.keys())
 
@@ -37,12 +37,12 @@ class ParallelMMDenseNet(nn.Module):
             module = modules[key]
             if not isinstance(module, MMDenseNet):
                 raise ValueError("All modules must be MMDenseNet.")
-            
+
             if in_channels is None:
                 in_channels = module.in_channels
             else:
                 assert in_channels == module.in_channels, "`in_channels` are different among modules."
-        
+
         self.net = modules
 
         self.in_channels = in_channels
@@ -70,9 +70,9 @@ class ParallelMMDenseNet(nn.Module):
         else:
             if type(target) is not str:
                 raise TypeError("`target` is expected str, but given {}".format(type(target)))
-            
+
             assert input.dim() == 4, "input is expected 4D, but given {}.".format(input.dim())
-        
+
             output = self.net[target](input)
 
         return output
@@ -80,15 +80,15 @@ class ParallelMMDenseNet(nn.Module):
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann', eps=EPS):
         return ParallelMMDenseNetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn, eps=eps)
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class ParallelMMDenseNetTimeDomainWrapper(nn.Module):
@@ -99,13 +99,13 @@ class ParallelMMDenseNetTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
 
         self.eps = eps
-    
+
     def forward(self, input, iteration=1):
         """
         Args:
@@ -115,7 +115,7 @@ class ParallelMMDenseNetTimeDomainWrapper(nn.Module):
             output <torch.Tensor>: (batch_size, n_sources, in_channels, T)
         """
         assert input.dim() == 4, "input is expected 4D input."
-        
+
         T = input.size(-1)
         eps = self.eps
 
@@ -127,7 +127,7 @@ class ParallelMMDenseNetTimeDomainWrapper(nn.Module):
         for target in self.sources:
             _estimated_amplitude = self.base_model(mixture_amplitude.squeeze(dim=1), target=target)
             estimated_amplitude.append(_estimated_amplitude)
-        
+
         estimated_amplitude = torch.stack(estimated_amplitude, dim=1)
         estimated_spectrogram = multichannel_wiener_filter(mixture_spectrogram, estimated_sources_amplitude=estimated_amplitude, iteration=iteration, eps=eps)
         output = istft(estimated_spectrogram, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, onesided=True, return_complex=False, length=T)
@@ -185,7 +185,7 @@ class MMDenseNet(nn.Module):
                 out_channels=_out_channels,
                 eps=eps
             )
-        
+
         net[FULL] = MDenseNetBackbone(
             in_channels, num_features[FULL], growth_rate[FULL],
             kernel_size[FULL], scale=scale[FULL],
@@ -197,7 +197,7 @@ class MMDenseNet(nn.Module):
         self.net = nn.ModuleDict(net)
 
         _in_channels = out_channels + growth_rate[FULL][-1] # channels for 'low' & 'middle' + channels for 'full'
-        
+
         if kernel_size_final is None:
             kernel_size_final = kernel_size
 
@@ -215,7 +215,7 @@ class MMDenseNet(nn.Module):
         self.scale = scale
         self.dilated, self.norm, self.nonlinear = dilated, norm, nonlinear
         self.depth = depth
-        
+
         self.growth_rate_final = growth_rate_final
         self.kernel_size_final = kernel_size_final
         self.dilated_final = dilated_final
@@ -223,9 +223,9 @@ class MMDenseNet(nn.Module):
         self.norm_final, self.nonlinear_final = norm_final, nonlinear_final
 
         self.eps = eps
-        
+
         self._reset_parameters()
-    
+
     def forward(self, input):
         """
         Args:
@@ -251,11 +251,9 @@ class MMDenseNet(nn.Module):
         for band, x_band in zip(bands, x):
             x_band = self.net[band](x_band)
             x_bands.append(x_band)
-        
-        x_bands = torch.cat(x_bands, dim=2)
-    
-        x_full = self.net[FULL](x_valid)
 
+        x_bands = torch.cat(x_bands, dim=2)
+        x_full = self.net[FULL](x_valid)
         x = torch.cat([x_bands, x_full], dim=1)
 
         x = self.dense_block(x)
@@ -278,23 +276,23 @@ class MMDenseNet(nn.Module):
             output = torch.cat([x, x_invalid], dim=2)
 
         return output
-    
+
     def transform_affine_in(self, input):
         eps = self.eps
         output = (input - self.bias_in.unsqueeze(dim=1)) / (torch.abs(self.scale_in.unsqueeze(dim=1)) + eps)
 
         return output
-    
+
     def transform_affine_out(self, input):
         output = self.scale_out.unsqueeze(dim=1) * input + self.bias_out.unsqueeze(dim=1)
         return output
-    
+
     def _reset_parameters(self):
         self.scale_in.data.fill_(1)
         self.bias_in.data.zero_()
         self.scale_out.data.fill_(1)
         self.bias_out.data.zero_()
-    
+
     def get_config(self):
         config = {
             'in_channels': self.in_channels, 'num_features': self.num_features,
@@ -311,9 +309,9 @@ class MMDenseNet(nn.Module):
             'norm_final': self.norm_final, 'nonlinear_final': self.nonlinear_final,
             'eps': self.eps
         }
-        
+
         return config
-    
+
     @classmethod
     def build_from_config(cls, config_path):
         with open(config_path, 'r') as f:
@@ -373,13 +371,13 @@ class MMDenseNet(nn.Module):
             norm_final=norm_final, nonlinear_final=nonlinear_final,
             eps=eps
         )
-        
+
         return model
-    
+
     @classmethod
     def build_model(cls, model_path, load_state_dict=False):
         config = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
         in_channels, num_features = config['in_channels'], config['num_features']
         growth_rate = config['growth_rate']
 
@@ -397,7 +395,7 @@ class MMDenseNet(nn.Module):
         norm_final, nonlinear_final = config['norm_final'] or True, config['nonlinear_final']
 
         eps = config.get('eps') or EPS
-        
+
         model = cls(
             in_channels, num_features,
             growth_rate,
@@ -416,9 +414,9 @@ class MMDenseNet(nn.Module):
 
         if load_state_dict:
             model.load_state_dict(config['state_dict'])
-        
+
         return model
-    
+
     @classmethod
     def TimeDomainWrapper(cls, base_model, n_fft, hop_length=None, window_fn='hann'):
         return MMDenseNetTimeDomainWrapper(base_model, n_fft, hop_length=hop_length, window_fn=window_fn)
@@ -426,11 +424,11 @@ class MMDenseNet(nn.Module):
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-                
+
         return _num_parameters
 
 class MMDenseNetTimeDomainWrapper(nn.Module):
@@ -441,11 +439,11 @@ class MMDenseNetTimeDomainWrapper(nn.Module):
 
         if hop_length is None:
             hop_length = n_fft // 4
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         window = build_window(n_fft, window_fn=window_fn)
         self.window = nn.Parameter(window, requires_grad=False)
-    
+
     def forward(self, input):
         """
         Args:
@@ -471,7 +469,7 @@ def _test_mm_densenet():
 
     input = torch.randn(batch_size, in_channels, n_bins, n_frames)
     model = MMDenseNet.build_from_config(config_path)
-    
+
     output = model(input)
 
     print(model)

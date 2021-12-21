@@ -23,7 +23,7 @@ def main(args):
 
     submission = UMXPredictor(args)
     submission.run()
-    
+
     print("Successfully generated predictions!")
 
 if __name__ == '__main__':

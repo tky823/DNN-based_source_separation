@@ -42,8 +42,8 @@ finetune=1 # If you don't want to use fintuned model, set `finetune=0`.
 model_choice="best"
 
 batch_size=128
-epochs_train=50
-epochs_finetune=50
+epochs_train=100
+epochs_finetune=100
 
 use_cuda=1
 overwrite=0

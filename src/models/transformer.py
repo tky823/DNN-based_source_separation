@@ -21,7 +21,7 @@ class PositionalEncoding(nn.Module):
         else:
             positional_encoding = positional_encoding.view(max_len, 1, num_features)
 
-        self.positional_encoding = nn.Parameter(positional_encoding, requires_grad=False)
+        self.register_buffer("positional_encoding", positional_encoding)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, input):
@@ -37,7 +37,7 @@ class PositionalEncoding(nn.Module):
         else:
             T = input.size(0)
             x = input + self.positional_encoding[:T]
-        
+
         output = self.dropout(x)
 
         return output
@@ -54,5 +54,5 @@ def _test():
 
 if __name__ == '__main__':
     torch.manual_seed(111)
-    
+
     _test()

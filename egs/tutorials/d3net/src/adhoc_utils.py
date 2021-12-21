@@ -23,7 +23,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
     patch_size = config['patch_size']
     n_fft, hop_length = config['n_fft'], config['hop_length']
     window = torch.hann_window(n_fft)
-    
+
     if use_cuda:
         model.cuda()
         print("Uses CUDA")
@@ -45,7 +45,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
 
         if pre_resampler is not None:
             x = pre_resampler(x)
-        
+
         mixture = torch.stft(x, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
         padding = (patch_size - mixture.size(-1) % patch_size) % patch_size
 
@@ -60,9 +60,9 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
 
         with torch.no_grad():
             batch_size, _, n_mics, n_bins, n_frames = mixture.size()
-            
+
             mixture_amplitude = torch.abs(mixture)
-            
+
             estimated_sources_amplitude = []
 
             # Serial operation
@@ -75,7 +75,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
                     _mixture_amplitude = torch.cat([_mixture_amplitude, _mixture_amplitude_flipped], dim=0)
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
-                
+
                 _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=1) # (n_flips, 1, n_mics, n_bins, n_frames)
                 _estimated_sources_amplitude = model(_mixture_amplitude) # (n_flips, n_sources, n_mics, n_bins, n_frames)
 
@@ -88,7 +88,7 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
                     _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
-                
+
                 estimated_sources_amplitude.append(_estimated_sources_amplitude)
 
             estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (batch_size, n_sources, n_mics, n_bins, n_frames)
@@ -106,15 +106,15 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
                 estimated_sources = mask * mixture # (n_sources, n_mics, n_bins, batch_size * n_frames)
             else:
                 estimated_sources = apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
-            
+
             estimated_sources_channels = estimated_sources.size()[:-2]
 
             estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
             y = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, return_complex=False)
-            
+
             if post_resampler is not None:
                 y = post_resampler(y)
-            
+
             y = y.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
             T_pad = y.size(-1)
             y = F.pad(y, (0, T_original - T_pad)) # -> (n_sources, n_mics, T_original)
@@ -127,9 +127,9 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
                 path = os.path.join(out_dir, "{}.wav".format(source))
                 torchaudio.save(path, y[idx], sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 _estimated_paths[source] = path
-            
+
             estimated_paths.append(_estimated_paths)
-            
+
     return estimated_paths
 
 def load_pretrained_model(model_paths, jit=False):
@@ -143,7 +143,7 @@ def load_pretrained_model(model_paths, jit=False):
             modules[source] = D3Net.build_model(model_path, load_state_dict=True)
 
         model = ParallelD3Net(modules)
-    
+
     return model
 
 def load_pretrained_model_jit(model_paths, in_channels=2, n_bins=2049, patch_size=256):
@@ -157,7 +157,7 @@ def load_pretrained_model_jit(model_paths, in_channels=2, n_bins=2049, patch_siz
         modules[source] = torch.jit.trace(module, example_inputs=input)
 
     model = ParallelD3Net(modules)
-    
+
     return model
 
 def load_experiment_config(config_paths):
@@ -175,14 +175,14 @@ def load_experiment_config(config_paths):
             if sample_rate is not None:
                 assert sample_rate == config['sample_rate'], "Invalid sampling rate."
             sample_rate = config['sample_rate']
-        
+
         if patch_size is None:
             patch_size = config.get('patch_size')
         elif config.get('patch_size') is not None:
             if patch_size is not None:
                 assert patch_size == config['patch_size'], "Invalid patch_size."
             patch_size = config['patch_size']
-        
+
         if n_fft is None:
             n_fft = config.get('n_fft')
         elif config.get('n_fft') is not None:

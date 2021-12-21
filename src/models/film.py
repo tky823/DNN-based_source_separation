@@ -26,7 +26,7 @@ class FiLM(nn.Module):
 
         gamma = gamma.view(*dims)
         beta = beta.view(*dims)
-        
+
         return gamma * input + beta
 
 class FiLM1d(FiLM):
@@ -66,7 +66,7 @@ class FiLM2d(FiLM):
 
         gamma = gamma.view(*dims)
         beta = beta.view(*dims)
-        
+
         return gamma * input + beta
 
 class FiLM3d(FiLM):
@@ -86,7 +86,7 @@ class FiLM3d(FiLM):
 
         gamma = gamma.view(*dims)
         beta = beta.view(*dims)
-        
+
         return gamma * input + beta
 
 def _test_film1d():

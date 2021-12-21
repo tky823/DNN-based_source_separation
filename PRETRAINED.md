@@ -1,7 +1,8 @@
 # Pretrained Models
 | Model | Dataset | Example |
 |:---:|:---:|:---:|
-| DeepClustering | WSJ0-2mix | `model = DeepEmbedding.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DeepClustering | WSJ0-2mix | `model = DeepClustering.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
+| DeepClustering | WSJ0-3mix | `model = DeepClustering.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DANet | WSJ0-2mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | DANet | WSJ0-3mix | `model = DANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |
 | DANet (fixed attractor) | WSJ0-2mix | `model = FixedAttractorDANet.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
@@ -32,5 +33,7 @@
 | CrossNet-Open-Unmix | MUSDB18 | `model = CrossNetOpenUnmix.build_from_pretrained(task="musdb18", sample_rate=44100)` |
 | D3Net | MUSDB18 | `model = D3Net.build_from_pretrained(task="musdb18", sample_rate=44100, target="vocals")` |
 | D3Net (bass, drums, other, vocals) | MUSDB18 | `model = ParallelD3Net.build_from_pretrained(task="musdb18", sample_rate=44100)` |
+| D3Net | MUSDB18-HQ | `model = D3Net.build_from_pretrained(task="musdb18hq", sample_rate=44100, target="vocals")` |
+| D3Net (bass, drums, other, vocals) | MUSDB18-HQ | `model = ParallelD3Net.build_from_pretrained(task="musdb18hq", sample_rate=44100)` |
 | SepFormer | WSJ0-2mix | `model = SepFormer.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=2)` |
 | SepFormer | WSJ0-3mix | `model = SepFormer.build_from_pretrained(task="wsj0-mix", sample_rate=8000, n_sources=3)` |

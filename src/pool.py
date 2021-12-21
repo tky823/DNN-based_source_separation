@@ -23,7 +23,7 @@ def median_pool2d(input, kernel_size, stride=1, padding=0, dilation=1, return_in
 
     if ceil_mode:
         raise NotImplementedError("Set ceil_mode=False.")
-    
+
     return output
 
 class MedianPool2d(nn.Module):
@@ -34,7 +34,7 @@ class MedianPool2d(nn.Module):
         self.padding, self.dilation = padding, dilation
         self.return_indices = return_indices
         self.ceil_mode = ceil_mode
-    
+
     def forward(self, input):
         output = median_pool2d(input, self.kernel_size, stride=self.stride, padding=self.padding, dilation=self.dilation, return_indices=self.return_indices, ceil_mode=self.ceil_mode)
         return output

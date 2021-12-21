@@ -30,7 +30,7 @@ def separate(waveform, umx, n_fft=4096, hop_length=1024, window_fn='hann', patch
         estimates <dict<torch.Tensor>>: All estimates obtained by the separation model.
     """
     window = build_window(n_fft, window_fn=window_fn)
-    
+
     n_mics, T = waveform.size()
     mixture = torch.stft(waveform, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
     padding = (patch_size - mixture.size(-1) % patch_size) % patch_size
@@ -44,9 +44,9 @@ def separate(waveform, umx, n_fft=4096, hop_length=1024, window_fn='hann', patch
 
     with torch.no_grad():
         batch_size, _, _, n_bins, n_frames = mixture.size()
-        
+
         mixture_amplitude = torch.abs(mixture)
-        
+
         estimated_sources_amplitude = {
             target: [] for target in sources
         }
@@ -57,7 +57,7 @@ def separate(waveform, umx, n_fft=4096, hop_length=1024, window_fn='hann', patch
             for target in sources:
                 _estimated_source_amplitude = umx(_mixture_amplitude, target=target)
                 estimated_sources_amplitude[target].append(_estimated_source_amplitude)
-    
+
         estimated_sources_amplitude = [
             torch.cat(estimated_sources_amplitude[target], dim=0).unsqueeze(dim=0) for target in sources
         ]
@@ -101,7 +101,7 @@ class UMXPredictor(MusicDemixingPredictor):
             if not os.path.exists(model_path):
                 raise FileNotFoundError("Cannot find {}.".format(model_path))
             modules[source] = OpenUnmix.build_model(model_path, load_state_dict=True)
-        
+
         self.separator = ParallelOpenUnmix(modules)
         self.separator.eval()
 
@@ -123,7 +123,7 @@ class UMXPredictor(MusicDemixingPredictor):
         }
         for target, path in target_file_map.items():
             torchaudio.save(path, estimates[target], rate, bits_per_sample=BITS_PER_SAMPLE)
-        
+
         end = time.time()
 
         print("{:.3f} [sec]".format(end - start))

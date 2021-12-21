@@ -33,7 +33,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                 assert target in sources, "`sources` doesn't contain target {}".format(target)
         else:
             target = sources
-        
+
         self.musdb18_root = os.path.abspath(musdb18_root)
         self.tracks = []
 
@@ -80,7 +80,7 @@ class WaveDataset(MUSDB18Dataset):
                 sources.append(source.unsqueeze(dim=0))
             sources = torch.cat(sources, dim=0)
             mixture = sources.sum(dim=0)
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -118,7 +118,7 @@ class WaveTrainDataset(WaveDataset):
 
                 if (not include_valid) and name in valid_lst:
                     continue
-                
+
                 names.append(name)
 
         if overlap is None:
@@ -143,7 +143,7 @@ class WaveTrainDataset(WaveDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             for start in range(0, track_samples, samples - overlap):
@@ -155,7 +155,7 @@ class WaveTrainDataset(WaveDataset):
                     'samples': samples,
                 }
                 self.json_data.append(data)
-        
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -163,7 +163,7 @@ class WaveTrainDataset(WaveDataset):
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
         """
         mixture, target, _ = super().__getitem__(idx)
-        
+
         return mixture, target
 
 class WaveEvalDataset(WaveDataset):
@@ -207,7 +207,7 @@ class WaveEvalDataset(WaveDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             data = {
@@ -217,7 +217,7 @@ class WaveEvalDataset(WaveDataset):
             }
 
             self.json_data.append(data)
-        
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -225,7 +225,7 @@ class WaveEvalDataset(WaveDataset):
             target <torch.Tensor>: (len(target), n_mics, T) if `target` is list, otherwise (n_mics, T)
         """
         mixture, target, _ = super().__getitem__(idx)
-        
+
         return mixture, target
 
 class WaveTestDataset(WaveDataset):
@@ -239,7 +239,7 @@ class WaveTestDataset(WaveDataset):
             for line in f:
                 name = line.strip()
                 names.append(name)
-        
+
         self.tracks = []
         self.json_data = []
 
@@ -259,7 +259,7 @@ class WaveTestDataset(WaveDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             data = {
@@ -276,7 +276,7 @@ class SpectrogramDataset(WaveDataset):
 
         if hop_length is None:
             hop_length = n_fft // 2
-        
+
         self.n_fft, self.hop_length = n_fft, hop_length
         self.n_bins = n_fft // 2 + 1
 
@@ -284,7 +284,7 @@ class SpectrogramDataset(WaveDataset):
             self.window = build_window(n_fft, window_fn=window_fn)
         else:
             self.window = None
-        
+
         self.normalize = normalize
 
     def _is_active(self, input, threshold=1e-5):
@@ -301,7 +301,7 @@ class SpectrogramDataset(WaveDataset):
             return True
         else:
             return False
-        
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -311,7 +311,7 @@ class SpectrogramDataset(WaveDataset):
             name <str>: Artist and title of track
         """
         mixture, target, name = super().__getitem__(idx)
-        
+
         T = mixture.size(-1)
 
         mixture = stft(mixture, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (1, n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
@@ -322,7 +322,7 @@ class SpectrogramDataset(WaveDataset):
 class SpectrogramTrainDataset(SpectrogramDataset):
     def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, samples=4*SAMPLE_RATE_MUSDB18, overlap=None, sources=__sources__, target=None, include_valid=False):
         super().__init__(musdb18_root, n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
-        
+
         assert_sample_rate(sample_rate)
 
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
@@ -339,7 +339,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
                 if (not include_valid) and name in valid_lst:
                     continue
-                
+
                 names.append(name)
 
         if overlap is None:
@@ -364,7 +364,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             for start in range(0, track_samples, samples - overlap):
@@ -376,7 +376,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
                     'samples': samples,
                 }
                 self.json_data.append(data)
-        
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -384,7 +384,7 @@ class SpectrogramTrainDataset(SpectrogramDataset):
             target <torch.Tensor>: Complex tensor with shape (len(target), n_mics, n_bins, n_frames) if `target` is list, otherwise (n_mics, n_bins, n_frames)
         """
         mixture, target, _, _ = super().__getitem__(idx)
-        
+
         return mixture, target
 
 class SpectrogramEvalDataset(SpectrogramDataset):
@@ -425,7 +425,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             data = {
@@ -435,7 +435,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             }
 
             self.json_data.append(data)
-        
+
     def __getitem__(self, idx):
         """
         Returns:
@@ -445,7 +445,7 @@ class SpectrogramEvalDataset(SpectrogramDataset):
             name <str>: Artist and title of track
         """
         mixture, sources, T, name = super().__getitem__(idx)
-        
+
         return mixture, sources, T, name
 
 class SpectrogramTestDataset(SpectrogramDataset):
@@ -489,7 +489,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             data = {
@@ -509,7 +509,7 @@ class SpectrogramTestDataset(SpectrogramDataset):
             name <str>: Artist and title of track
         """
         mixture, sources, T, name = super().__getitem__(idx)
-        
+
         return mixture, sources, T, name
 
 """
@@ -545,7 +545,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
 
                 if (not include_valid) and name in valid_lst:
                     continue
-                
+
                 names.append(name)
 
         self.sample_rate = sample_rate
@@ -573,7 +573,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
                 
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                
+
                 self.tracks.append(track)
 
                 track_duration = track_samples / track_sample_rate
@@ -634,7 +634,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
             mixture, target = self._getitem_augmentation()
         else:
             raise NotImplementedError("Implement _getitem()")
-        
+
         if self.pre_resampler is not None:
             mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
             mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
@@ -670,7 +670,7 @@ class AugmentationWaveTrainDataset(WaveDataset):
             # Apply augmentation
             source = self.augmentation(source)
             sources.append(source.unsqueeze(dim=0))
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -700,7 +700,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
     """
     def __init__(self, musdb18_root, n_fft, hop_length=None, window_fn='hann', normalize=False, sample_rate=SAMPLE_RATE_MUSDB18, patch_samples=6*SAMPLE_RATE_MUSDB18, overlap=None, samples_per_epoch=None, sources=__sources__, target=None, include_valid=False, augmentation=None):
         super().__init__(musdb18_root, n_fft=n_fft, hop_length=hop_length, window_fn=window_fn, normalize=normalize, sample_rate=sample_rate, sources=sources, target=target)
-        
+
         valid_txt_path = os.path.join(musdb18_root, 'validation.txt')
         train_txt_path = os.path.join(musdb18_root, 'train.txt')
 
@@ -715,9 +715,9 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
 
                 if (not include_valid) and name in valid_lst:
                     continue
-                
+
                 names.append(name)
-        
+
         self.patch_samples = patch_samples
 
         self.augmentation = augmentation
@@ -741,10 +741,10 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
                         'mixture': mixture_path
                     }
                 }
-                
+
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                
+
                 self.tracks.append(track)
 
                 track_duration = track_samples / track_sample_rate
@@ -758,7 +758,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
         else:
             if overlap is None:
                 overlap = patch_samples // 2
-            
+
             self.samples_per_epoch = None
 
             for trackID, name in enumerate(names):
@@ -777,7 +777,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
 
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                
+
                 self.tracks.append(track)
 
                 for start in range(0, track_samples, patch_samples - overlap):
@@ -805,15 +805,15 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
         target = stft(target, n_fft=self.n_fft, hop_length=self.hop_length, window=self.window, normalized=self.normalize, return_complex=True) # (len(sources), n_mics, n_bins, n_frames) or (n_mics, n_bins, n_frames)
 
         return mixture, target
-    
+
     def __len__(self):
         if self.augmentation:
             return self.samples_per_epoch
         else:
             source = self.sources[0]
-            
+
             return len(self.json_data[source])
-    
+
     def _getitem(self, idx):
         """
         Returns time domain signals
@@ -826,7 +826,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
         mixture, target, _, _ = super().__getitem__(idx)
 
         return mixture, target
-    
+
     def _getitem_augmentation(self):
         """
         Returns time domain signals
@@ -851,7 +851,7 @@ class AugmentationSpectrogramTrainDataset(SpectrogramDataset):
             # Apply augmentation
             source = self.augmentation(source)
             sources.append(source.unsqueeze(dim=0))
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -882,34 +882,34 @@ class TrainDataLoader(torch.utils.data.DataLoader):
 class EvalDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
 
 class TestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
-        
+
         self.collate_fn = test_collate_fn
 
 def test_collate_fn(batch):
     batched_mixture, batched_sources = None, None
     batched_segment_ID = []
-    
+
     for mixture, sources, segmend_ID in batch:
         mixture = mixture.unsqueeze(dim=0)
         sources = sources.unsqueeze(dim=0)
-        
+
         if batched_mixture is None:
             batched_mixture = mixture
             batched_sources = sources
         else:
             batched_mixture = torch.cat([batched_mixture, mixture], dim=0)
             batched_sources = torch.cat([batched_sources, sources], dim=0)
-        
+
         batched_segment_ID.append(segmend_ID)
-    
+
     return batched_mixture, batched_sources, batched_segment_ID
 
 def assert_sample_rate(sample_rate):
@@ -917,19 +917,19 @@ def assert_sample_rate(sample_rate):
 
 def _test_train_dataset():
     torch.manual_seed(111)
-    
+
     musdb18_root = "../../../../../db/musdb18"
-    
+
     dataset = WaveTrainDataset(musdb18_root, duration=4, sources=__sources__)
     loader = TrainDataLoader(dataset, batch_size=6, shuffle=True)
-    
+
     for mixture, sources in loader:
         print(mixture.size(), sources.size())
         break
 
     dataset = SpectrogramTrainDataset(musdb18_root, n_fft=2048, hop_length=512, sample_rate=8000, duration=4, sources=__sources__)
     loader = TrainDataLoader(dataset, batch_size=6, shuffle=True)
-    
+
     for mixture, sources in loader:
         print(mixture.size(), sources.size())
         break
