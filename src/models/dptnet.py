@@ -14,7 +14,7 @@ EPS = 1e-12
 
 class DPTNet(nn.Module):
     """
-    Dual-path transformer based network
+        Dual-path transformer based network
     """
     pretrained_model_ids = {
         "wsj0-mix": {

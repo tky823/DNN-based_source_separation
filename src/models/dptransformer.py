@@ -159,7 +159,7 @@ class MultiheadAttentionBlock(nn.Module):
             self.dropout = False
         else:
             self.dropout = True
-        
+
         self.norm = norm
 
         self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)

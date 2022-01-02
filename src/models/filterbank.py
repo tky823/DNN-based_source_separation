@@ -219,8 +219,6 @@ class Encoder(nn.Module):
         else:
             self.nonlinear = False
 
-        # self._init_weights()
-
     def forward(self, input):
         x = self.conv1d(input)
 
@@ -230,9 +228,6 @@ class Encoder(nn.Module):
             output = x
 
         return output
-
-    def _init_weights(self):
-        nn.init.xavier_normal_(self.conv1d.weight)
 
     def get_basis(self):
         basis = self.conv1d.weight
@@ -247,14 +242,9 @@ class Decoder(nn.Module):
 
         self.conv_transpose1d = nn.ConvTranspose1d(n_basis, out_channels, kernel_size=kernel_size, stride=stride, bias=False)
 
-        # self._init_weights()
-
     def forward(self, input):
         output = self.conv_transpose1d(input)
         return output
-
-    def _init_weights(self):
-        nn.init.xavier_normal_(self.conv_transpose1d.weight)
 
     def get_basis(self):
         basis = self.conv_transpose1d.weight
@@ -344,8 +334,6 @@ class GatedEncoder(nn.Module):
         self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
-        # self._init_weights()
-
     def forward(self, input):
         eps = self.eps
 
@@ -356,10 +344,6 @@ class GatedEncoder(nn.Module):
         output = self.relu(x_U) * self.sigmoid(x_V)
 
         return output
-
-    def _init_weights(self):
-        nn.init.xavier_normal_(self.conv1d_U.weight)
-        nn.init.xavier_normal_(self.conv1d_V.weight)
 
 def _test_filterbank():
     batch_size = 2
