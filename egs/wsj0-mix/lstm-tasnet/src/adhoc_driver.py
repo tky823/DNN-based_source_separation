@@ -147,10 +147,9 @@ class FinetuneTrainer(TrainerBase):
 
         config['optim_dict'] = self.optimizer.state_dict()
 
+        config['no_improvement'] = self.no_improvement
         config['best_loss'] = self.best_loss
-
-        config['train_loss'] = self.train_loss
-        config['valid_loss'] = self.valid_loss
+        config['train_loss'], config['valid_loss'] = self.train_loss, self.valid_loss
 
         config['epoch'] = epoch + 1
         config['is_finetune'] = True # For finetuner

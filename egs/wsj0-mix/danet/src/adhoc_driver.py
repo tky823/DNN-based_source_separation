@@ -607,9 +607,6 @@ class AdhocFinetuneTrainer(TrainerBase):
                 draw_loss_curve(train_loss=self.train_loss[:epoch + 1], save_path=save_path)
 
     def run_one_epoch(self, epoch):
-        """
-        Training
-        """
         train_loss = self.run_one_epoch_train(epoch)
 
         if self.valid_loader is not None:
@@ -631,8 +628,7 @@ class AdhocFinetuneTrainer(TrainerBase):
 
         for idx, (mixture, sources, ideal_mask, threshold_weight) in enumerate(self.train_loader):
             if self.use_cuda:
-                mixture = mixture.cuda()
-                sources = sources.cuda()
+                mixture, sources = mixture.cuda(), sources.cuda()
                 ideal_mask = ideal_mask.cuda()
                 threshold_weight = threshold_weight.cuda()
 
