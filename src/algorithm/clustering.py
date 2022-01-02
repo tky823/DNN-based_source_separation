@@ -554,7 +554,7 @@ class GMMClustering(GMMCluteringBase):
 
         if n_dims == 2:
             data = data.unsqueeze(dim=0) # (batch_size, num_samples, num_features), where batch_size = 1.
-        
+
         if self.training:
             if self.centroids is None or self.cov_matrix is None or self.mix_coeff is None:
                 self.centroids, self.cov_matrix, self.mix_coeff = self._init_GMM(data)
@@ -593,7 +593,7 @@ class GMMClustering(GMMCluteringBase):
             cluster_ids = torch.argmax(self.cluster_probs, dim=2) # (batch_size, num_samples)
 
         return cluster_ids
-        
+
     def update_once(self, data, cluster_probs, centroids=None, cov_matrix=None, mix_coeff=None):
         """
         Args:
