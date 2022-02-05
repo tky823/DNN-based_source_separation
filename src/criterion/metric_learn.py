@@ -148,6 +148,46 @@ class QuadrupletLoss(nn.Module):
 
         raise NotImplementedError("Implement `QuadrupletLoss`")
 
+class AdditiveAngularMarginLoss(nn.Module):
+    def __init__(self, scale=30.0, margin=0.5, eps=1e-7):
+        super().__init__()
+
+        self.scale, self.margin = scale, margin
+
+        self.maximize = False
+        self.eps = eps
+
+    def forward(self, input, target, batch_mean=True):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, num_classes)
+            target <torch.LongTensor>: (batch_size)
+        Returns:
+            output <torch.Tensor>: (batch_size,) or ()
+        """
+        batch_size, num_classes = input.size()
+        scale, margin = self.scale, self.margin
+        eps = self.eps
+
+        input = torch.clamp(input, -1+eps, 1-eps)
+        theta = torch.arccos(input) # (batch_size, num_classes)
+        theta_modified = theta + margin # (batch_size, num_classes)
+        mesh = torch.arange(0, num_classes).unsqueeze(dim=0) # (1, num_classes) 
+        mesh_target = target.unsqueeze(dim=1) # (batch_size, 1)
+        condition = mesh==mesh_target # (batch_size, num_classes)
+        theta_modified = torch.where(condition, theta_modified, theta)
+        cos = scale * torch.cos(theta_modified) # (batch_size, num_classes)
+
+        indices = num_classes * torch.arange(batch_size) + target # (batch_size,)
+        cos_target = torch.take(cos, indices) # (batch_size,)
+
+        loss = - cos_target + torch.logsumexp(cos, dim=1)
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
+
 def _test_triplet_loss():
     import random
 
@@ -298,13 +338,13 @@ def _test_contrastive_loss():
     random.shuffle(indices)
     x, t = x[indices].view(num_samples, 2, n_dims), t[indices].view(num_samples, 2)
     criterion = L2Loss()
-    constrative_criterion = ContrastiveLoss()
+    contrastive_criterion = ContrastiveLoss()
 
     input, target = x[:batch_size], t[:batch_size]
     distance = criterion(input[:, 0], input[:, 1], batch_mean=False)
     is_same = (target[:, 0] == target[:, 1]).float()
 
-    loss = constrative_criterion(distance, is_same)
+    loss = contrastive_criterion(distance, is_same)
 
     print(is_same)
     print(distance)
@@ -344,12 +384,12 @@ def _test_contrastive_with_distance_loss():
     random.shuffle(indices)
     x, t = x[indices].view(num_samples, 2, n_dims), t[indices].view(num_samples, 2)
     criterion = L2Loss()
-    constrative_criterion = ContrastiveWithDistanceLoss(distance_fn=criterion)
+    contrastive_criterion = ContrastiveWithDistanceLoss(distance_fn=criterion)
 
     input, target = x[:batch_size], t[:batch_size]
     is_same = (target[:, 0] == target[:, 1]).float()
 
-    loss = constrative_criterion(input[:, 0], input[:, 1], is_same)
+    loss = contrastive_criterion(input[:, 0], input[:, 1], is_same)
 
     print(is_same)
     print(loss)
