@@ -1,19 +1,18 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 EPS = 1e-12
 
-class Word2Vec(nn.Module):
-    def __init__(self, embedding, vocab, eps=EPS):
+class Word2Vec:
+    def __init__(self, embedding_weights, vocab, eps=EPS):
         super().__init__()
 
-        self.embedding = embedding
+        self.embedding_weights = embedding_weights
         self.vocab = vocab
 
         self.eps = eps
 
-    def forward(self, word_or_words, normalized=False):
+    def __call__(self, word_or_words, normalized=False):
         """
         Args:
             word_or_words <str> or <list<str>>: Word or words to vectorize.
@@ -22,14 +21,12 @@ class Word2Vec(nn.Module):
         """
         if type(word_or_words) is str:
             word_idx = self.vocab[word_or_words] # <int>
-            word_idx = torch.tensor(word_idx, dtype=torch.long) # ()
         elif type(word_or_words) is list:
             word_idx = [self.vocab[word] for word in word_or_words] # (len(word_or_words),)
-            word_idx = torch.tensor(word_idx, dtype=torch.long) # (len(word_or_words),)
         else:
             raise TypeError("Not support {}.".format(type(word_or_words)))
 
-        word_vec = self.embedding(word_idx) # (embed_dim,) or # (len(word_or_words), embed_dim)
+        word_vec = self.embedding_weights[word_idx] # (embed_dim,) or # (len(word_or_words), embed_dim)
 
         if normalized:
             word_vec = F.normalize(word_vec, dim=-1, eps=self.eps) # (len(word_or_words), embed_dim)
@@ -48,7 +45,7 @@ class Word2Vec(nn.Module):
         else:
             raise TypeError("Not support {}.".format(type(word)))
 
-        embedding_weights = self.embedding.weight.data
+        embedding_weights = self.embedding_weights
         normalized_embedding_weights = F.normalize(embedding_weights, dim=-1, eps=self.eps) # (vocab_size, embed_dim)
 
         if word_idx == 0:
@@ -71,7 +68,7 @@ class Word2Vec(nn.Module):
         eps = self.eps
 
         normalized_vec = F.normalize(vec, dim=-1, eps=eps) # (embed_dim,)
-        embedding_weights = self.embedding.weight.data # (vocab_size, embed_dim)
+        embedding_weights = self.embedding_weights # (vocab_size, embed_dim)
         normalized_embedding_weights = F.normalize(embedding_weights, dim=-1, eps=self.eps) # (vocab_size, embed_dim)
 
         scores = torch.sum(normalized_embedding_weights * normalized_vec, dim=-1) # (vocab_size,)
