@@ -1,16 +1,19 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 EPS = 1e-12
 
-class Word2Vec:
-    def __init__(self, embedding_weights, vocab, eps=EPS):
-        self.embedding_weights = embedding_weights
+class Word2Vec(nn.Module):
+    def __init__(self, embedding, vocab, eps=EPS):
+        super().__init__()
+
+        self.embedding = embedding
         self.vocab = vocab
 
         self.eps = eps
 
-    def __call__(self, word_or_words, normalized=False):
+    def forward(self, word_or_words, normalized=False):
         """
         Args:
             word_or_words <str> or <list<str>>: Word or words to vectorize.
@@ -19,21 +22,21 @@ class Word2Vec:
         """
         if type(word_or_words) is str:
             word_idx = self.vocab[word_or_words] # <int>
+            word_idx = torch.tensor(word_idx, dtype=torch.long) # ()
         elif type(word_or_words) is list:
-            word_idx = [self.vocab[word] for word in word_or_words] # (len(word_or_words))
+            word_idx = [self.vocab[word] for word in word_or_words] # (len(word_or_words),)
+            word_idx = torch.tensor(word_idx, dtype=torch.long) # (len(word_or_words),)
         else:
             raise TypeError("Not support {}.".format(type(word_or_words)))
 
+        word_vec = self.embedding(word_idx) # (embed_dim,) or # (len(word_or_words), embed_dim)
+
         if normalized:
-            embedding_weights = F.normalize(self.embedding_weights, dim=-1, eps=self.eps) # (vocab_size, embed_dim)
-        else:
-            embedding_weights = self.embedding_weights
-        
-        word_vec = embedding_weights[word_idx] # (embed_dim,) or (len(word_or_words), embed_dim)
-        
+            word_vec = F.normalize(word_vec, dim=-1, eps=self.eps) # (len(word_or_words), embed_dim)
+
         return word_vec
-    
-    def get_similar_words(self, word, n=10):
+
+    def get_similar_words(self, word, k=10):
         """
         Args:
             word <str>: Word.
@@ -44,22 +47,21 @@ class Word2Vec:
             word_idx = self.vocab[word] # <int>
         else:
             raise TypeError("Not support {}.".format(type(word)))
-        
-        word_idx = self.vocab[word]
 
-        normalized_embedding_weights = F.normalize(self.embedding_weights, dim=-1, eps=self.eps) # (vocab_size, embed_dim)
+        embedding_weights = self.embedding.weight.data
+        normalized_embedding_weights = F.normalize(embedding_weights, dim=-1, eps=self.eps) # (vocab_size, embed_dim)
 
         if word_idx == 0:
             print("Out of vocabulary.")
             similar_words = [] # empty dictionary
         else:
             word_vec = normalized_embedding_weights[word_idx] # (embed_dim,)
-            similar_words = self.get_similar_words_from_vec(word_vec, n=n+1)
+            similar_words = self.get_similar_words_from_vec(word_vec, k=k+1)
             similar_words = similar_words[1:] # ignore word itself
-        
+
         return similar_words
 
-    def get_similar_words_from_vec(self, vec, n=10):
+    def get_similar_words_from_vec(self, vec, k=10):
         """
         Args:
             vec: (embed_dim,)
@@ -69,12 +71,13 @@ class Word2Vec:
         eps = self.eps
 
         normalized_vec = F.normalize(vec, dim=-1, eps=eps) # (embed_dim,)
-        normalized_embedding_weights = F.normalize(self.embedding_weights, dim=-1, eps=eps) # (vocab_size, embed_dim)
+        embedding_weights = self.embedding.weight.data # (vocab_size, embed_dim)
+        normalized_embedding_weights = F.normalize(embedding_weights, dim=-1, eps=self.eps) # (vocab_size, embed_dim)
 
         scores = torch.sum(normalized_embedding_weights * normalized_vec, dim=-1) # (vocab_size,)
 
-        _, similar_words_idx = torch.topk(scores, n)
+        _, similar_words_idx = torch.topk(scores, k)
         similar_words_idx = similar_words_idx.tolist()
         similar_words = self.vocab.lookup_tokens(similar_words_idx)
-        
+
         return similar_words
