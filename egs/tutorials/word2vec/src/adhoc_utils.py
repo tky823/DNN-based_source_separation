@@ -26,11 +26,27 @@ def build_neg_freq(data_iter, vocab, tokenizer, smooth=0.75):
     return neg_freq
 
 def build_neg_table(neg_freq):
-    neg_table = []
+    distr_table = []
+    start_table = []
+    count_table = []
+    start = 0
 
     for idx, _neg_freq in enumerate(neg_freq):
-        for _ in range(int(_neg_freq)):
-            neg_table.append(idx)
-    neg_table = torch.tensor(neg_table, dtype=torch.long)
+        count = int(_neg_freq)
+        for _ in range(count):
+            distr_table.append(idx) # To avoid unseless memory consumption
+        start_table.append(start)
+        count_table.append(count)
+        start += count
+
+    distr_table = torch.tensor(distr_table, dtype=torch.long)
+    start_table = torch.tensor(start_table, dtype=torch.long)
+    count_table = torch.tensor(count_table, dtype=torch.long)
+    
+    neg_table = {
+        "distr": distr_table,
+        "start": start_table,
+        "count": count_table
+    }
 
     return neg_table

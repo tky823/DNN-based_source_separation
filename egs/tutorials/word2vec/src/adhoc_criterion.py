@@ -26,11 +26,12 @@ class NegativeSamplingLoss:
         return loss
 
 class NegativeSamplingWithDistanceLoss:
-    def __init__(self, distance_fn=None, reduction="mean"):
+    def __init__(self, distance_fn=None, activation="sigmoid", reduction="mean"):
         self.distance_fn = distance_fn
+        self.activation = activation
         self.reduction = reduction
 
-    def __call__(self, input, pos, neg):
+    def __call__(self, *args):
         """
         Args:
             input: (batch_size, embed_dim)
@@ -41,20 +42,27 @@ class NegativeSamplingWithDistanceLoss:
                 (batch_size, num_neg_samples, embed_dim) if self.distance_fn is given
                 (batch_size, num_neg_samples) if self.distance_fn is None
         """
-        if self.distance_fn is not None:
+        if len(args) == 3:
+            input, pos, neg = args
             input = input.unsqueeze(dim=1)
             pos = pos.unsqueeze(dim=1)
             distance_pos = self.distance_fn(input, pos) # (batch_size, 1)
             distance_neg = self.distance_fn(input, neg) # (batch_size, num_neg_samples)
-            distance_pos = distance_pos.sum(dim=-1) # (batch_size,)
+        elif len(args) == 2:
+            distance_pos, distance_neg = args # (batch_size,), (batch_size, num_neg_samples)
+            distance_pos = distance_pos.unsqueeze(dim=1)
         else:
-            distance_pos = pos # (batch_size)
-            distance_neg = neg # (batch_size, num_neg_samples)
+            raise NotImplementedError
 
-        loss_pos = - F.logsigmoid(-distance_pos) # (batch_size,)
-        loss_neg = - F.logsigmoid(distance_neg) # (batch_size, num_neg_samples)
-        
-        loss = loss_pos + loss_neg.sum(dim=1) # (batch_size,)
+        if self.activation == "sigmoid":
+            loss_pos = - F.logsigmoid(-distance_pos) # (batch_size,)
+            loss_neg = - F.logsigmoid(distance_neg) # (batch_size, num_neg_samples)
+            loss = loss_pos.sum(dim=1) + loss_neg.sum(dim=1) # (batch_size,)
+        else:
+            distance = torch.cat([distance_pos, distance_neg], dim=1) # (batch_size, num_neg_samples + 1)
+            target = torch.zeros(distance.size(0), dtype=torch.long)
+            target = target.to(distance.device)
+            loss = F.cross_entropy(- distance, target) # (batch_size)
 
         if self.reduction == "mean":
             loss = loss.mean()
