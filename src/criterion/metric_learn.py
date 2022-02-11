@@ -1,5 +1,8 @@
+import math
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 EPS = 1e-12
 
@@ -149,12 +152,14 @@ class QuadrupletLoss(nn.Module):
         raise NotImplementedError("Implement `QuadrupletLoss`")
 
 class AdditiveAngularMarginLoss(nn.Module):
-    def __init__(self, scale=30.0, margin=0.5, eps=1e-7):
+    def __init__(self, scale=30.0, margin=0.5, easy_margin=False, eps=EPS):
         super().__init__()
 
         self.scale, self.margin = scale, margin
+        self.easy_margin = easy_margin
+        self.cos_m, self.sin_m = math.cos(margin), math.sin(margin)
+        self.cos_pi_m = math.cos(math.pi - margin)
 
-        self.maximize = False
         self.eps = eps
 
     def forward(self, input, target, batch_mean=True):
@@ -165,23 +170,33 @@ class AdditiveAngularMarginLoss(nn.Module):
         Returns:
             output <torch.Tensor>: (batch_size,) or ()
         """
-        batch_size, num_classes = input.size()
+
+        """
+        Addition theorem
+        cos(phi) = cos(th + m)
+                 = cos(th)cos(m) - sin(th)sin(m)
+                 = cos(th) * cos(m) - sqrt(1 - cos(th)^2) * sin(m)
+        cos(th) := y_pred
+        """
+        num_classes = input.size(-1)
         scale, margin = self.scale, self.margin
+        cos_m, sin_m = self.cos_m, self.sin_m
         eps = self.eps
 
-        input = torch.clamp(input, -1+eps, 1-eps)
-        theta = torch.arccos(input) # (batch_size, num_classes)
-        theta_modified = theta + margin # (batch_size, num_classes)
-        mesh = torch.arange(0, num_classes).unsqueeze(dim=0) # (1, num_classes) 
-        mesh_target = target.unsqueeze(dim=1) # (batch_size, 1)
-        condition = mesh==mesh_target # (batch_size, num_classes)
-        theta_modified = torch.where(condition, theta_modified, theta)
-        cos = scale * torch.cos(theta_modified) # (batch_size, num_classes)
+        cos_th = input
+        sin_th = torch.sqrt(1 - cos_th**2 + eps)
+        cos_phi = cos_th * cos_m - sin_th * sin_m # (batch_size, num_classes)
 
-        indices = num_classes * torch.arange(batch_size) + target # (batch_size,)
-        cos_target = torch.take(cos, indices) # (batch_size,)
-
-        loss = - cos_target + torch.logsumexp(cos, dim=1)
+        # For target class
+        if self.easy_margin:
+            cos_phi = torch.where(cos_th < 0, cos_th, cos_phi) # (batch_size, num_classes)
+        else:
+            cos_phi = torch.where(cos_th > self.cos_pi_m, cos_th - margin, cos_phi) # (batch_size, num_classes)
+        
+        # For non-target class
+        mask = F.one_hot(target, num_classes=num_classes) # (batch_size, num_classes)
+        input = scale * (mask * cos_phi + (1.0 - mask) * cos_th)
+        loss = F.cross_entropy(input, target, reduction="none")
 
         if batch_mean:
             loss = loss.mean(dim=0)
