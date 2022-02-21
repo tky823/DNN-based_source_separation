@@ -158,7 +158,8 @@ class AdditiveAngularMarginLoss(nn.Module):
         self.scale, self.margin = scale, margin
         self.easy_margin = easy_margin
         self.cos_m, self.sin_m = math.cos(margin), math.sin(margin)
-        self.cos_pi_m = math.cos(math.pi - margin)
+        self.cos_pi_m = - self.cos_m
+        self.m_sin_pi_m = margin * self.sin_m
 
         self.eps = eps
 
@@ -179,7 +180,7 @@ class AdditiveAngularMarginLoss(nn.Module):
         cos(th) := y_pred
         """
         num_classes = input.size(-1)
-        scale, margin = self.scale, self.margin
+        scale = self.scale
         cos_m, sin_m = self.cos_m, self.sin_m
         eps = self.eps
 
@@ -191,7 +192,7 @@ class AdditiveAngularMarginLoss(nn.Module):
         if self.easy_margin:
             cos_phi = torch.where(cos_th < 0, cos_th, cos_phi) # (batch_size, num_classes)
         else:
-            cos_phi = torch.where(cos_th > self.cos_pi_m, cos_th - margin, cos_phi) # (batch_size, num_classes)
+            cos_phi = torch.where(cos_th > self.cos_pi_m, cos_th - self.m_sin_pi_m, cos_phi) # (batch_size, num_classes)
         
         # For non-target class
         mask = F.one_hot(target, num_classes=num_classes) # (batch_size, num_classes)
