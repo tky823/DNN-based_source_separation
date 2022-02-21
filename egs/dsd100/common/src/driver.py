@@ -7,6 +7,8 @@ import torch.nn as nn
 from utils.utils import draw_loss_curve
 from utils.utils_audio import write_wav
 
+HALVE_LR = 3
+
 class Trainer:
     def __init__(self, model, loader, criterion, optimizer, args):
         self.train_loader, self.valid_loader = loader['train'], loader['valid']
@@ -75,7 +77,7 @@ class Trainer:
             train_loss, valid_loss = self.run_one_epoch(epoch)
             end = time.time()
             
-            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch+1, self.epochs, train_loss, valid_loss, end - start), flush=True)
+            print("[Epoch {}/{}] loss (train): {:.5f}, loss (valid): {:.5f}, {:.3f} [sec]".format(epoch + 1, self.epochs, train_loss, valid_loss, end - start), flush=True)
             
             self.train_loss[epoch] = train_loss
             self.valid_loss[epoch] = valid_loss
@@ -90,7 +92,7 @@ class Trainer:
                 if self.no_improvement >= 5:
                     print("Stop training")
                     break
-                if self.no_improvement == 3:
+                if self.no_improvement == HALVE_LR:
                     for param_group in self.optimizer.param_groups:
                         prev_lr = param_group['lr']
                         lr = 0.5 * prev_lr
@@ -101,7 +103,7 @@ class Trainer:
             self.save_model(epoch, model_path)
             
             save_path = os.path.join(self.loss_dir, "loss.png")
-            draw_loss_curve(train_loss=self.train_loss[:epoch+1], valid_loss=self.valid_loss[:epoch+1], save_path=save_path)
+            draw_loss_curve(train_loss=self.train_loss[:epoch + 1], valid_loss=self.valid_loss[:epoch + 1], save_path=save_path)
     
     def run_one_epoch(self, epoch):
         """
@@ -139,8 +141,8 @@ class Trainer:
             
             train_loss += loss.item()
             
-            if (idx + 1)%100 == 0:
-                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch+1, self.epochs, idx+1, n_train_batch, loss.item()), flush=True)
+            if (idx + 1) % 100 == 0:
+                print("[Epoch {}/{}] iter {}/{} loss: {:.5f}".format(epoch + 1, self.epochs, idx + 1, n_train_batch, loss.item()), flush=True)
         
         train_loss /= n_train_batch
         
@@ -169,7 +171,7 @@ class Trainer:
                     mixture = mixture[0].squeeze(dim=0).detach().cpu().numpy()
                     estimated_sources = output[0].detach().cpu().numpy()
                     
-                    save_dir = os.path.join(self.sample_dir, "{}".format(idx+1))
+                    save_dir = os.path.join(self.sample_dir, "{}".format(idx + 1))
                     os.makedirs(save_dir, exist_ok=True)
                     save_path = os.path.join(save_dir, "mixture.wav")
                     norm = np.abs(mixture).max()
@@ -177,7 +179,7 @@ class Trainer:
                     write_wav(save_path, signal=mixture, sr=self.sr)
                     
                     for source_idx, estimated_source in enumerate(estimated_sources):
-                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch+1,source_idx+1))
+                        save_path = os.path.join(save_dir, "epoch{}-{}.wav".format(epoch + 1,source_idx + 1))
                         norm = np.abs(estimated_source).max()
                         estimated_source = estimated_source / norm
                         write_wav(save_path, signal=estimated_source, sr=self.sr)

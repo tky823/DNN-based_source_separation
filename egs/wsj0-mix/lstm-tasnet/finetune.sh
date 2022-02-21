@@ -41,15 +41,13 @@ lr=1e-3
 weight_decay=0
 max_norm=5
 
-batch_size_train=128
-batch_size_finetune=128
-epochs_train=50
-epochs_finetune=50
+batch_size=64
+epochs_train=100
+epochs_finetune=100
 
 use_cuda=1
 overwrite=0
-seed_train=111
-seed_finetune=111
+seed=111
 gpu_id="0"
 
 . ./path.sh
@@ -62,11 +60,12 @@ if [ ${enc_basis} = 'trainable' -a -n "${enc_nonlinear}" -a ${dec_basis} != 'pin
 fi
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}/b${batch_size_train}_e${epochs_train}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed_train}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${enc_basis}-${dec_basis}/${criterion}"
+    save_dir="${save_dir}/N${N}_L${L}_H${H}_X${X}_R${R}/${prefix}causal${causal}_mask-${mask_nonlinear}"
+    save_dir="${save_dir}/b${batch_size}_e${epochs_train}+${epochs_finetune}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
-save_dir="${save_dir}/finetune/b${batch_size_finetune}_e${epochs_finetune}/seed${seed_finetune}"
 
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
@@ -82,10 +81,10 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 finetune.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
---train_list_path ${train_list_path} \
---valid_list_path ${valid_list_path} \
+--train_wav_root "${train_wav_root}" \
+--valid_wav_root "${valid_wav_root}" \
+--train_list_path "${train_list_path}" \
+--valid_list_path "${valid_list_path}" \
 --sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
@@ -105,7 +104,7 @@ finetune.py \
 --lr ${lr} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
---batch_size ${batch_size_finetune} \
+--batch_size ${batch_size} \
 --epochs ${epochs_finetune} \
 --model_dir "${model_dir}" \
 --loss_dir "${loss_dir}" \
@@ -113,4 +112,4 @@ finetune.py \
 --continue_from "${continue_from}" \
 --use_cuda ${use_cuda} \
 --overwrite ${overwrite} \
---seed ${seed_finetune} | tee "${log_dir}/finetune_${time_stamp}.log"
+--seed ${seed} | tee "${log_dir}/finetune_${time_stamp}.log"

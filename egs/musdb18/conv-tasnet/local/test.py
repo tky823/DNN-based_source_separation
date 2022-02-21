@@ -30,20 +30,20 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     args.n_sources = len(args.sources)
 
     test_dataset = WaveTestDataset(args.musdb18_root, sample_rate=args.sample_rate, duration=args.duration, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
-    
+
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    
+
     model = ConvTasNet.build_model(args.model_path)
-    
+
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -53,7 +53,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-    
+
     # Criterion
     if args.criterion == 'mae':
         criterion = MeanAbsoluteError(dim=-1, reduction='mean')
@@ -69,10 +69,10 @@ def main(args):
         args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     tester = AdhocTester(model, loader, criterion, args)
     tester.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

@@ -84,7 +84,7 @@ if [ -z "${tag}" ]; then
     else
         save_dir="${save_dir}/${criterion}"
     fi
-    save_dir="${save_dir}/F${F}_L${L}_B${B}_C${C}_P${P}_N${N}/K-intra${K_intra}_K-inter${K_inter}_h-intra${h_intra}_h-inter${h_inter}_d-ff-intra${d_ff_intra}_d-ff-inter${d_ff_inter}"
+    save_dir="${save_dir}/F${F}_L${L}_B${B}_C${C}_P${P}_N${N}/K${K_intra}-${K_inter}_h${h_intra}-${h_inter}_d-ff${d_ff_intra}-${d_ff_inter}"
     save_dir="${save_dir}/${prefix}causal${causal}_norm${sep_norm}_${sep_nonlinear}_drop${sep_dropout}_mask-${mask_nonlinear}"
     save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
@@ -105,10 +105,10 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
---train_list_path ${train_list_path} \
---valid_list_path ${valid_list_path} \
+--train_wav_root "${train_wav_root}" \
+--valid_wav_root "${valid_wav_root}" \
+--train_list_path "${train_list_path}" \
+--valid_list_path "${valid_list_path}" \
 --sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \

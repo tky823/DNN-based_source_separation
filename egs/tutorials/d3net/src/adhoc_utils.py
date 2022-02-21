@@ -2,11 +2,10 @@ import os
 
 import torch
 import torchaudio
-import torch.nn as nn
 import torch.nn.functional as F
 
-from algorithm.frequency_mask import ideal_ratio_mask, multichannel_wiener_filter
-from models.d3net import D3Net
+from algorithm.frequency_mask import compute_ideal_ratio_mask, multichannel_wiener_filter
+from models.d3net import D3Net, ParallelD3Net
 
 __sources__ = ['bass', 'drums', 'other', 'vocals']
 
@@ -22,9 +21,9 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
     config = load_experiment_config(model_paths)
 
     patch_size = config['patch_size']
-    fft_size, hop_size = config['fft_size'], config['hop_size']
-    window = torch.hann_window(fft_size)
-    
+    n_fft, hop_length = config['n_fft'], config['hop_length']
+    window = torch.hann_window(n_fft)
+
     if use_cuda:
         model.cuda()
         print("Uses CUDA")
@@ -46,27 +45,25 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
 
         if pre_resampler is not None:
             x = pre_resampler(x)
-        
-        mixture = torch.stft(x, n_fft=fft_size, hop_length=hop_size, window=window, return_complex=True)
+
+        mixture = torch.stft(x, n_fft=n_fft, hop_length=hop_length, window=window, return_complex=True)
         padding = (patch_size - mixture.size(-1) % patch_size) % patch_size
 
         mixture = F.pad(mixture, (0, padding))
         mixture = mixture.reshape(*mixture.size()[:2], -1, patch_size)
-        mixture = mixture.permute(2, 0, 1, 3).unsqueeze(dim=1)
+        mixture = mixture.permute(2, 0, 1, 3).unsqueeze(dim=1) # (batch_size, 1, n_mics, n_bins, n_frames)
 
         if use_cuda:
             mixture = mixture.cuda()
 
-        n_sources = len(__sources__)
+        n_sources = len(model.sources)
 
         with torch.no_grad():
             batch_size, _, n_mics, n_bins, n_frames = mixture.size()
-            
+
             mixture_amplitude = torch.abs(mixture)
-            
-            estimated_sources_amplitude = {
-                target: [] for target in __sources__
-            }
+
+            estimated_sources_amplitude = []
 
             # Serial operation
             for _mixture_amplitude in mixture_amplitude:
@@ -78,51 +75,46 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
                     _mixture_amplitude = torch.cat([_mixture_amplitude, _mixture_amplitude_flipped], dim=0)
                 else:
                     raise NotImplementedError("Not support {} channels input.".format(n_mics))
-                
-                for target in __sources__:
-                    _estimated_sources_amplitude = model(_mixture_amplitude, target=target)
 
-                    if n_mics == 1:
-                        _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=1, keepdim=True)
-                    elif n_mics == 2:
-                        sections = [1, 1]
-                        _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.split(_estimated_sources_amplitude, sections, dim=0)
-                        _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dims=(1,))
-                        _estimated_sources_amplitude = torch.cat([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0)
-                        _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True)
-                    else:
-                        raise NotImplementedError("Not support {} channels input.".format(n_mics))
-                    
-                    estimated_sources_amplitude[target].append(_estimated_sources_amplitude)
-        
-            estimated_sources_amplitude = [
-                torch.cat(estimated_sources_amplitude[target], dim=0) for target in __sources__
-            ]
-            estimated_sources_amplitude = torch.stack(estimated_sources_amplitude, dim=0) # (n_sources, batch_size, n_mics, n_bins, n_frames)
-            estimated_sources_amplitude = estimated_sources_amplitude.permute(0, 2, 3, 1, 4)
+                _mixture_amplitude = _mixture_amplitude.unsqueeze(dim=1) # (n_flips, 1, n_mics, n_bins, n_frames)
+                _estimated_sources_amplitude = model(_mixture_amplitude) # (n_flips, n_sources, n_mics, n_bins, n_frames)
+
+                if n_mics == 1:
+                    _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=2, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
+                elif n_mics == 2:
+                    _estimated_sources_amplitude, _estimated_sources_amplitude_flipped = torch.unbind(_estimated_sources_amplitude, dim=0) # n_flips of (n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude_flipped = torch.flip(_estimated_sources_amplitude_flipped, dims=(1,)) # (n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude = torch.stack([_estimated_sources_amplitude, _estimated_sources_amplitude_flipped], dim=0) # (n_flips, n_sources, n_mics, n_bins, n_frames)
+                    _estimated_sources_amplitude = _estimated_sources_amplitude.mean(dim=0, keepdim=True) # (1, n_sources, n_mics, n_bins, n_frames)
+                else:
+                    raise NotImplementedError("Not support {} channels input.".format(n_mics))
+
+                estimated_sources_amplitude.append(_estimated_sources_amplitude)
+
+            estimated_sources_amplitude = torch.cat(estimated_sources_amplitude, dim=0) # (batch_size, n_sources, n_mics, n_bins, n_frames)
+            estimated_sources_amplitude = estimated_sources_amplitude.permute(1, 2, 3, 0, 4) # (n_sources, n_mics, n_bins, batch_size, n_frames)
             estimated_sources_amplitude = estimated_sources_amplitude.reshape(n_sources, n_mics, n_bins, batch_size * n_frames) # (n_sources, n_mics, n_bins, batch_size * n_frames)
+            estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
             mixture = mixture.permute(1, 2, 3, 0, 4).reshape(1, n_mics, n_bins, batch_size * n_frames) # (1, n_mics, n_bins, batch_size * n_frames)
-
             mixture = mixture.cpu()
-            estimated_sources_amplitude = estimated_sources_amplitude.cpu()
 
             if n_mics == 1:
                 estimated_sources_amplitude = estimated_sources_amplitude.squeeze(dim=1) # (n_sources, n_bins, batch_size * n_frames)
-                mask = ideal_ratio_mask(estimated_sources_amplitude)
+                mask = compute_ideal_ratio_mask(estimated_sources_amplitude)
                 mask = mask.unsqueeze(dim=1) # (n_sources, n_mics, n_bins, batch_size * n_frames)
                 estimated_sources = mask * mixture # (n_sources, n_mics, n_bins, batch_size * n_frames)
             else:
                 estimated_sources = apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude=estimated_sources_amplitude)
-            
+
             estimated_sources_channels = estimated_sources.size()[:-2]
 
             estimated_sources = estimated_sources.view(-1, *estimated_sources.size()[-2:])
-            y = torch.istft(estimated_sources, fft_size, hop_length=hop_size, window=window, return_complex=False)
-            
+            y = torch.istft(estimated_sources, n_fft, hop_length=hop_length, window=window, return_complex=False)
+
             if post_resampler is not None:
                 y = post_resampler(y)
-            
+
             y = y.view(*estimated_sources_channels, -1) # -> (n_sources, n_mics, T_pad)
             T_pad = y.size(-1)
             y = F.pad(y, (0, T_original - T_pad)) # -> (n_sources, n_mics, T_original)
@@ -131,13 +123,13 @@ def separate_by_d3net(model_paths, file_paths, out_dirs, jit=False):
             _estimated_paths = {}
 
             for idx in range(n_sources):
-                source = __sources__[idx]
+                source = model.sources[idx]
                 path = os.path.join(out_dir, "{}.wav".format(source))
                 torchaudio.save(path, y[idx], sample_rate=sample_rate, bits_per_sample=BITS_PER_SAMPLE_MUSDB18)
                 _estimated_paths[source] = path
-            
+
             estimated_paths.append(_estimated_paths)
-            
+
     return estimated_paths
 
 def load_pretrained_model(model_paths, jit=False):
@@ -151,7 +143,7 @@ def load_pretrained_model(model_paths, jit=False):
             modules[source] = D3Net.build_model(model_path, load_state_dict=True)
 
         model = ParallelD3Net(modules)
-    
+
     return model
 
 def load_pretrained_model_jit(model_paths, in_channels=2, n_bins=2049, patch_size=256):
@@ -165,13 +157,13 @@ def load_pretrained_model_jit(model_paths, in_channels=2, n_bins=2049, patch_siz
         modules[source] = torch.jit.trace(module, example_inputs=input)
 
     model = ParallelD3Net(modules)
-    
+
     return model
 
 def load_experiment_config(config_paths):
     sample_rate = None
     patch_size = None
-    fft_size, hop_size = None, None
+    n_fft, hop_length = None, None
 
     for source in __sources__:
         config_path = config_paths[source]
@@ -183,33 +175,33 @@ def load_experiment_config(config_paths):
             if sample_rate is not None:
                 assert sample_rate == config['sample_rate'], "Invalid sampling rate."
             sample_rate = config['sample_rate']
-        
+
         if patch_size is None:
             patch_size = config.get('patch_size')
         elif config.get('patch_size') is not None:
             if patch_size is not None:
                 assert patch_size == config['patch_size'], "Invalid patch_size."
             patch_size = config['patch_size']
-        
-        if fft_size is None:
-            fft_size = config.get('fft_size')
-        elif config.get('fft_size') is not None:
-            if fft_size is not None:
-                assert fft_size == config['fft_size'], "Invalid fft_size."
-            fft_size = config['fft_size']
 
-        if hop_size is None:
-            hop_size = config.get('hop_size')
-        elif config.get('hop_size') is not None:
-            if hop_size is not None:
-                assert hop_size == config['hop_size'], "Invalid hop_size."
-            hop_size = config['hop_size']
+        if n_fft is None:
+            n_fft = config.get('n_fft')
+        elif config.get('n_fft') is not None:
+            if n_fft is not None:
+                assert n_fft == config['n_fft'], "Invalid n_fft."
+            n_fft = config['n_fft']
+
+        if hop_length is None:
+            hop_length = config.get('hop_length')
+        elif config.get('hop_length') is not None:
+            if hop_length is not None:
+                assert hop_length == config['hop_length'], "Invalid hop_length."
+            hop_length = config['hop_length']
 
     config = {
         'sample_rate': sample_rate or SAMPLE_RATE_MUSDB18,
         'patch_size': patch_size or 256,
-        'fft_size': fft_size or 4096,
-        'hop_size': hop_size or 1024
+        'n_fft': n_fft or 4096,
+        'hop_length': hop_length or 1024
     }
 
     return config
@@ -226,24 +218,3 @@ def apply_multichannel_wiener_filter_torch(mixture, estimated_sources_amplitude,
         eps <float>: small value for numerical stability
     """
     return multichannel_wiener_filter(mixture, estimated_sources_amplitude, iteration=iteration, channels_first=channels_first, eps=eps)
-
-class ParallelD3Net(nn.Module):
-    def __init__(self, modules):
-        super().__init__()
-
-        if isinstance(modules, nn.ModuleDict):
-            pass
-        elif isinstance(modules, dict):
-            modules = nn.ModuleDict(modules)
-        else:
-            raise TypeError("Type of `modules` is expected nn.ModuleDict or dict, but given {}.".format(type(modules)))
-        
-        self.net = modules
-
-    def forward(self, input, target=None):
-        if type(target) is not str:
-            raise TypeError("`target` is expected str, but given {}".format(type(target)))
-        
-        output = self.net[target](input)
-
-        return output

@@ -166,16 +166,16 @@ class WaveSplitBase(nn.Module):
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-        
+
         # Ignore parameters of spk_criterion
         for p in self.spk_criterion.parameters():
             if p.requires_grad:
                 _num_parameters -= p.numel()
-                
+
         return _num_parameters
 
     def get_config(self):

@@ -12,7 +12,7 @@ class PoCM2d(nn.Module):
     """
     def __init__(self):
         super().__init__()
-    
+
     def forward(self, input, gamma, beta):
         """
         Args:
@@ -32,7 +32,7 @@ class PoCM2d(nn.Module):
 
         output = F.conv2d(input, gamma, bias=beta, stride=(1, 1), groups=batch_size)
         output = output.view(batch_size, out_channels, n_bins, n_frames)
-        
+
         return output
 
 class GPoCM2d(nn.Module):
@@ -43,7 +43,7 @@ class GPoCM2d(nn.Module):
         super().__init__()
 
         self.pocm = PoCM2d()
-    
+
     def forward(self, input, gamma, beta):
         assert gamma.size(-2) == gamma.size(-1), "gamma is expected (batch_size, C, C), but given {}.".format(gamma.size())
 

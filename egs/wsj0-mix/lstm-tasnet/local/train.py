@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
 from utils.utils import set_seed
 from dataset import WaveTrainDataset, WaveEvalDataset, TrainDataLoader, EvalDataLoader
 from adhoc_driver import AdhocTrainer
-from models.tasnet import TasNet as LSTMTasNet
+from models.lstm_tasnet import LSTMTasNet
 from criterion.sdr import NegSISDR
 from criterion.pit import PIT1d
 
@@ -38,7 +39,7 @@ parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'ad
 parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate. Default: 1e-3')
 parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay (L2 penalty). Default: 0')
 parser.add_argument('--max_norm', type=float, default=None, help='Gradient clipping')
-parser.add_argument('--batch_size', type=int, default=128, help='Batch size. Default: 128')
+parser.add_argument('--batch_size', type=int, default=64, help='Batch size. Default: 64')
 parser.add_argument('--epochs', type=int, default=100, help='Number of epochs')
 parser.add_argument('--model_dir', type=str, default='./tmp/model', help='Model directory')
 parser.add_argument('--loss_dir', type=str, default='./tmp/loss', help='Loss directory')
@@ -50,25 +51,23 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     samples = int(args.sample_rate * args.duration)
     overlap = samples // 2
     max_samples = int(args.sample_rate * args.valid_duration)
-    
+
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
     valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
-    
+
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
-    
+
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
+
     model = LSTMTasNet(
         args.n_basis, args.kernel_size, stride=args.stride, enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
         sep_num_blocks=args.sep_num_blocks, sep_num_layers=args.sep_num_layers, sep_hidden_channels=args.sep_hidden_channels,
@@ -77,7 +76,7 @@ def main(args):
     )
     print(model)
     print("# Parameters: {}".format(model.num_parameters))
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -87,7 +86,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA", flush=True)
-        
+
     # Optimizer
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -97,18 +96,21 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
-    
+
     # Criterion
     if args.criterion == 'sisdr':
         criterion = NegSISDR()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
-    
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
+
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

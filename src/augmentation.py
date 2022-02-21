@@ -15,7 +15,7 @@ def apply_random_flip(input, flip_rate=0.5, dim=0):
     """
     if type(dim) is int:
         dim = (dim,)
-    
+
     flip = random.random() < flip_rate
 
     if flip:
@@ -29,20 +29,18 @@ class RandomFlip:
     def __init__(self, flip_rate=0.5, dim=0):
         self.flip_rate = flip_rate
         self.dim = dim
-    
+
     def __call__(self, input):
         output = apply_random_flip(input, flip_rate=self.flip_rate, dim=self.dim)
-
         return output
 
 class RandomScaling:
     def __init__(self, min=MINSCALE, max=MAXSCALE):
         warnings.warn("Use RandomGain instead.", DeprecationWarning)
         self.min, self.max = min, max
-    
+
     def __call__(self, input):
         output = apply_random_gain(input, min=self.min, max=self.max)
-        
         return output
 
 def apply_random_gain(input, min=MINSCALE, max=MAXSCALE):
@@ -60,10 +58,9 @@ def apply_random_gain(input, min=MINSCALE, max=MAXSCALE):
 class RandomGain:
     def __init__(self, min=MINSCALE, max=MAXSCALE):
         self.min, self.max = min, max
-    
+
     def __call__(self, input):
         output = apply_random_gain(input, min=self.min, max=self.max)
-        
         return output
 
 def apply_random_sign(input, rate=0.5):
@@ -77,7 +74,7 @@ def apply_random_sign(input, rate=0.5):
         sign = -1
     else:
         sign = 1
-    
+
     output = sign * input
 
     return output
@@ -85,8 +82,7 @@ def apply_random_sign(input, rate=0.5):
 class RandomSign:
     def __init__(self, rate=0.5):
         self.rate = rate
-    
+
     def __call__(self, input):
         output = apply_random_sign(input, rate=self.rate)
-        
         return output

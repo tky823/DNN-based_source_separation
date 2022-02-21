@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import argparse
 import os
+import argparse
+
 import numpy as np
 import pyaudio
 import torch
@@ -28,34 +29,34 @@ def main(args):
 def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_dir="results"):
     num_loop = int(duration * sample_rate / num_chunk)
     sequence = []
-    
+
     P = pyaudio.PyAudio()
-    
+
     # Record
     stream = P.open(format=FORMAT, channels=NUM_CHANNEL, rate=sample_rate, input_device_index=DEVICE_INDEX, frames_per_buffer=num_chunk, input=True, output=False)
-    
+
     for i in range(num_loop):
         input = stream.read(num_chunk)
         sequence.append(input)
         time = int(i * num_chunk / sample_rate)
         show_progress_bar(time, duration)
-    
+
     show_progress_bar(duration, duration)
     print()
-    
+
     stream.stop_stream()
     stream.close()
     P.terminate()
-    
+
     print("Stop recording")
-    
+
     os.makedirs(save_dir, exist_ok=True)
-    
+
     # Save
     signal = b"".join(sequence)
     signal = np.frombuffer(signal, dtype=np.int16)
     signal = signal / 32768
-    
+
     save_path = os.path.join(save_dir, "mixture.wav")
     write_wav(save_path, signal=signal, sample_rate=sample_rate)
 
@@ -64,19 +65,19 @@ def process_offline(sample_rate, num_chunk, duration=5, model_path=None, save_di
     model.eval()
 
     print("Start separation...")
-    
+
     with torch.no_grad():
         mixture = torch.Tensor(signal).float()
         mixture = mixture.unsqueeze(dim=0).unsqueeze(dim=0)
         estimated_sources = model(mixture)
         estimated_sources = estimated_sources.squeeze(dim=0).detach().cpu().numpy()
-    
+
     print("Finished separation...")
-    
+
     for idx, estimated_source in enumerate(estimated_sources):
         save_path = os.path.join(save_dir, "estimated-{}.wav".format(idx))
         write_wav(save_path, signal=estimated_source, sample_rate=sample_rate)
-    
+
 def show_progress_bar(time, duration):
     rest = duration-time
     progress_bar = ">"*time + "-"*rest
@@ -84,10 +85,10 @@ def show_progress_bar(time, duration):
 
 def load_model(model_path):
     package = torch.load(model_path, map_location=lambda storage, loc: storage)
-    
+
     model = ConvTasNet.build_model(model_path)
     model.load_state_dict(package['state_dict'])
-    
+
     print("# Parameters: {}".format(model.num_parameters))
 
     return model
@@ -97,5 +98,3 @@ if __name__ == '__main__':
 
     print(args)
     main(args)
-
-

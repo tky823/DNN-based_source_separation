@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -41,11 +42,11 @@ def main(args):
         if torch.cuda.is_available():
             model.cuda()
             model = nn.DataParallel(model)
-            print("Use CUDA")
+            print("Use CUDA", flush=True)
         else:
             raise ValueError("Cannot use CUDA.")
     else:
-        print("Does NOT use CUDA")
+        print("Does NOT use CUDA", flush=True)
     
     # Criterion
     if args.criterion == 'sisdr':
@@ -57,8 +58,7 @@ def main(args):
     
     tester = Tester(model, loader, pit_criterion, args)
     tester.run()
-    
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

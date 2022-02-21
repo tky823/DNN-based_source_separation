@@ -21,8 +21,8 @@ parser.add_argument('--config_path', type=str, default=None, help='Path to model
 parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=128, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=10, help='Max duration for validation')
-parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--n_fft', type=int, default=4096, help='FFT length')
+parser.add_argument('--hop_length', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='l1loss', choices=['l1loss'], help='Criterion')
@@ -44,11 +44,11 @@ def main(args):
     set_seed(args.seed)
     
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_samples = args.hop_size * (args.patch_size - 1) + args.fft_size - 2 * (args.fft_size // 2)
+    patch_samples = args.hop_length * (args.patch_size - 1) + args.n_fft - 2 * (args.n_fft // 2)
     max_samples = int(args.valid_duration * args.sample_rate)
     
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sample_rate=args.sample_rate, patch_samples=patch_samples, sources=args.sources, target=args.sources)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, sample_rate=args.sample_rate, max_samples=max_samples, sources=args.sources, target=args.sources)
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, sample_rate=args.sample_rate, patch_samples=patch_samples, sources=args.sources, target=args.sources)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, sample_rate=args.sample_rate, max_samples=max_samples, sources=args.sources, target=args.sources)
     
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))

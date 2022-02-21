@@ -22,8 +22,8 @@ parser.add_argument('--config_path', type=str, default=None, help='Path to model
 parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--patch_size', type=int, default=256, help='Patch size')
 parser.add_argument('--valid_duration', type=float, default=30, help='Max duration for validation')
-parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--n_fft', type=int, default=4096, help='FFT length')
+parser.add_argument('--hop_length', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--augmentation_path', type=str, default=None, help='Path to augmentation.yaml')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
@@ -47,38 +47,36 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
-    patch_samples = args.hop_size * (args.patch_size - 1) + args.fft_size - 2 * (args.fft_size // 2)
+    patch_samples = args.hop_length * (args.patch_size - 1) + args.n_fft - 2 * (args.n_fft // 2)
     max_samples = int(args.valid_duration * args.sample_rate)
-    
+
     if args.samples_per_epoch <= 0:
         args.samples_per_epoch = None
-    
+
     with open(args.augmentation_path) as f:
         config_augmentation = yaml.safe_load(f)
-    
+
     augmentation = SequentialAugmentation()
     for name in config_augmentation['augmentation']:
         augmentation.append(choose_augmentation(name, **config_augmentation[name]))
-    
-    train_dataset = SpectrogramTrainDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
-    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
-    
+
+    train_dataset = SpectrogramTrainDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_samples=patch_samples, samples_per_epoch=args.samples_per_epoch, sources=args.sources, target=args.target, augmentation=augmentation)
+    valid_dataset = SpectrogramEvalDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=args.patch_size, max_samples=max_samples, sources=args.sources, target=args.target)
+
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
-    
+
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
-    
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
+
     model = MMDenseLSTM.build_from_config(config_path=args.config_path)
 
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -88,7 +86,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-        
+
     # Optimizer
     if args.optimizer == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -98,13 +96,16 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
-    
+
     # Criterion
     if args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
+
     trainer = AdhocTrainer(model, loader, criterion, optimizer, args)
     trainer.run()
 

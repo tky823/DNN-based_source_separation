@@ -2,8 +2,8 @@
 
 . ./path.sh
 
-fft_size=4096
-hop_size=1024
+n_fft=4096
+hop_length=1024
 window_fn='hann'
 
 sample_rate=44100
@@ -15,7 +15,7 @@ model_dir="./pretrained/paper-musdb18/${model_choice}" # `model_dir` must includ
 submission.py \
 --sample_rate ${sample_rate} \
 --duration ${duration} \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 --window_fn ${window_fn} \
 --model_dir ${model_dir}

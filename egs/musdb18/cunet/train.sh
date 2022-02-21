@@ -12,8 +12,8 @@ musdb18_root="../../../dataset/musdb18"
 sample_rate=44100
 
 window_fn='hann'
-fft_size=1024
-hop_size=768
+n_fft=1024
+hop_length=768
 
 # model
 control='dense' # or 'conv'
@@ -42,7 +42,7 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${sources}/sr${sample_rate}/patch${patch}/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${sources}/sr${sample_rate}/patch${patch}/${criterion}/stft${n_fft}-${hop_length}_${window_fn}-window/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -67,8 +67,8 @@ train.py \
 --patch_size ${patch} \
 --valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 --sources ${sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \

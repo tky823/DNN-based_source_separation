@@ -55,10 +55,10 @@ class WaveTrainDataset(WaveDataset):
                         'mixture': mixture_path
                     }
                 }
-                
+
                 for source in sources:
                     track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-                
+
                 self.tracks.append(track)
 
                 track_duration = track_samples / track_sample_rate
@@ -119,7 +119,7 @@ class WaveTrainDataset(WaveDataset):
             mixture, target = self._getitem_augmentation()
         else:
             raise NotImplementedError("Implement _getitem()")
-        
+
         if self.pre_resampler is not None:
             mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
             mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
@@ -155,7 +155,7 @@ class WaveTrainDataset(WaveDataset):
             # Apply augmentation
             source = self.augmentation(source)
             sources.append(source.unsqueeze(dim=0))
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -215,16 +215,16 @@ class WaveEvalDataset(WaveDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'train', name, "{}.wav".format(source))
-            
+
             track_data = {
                 'trackID': trackID,
                 'start': 0,
                 'samples_original': samples_original
             }
-            
+
             self.tracks.append(track)
             self.json_data.append(track_data) # len(self.json_data) determines # of samples in dataset
-        
+
         if sample_rate != SAMPLE_RATE_MUSDB18:
             self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
         else:
@@ -254,7 +254,7 @@ class WaveEvalDataset(WaveDataset):
                 sources.append(source.unsqueeze(dim=0))
             sources = torch.cat(sources, dim=0) # (len(self.sources), n_mics, T)
             mixture = sources.sum(dim=0) # (n_mics, T)
-        
+
         if type(self.target) is list:
             target = []
             for _target in self.target:
@@ -265,7 +265,7 @@ class WaveEvalDataset(WaveDataset):
         else:
             # mixture: (n_mics, T)
             target, _ = torchaudio.load(paths[self.target], num_frames=samples_original) # (n_mics, T)
-        
+
         if self.pre_resampler is not None:
             mixture_channels, target_channels = mixture.size()[:-1], target.size()[:-1]
             mixture, target = mixture.reshape(-1, mixture.size(-1)), target.reshape(-1, target.size(-1))
@@ -292,7 +292,7 @@ class WaveTestDataset(WaveDataset):
             for line in f:
                 name = line.strip()
                 names.append(name)
-        
+
         self.samples = int(duration * sample_rate)
 
         self.tracks = []
@@ -313,7 +313,7 @@ class WaveTestDataset(WaveDataset):
 
             for source in sources:
                 track['path'][source] = os.path.join(musdb18_root, 'test', name, "{}.wav".format(source))
-            
+
             self.tracks.append(track)
 
             data = {
@@ -328,7 +328,7 @@ class WaveTestDataset(WaveDataset):
             self.pre_resampler = torchaudio.transforms.Resample(SAMPLE_RATE_MUSDB18, sample_rate)
         else:
             self.pre_resampler = None
-    
+
     def __getitem__(self, idx):
         mixture, target, name = super().__getitem__(idx)
 
@@ -343,7 +343,7 @@ class WaveTestDataset(WaveDataset):
             target = self.pre_resampler(target)
 
             mixture, target = mixture.reshape(*mixture_channels, mixture.size(-1)), target.reshape(*target_channels, target.size(-1))
-        
+
         _, n_mics, track_samples = mixture.size()
         padding = (samples - track_samples % samples) % samples
 
@@ -361,14 +361,14 @@ class WaveTestDataset(WaveDataset):
 class TestDataLoader(torch.utils.data.DataLoader):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         assert self.batch_size == 1, "batch_size is expected 1, but given {}".format(self.batch_size)
-        
+
         self.collate_fn = test_collate_fn
 
 def test_collate_fn(batch):
     mixture, sources, samples, name = batch[0]
-    
+
     return mixture, sources, samples, name
 
 def assert_sample_rate(sample_rate):

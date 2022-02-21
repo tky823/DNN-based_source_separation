@@ -4,6 +4,8 @@ import warnings
 import numpy as np
 import torch
 
+import utils.audio as backend
+
 def read_wav(path):
     from scipy.io import wavfile
     warnings.warn("Use torchaudio.load instead.", DeprecationWarning)
@@ -27,59 +29,36 @@ def mu_law_compand(x, mu=255):
 def inv_mu_law_compand(y, mu=255):
     return np.sign(y) * ((1 + mu)**np.abs(y) - 1) / mu
 
-def build_Fourier_bases(fft_size, normalize=False):
+def build_Fourier_bases(n_fft, normalize=False):
     """
     Args:
-        fft_size <int>:
+        n_fft <int>:
         normalize <bool>:
     """
-    k = torch.arange(0, fft_size, dtype=torch.float)
-    n = torch.arange(0, fft_size, dtype=torch.float)
+    k = torch.arange(0, n_fft, dtype=torch.float)
+    n = torch.arange(0, n_fft, dtype=torch.float)
     k, n = torch.meshgrid(k, n)
 
-    cos_bases = torch.cos(2*math.pi*k*n/fft_size)
-    sin_bases = torch.sin(2*math.pi*k*n/fft_size)
+    cos_bases = torch.cos(2*math.pi*k*n/n_fft)
+    sin_bases = torch.sin(2*math.pi*k*n/n_fft)
     
     if normalize:
-        norm = math.sqrt(fft_size)
+        norm = math.sqrt(n_fft)
         cos_bases = cos_bases / norm
         sin_bases = sin_bases / norm
     
     return cos_bases, sin_bases
     
-def build_window(fft_size, window_fn='hann', **kwargs):
-    if window_fn=='hann':
-        assert set(kwargs) == set(), "kwargs is expected empty but given kwargs={}.".format(kwargs)
-        window = torch.hann_window(fft_size, periodic=True)
-    elif window_fn=='hamming':
-        assert set(kwargs) == set(), "kwargs is expected empty but given kwargs={}.".format(kwargs)
-        window = torch.hamming_window(fft_size, periodic=True)
-    elif window_fn == 'blackman':
-        window = torch.blackman_window(fft_size, periodic=True)
-    elif window_fn=='kaiser':
-        assert set(kwargs) == {'beta'}, "kwargs is expected to include key `beta` but given kwargs={}.".format(kwargs)
-        window = torch.kaiser_window(fft_size, beta=kwargs['beta'], periodic=True)
-    else:
-        raise ValueError("Not support {} window.".format(window_fn))
+def build_window(n_fft, window_fn='hann', **kwargs):
+    warnings.warn("Use utils.audio.build_window instead.", DeprecationWarning)
     
-    return window
+    return backend.build_window(n_fft, window_fn=window_fn, **kwargs)
     
-def build_optimal_window(window, hop_size=None):
+def build_optimal_window(window, hop_length=None):
     """
     Args:
         window: (window_length,)
     """
-    window_length = len(window)
-
-    if hop_size is None:
-        hop_size = window_length // 2
-
-    windows = torch.cat([
-        torch.roll(window.unsqueeze(dim=0), hop_size*idx) for idx in range(window_length // hop_size)
-    ], dim=0)
+    warnings.warn("Use utils.audio.build_optimal_window instead.", DeprecationWarning)
     
-    power = windows**2
-    norm = power.sum(dim=0)
-    optimal_window = window / norm
-    
-    return optimal_window
+    return backend.build_optimal_window(window, hop_length=hop_length)

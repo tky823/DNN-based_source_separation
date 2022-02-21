@@ -1,6 +1,12 @@
 import torch
 import torch.nn as nn
 
+"""
+Feature-wise Linear Modulation
+    Reference: "FiLM: Visual Reasoning with a General Conditioning Layer"
+    See https://arxiv.org/abs/1709.07871
+"""
+
 class FiLM(nn.Module):
     def __init__(self):
         super().__init__()
@@ -20,7 +26,7 @@ class FiLM(nn.Module):
 
         gamma = gamma.view(*dims)
         beta = beta.view(*dims)
-        
+
         return gamma * input + beta
 
 class FiLM1d(FiLM):
@@ -60,7 +66,7 @@ class FiLM2d(FiLM):
 
         gamma = gamma.view(*dims)
         beta = beta.view(*dims)
-        
+
         return gamma * input + beta
 
 class FiLM3d(FiLM):
@@ -80,7 +86,7 @@ class FiLM3d(FiLM):
 
         gamma = gamma.view(*dims)
         beta = beta.view(*dims)
-        
+
         return gamma * input + beta
 
 def _test_film1d():

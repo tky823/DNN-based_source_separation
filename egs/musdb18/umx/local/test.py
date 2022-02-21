@@ -18,8 +18,8 @@ parser = argparse.ArgumentParser(description="Evaluation of Open-Unmix")
 parser.add_argument('--musdb18_root', type=str, default=None, help='Path to MUSDB18')
 parser.add_argument('--sample_rate', '-sr', type=int, default=44100, help='Sampling rate')
 parser.add_argument('--duration', type=float, default=6, help='Duration')
-parser.add_argument('--fft_size', type=int, default=4096, help='FFT length')
-parser.add_argument('--hop_size', type=int, default=1024, help='Hop length')
+parser.add_argument('--n_fft', type=int, default=4096, help='FFT length')
+parser.add_argument('--hop_length', type=int, default=1024, help='Hop length')
 parser.add_argument('--window_fn', type=str, default='hann', help='Window function')
 parser.add_argument('--sources', type=str, default="[bass,drums,other,vocals]", help='Source names')
 parser.add_argument('--criterion', type=str, default='mse', choices=['mse'], help='Criterion')
@@ -35,27 +35,27 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     args.sources = args.sources.replace('[', '').replace(']', '').split(',')
     samples = int(args.duration * args.sample_rate)
-    padding = 2 * (args.fft_size // 2)
-    patch_size = (samples + padding - args.fft_size) // args.hop_size + 1
-    
-    test_dataset = SpectrogramTestDataset(args.musdb18_root, fft_size=args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=patch_size, sources=args.sources, target=args.sources)
+    padding = 2 * (args.n_fft // 2)
+    patch_size = (samples + padding - args.n_fft) // args.hop_length + 1
+
+    test_dataset = SpectrogramTestDataset(args.musdb18_root, n_fft=args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn, sample_rate=args.sample_rate, patch_size=patch_size, sources=args.sources, target=args.sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
-    
+
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    
+
     modules = {}
     for source in args.sources:
         model_path = os.path.join(args.model_dir, source, "{}.pth".format(args.model_choice))
         modules[source] = OpenUnmix.build_model(model_path)
-    
+
     model = ParallelOpenUnmix(modules)
-    
+
     print(model)
     print("# Parameters: {}".format(model.num_parameters), flush=True)
-    
+
     if args.use_cuda:
         if torch.cuda.is_available():
             model.cuda()
@@ -65,17 +65,17 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA")
-    
+
     # Criterion
     if args.criterion == 'mse':
         criterion = MeanSquaredError(dim=(1,2,3))
         args.save_normalized = False
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     tester = AdhocTester(model, loader, criterion, args)
     tester.run()
-    
+
 if __name__ == '__main__':
     args = parser.parse_args()
     print(args)

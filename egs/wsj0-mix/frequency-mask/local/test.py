@@ -15,8 +15,8 @@ parser.add_argument('--test_list_path', type=str, default=None, help='Path for m
 parser.add_argument('--sample_rate', '-sr', type=int, default=10, help='Sampling rate')
 parser.add_argument('--window_fn', type=str, default='hamming', help='Window function')
 parser.add_argument('--method', type=str, default='ibm', choices=['ibm', 'irm', 'psm'], help='Ideal mask for assignment')
-parser.add_argument('--fft_size', type=int, default=256, help='Window length')
-parser.add_argument('--hop_size', type=int, default=None, help='Hop size')
+parser.add_argument('--n_fft', type=int, default=256, help='Window length')
+parser.add_argument('--hop_length', type=int, default=None, help='Hop size')
 parser.add_argument('--n_sources', type=int, default=None, help='# speakers')
 parser.add_argument('--criterion', type=str, default='sisdr', choices=['sisdr'], help='Criterion')
 parser.add_argument('--out_dir', type=str, default=None, help='Output directory')
@@ -25,16 +25,16 @@ parser.add_argument('--overwrite', type=int, default=0, help='0: NOT overwrite, 
 def main(args):
     test_dataset = WaveTestDataset(args.test_wav_root, args.test_list_path, n_sources=args.n_sources)
     print("Test dataset includes {} samples.".format(len(test_dataset)))
-    
-    args.n_bins = args.fft_size // 2 + 1
+
+    args.n_bins = args.n_fft // 2 + 1
     loader = TestDataLoader(test_dataset, batch_size=1, shuffle=False)
-    
+
     if args.method == 'ibm':
-        method = IdealBinaryMasking(args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn)
+        method = IdealBinaryMasking(args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn)
     elif args.method == 'irm':
-        method = IdealRatioMasking(args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn)
+        method = IdealRatioMasking(args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn)
     elif args.method == 'psm':
-        method = PhaseSensitiveMasking(args.fft_size, hop_size=args.hop_size, window_fn=args.window_fn)
+        method = PhaseSensitiveMasking(args.n_fft, hop_length=args.hop_length, window_fn=args.window_fn)
     else:
         raise NotImplementedError("Not support {}.".format(args.method))
 
@@ -43,7 +43,7 @@ def main(args):
         criterion = NegSISDR()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     tester = AdhocTester(method, loader, criterion, args)
     tester.run()
 

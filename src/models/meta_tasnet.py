@@ -1215,8 +1215,8 @@ def _test_meta_tasnet_backbone():
     P = 3
     R, X = 2, 4
 
-    wave1, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_piano_16000.wav")
-    wave2, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_violin_16000.wav")
+    wave1, sample_rate = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_piano_16000.wav")
+    wave2, sample_rate = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_violin_16000.wav")
     input = torch.cat([wave1.unsqueeze(dim=0), wave2.unsqueeze(dim=0)], dim=0)
     input = input[:, :, :T]
 
@@ -1226,15 +1226,15 @@ def _test_meta_tasnet_backbone():
     F, M = 3, 256
     N = 32
 
-    print("-"*10, "Meta-TasNet Backbone (Generated, sr = 8000)", "-"*10)
+    print("-"*10, "Meta-TasNet Backbone (Generated, sample_rate = 8000)", "-"*10)
 
-    sr0 = 8000
-    resampler0 = torchaudio.transforms.Resample(sr, sr0)
+    sample_rate0 = 8000
+    resampler0 = torchaudio.transforms.Resample(sample_rate, sample_rate0)
 
     K0, S0 = K, S
     N0 = N
     F0 = F
-    enc_L0, enc_S0 = 1024 * (sr0//8000), 256 * (sr0//8000)
+    enc_L0, enc_S0 = 1024 * (sample_rate0//8000), 256 * (sample_rate0//8000)
 
     input0 = resampler0(input)
 
@@ -1253,15 +1253,15 @@ def _test_meta_tasnet_backbone():
     print(input0.size(), latent0.size(), output0.size())
     print()
 
-    print("-"*10, "Meta-TasNet Backbone (Generated, sr = 8000 + 16000)", "-"*10)
+    print("-"*10, "Meta-TasNet Backbone (Generated, sample_rate = 8000 + 16000)", "-"*10)
 
-    sr1 = 16000
-    resampler1 = torchaudio.transforms.Resample(sr, sr1)
+    sample_rate1 = 16000
+    resampler1 = torchaudio.transforms.Resample(sample_rate, sample_rate1)
 
     K1, S1 = 2 * K, 2 * S
     N1 = 2 * N
     F1 = 2 * F
-    enc_L1, enc_S1 = 1024 * (sr1//8000), 256 * (sr1//8000)
+    enc_L1, enc_S1 = 1024 * (sample_rate1//8000), 256 * (sample_rate1//8000)
 
     input1 = resampler1(input)
 
@@ -1289,29 +1289,29 @@ def _test_meta_tasnet():
     P = 3
     R, X = 2, 4
 
-    wave1, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_piano_16000.wav")
-    wave2, sr = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_violin_16000.wav")
+    wave1, sample_rate = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_piano_16000.wav")
+    wave2, sample_rate = torchaudio.load("../../dataset/sample-song/single-channel/sample-2_violin_16000.wav")
     input_original = torch.cat([wave1.unsqueeze(dim=0), wave2.unsqueeze(dim=0)], dim=0)
     input_original = input_original[:, :, :T]
 
     print(input_original.size())
 
-    print("-"*10, "Meta-TasNet (Generated, base sr = 8000)", "-"*10)
+    print("-"*10, "Meta-TasNet (Generated, base sample_rate = 8000)", "-"*10)
 
-    sr_original = 16000
-    sr = [8000, 16000, 32000]
+    sample_rate_original = 16000
+    sample_rate = [8000, 16000, 32000]
     input = []
 
-    for sr_target in sr:
-        resampler = torchaudio.transforms.Resample(sr_original, sr_target)
+    for sample_rate_target in sample_rate:
+        resampler = torchaudio.transforms.Resample(sample_rate_original, sample_rate_target)
         _input = resampler(input_original)
         input.append(_input)
 
-    num_stages = len(sr)
+    num_stages = len(sample_rate)
     K, S = 20, 6
     F, M = 3, 256
     N = 32
-    fft_size, hop_size = 1024 * (sr[0]//8000), 256 * (sr[0]//8000)
+    fft_size, hop_size = 1024 * (sample_rate[0]//8000), 256 * (sample_rate[0]//8000)
 
     model = MetaTasNet(
         N, K, stride=S,

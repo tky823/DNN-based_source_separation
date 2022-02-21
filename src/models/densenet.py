@@ -20,7 +20,7 @@ class DenseNet(nn.Module):
             num_layers = [
                 num_layers for _ in range(num_blocks)
             ]
-        
+
         self.preprocess = nn.Conv2d(in_channels, num_features, kernel_size=(1,1))
 
         net = []
@@ -31,9 +31,9 @@ class DenseNet(nn.Module):
             net.append(DenseBlock(num_features, out_channels, growth_rate, kernel_size, stride=stride, hidden_channels=hidden_channels, num_layers=_num_layers, eps=eps))
 
             num_features = out_channels
-        
+
         self.net = nn.Sequential(*net)
-    
+
     def forward(self, input):
         x = self.preprocess(input)
         for idx in range(self.num_blocks):
@@ -56,7 +56,7 @@ class DenseBlock(nn.Module):
 
         self.net = nn.Sequential(*net)
         self.transition2d = Transition2d(num_features, out_channels, eps)
-    
+
     def forward(self, input):
         x = self.net(input)
         output = self.transition2d(x)
@@ -107,7 +107,7 @@ class Transition2d(nn.Module):
         self.relu = nn.ReLU()
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=(1,1), stride=(1,1), bias=False)
         self.pool2d = nn.AvgPool2d(kernel_size=(2,2), stride=(2,2))
-    
+
     def forward(self, input):
         x = self.norm2d(input)
         x = self.relu(x)
@@ -154,7 +154,7 @@ def _test_densenet_official():
 if __name__ == '__main__':
     _test_dense_block()
     print()
-    
+
     _test_densenet()
     print()
     # _test_densenet_official()

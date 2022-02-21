@@ -1,0 +1,3 @@
+scheduler: "ReduceLROnPlateau"
+factor: 0.5
+patience: 3

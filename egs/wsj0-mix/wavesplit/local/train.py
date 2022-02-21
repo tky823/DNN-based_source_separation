@@ -96,9 +96,6 @@ def main(args):
     
     criterion = MultiDomainLoss(reconst_criterion, spk_criterion, reg_criterion=reg_criterion)
     
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
-    
     args.in_channels = 1
 
     speaker_stack = SpeakerStack(
@@ -143,6 +140,9 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
     
     trainer = Trainer(model, loader, criterion, optimizer, args)
     trainer.run()

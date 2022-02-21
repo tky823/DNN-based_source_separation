@@ -8,7 +8,7 @@ n_sources=2
 sr_k=8 # sr_k=8 means sampling rate is 8kHz. Choose from 8kHz or 16kHz.
 sample_rate=${sr_k}000
 duration=0.8 # 6400 samples
-valid_duration=10
+valid_duration=0
 max_or_min='min'
 
 train_wav_root="../../../dataset/wsj0-mix/${n_sources}speakers/wav${sr_k}k/${max_or_min}/tr"
@@ -18,10 +18,11 @@ train_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}
 valid_list_path="../../../dataset/wsj0-mix/${n_sources}speakers/mix_${n_sources}_spk_${max_or_min}_cv_mix"
 
 window_fn='hann'
-fft_size=256
-hop_size=64
+n_fft=256
+hop_length=64
 ideal_mask='ibm'
-threshold=40
+threshold=60
+target_type='source'
 
 # Embedding dimension
 K=20
@@ -29,19 +30,22 @@ K=20
 # Network configuration
 H=300
 B=4
+dropout=0
 causal=0
 mask_nonlinear='sigmoid'
-iter_clustering=10
+iter_clustering=-1
+take_log=1
+take_db=0
 
 # Criterion
-criterion='se' # or 'l2loss'
+criterion='se'
 
 # Optimizer
 optimizer='rmsprop'
 lr=1e-4
-lr_end=3e-6
 weight_decay=0
 max_norm=0 # 0 is handled as no clipping
+scheduler_path="./config/paper/scheduler.yaml"
 
 batch_size=64
 epochs=150
@@ -55,7 +59,16 @@ gpu_id="0"
 . parse_options.sh || exit 1
 
 if [ -z "${tag}" ]; then
-    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/stft${fft_size}-${hop_size}_${window_fn}-window_${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_causal${causal}_mask-${mask_nonlinear}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-${lr_end}-decay${weight_decay}_clip${max_norm}/seed${seed}"
+    save_dir="${exp_dir}/${n_sources}mix/sr${sr_k}k_${max_or_min}/${duration}sec/${criterion}/${target_type}"
+    save_dir="${save_dir}/stft${n_fft}-${hop_length}_${window_fn}-window/${ideal_mask}_threshold${threshold}/K${K}_H${H}_B${B}_dropout${dropout}_causal${causal}_mask-${mask_nonlinear}"
+    if [ ${take_log} -eq 1 ]; then
+        save_dir="${save_dir}/take_log"
+    elif [ ${take_db} -eq 1 ]; then
+        save_dir="${save_dir}/take_db"
+    else
+        save_dir="${save_dir}/take_identity"
+    fi
+    save_dir="${save_dir}/b${batch_size}_e${epochs}_${optimizer}-lr${lr}-decay${weight_decay}_clip${max_norm}/seed${seed}"
 else
     save_dir="${exp_dir}/${tag}"
 fi
@@ -63,7 +76,19 @@ fi
 model_dir="${save_dir}/model"
 loss_dir="${save_dir}/loss"
 sample_dir="${save_dir}/sample"
+config_dir="${save_dir}/config"
 log_dir="${save_dir}/log"
+
+if [ ! -e "${config_dir}" ]; then
+    mkdir -p "${config_dir}"
+fi
+
+scheduler_dir=`dirname ${scheduler_path}`
+scheduler_name=`basename ${scheduler_path}`
+
+if [ ! -e "${config_dir}/${scheduler_name}" ]; then
+    cp "${scheduler_path}" "${config_dir}/${scheduler_name}"
+fi
 
 if [ ! -e "${log_dir}" ]; then
     mkdir -p "${log_dir}"
@@ -74,31 +99,35 @@ time_stamp=`date "+%Y%m%d-%H%M%S"`
 export CUDA_VISIBLE_DEVICES="${gpu_id}"
 
 train.py \
---train_wav_root ${train_wav_root} \
---valid_wav_root ${valid_wav_root} \
---train_list_path ${train_list_path} \
---valid_list_path ${valid_list_path} \
+--train_wav_root "${train_wav_root}" \
+--valid_wav_root "${valid_wav_root}" \
+--train_list_path "${train_list_path}" \
+--valid_list_path "${valid_list_path}" \
 --sample_rate ${sample_rate} \
 --duration ${duration} \
 --valid_duration ${valid_duration} \
 --window_fn "${window_fn}" \
 --ideal_mask ${ideal_mask} \
 --threshold ${threshold} \
---fft_size ${fft_size} \
---hop_size ${hop_size} \
+--target_type ${target_type} \
+--n_fft ${n_fft} \
+--hop_length ${hop_length} \
 -K ${K} \
 -H ${H} \
 -B ${B} \
+--dropout ${dropout} \
 --causal ${causal} \
 --mask_nonlinear ${mask_nonlinear} \
 --iter_clustering ${iter_clustering} \
+--take_log ${take_log} \
+--take_db ${take_db} \
 --n_sources ${n_sources} \
 --criterion ${criterion} \
 --optimizer ${optimizer} \
 --lr ${lr} \
---lr_end ${lr_end} \
 --weight_decay ${weight_decay} \
 --max_norm ${max_norm} \
+--scheduler_path "${scheduler_path}" \
 --batch_size ${batch_size} \
 --epochs ${epochs} \
 --model_dir "${model_dir}" \

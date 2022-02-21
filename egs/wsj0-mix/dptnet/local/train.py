@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+
 import torch
 import torch.nn as nn
 
@@ -61,24 +62,23 @@ parser.add_argument('--seed', type=int, default=42, help='Random seed')
 
 def main(args):
     set_seed(args.seed)
-    
+
     samples = int(args.sample_rate * args.duration)
     overlap = samples // 2
     max_samples = int(args.sample_rate * args.valid_duration)
-    
+
     train_dataset = WaveTrainDataset(args.train_wav_root, args.train_list_path, samples=samples, overlap=overlap, n_sources=args.n_sources)
     valid_dataset = WaveEvalDataset(args.valid_wav_root, args.valid_list_path, max_samples=max_samples, n_sources=args.n_sources)
     print("Training dataset includes {} samples.".format(len(train_dataset)))
     print("Valid dataset includes {} samples.".format(len(valid_dataset)))
-    
+
     loader = {}
     loader['train'] = TrainDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     loader['valid'] = EvalDataLoader(valid_dataset, batch_size=1, shuffle=False)
-    
+
     if not args.enc_nonlinear:
         args.enc_nonlinear = None
-    if args.max_norm is not None and args.max_norm == 0:
-        args.max_norm = None
+
     model = DPTNet(
         args.n_basis, args.kernel_size, stride=args.stride,
         enc_basis=args.enc_basis, dec_basis=args.dec_basis, enc_nonlinear=args.enc_nonlinear,
@@ -102,7 +102,7 @@ def main(args):
             raise ValueError("Cannot use CUDA.")
     else:
         print("Does NOT use CUDA", flush=True)
-        
+
     # Optimizer
     # The learning rate is computed in AdhocTrainer. In fact, You don't have to specify learning rate in advance.
     warmup_steps = args.warmup_steps
@@ -118,15 +118,18 @@ def main(args):
         optimizer = torch.optim.RMSprop(model.parameters(), lr=init_lr, weight_decay=args.weight_decay)
     else:
         raise ValueError("Not support optimizer {}".format(args.optimizer))
-    
+
     # Criterion
     if args.criterion == 'sisdr':
         criterion = NegSISDR()
     else:
         raise ValueError("Not support criterion {}".format(args.criterion))
-    
+
     pit_criterion = PIT1d(criterion, n_sources=args.n_sources)
-    
+
+    if args.max_norm is not None and args.max_norm == 0:
+        args.max_norm = None
+
     trainer = AdhocTrainer(model, loader, pit_criterion, optimizer, args)
     trainer.run()
 

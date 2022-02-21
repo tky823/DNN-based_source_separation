@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn as nn
 
@@ -8,13 +10,15 @@ EPS = 1e-12
 class DualPathTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_blocks=6, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
-        
+
+        warnings.warn("Use models.dptnet.DualPathTransformer instead.", DeprecationWarning)
+
         # Network confguration
         net = []
-        
+
         for _ in range(num_blocks):
             net.append(DualPathTransformerBlock(num_features, hidden_channels, num_heads=num_heads, norm=norm, nonlinear=nonlinear, dropout=dropout, causal=causal, eps=eps))
-        
+
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
@@ -31,7 +35,9 @@ class DualPathTransformer(nn.Module):
 class DualPathTransformerBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
-        
+
+        warnings.warn("Use models.dptnet.DualPathTransformerBlock instead.", DeprecationWarning)
+
         self.intra_chunk_block = IntraChunkTransformer(
             num_features, hidden_channels, num_heads=num_heads,
             norm=norm, nonlinear=nonlinear, dropout=dropout,
@@ -43,7 +49,7 @@ class DualPathTransformerBlock(nn.Module):
             causal=causal,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -53,13 +59,15 @@ class DualPathTransformerBlock(nn.Module):
         """
         x = self.intra_chunk_block(input)
         output = self.inter_chunk_block(x)
-        
+
         return output
 
 class IntraChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
-        
+
+        warnings.warn("Use models.dptnet.IntraChunkTransformer instead.", DeprecationWarning)
+
         self.num_features = num_features
 
         self.transformer = ImprovedTransformer(
@@ -68,7 +76,7 @@ class IntraChunkTransformer(nn.Module):
             causal=False,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -78,7 +86,7 @@ class IntraChunkTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         x = input.permute(3, 0, 2, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (chunk_size, batch_size, S, num_features)
         x = x.view(chunk_size, batch_size*S, num_features) # (chunk_size, batch_size, S, num_features) -> (chunk_size, batch_size*S, num_features)
         x = self.transformer(x) # -> (chunk_size, batch_size*S, num_features)
@@ -90,7 +98,9 @@ class IntraChunkTransformer(nn.Module):
 class InterChunkTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, causal=False, norm=True, nonlinear='relu', dropout=0, eps=EPS):
         super().__init__()
-        
+
+        warnings.warn("Use models.dptnet.InterChunkTransformer instead.", DeprecationWarning)
+
         self.num_features = num_features
 
         self.transformer = ImprovedTransformer(
@@ -99,7 +109,7 @@ class InterChunkTransformer(nn.Module):
             causal=causal,
             eps=eps
         )
-        
+
     def forward(self, input):
         """
         Args:
@@ -109,7 +119,7 @@ class InterChunkTransformer(nn.Module):
         """
         num_features = self.num_features
         batch_size, _, S, chunk_size = input.size()
-        
+
         x = input.permute(2, 0, 3, 1).contiguous() # (batch_size, num_features, S, chunk_size) -> (S, batch_size, chunk_size, num_features)
         x = x.view(S, batch_size*chunk_size, num_features) # (S, batch_size, chunk_size, num_features) -> (S, batch_size*chunk_size, num_features)
         x = self.transformer(x) # -> (S, batch_size*chunk_size, num_features)
@@ -121,6 +131,8 @@ class InterChunkTransformer(nn.Module):
 class ImprovedTransformer(nn.Module):
     def __init__(self, num_features, hidden_channels, num_heads=4, norm=True, nonlinear='relu', dropout=0, causal=False, eps=EPS):
         super().__init__()
+
+        warnings.warn("Use models.dptnet.ImprovedTransformer instead.", DeprecationWarning)
 
         self.multihead_attn_block = MultiheadAttentionBlock(num_features, num_heads, norm=norm, dropout=dropout, causal=causal, eps=eps)
         self.subnet = FeedForwardBlock(num_features, hidden_channels, norm=norm, nonlinear=nonlinear, causal=causal, eps=eps)
@@ -134,18 +146,20 @@ class ImprovedTransformer(nn.Module):
         """
         x = self.multihead_attn_block(input)
         output = self.subnet(x)
-        
+
         return output
 
 class MultiheadAttentionBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, norm=True, dropout=0, causal=False, eps=EPS):
         super().__init__()
 
+        warnings.warn("Use models.dptnet.MultiheadAttentionBlock instead.", DeprecationWarning)
+
         if dropout == 0:
             self.dropout = False
         else:
             self.dropout = True
-        
+
         self.norm = norm
 
         self.multihead_attn = nn.MultiheadAttention(embed_dim, num_heads)
@@ -155,7 +169,7 @@ class MultiheadAttentionBlock(nn.Module):
         if self.norm:
             norm_name = 'cLN' if causal else 'gLM'
             self.norm1d = choose_layer_norm(norm_name, embed_dim, causal=causal, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -171,12 +185,12 @@ class MultiheadAttentionBlock(nn.Module):
 
         if self.dropout:
             x = self.dropout1d(x)
-        
+
         if self.norm:
             x = x.permute(1, 2, 0) # (batch_size, embed_dim, T)
             x = self.norm1d(x) # (batch_size, embed_dim, T)
             x = x.permute(2, 0, 1).contiguous() # (batch_size, embed_dim, T) -> (T, batch_size, embed_dim)
-        
+
         output = x
 
         return output
@@ -185,13 +199,15 @@ class FeedForwardBlock(nn.Module):
     def __init__(self, num_features, hidden_channels, norm=True, nonlinear='relu', causal=False, eps=EPS):
         super().__init__()
 
+        warnings.warn("Use models.dptnet.FeedForwardBlock instead.", DeprecationWarning)
+
         if causal:
             bidirectional = False
             num_directions = 1 # uni-direction
         else:
             bidirectional = True
             num_directions = 2 # bi-direction
-        
+
         self.norm = norm
 
         self.rnn = nn.LSTM(num_features, hidden_channels, batch_first=False, bidirectional=bidirectional)
@@ -204,7 +220,7 @@ class FeedForwardBlock(nn.Module):
         if self.norm:
             norm_name = 'cLN' if causal else 'gLM'
             self.norm1d = choose_layer_norm(norm_name, num_features, causal=causal, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -221,7 +237,7 @@ class FeedForwardBlock(nn.Module):
         x = self.nonlinear1d(x) # -> (T, batch_size, num_directions*hidden_channels)
         x = self.fc(x) # (T, batch_size, num_directions*hidden_channels) -> (T, batch_size, num_features)
         x = x + residual
-        
+
         if self.norm:
             x = x.permute(1, 2, 0) # (T, batch_size, num_features) -> (batch_size, num_features, T)
             x = self.norm1d(x) # (batch_size, num_features, T)
@@ -241,7 +257,7 @@ def _test_multihead_attn_block():
     print('-'*10, "Non causal & No dropout", '-'*10)
     causal = False
     dropout = 0
-    
+
     model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, dropout=dropout, causal=causal)
     print(model)
 
@@ -252,7 +268,7 @@ def _test_multihead_attn_block():
     print('-'*10, "Causal & Dropout (p=0.3)", '-'*10)
     causal = True
     dropout = 0.3
-    
+
     model = MultiheadAttentionBlock(embed_dim, num_heads=num_heads, dropout=dropout, causal=causal)
     print(model)
 
@@ -269,7 +285,7 @@ def _test_feedforward_block():
     print('-'*10, "Causal", '-'*10)
     causal = True
     nonlinear = 'relu'
-    
+
     model = FeedForwardBlock(num_features, hidden_channels, nonlinear=nonlinear, causal=causal)
     print(model)
 
@@ -286,7 +302,7 @@ def _test_improved_transformer():
 
     print('-'*10, "Non causal", '-'*10)
     causal = False
-    
+
     model = ImprovedTransformer(num_features, hidden_channels, num_heads=num_heads, causal=causal)
     print(model)
 
@@ -343,7 +359,7 @@ if __name__ == '__main__':
     print('='*10, "improved transformer", '='*10)
     _test_improved_transformer()
     print()
-    
+
     print('='*10, "transformer block", '='*10)
     _test_transformer_block()
     print()

@@ -11,21 +11,25 @@ from models.pocm import PoCM2d, GPoCM2d
 EPS = 1e-12
 
 """
-Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations
+Conditioned UNet
+    Reference: "Conditioned-U-Net: Introducing a Control Mechanism in the U-Net for multiple source separations"
+    See https://arxiv.org/abs/1907.01277
+    Reference: "LaSAFT: Latent Source Attentive Frequency Transformation for Conditioned Source Separation"
+    See https://arxiv.org/abs/2010.11631
 """
 
 class ConditionedUNetBase(nn.Module):
     def __init__(self):
         super().__init__()
-    
+
     @property
     def num_parameters(self):
         _num_parameters = 0
-        
+
         for p in self.parameters():
             if p.requires_grad:
                 _num_parameters += p.numel()
-        
+
         return _num_parameters
 
 class ConditionedUNet2d(ConditionedUNetBase):
@@ -46,7 +50,7 @@ class ConditionedUNet2d(ConditionedUNetBase):
 
         self.control_net = control_net
         self.backbone = unet
-        
+
     def forward(self, input, latent):
         gamma, beta = self.control_net(latent)
         x = self.backbone(input, gamma, beta)
@@ -66,9 +70,9 @@ class ConditionedUNet2d(ConditionedUNetBase):
             output = x * input
         else:
             output = x
-        
+
         return output
-    
+
     def get_config(self):
         config = {}
         config['control'] = self.control_net.get_config()
@@ -99,21 +103,21 @@ class UNet2d(ConditionedUNetBase):
             dec_channels = channels[::-1]
         else:
             dec_channels = channels[:0:-1] + [out_channels]
-            
+
         _dec_channels = []
-        
+
         for idx, out_channel in enumerate(dec_channels):
             if idx == 0:
                 _dec_channels.append(out_channel)
             else:
                 _dec_channels.append(2 * out_channel)
-                
+
         dec_channels = _dec_channels
 
         self.encoder = Encoder2d(enc_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, bias=bias, nonlinear=enc_nonlinear, conditioning=conditioning, eps=eps)
         self.bottleneck = nn.Conv2d(channels[-1], channels[-1], kernel_size=(1,1), stride=(1,1))
         self.decoder = Decoder2d(dec_channels, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, bias=bias, nonlinear=dec_nonlinear, eps=eps)
-        
+
         self.channels = channels
         self.kernel_size, self.stride = kernel_size, stride
         self.dilated, self.separable = dilated, separable
@@ -127,9 +131,9 @@ class UNet2d(ConditionedUNetBase):
         x, skip = self.encoder(input, gamma, beta)
         x = self.bottleneck(x)
         output = self.decoder(x, skip[::-1])
-        
+
         return output
-    
+
     @classmethod
     def build_from_config(cls, config):
         channels = config['channels']
@@ -139,14 +143,14 @@ class UNet2d(ConditionedUNetBase):
         bias = config['bias']
         out_channels = config['out_channels']
         conditioning = config['conditioning']
-        
+
         model = cls(
             channels, kernel_size=kernel_size, stride=stride, enc_nonlinear=enc_nonlinear, dec_nonlinear=dec_nonlinear,
             dilated=dilated, separable=separable, bias=bias,
             out_channels=out_channels,
             conditioning=conditioning
         )
-    
+
         return model
 
     def get_config(self):
@@ -187,12 +191,12 @@ class Encoder2d(nn.Module):
             stride = [stride] * n_blocks
         if type(nonlinear) is not list:
             nonlinear = [nonlinear] * n_blocks
-        
+
         self.channels = channels
         self.n_blocks = n_blocks
-        
+
         net = []
-        
+
         for n in range(n_blocks):
             if dilated:
                 dilation = 2**n
@@ -200,19 +204,19 @@ class Encoder2d(nn.Module):
             else:
                 dilation = 1
             net.append(EncoderBlock2d(channels[n], channels[n + 1], kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, bias=bias, nonlinear=nonlinear[n], conditioning=conditioning, eps=eps))
-        
+
         self.net = nn.Sequential(*net)
-        
+
     def forward(self, input, gamma, beta):
         n_blocks = self.n_blocks
-        
+
         x = input
         skip = []
-        
+
         for n in range(n_blocks):
             x = self.net[n](x, gamma[n], beta[n])
             skip.append(x)
-        
+
         return x, skip
 
 class Decoder2d(nn.Module):
@@ -226,9 +230,9 @@ class Decoder2d(nn.Module):
             nonlinear <str> or <list<str>>
         """
         super().__init__()
-        
+
         n_blocks = len(channels) - 1
-        
+
         if type(kernel_size) is not list:
             kernel_size = [kernel_size] * n_blocks
         if stride is None:
@@ -237,11 +241,11 @@ class Decoder2d(nn.Module):
             stride = [stride] * n_blocks
         if type(nonlinear) is not list:
             nonlinear = [nonlinear] * n_blocks
-            
+
         self.n_blocks = n_blocks
-        
+
         net = []
-        
+
         for n in range(n_blocks):
             if dilated:
                 dilation = 2**(n_blocks - n - 1)
@@ -250,9 +254,9 @@ class Decoder2d(nn.Module):
                 dilation = 1
             net.append(DecoderBlock2d(channels[n], channels[n + 1] // 2, kernel_size=kernel_size[n], stride=stride[n], dilation=dilation, separable=separable, bias=bias, nonlinear=nonlinear[n], eps=eps))
             # channels[n + 1] // 2: because of skip connection
-        
+
         self.net = nn.Sequential(*net)
-            
+
     def forward(self, input, skip):
         """
         Args:
@@ -260,9 +264,9 @@ class Decoder2d(nn.Module):
             skip <list<torch.Tensor>>
         """
         n_blocks = self.n_blocks
-        
+
         x = input
-        
+
         for n in range(n_blocks):
             if n == 0:
                 x = self.net[n](x)
@@ -270,15 +274,15 @@ class Decoder2d(nn.Module):
                 x = self.net[n](x, skip[n])
 
         output = x
-        
+
         return output
 
 class EncoderBlock2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, bias=False, nonlinear='relu', conditioning='film', eps=EPS):
         super().__init__()
-        
+
         kernel_size = _pair(kernel_size)
-        
+
         if stride is None:
             stride = kernel_size
         stride = _pair(stride)
@@ -290,7 +294,7 @@ class EncoderBlock2d(nn.Module):
             self.conv2d = DepthwiseSeparableConv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation, bias=bias)
         else:
             self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, dilation=dilation, bias=bias)
-        
+
         self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
 
         if conditioning == 'film':
@@ -301,9 +305,9 @@ class EncoderBlock2d(nn.Module):
             self.conditioning = GPoCM2d()
         else:
             raise ValueError("Not support conditioning {}".format(conditioning))
-        
+
         self.nonlinear2d = choose_nonlinear(nonlinear)
-            
+
     def forward(self, input, gamma, beta):
         """
         Args:
@@ -312,7 +316,7 @@ class EncoderBlock2d(nn.Module):
         Kh, Kw = self.kernel_size
         Sh, Sw = self.stride
         Dh, Dw = self.dilation
-        
+
         Kh = (Kh - 1) * Dh + 1
         Kw = (Kw - 1) * Dw + 1
 
@@ -323,22 +327,22 @@ class EncoderBlock2d(nn.Module):
         padding_bottom = padding_height - padding_top
         padding_left = padding_width // 2
         padding_right = padding_width - padding_left
-        
+
         input = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
-        
+
         x = self.conv2d(input)
         x = self.norm2d(x)
         x = self.conditioning(x, gamma, beta)
         output = self.nonlinear2d(x)
-        
+
         return output
 
 class DecoderBlock2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, bias=False, nonlinear='relu', eps=EPS):
         super().__init__()
-        
+
         kernel_size = _pair(kernel_size)
-        
+
         if stride is None:
             stride = kernel_size
         stride = _pair(stride)
@@ -352,7 +356,7 @@ class DecoderBlock2d(nn.Module):
             self.deconv2d = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, dilation=dilation, bias=bias)
         self.norm2d = nn.BatchNorm2d(out_channels, eps=eps)
         self.nonlinear2d = choose_nonlinear(nonlinear)
-            
+
     def forward(self, input, skip=None):
         """
         Args:
@@ -380,7 +384,7 @@ class DecoderBlock2d(nn.Module):
 
             input = F.pad(input, (-padding_left, -padding_right, -padding_top, -padding_bottom))
             input = torch.cat([input, skip], dim=1)
-        
+
         padding_height = Kh - Sh
         padding_width = Kw - Sw
         padding_top = padding_height//2
@@ -392,7 +396,7 @@ class DecoderBlock2d(nn.Module):
         x = F.pad(x, (-padding_left, -padding_right, -padding_top, -padding_bottom))
         x = self.norm2d(x)
         output = self.nonlinear2d(x)
-        
+
         return output
 
 class TDF2d(nn.Module):
@@ -435,7 +439,7 @@ class MultiheadTDF2d(nn.Module):
         for idx in range(self.num_heads):
             x = self.net[idx](input)
             output.append(x)
-        
+
         output = torch.stack(output, dim=self.stack_dim)
 
         return output
@@ -451,7 +455,7 @@ class TDFTransformBlock2d(nn.Module):
 
         if nonlinear:
             self.nonlinear2d = choose_nonlinear(nonlinear)
-    
+
     def forward(self, input):
         """
         Args:
@@ -470,7 +474,7 @@ class TDFTransformBlock2d(nn.Module):
             output = self.nonlinear2d(x)
         else:
             output = x
-        
+
         return output
 
 class TFC2d(nn.Module):
@@ -483,7 +487,7 @@ class TFC2d(nn.Module):
         _in_channels = in_channels
 
         net = []
-        
+
         for idx in range(num_layers):
             net.append(TFCTransformBlock2d(_in_channels, growth_rate, kernel_size=kernel_size, stride=(1,1), nonlinear=nonlinear, bias=bias, eps=eps))
             _in_channels += growth_rate
@@ -516,7 +520,7 @@ class TFCTransformBlock2d(nn.Module):
 
         if nonlinear:
             self.nonlinear2d = choose_nonlinear(nonlinear)
-    
+
     def forward(self, input):
         Kh, Kw = self.kernel_size
         Sh, Sw = self.stride
@@ -527,7 +531,7 @@ class TFCTransformBlock2d(nn.Module):
         padding_left = padding_width // 2
         padding_bottom = padding_height - padding_top
         padding_right = padding_width - padding_left
-        
+
         x = F.pad(input, (padding_left, padding_right, padding_top, padding_bottom))
         x = self.conv2d(x)
         x = self.norm2d(x)
@@ -546,7 +550,7 @@ class TDC2d(nn.Module):
         _in_channels = in_channels
 
         net = []
-        
+
         for idx in range(num_layers):
             net.append(TDCTransformBlock2d(_in_channels, growth_rate, kernel_size=kernel_size, stride=1, nonlinear=nonlinear, bias=bias, eps=eps))
             _in_channels += growth_rate
@@ -554,7 +558,7 @@ class TDC2d(nn.Module):
         self.net = nn.Sequential(*net)
 
         self.num_layers = num_layers
-    
+
     def forward(self, input):
         """
         Args:
@@ -585,7 +589,7 @@ class TDCTransformBlock2d(nn.Module):
 
         if nonlinear:
             self.nonlinear2d = choose_nonlinear(nonlinear)
-    
+
     def forward(self, input):
         """
         Args:
@@ -596,11 +600,11 @@ class TDCTransformBlock2d(nn.Module):
         in_channels, out_channels = self.in_channels, self.out_channels
         K, S = self.kernel_size, self.stride
         batch_size, _, n_bins, n_frames = input.size()
-        
+
         padding = K - S
         padding_left = padding // 2
         padding_right = padding - padding_left
-        
+
         x = input.permute(0, 3, 1, 2).contiguous() # (batch_size, n_frames, in_channels, n_bins)
         x = x.view(batch_size * n_frames, in_channels, n_bins)
         x = F.pad(x, (padding_left, padding_right))
@@ -611,7 +615,7 @@ class TDCTransformBlock2d(nn.Module):
             output = self.nonlinear2d(x)
         else:
             output = x
-        
+
         x = x.view(batch_size, n_frames, out_channels, n_bins)
         output = x.permute(0, 2, 3, 1).contiguous() # (batch_size, out_channels, n_bins, n_frames)
 
@@ -638,7 +642,7 @@ class TDCRNN2d(nn.Module):
             TDF2d(growth_rate, out_channels, bottleneck_bins, nonlinear=nonlinear, bias=bias, eps=eps),
             TDF2d(growth_rate, bottleneck_bins, n_bins, nonlinear=nonlinear, bias=bias, eps=eps)
         )
-    
+
     def forward(self, input):
         """
         Args:
@@ -675,11 +679,11 @@ class ControlDenseNet(nn.Module):
         self.dense_block = ControlStackedDenseBlock(channels, nonlinear=nonlinear, dropout=dropout, norm=norm, eps=eps)
 
         weights, biases = [], []
-        
+
         for _channels in out_channels:
             weights.append(nn.Linear(channels[-1], _channels))
             biases.append(nn.Linear(channels[-1], _channels))
-        
+
         self.fc_weights = nn.ModuleList(weights)
         self.fc_biases = nn.ModuleList(biases)
 
@@ -718,14 +722,14 @@ class ControlDenseNet(nn.Module):
         nonlinear = config['nonlinear']
         dropout = config['dropout']
         norm = config['norm']
-        
+
         model = cls(
             channels, out_channels,
             nonlinear=nonlinear, dropout=dropout, norm=norm
         )
-    
+
         return model
-    
+
     def get_config(self):
         config = {
             'channels': self.channels,
@@ -743,12 +747,12 @@ class ControlStackedDenseBlock(nn.Module):
         super().__init__()
 
         n_blocks = len(channels) - 1
-        
+
         if type(nonlinear) is not list:
             nonlinear = [nonlinear] * n_blocks
-        
+
         net = []
-        
+
         for n in range(n_blocks):
             if n == 0: # First layer
                 _dropout, _norm = False, False
@@ -759,7 +763,7 @@ class ControlStackedDenseBlock(nn.Module):
 
         self.n_blocks = n_blocks
         self.net = nn.Sequential(*net)
-        
+
     def forward(self, input):
         output = self.net(input)
 
@@ -781,7 +785,7 @@ class ControlDenseBlock(nn.Module):
 
         if self.norm:
             self.norm0d = nn.BatchNorm1d(out_channels, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -793,13 +797,13 @@ class ControlDenseBlock(nn.Module):
 
         if self.nonlinear: 
             x = self.nonlinear0d(x)
-        
+
         if self.dropout:
             x = self.dropout0d(x)
 
         if self.norm:
             x = self.norm0d(x)
-        
+
         output = x
 
         return output
@@ -817,14 +821,13 @@ class ControlConvNet(nn.Module):
         self.conv_block = ControlStackedConvBlock(channels, kernel_size=kernel_size, stride=stride, dilated=dilated, separable=separable, nonlinear=nonlinear, dropout=dropout, norm=norm, eps=EPS)
 
         weights, biases = [], []
-        
+
         for _channels in out_channels:
             weights.append(nn.Linear(channels[-1], _channels))
             biases.append(nn.Linear(channels[-1], _channels))
-        
+
         self.fc_weights = nn.ModuleList(weights)
         self.fc_biases = nn.ModuleList(biases)
-
 
     def forward(self, input):
         """
@@ -858,7 +861,7 @@ class ControlStackedConvBlock(nn.Module):
         super().__init__()
 
         n_blocks = len(channels) - 1
-        
+
         if type(kernel_size) is not list:
             kernel_size = [kernel_size] * n_blocks
         if stride is None:
@@ -867,16 +870,16 @@ class ControlStackedConvBlock(nn.Module):
             stride = [stride] * n_blocks
         if type(nonlinear) is not list:
             nonlinear = [nonlinear] * n_blocks
-        
+
         net = []
-        
+
         for n in range(n_blocks):
             if dilated:
                 dilation = 2**(n_blocks - n - 1)
                 assert stride[n] == 1, "stride must be 1 when dilated convolution."
             else:
                 dilation = 1
-            
+
             if n == 0: # First layer
                 _dropout, _norm = False, False
             else:
@@ -886,15 +889,15 @@ class ControlStackedConvBlock(nn.Module):
 
         self.n_blocks = n_blocks
         self.net = nn.Sequential(*net)
-        
+
     def forward(self, input):
         n_blocks = self.n_blocks
-        
+
         x = input
-        
+
         for n in range(n_blocks):
             x = self.net[n](x)
-        
+
         output = x
 
         return output
@@ -902,7 +905,7 @@ class ControlStackedConvBlock(nn.Module):
 class ControlConvBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, separable=False, nonlinear='relu', dropout=False, norm=False, eps=EPS):
         super().__init__()
-        
+
         if stride is None:
             stride = kernel_size
 
@@ -922,7 +925,7 @@ class ControlConvBlock(nn.Module):
 
         if self.norm:
             self.norm1d = nn.BatchNorm1d(out_channels, eps=eps)
-    
+
     def forward(self, input):
         """
         Args:
@@ -933,28 +936,28 @@ class ControlConvBlock(nn.Module):
         K = self.kernel_size
         S = self.stride
         D = self.dilation
-        
+
         K = (K - 1) * D + 1
-        
+
         _, _, T_in = input.size()
 
         padding_width = K - 1 - (S - (T_in - K) % S) % S
         padding_left = padding_width // 2
         padding_right = padding_width - padding_left
-        
+
         input = F.pad(input, (padding_left, padding_right))
 
         x = self.conv1d(input)
 
         if self.nonlinear: 
             x = self.nonlinear1d(x)
-        
+
         if self.dropout:
             x = self.dropout1d(x)
 
         if self.norm:
             x = self.norm1d(x)
-        
+
         output = x
 
         return output
@@ -1001,7 +1004,7 @@ def _test_cunet():
     channels = [1, 8, 16, 32, 64]
     kernel_size = 3
     stride = 2
-    
+
     dec_nonlinear = ['leaky-relu', 'leaky-relu', 'leaky-relu', 'sigmoid']
     dropout_control = 0.5
 
@@ -1060,7 +1063,7 @@ def _test_cunet():
     out_channels_control = channels[1:]
     kernel_size_control = [latent_dim, latent_dim, latent_dim]
     stride_control = [1, 1, latent_dim]
-    
+
     input_latent = torch.randn((batch_size, 1, latent_dim), dtype=torch.float)
 
     control_net = ControlConvNet(channels_control, out_channels_control, kernel_size=kernel_size_control, stride=stride_control, dilated=False, separable=False, nonlinear=False, dropout=dropout_control, norm=True)
