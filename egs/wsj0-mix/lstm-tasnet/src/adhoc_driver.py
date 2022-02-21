@@ -80,6 +80,8 @@ class FinetuneTrainer(TrainerBase):
             self.train_loss[:self.start_epoch] = config['train_loss'][:self.start_epoch]
             self.valid_loss[:self.start_epoch] = config['valid_loss'][:self.start_epoch]
             self.best_loss = config['best_loss']
+            self.prev_loss = self.valid_loss[self.start_epoch - 1]
+            self.no_improvement = config['no_improvement']
         else:
             model_path = os.path.join(self.model_dir, "best.pth")
 
@@ -90,7 +92,8 @@ class FinetuneTrainer(TrainerBase):
                     raise ValueError("{} already exists. If you continue to run, set --overwrite to be True.".format(model_path))
 
             self.start_epoch = 0
-            self.best_loss = float('infinity')
+            self.best_loss, self.prev_loss = float('infinity'), float('infinity')
+            self.no_improvement = 0
 
         if isinstance(self.model, nn.DataParallel):
             self.model.module.load_state_dict(config['state_dict'])
@@ -144,10 +147,9 @@ class FinetuneTrainer(TrainerBase):
 
         config['optim_dict'] = self.optimizer.state_dict()
 
+        config['no_improvement'] = self.no_improvement
         config['best_loss'] = self.best_loss
-
-        config['train_loss'] = self.train_loss
-        config['valid_loss'] = self.valid_loss
+        config['train_loss'], config['valid_loss'] = self.train_loss, self.valid_loss
 
         config['epoch'] = epoch + 1
         config['is_finetune'] = True # For finetuner

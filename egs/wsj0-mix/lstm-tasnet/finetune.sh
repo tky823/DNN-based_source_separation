@@ -41,7 +41,7 @@ lr=1e-3
 weight_decay=0
 max_norm=5
 
-batch_size=128
+batch_size=64
 epochs_train=100
 epochs_finetune=100
 

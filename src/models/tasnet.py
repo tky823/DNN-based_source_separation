@@ -74,8 +74,8 @@ class TasNet(nn.Module):
     pretrained_model_ids = {
         "wsj0-mix": {
             8000: {
-                2: "1-0QWF_2nOH8t3OhYeJaKk7wiwu3NlshL",
-                3: "1-ASveV6xM-6Ltd5yPqdN1fQdltXicq1M"
+                2: "1-Abh-BdiqfypKxfA9H2doS3ATK4D2fVT",
+                3: "1-1geGVvj7ZJk9c5EEcmLBCrZazjHTqjS"
             }
         }
     }

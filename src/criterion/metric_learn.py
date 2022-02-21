@@ -1,5 +1,8 @@
+import math
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 EPS = 1e-12
 
@@ -147,6 +150,59 @@ class QuadrupletLoss(nn.Module):
         self.eps = eps
 
         raise NotImplementedError("Implement `QuadrupletLoss`")
+
+class AdditiveAngularMarginLoss(nn.Module):
+    def __init__(self, scale=30.0, margin=0.5, easy_margin=False, eps=EPS):
+        super().__init__()
+
+        self.scale, self.margin = scale, margin
+        self.easy_margin = easy_margin
+        self.cos_m, self.sin_m = math.cos(margin), math.sin(margin)
+        self.cos_pi_m = - self.cos_m
+        self.m_sin_pi_m = margin * self.sin_m
+
+        self.eps = eps
+
+    def forward(self, input, target, batch_mean=True):
+        """
+        Args:
+            input <torch.Tensor>: (batch_size, num_classes)
+            target <torch.LongTensor>: (batch_size)
+        Returns:
+            output <torch.Tensor>: (batch_size,) or ()
+        """
+
+        """
+        Addition theorem
+        cos(phi) = cos(th + m)
+                 = cos(th)cos(m) - sin(th)sin(m)
+                 = cos(th) * cos(m) - sqrt(1 - cos(th)^2) * sin(m)
+        cos(th) := y_pred
+        """
+        num_classes = input.size(-1)
+        scale = self.scale
+        cos_m, sin_m = self.cos_m, self.sin_m
+        eps = self.eps
+
+        cos_th = input
+        sin_th = torch.sqrt(1 - cos_th**2 + eps)
+        cos_phi = cos_th * cos_m - sin_th * sin_m # (batch_size, num_classes)
+
+        # For target class
+        if self.easy_margin:
+            cos_phi = torch.where(cos_th < 0, cos_th, cos_phi) # (batch_size, num_classes)
+        else:
+            cos_phi = torch.where(cos_th > self.cos_pi_m, cos_th - self.m_sin_pi_m, cos_phi) # (batch_size, num_classes)
+        
+        # For non-target class
+        mask = F.one_hot(target, num_classes=num_classes) # (batch_size, num_classes)
+        input = scale * (mask * cos_phi + (1.0 - mask) * cos_th)
+        loss = F.cross_entropy(input, target, reduction="none")
+
+        if batch_mean:
+            loss = loss.mean(dim=0)
+
+        return loss
 
 def _test_triplet_loss():
     import random
@@ -298,13 +354,13 @@ def _test_contrastive_loss():
     random.shuffle(indices)
     x, t = x[indices].view(num_samples, 2, n_dims), t[indices].view(num_samples, 2)
     criterion = L2Loss()
-    constrative_criterion = ContrastiveLoss()
+    contrastive_criterion = ContrastiveLoss()
 
     input, target = x[:batch_size], t[:batch_size]
     distance = criterion(input[:, 0], input[:, 1], batch_mean=False)
     is_same = (target[:, 0] == target[:, 1]).float()
 
-    loss = constrative_criterion(distance, is_same)
+    loss = contrastive_criterion(distance, is_same)
 
     print(is_same)
     print(distance)
@@ -344,12 +400,12 @@ def _test_contrastive_with_distance_loss():
     random.shuffle(indices)
     x, t = x[indices].view(num_samples, 2, n_dims), t[indices].view(num_samples, 2)
     criterion = L2Loss()
-    constrative_criterion = ContrastiveWithDistanceLoss(distance_fn=criterion)
+    contrastive_criterion = ContrastiveWithDistanceLoss(distance_fn=criterion)
 
     input, target = x[:batch_size], t[:batch_size]
     is_same = (target[:, 0] == target[:, 1]).float()
 
-    loss = constrative_criterion(input[:, 0], input[:, 1], is_same)
+    loss = contrastive_criterion(input[:, 0], input[:, 1], is_same)
 
     print(is_same)
     print(loss)

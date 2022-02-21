@@ -19,10 +19,10 @@ class GriffinLim(nn.Module):
 
     def forward(self, amplitude, phase=None, iteration=10):
         """
-            Args:
-                amplitude (n_bins, n_frames)
-            Returns:
-                phase (n_bins, n_frames): Reconstructed phase
+        Args:
+            amplitude (n_bins, n_frames)
+        Returns:
+            phase (n_bins, n_frames): Reconstructed phase
         """
         for idx in range(iteration):
             phase = self.update(amplitude, phase)
@@ -31,10 +31,10 @@ class GriffinLim(nn.Module):
 
     def update(self, amplitude, phase=None):
         """
-            Args:
-                amplitude (n_bins, n_frames) or (in_channels, n_bins, n_frames) or (in_channels, n_bins, n_frames)
-            Returns:
-                phase (n_bins, n_frames) or (in_channels, n_bins, n_frames) or (in_channels, n_bins, n_frames)
+        Args:
+            amplitude (n_bins, n_frames) or (in_channels, n_bins, n_frames) or (in_channels, n_bins, n_frames)
+        Returns:
+            phase (n_bins, n_frames) or (in_channels, n_bins, n_frames) or (in_channels, n_bins, n_frames)
         """
         n_fft, hop_length = self.n_fft, self.hop_length
         window = self.window
