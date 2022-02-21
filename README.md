@@ -2,9 +2,10 @@
 A PyTorch implementation of DNN-based source separation.
 
 ## New information
-- v0.7.0
-  - Add new models (`MMDenseLSTM`, `X-UMX`, `HRNet`, `SepFormer`).
-  - Add pretrained models.
+- v0.7.1
+  - Add new models (`DeepClustering`, `ADANet`).
+  - Bug fixes of (`LSTM-TasNet`).
+  - Rename parameters (`fft_size`->`n_fft`, `hop_size`->`hop_length`).
 
 ## Model
 | Model | Reference | Done |
