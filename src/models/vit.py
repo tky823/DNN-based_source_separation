@@ -213,12 +213,12 @@ class ViTMultiheadSelfAttention(nn.Module):
         self.v_proj_weight = nn.Parameter(torch.empty((embed_dim, qkv_dim), **factory_kwargs), requires_grad=True)
 
         if embed_dim == qkv_dim and num_heads == 1:
-            self.register_parameter("out_proj_weight", None)
+            self.out_proj = None
 
             if dropout > 0:
                 raise ValueError("dropout should be 0, when embed_dim == qkv_dim.")
         else:
-            self.out_proj_weight = nn.Parameter(torch.empty((qkv_dim, embed_dim), **factory_kwargs), requires_grad=True)
+            self.out_proj = nn.Linear(embed_dim, qkv_dim)
             self.dropout1d = nn.Dropout(p=dropout)
 
     def forward(self, input):
@@ -259,10 +259,10 @@ class ViTMultiheadSelfAttention(nn.Module):
         x = x.contiguous()
         x = x.view(batch_size, T, embed_dim) # (batch_size, T, embed_dim)
 
-        if self.out_proj_weight is None:
+        if self.out_proj is None:
             output = x
         else:
-            x = F.linear(x, self.out_proj_weight) # (batch_size, T, embed_dim)
+            x = self.out_proj(x) # (batch_size, T, embed_dim)
             output = self.dropout1d(x) # (batch_size, T, embed_dim)
 
         if not self.batch_first:
