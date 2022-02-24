@@ -212,7 +212,7 @@ class ViTMultiheadSelfAttention(nn.Module):
         self.k_proj_weight = nn.Parameter(torch.empty((embed_dim, qkv_dim), **factory_kwargs), requires_grad=True)
         self.v_proj_weight = nn.Parameter(torch.empty((embed_dim, qkv_dim), **factory_kwargs), requires_grad=True)
 
-        if embed_dim == qkv_dim:
+        if embed_dim == qkv_dim and num_heads == 1:
             self.register_parameter("out_proj_weight", None)
 
             if dropout > 0:
@@ -264,12 +264,12 @@ class ViTMultiheadSelfAttention(nn.Module):
         else:
             x = F.linear(x, self.out_proj_weight) # (batch_size, T, embed_dim)
             output = self.dropout1d(x) # (batch_size, T, embed_dim)
-        
+
         if not self.batch_first:
             output = output.transpose(0, 1) # (batch_size, T, qkv_dim) -> (T, batch_size, qkv_dim)
 
         return output
-    
+
     def _reset_paramaters(self):
         nn.init.xavier_uniform_(self.q_proj_weight)
         nn.init.xavier_uniform_(self.k_proj_weight)
@@ -285,7 +285,6 @@ def _get_activation_fn(activation):
         return F.gelu
 
     raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
-
 
 def _test_vit():
     in_channels = 3
