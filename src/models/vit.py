@@ -93,12 +93,15 @@ class ViT(nn.Module):
         if task == "imagenet":
             d_model = 1024
             nhead, num_layers = 16, 6
-            embed_dim = 6 * 64
+            embed_dim = nhead * 64
             d_ff = 2048
+            dropout = 0
+            bias = True
 
             enc_layer = ViTEncoderLayer(
                 d_model=d_model, nhead=nhead,
                 embed_dim=embed_dim, dim_feedforward=d_ff,
+                dropout=dropout, bias=bias,
                 activation=F.gelu,
                 layer_norm_eps=EPS,
                 batch_first=True, norm_first=True
