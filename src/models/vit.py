@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from models.transform import SplitToPatch
@@ -13,6 +14,9 @@ class ViT(nn.Module):
         "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
         See https://arxiv.org/abs/2010.11929
     """
+    pretrained_model_ids = {
+        "imagenet": {}
+    }
     def __init__(
         self,
         transformer,
@@ -23,18 +27,6 @@ class ViT(nn.Module):
         num_classes=1000,
         eps=EPS
     ):
-        """
-        Args:
-            transformer <nn.Module>: Backbone Transformer
-            in_channels <int>: Number of input channels
-            embed_dim <int>: Embedding dimension
-            image_size <int> or <tuple<int>>
-            patch_size <int> or <tuple<int>>
-            dropout <float>: Dropout rate
-            pooling <str>: "cls" or "mean
-            num_classes <int>: Number of classes
-            eps <float>: Machine epsilon
-        """
         super().__init__()
 
         image_size = _pair(image_size)
@@ -47,7 +39,7 @@ class ViT(nn.Module):
 
         self.split_to_patch = SplitToPatch(patch_size, channel_first=False)
         self.embedding = nn.Linear(in_channels * pH * pW, embed_dim)
-        self.dropout = nn.Dropout(p=dropout)
+        self.dropout1d = nn.Dropout(p=dropout)
         self.transformer = transformer
         self.pooling2d = Pooling(pooling, dim=1)
         self.norm2d = nn.LayerNorm(embed_dim, eps=eps)
@@ -79,13 +71,46 @@ class ViT(nn.Module):
 
         x = torch.cat([cls_tokens, x], dim=1) # (batch_size, num_patches + 1, embed_dim)
         x = x + self.pos_embedding
-        x = self.dropout(x)
+        x = self.dropout1d(x)
         x = self.transformer(x) # (batch_size, num_patches + 1, embed_dim)
         x = self.pooling2d(x) # (batch_size, embed_dim)
         x = self.norm2d(x) # (batch_size, embed_dim)
         output = self.fc(x) # (batch_size, num_classes)
 
         return output
+
+    @classmethod
+    def build_from_pretrained(cls, load_state_dict=True, **kwargs):
+        if load_state_dict:
+            raise ValueError("Not support load_state_dict=True.")
+
+        task = kwargs.get('task')
+
+        if not task in cls.pretrained_model_ids:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+
+        if task == "imagenet":
+            embed_dim = 1024
+            nhead, num_layers = 16, 6
+            d_ff = 2048
+
+            enc_layer = nn.TransformerEncoderLayer(
+                d_model=embed_dim, nhead=nhead, dim_feedforward=d_ff,
+                activation=F.gelu,
+                layer_norm_eps=EPS,
+                batch_first=True, norm_first=True
+            )
+            transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+
+            in_channels = 3
+            image_size, patch_size = 256, 16
+            num_classes = 1000
+        else:
+            raise ValueError("Not support task={}.".format(task))
+
+        model = cls(transformer, in_channels=in_channels, embed_dim=embed_dim, image_size=image_size, patch_size=patch_size, num_classes=num_classes)
+
+        return model
 
 class Pooling(nn.Module):
     def __init__(self, pooling="cls", dim=1):
@@ -111,18 +136,29 @@ class Pooling(nn.Module):
 
 def _test_vit():
     in_channels = 3
-    image_size = 256
+    image_size, patch_size = 256, 16
     num_classes = 100
 
     embed_dim = 1024
     nhead, num_layers = 16, 6
+    d_ff = 2048
 
     input = torch.randn(4, in_channels, image_size, image_size)
 
-    enc_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=nhead)
+    enc_layer = nn.TransformerEncoderLayer(
+        d_model=embed_dim, nhead=nhead, dim_feedforward=d_ff,
+        activation=F.gelu,
+        batch_first=True, norm_first=True
+    )
     transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
 
-    model = ViT(transformer, in_channels=in_channels, embed_dim=embed_dim, image_size=image_size, patch_size=16, num_classes=num_classes)
+    model = ViT(
+        transformer,
+        in_channels=in_channels, embed_dim=embed_dim,
+        image_size=image_size, patch_size=patch_size,
+        num_classes=num_classes
+    )
+
     output = model(input)
 
     print(model)
