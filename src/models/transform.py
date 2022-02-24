@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.utils import _pair
 
 class Segment1d(nn.Module):
     """
@@ -90,6 +91,51 @@ class BandSplit(nn.Module):
 
         return s
 
+class SplitToPatch(nn.Module):
+    """
+    Reference:
+        "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
+        See https://arxiv.org/abs/2010.11929
+    """
+    def __init__(self, patch_size=16, channel_first=False):
+        super().__init__()
+
+        patch_size = _pair(patch_size)
+
+        self.unfold = nn.Unfold(patch_size, stride=patch_size)
+
+        self.patch_size = patch_size
+        self.channel_first = channel_first
+
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, in_channels, height, width)
+        Returns:
+            output:
+                (batch_size, pH * pW * in_channels, (height // pH) * (width // pW)) if channel_first=True, where (pH, pW) = patch_size
+                (batch_size, (height // pH) * (width // pW), pH * pW * in_channels) if channel_first=False
+        """
+        pH, pW = self.patch_size
+        _, _, height, width = input.size()
+
+        assert height % pH == 0 and width % pW == 0
+
+        x = self.unfold(input) # (batch_size, pH * pW * in_channels, (height // pH) * (width // pW))
+
+        if self.channel_first:
+            output = x
+        else:
+            x = x.permute(0, 2, 1)
+            output = x.contiguous()
+
+        return output
+    
+    def extra_repr(self):
+        s = "patch_size={}".format(self.patch_size)
+
+        return s
+
 def _test_segment():
     batch_size, num_features, n_frames = 2, 3, 5
     K, P = 3, 2
@@ -127,6 +173,13 @@ def _test_band_split():
     low, high = band_split(input)
     print(input.size(), low.size(), high.size())
 
+def _test_split_to_patch():
+    input = torch.randn(4, 3, 256, 256)
+    split_to_patch = SplitToPatch(patch_size=16)
+    output = split_to_patch(input)
+
+    print(input.size(), output.size())
+
 if __name__ == '__main__':
     print("="*10, "Segment", "="*10)
     _test_segment()
@@ -138,4 +191,8 @@ if __name__ == '__main__':
 
     print("="*10, "BandSplit", "="*10)
     _test_band_split()
+    print()
+
+    print("="*10, "SplitToPatch", "="*10)
+    _test_split_to_patch()
     print()
