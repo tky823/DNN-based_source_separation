@@ -93,7 +93,8 @@ class ViT(nn.Module):
         if task == "imagenet":
             d_model = 1024
             nhead, num_layers = 16, 6
-            embed_dim = nhead * 64
+            head_dim = 64
+            embed_dim = nhead * head_dim
             d_ff = 2048
             dropout = 0
             bias = True
@@ -114,7 +115,12 @@ class ViT(nn.Module):
         else:
             raise ValueError("Not support task={}.".format(task))
 
-        model = cls(transformer, in_channels=in_channels, embed_dim=embed_dim, image_size=image_size, patch_size=patch_size, num_classes=num_classes)
+        model = cls(
+            transformer,
+            in_channels=in_channels, embed_dim=embed_dim,
+            image_size=image_size, patch_size=patch_size,
+            num_classes=num_classes
+        )
 
         return model
 
