@@ -142,7 +142,8 @@ class ViTEncoderLayer(nn.Module):
         self,
         d_model, nhead,
         embed_dim=384, dim_feedforward=1024,
-        dropout=0, activation=F.gelu,
+        dropout=0, bias=True,
+        activation=F.gelu,
         layer_norm_eps=EPS,
         batch_first=True, norm_first=True,
         device=None, dtype=None
@@ -151,7 +152,14 @@ class ViTEncoderLayer(nn.Module):
 
         factory_kwargs = {'device': device, 'dtype': dtype}
 
-        self.self_attn = ViTMultiheadSelfAttention(embed_dim, qkv_dim=d_model, num_heads=nhead, dropout=dropout, batch_first=batch_first, **factory_kwargs)
+        self.self_attn = ViTMultiheadSelfAttention(
+            embed_dim, qkv_dim=d_model,
+            num_heads=nhead,
+            dropout=dropout,
+            bias=bias,
+            batch_first=batch_first,
+            **factory_kwargs
+        )
         self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
         self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
@@ -195,7 +203,7 @@ class ViTEncoderLayer(nn.Module):
         return output
 
 class ViTMultiheadSelfAttention(nn.Module):
-    def __init__(self, embed_dim, qkv_dim=None, num_heads=6, dropout=0, batch_first=True, device=None, dtype=None):
+    def __init__(self, embed_dim, qkv_dim=None, num_heads=6, dropout=0, bias=True, batch_first=True, device=None, dtype=None):
         super().__init__()
 
         factory_kwargs = {'device': device, 'dtype': dtype}
@@ -218,7 +226,7 @@ class ViTMultiheadSelfAttention(nn.Module):
             if dropout > 0:
                 raise ValueError("dropout should be 0, when embed_dim == qkv_dim.")
         else:
-            self.out_proj = nn.Linear(embed_dim, qkv_dim)
+            self.out_proj = nn.Linear(embed_dim, qkv_dim, bias=bias)
             self.dropout1d = nn.Dropout(p=dropout)
 
     def forward(self, input):
