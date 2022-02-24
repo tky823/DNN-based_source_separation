@@ -4,6 +4,8 @@ from torch.nn.modules.utils import _pair
 
 from models.transform import SplitToPatch
 
+EPS = 1e-12
+
 class ViT(nn.Module):
     """
     Vision Transformer
@@ -11,7 +13,28 @@ class ViT(nn.Module):
         "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
         See https://arxiv.org/abs/2010.11929
     """
-    def __init__(self, transformer, in_channels, embed_dim, image_size, patch_size=16, dropout=0, emb_dropout=0, pooling="cls", num_classes=1000, eps=1e-12):
+    def __init__(
+        self,
+        transformer,
+        in_channels, embed_dim,
+        image_size, patch_size=16,
+        dropout=0,
+        pooling="cls",
+        num_classes=1000,
+        eps=EPS
+    ):
+        """
+        Args:
+            transformer <nn.Module>: Backbone Transformer
+            in_channels <int>: Number of input channels
+            embed_dim <int>: Embedding dimension
+            image_size <int> or <tuple<int>>
+            patch_size <int> or <tuple<int>>
+            dropout <float>: Dropout rate
+            pooling <str>: "cls" or "mean
+            num_classes <int>: Number of classes
+            eps <float>: Machine epsilon
+        """
         super().__init__()
 
         image_size = _pair(image_size)
@@ -24,7 +47,7 @@ class ViT(nn.Module):
 
         self.split_to_patch = SplitToPatch(patch_size, channel_first=False)
         self.embedding = nn.Linear(in_channels * pH * pW, embed_dim)
-        self.dropout = nn.Dropout(p=emb_dropout)
+        self.dropout = nn.Dropout(p=dropout)
         self.transformer = transformer
         self.pooling2d = Pooling(pooling, dim=1)
         self.norm2d = nn.LayerNorm(embed_dim, eps=eps)
@@ -85,3 +108,28 @@ class Pooling(nn.Module):
             output = input.mean(dim=dim)
 
         return output
+
+def _test_vit():
+    in_channels = 3
+    image_size = 256
+    num_classes = 100
+
+    embed_dim = 1024
+    nhead, num_layers = 16, 6
+
+    input = torch.randn(4, in_channels, image_size, image_size)
+
+    enc_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=nhead)
+    transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+
+    model = ViT(transformer, in_channels=in_channels, embed_dim=embed_dim, image_size=image_size, patch_size=16, num_classes=num_classes)
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
+if __name__ == '__main__':
+    torch.manual_seed(111)
+
+    print("="*10, "Vision Transforner (ViT)", "="*10)
+    _test_vit()
