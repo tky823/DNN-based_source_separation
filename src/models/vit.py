@@ -90,7 +90,7 @@ class ViT(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
 
         if task == "imagenet":
-            specification = kwargs.get("specification") or "B/16"
+            specification = kwargs.get("specification") or "B/32"
 
             in_channels = 3
             image_size = 224
