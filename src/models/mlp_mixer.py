@@ -46,6 +46,7 @@ class MLPMixer(nn.Module):
             dropout=dropout, activation=activation,
             norm_first=True
         )
+        self.norm1d = nn.LayerNorm(embed_dim)
         self.pool1d = MLPMixerPool1d(pooling)
         self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
@@ -64,6 +65,7 @@ class MLPMixer(nn.Module):
 
         x = self.patch_embedding2d(input) # (batch_size, num_patches, embed_dim)
         x = self.backbone(x) # (batch_size, num_patches, embed_dim)
+        x = self.norm1d(x) # (batch_size, num_patches, embed_dim)
         x = self.pool1d(x) # (batch_size, embed_dim)
         output = self.fc_head(x) # (batch_size, num_classes)
 
@@ -138,6 +140,12 @@ class MLPMixerBackbone(nn.Module):
         self.net = nn.Sequential(*net)
 
     def forward(self, input):
+        """
+        Args:
+            input: (batch_size, num_patches, embed_dim)
+        Returns:
+            output: (batch_size, num_patches, embed_dim)
+        """
         output = self.net(input)
 
         return output
@@ -152,7 +160,7 @@ class MixerBlock(nn.Module):
         super().__init__()
 
         self.token_mixer = TokenMixer(
-            num_patches, token_hidden_channels,
+            embed_dim, num_patches, token_hidden_channels,
             dropout=dropout,
             activation=activation,
             norm_first=norm_first
@@ -165,25 +173,23 @@ class MixerBlock(nn.Module):
         )
 
     def forward(self, input):
-        x = input + self.token_mixer(input)
-        output = x + self.channel_mixer(x)
+        """
+        Args:
+            input: (batch_size, num_patches, embed_dim)
+        Returns:
+            output: (batch_size, num_patches, embed_dim)
+        """
+        x = input + self.token_mixer(input) # (batch_size, num_patches, embed_dim)
+        output = x + self.channel_mixer(x) # (batch_size, num_patches, embed_dim)
 
         return output
 
 class TokenMixer(nn.Module):
-    def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu", norm_first=True):
+    def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True):
         super().__init__()
 
-        assert norm_first, "norm_first should be True."
-
-        self.linear1 = nn.Linear(num_features, hidden_channels)
-        self.activation = choose_nonlinear(activation)
-        self.dropout1 = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(hidden_channels, num_features)
-        self.dropout2 = nn.Dropout(dropout)
         self.layer_norm = nn.LayerNorm(num_features)
-
-        self.norm_first = norm_first
+        self.mlp = MLP(num_patches, hidden_channels, dropout=dropout, activation=activation, norm_first=norm_first)
 
     def forward(self, input):
         """
@@ -192,13 +198,9 @@ class TokenMixer(nn.Module):
         Returns:
             output: (batch_size, num_patches, num_features)
         """
-        x = input.permute(0, 2, 1)
-        x = self.layer_norm(x)
-        x = self.linear1(x)
-        x = self.activation(x)
-        x = self.dropout1(x)
-        x = self.linear2(x)
-        x = self.dropout2(x)
+        x = self.layer_norm(input)
+        x = x.permute(0, 2, 1)
+        output = self.mlp(x)
         output = x.permute(0, 2, 1)
 
         return output
@@ -207,14 +209,8 @@ class ChannelMixer(nn.Module):
     def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu", norm_first=True):
         super().__init__()
 
-        assert norm_first, "norm_first should be True."
-
-        self.linear1 = nn.Linear(num_features, hidden_channels)
-        self.activation = choose_nonlinear(activation)
-        self.dropout1 = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(hidden_channels, num_features)
-        self.dropout2 = nn.Dropout(dropout)
         self.layer_norm = nn.LayerNorm(num_features)
+        self.mlp = MLP(num_features, hidden_channels, dropout=dropout, activation=activation, norm_first=norm_first)
 
         self.norm_first = norm_first
 
@@ -226,7 +222,32 @@ class ChannelMixer(nn.Module):
             output: (batch_size, token_size, num_features)
         """
         x = self.layer_norm(input)
-        x = self.linear1(x)
+        output = self.mlp(x)
+
+        return output
+
+class MLP(nn.Module):
+    def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu", norm_first=True):
+        super().__init__()
+
+        assert norm_first, "norm_first should be True."
+
+        self.linear1 = nn.Linear(num_features, hidden_channels)
+        self.activation = choose_nonlinear(activation)
+        self.dropout1 = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(hidden_channels, num_features)
+        self.dropout2 = nn.Dropout(dropout)
+
+        self.norm_first = norm_first
+
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, length, num_features)
+        Returns:
+            output: (batch_size, length, num_features)
+        """
+        x = self.linear1(input)
         x = self.activation(x)
         x = self.dropout1(x)
         x = self.linear2(x)
