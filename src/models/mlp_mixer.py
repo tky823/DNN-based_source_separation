@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from utils.model import choose_nonlinear
-from models.vit import PatchEmbedding2d
+from models.meta_former import PatchEmbedding2d
 
 EPS = 1e-12
 
