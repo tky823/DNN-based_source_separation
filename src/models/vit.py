@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from models.transform import SplitToPatch
+from utils.model import choose_nonlinear
 
 EPS = 1e-12
 
@@ -23,9 +23,11 @@ class ViT(nn.Module):
         self,
         transformer,
         in_channels, embed_dim,
-        image_size, patch_size=16,
+        image_size,
+        patch_size=16,
         dropout=0,
         pooling="cls",
+        bias_head=True,
         num_classes=1000,
         eps=EPS
     ):
@@ -36,16 +38,14 @@ class ViT(nn.Module):
 
         H, W = image_size
         pH, pW = patch_size
-
         num_patches = (H // pH) * (W // pW)
 
-        self.split_to_patch = SplitToPatch(patch_size, channel_first=False)
-        self.embedding = nn.Linear(in_channels * pH * pW, embed_dim)
+        self.patch_embedding2d = PatchEmbedding2d(in_channels, embed_dim, patch_size=patch_size, channel_last=True)
         self.dropout1d = nn.Dropout(p=dropout)
         self.transformer = transformer
-        self.pooling2d = ViTPool2d(pooling, dim=1)
-        self.norm2d = nn.LayerNorm(embed_dim, eps=eps)
-        self.fc = nn.Linear(embed_dim, num_classes)
+        self.pool1d = ViTPool(pooling, dim=1)
+        self.norm0d = nn.LayerNorm(embed_dim, eps=eps)
+        self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
         self.positional_embedding = nn.Parameter(torch.empty(num_patches + 1, embed_dim))
         self.cls_token = nn.Parameter(torch.empty(1, 1, embed_dim))
@@ -65,18 +65,16 @@ class ViT(nn.Module):
         """
         batch_size = input.size(0)
 
-        x = self.split_to_patch(input)
-        x = self.embedding(x) # (batch_size, num_patches, embed_dim)
-
         cls_tokens = self.cls_token.repeat(batch_size, 1, 1) # (batch_size, num_patches, embed_dim)
 
+        x = self.patch_embedding2d(input) # (batch_size, num_patches, embed_dim)
         x = torch.cat([cls_tokens, x], dim=1) # (batch_size, num_patches + 1, embed_dim)
         x = x + self.positional_embedding
         x = self.dropout1d(x)
         x = self.transformer(x) # (batch_size, num_patches + 1, embed_dim)
-        x = self.pooling2d(x) # (batch_size, embed_dim)
-        x = self.norm2d(x) # (batch_size, embed_dim)
-        output = self.fc(x) # (batch_size, num_classes)
+        x = self.pool1d(x) # (batch_size, embed_dim)
+        x = self.norm0d(x) # (batch_size, embed_dim)
+        output = self.fc_head(x) # (batch_size, num_classes)
 
         return output
 
@@ -91,19 +89,19 @@ class ViT(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
 
         if task == "imagenet":
-            d_model = 1024
+            patch_embed_dim = 1024
             nhead, num_layers = 16, 6
             head_dim = 64
-            embed_dim = nhead * head_dim
+            mha_embed_dim = nhead * head_dim
             d_ff = 2048
-            dropout = 0
-            bias = True
+            enc_dropout = 0
+            enc_bias = True
 
             enc_layer = ViTEncoderLayer(
-                d_model=d_model, nhead=nhead,
-                embed_dim=embed_dim, dim_feedforward=d_ff,
-                dropout=dropout, bias=bias,
-                activation=F.gelu,
+                d_model=patch_embed_dim, nhead=nhead,
+                embed_dim=mha_embed_dim, dim_feedforward=d_ff,
+                dropout=enc_dropout, bias=enc_bias,
+                activation="gelu",
                 layer_norm_eps=EPS,
                 batch_first=True, norm_first=True
             )
@@ -111,27 +109,36 @@ class ViT(nn.Module):
 
             in_channels = 3
             image_size, patch_size = 256, 16
+            dropout = 0
+            pooling = "cls"
+            bias_head = True
             num_classes = 1000
+
+            eps = EPS
         else:
             raise ValueError("Not support task={}.".format(task))
 
         model = cls(
             transformer,
-            in_channels=in_channels, embed_dim=embed_dim,
+            in_channels=in_channels, embed_dim=patch_embed_dim,
             image_size=image_size, patch_size=patch_size,
-            num_classes=num_classes
+            dropout=dropout,
+            pooling=pooling,
+            bias_head=bias_head,
+            num_classes=num_classes,
+            eps=eps
         )
 
         return model
 
-class ViTPool2d(nn.Module):
+class ViTPool(nn.Module):
     def __init__(self, pooling="cls", dim=1):
         super().__init__()
 
         self.pooling = pooling
         self.dim = dim
 
-        if not self.pooling in ["cls", "mean"]:
+        if not self.pooling in ["cls", "avg"]:
             raise ValueError("Not support pooling={}".format(self.pooling))
 
     def forward(self, input):
@@ -152,7 +159,7 @@ class ViTEncoderLayer(nn.Module):
         d_model, nhead,
         embed_dim=384, dim_feedforward=1024,
         dropout=0, bias=True,
-        activation=F.gelu,
+        activation="gelu",
         layer_norm_eps=EPS,
         batch_first=True, norm_first=True,
         device=None, dtype=None
@@ -169,20 +176,17 @@ class ViTEncoderLayer(nn.Module):
             batch_first=batch_first,
             **factory_kwargs
         )
+        self.dropout1 = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+
         self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
+        self.activation = choose_nonlinear(activation)
         self.dropout = nn.Dropout(dropout)
         self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
+        self.dropout2 = nn.Dropout(dropout)
+        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
 
         self.norm_first = norm_first
-        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
-
-        if isinstance(activation, str):
-            self.activation = _get_activation_fn(activation)
-        else:
-            self.activation = activation
 
     def forward(self, input, src_mask=None, src_key_padding_mask=None):
         assert src_mask is None and src_key_padding_mask is None
@@ -295,38 +299,80 @@ class ViTMultiheadSelfAttention(nn.Module):
         if self.out_proj_weight is not None:
             nn.init.xavier_uniform_(self.out_proj_weight)
 
-def _get_activation_fn(activation):
-    if activation == "relu":
-        return F.relu
-    elif activation == "gelu":
-        return F.gelu
+class PatchEmbedding2d(nn.Module):
+    def __init__(self, in_channels, out_channels, patch_size, channel_last=True):
+        super().__init__()
 
-    raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
+        self.in_channels, self.out_channels = in_channels, out_channels
+        self.patch_size = _pair(patch_size)
+
+        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size=patch_size, stride=patch_size)
+
+        self.channel_last = channel_last
+
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, in_channels, height, width)
+        Returns:
+            output: (batch_size, out_channels, height // patch_height, width // patch_width)
+        """
+        out_channels = self.out_channels
+        patch_height, patch_width = self.patch_size
+        batch_size, _, height, width = input.size()
+
+        assert height % patch_height == 0 and width % patch_width == 0
+
+        num_patches = (height // patch_height) * (width // patch_width)
+
+        x = self.conv2d(input)
+        x = x.view(batch_size, out_channels, num_patches)
+
+        if self.channel_last:
+            x = x.permute(0, 2, 1)
+            output = x.contiguous()
+        else:
+            output = x
+
+        return output
 
 def _test_vit():
-    in_channels = 3
-    image_size, patch_size = 256, 16
-    num_classes = 100
-
-    d_model = 1024
+    patch_embed_dim = 1024
     nhead, num_layers = 16, 6
-    embed_dim = nhead * 64
+    head_dim = 64
+    mha_embed_dim = nhead * head_dim
     d_ff = 2048
+    dropout = 0
+    enc_bias = True
 
     enc_layer = ViTEncoderLayer(
-        d_model=d_model, nhead=nhead,
-        embed_dim=embed_dim, dim_feedforward=d_ff,
-        activation=F.gelu,
+        d_model=patch_embed_dim, nhead=nhead,
+        embed_dim=mha_embed_dim, dim_feedforward=d_ff,
+        dropout=dropout, bias=enc_bias,
+        activation="gelu",
         layer_norm_eps=EPS,
         batch_first=True, norm_first=True
     )
     transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
 
+    in_channels = 3
+    image_size, patch_size = 256, 16
+    dropout = 0
+    pooling = "cls"
+    bias_head = True
+    num_classes = 1000
+
+    eps = EPS
+
     model = ViT(
         transformer,
-        in_channels=in_channels, embed_dim=embed_dim,
+        in_channels=in_channels, embed_dim=patch_embed_dim,
         image_size=image_size, patch_size=patch_size,
-        num_classes=num_classes
+        dropout=dropout,
+        pooling=pooling,
+        bias_head=bias_head,
+        num_classes=num_classes,
+        eps=eps
     )
 
     input = torch.randn(4, in_channels, image_size, image_size)

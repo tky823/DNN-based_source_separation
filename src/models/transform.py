@@ -97,7 +97,7 @@ class SplitToPatch(nn.Module):
         "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
         See https://arxiv.org/abs/2010.11929
     """
-    def __init__(self, patch_size=16, channel_first=False):
+    def __init__(self, patch_size=16, channel_last=True):
         super().__init__()
 
         patch_size = _pair(patch_size)
@@ -105,7 +105,7 @@ class SplitToPatch(nn.Module):
         self.unfold = nn.Unfold(patch_size, stride=patch_size)
 
         self.patch_size = patch_size
-        self.channel_first = channel_first
+        self.channel_last = channel_last
 
     def forward(self, input):
         """
@@ -113,8 +113,8 @@ class SplitToPatch(nn.Module):
             input: (batch_size, in_channels, height, width)
         Returns:
             output:
-                (batch_size, pH * pW * in_channels, (height // pH) * (width // pW)) if channel_first=True, where (pH, pW) = patch_size
-                (batch_size, (height // pH) * (width // pW), pH * pW * in_channels) if channel_first=False
+                (batch_size, (height // pH) * (width // pW), pH * pW * in_channels) if channel_last=True, where (pH, pW) = patch_size
+                (batch_size, pH * pW * in_channels, (height // pH) * (width // pW)) if channel_last=False.
         """
         pH, pW = self.patch_size
         _, _, height, width = input.size()
@@ -123,11 +123,11 @@ class SplitToPatch(nn.Module):
 
         x = self.unfold(input) # (batch_size, pH * pW * in_channels, (height // pH) * (width // pW))
 
-        if self.channel_first:
-            output = x
-        else:
+        if self.channel_last:
             x = x.permute(0, 2, 1)
             output = x.contiguous()
+        else:
+            output = x
 
         return output
     
