@@ -1,11 +1,7 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
-
-from utils.model import choose_nonlinear
 
 EPS = 1e-12
 
@@ -17,7 +13,13 @@ class ViT(nn.Module):
         See https://arxiv.org/abs/2010.11929
     """
     pretrained_model_ids = {
-        "imagenet": {}
+        "imagenet": {
+            "B/32": {},
+            "B/16": {},
+            "L/32": {},
+            "L/16": {},
+            "H/14": {}
+        }
     }
     def __init__(
         self,
@@ -42,6 +44,7 @@ class ViT(nn.Module):
         self.patch_embedding2d = PatchEmbedding2d(in_channels, embed_dim, patch_size=patch_size, channel_last=True)
         self.dropout1d = nn.Dropout(p=dropout)
         self.transformer = transformer
+        self.norm1d = nn.LayerNorm(embed_dim)
         self.pool1d = ViTPool(pooling, dim=1)
         self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
@@ -70,6 +73,7 @@ class ViT(nn.Module):
         x = x + self.positional_embedding
         x = self.dropout1d(x)
         x = self.transformer(x) # (batch_size, num_patches + 1, embed_dim)
+        x = self.norm1d(x) # (batch_size, num_patches, embed_dim)
         x = self.pool1d(x) # (batch_size, embed_dim)
         output = self.fc_head(x) # (batch_size, num_classes)
 
@@ -86,44 +90,53 @@ class ViT(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
 
         if task == "imagenet":
-            patch_embed_dim = 1024
-            nhead, num_layers = 16, 6
-            head_dim = 64
-            mha_embed_dim = nhead * head_dim
-            d_ff = 2048
-            enc_dropout = 0
-            enc_bias = True
-
-            enc_layer = ViTEncoderLayer(
-                d_model=patch_embed_dim, nhead=nhead,
-                embed_dim=mha_embed_dim, dim_feedforward=d_ff,
-                dropout=enc_dropout, bias=enc_bias,
-                activation="gelu",
-                layer_norm_eps=EPS,
-                batch_first=True, norm_first=True
-            )
-            transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+            specification = kwargs.get("specification") or "B/16"
 
             in_channels = 3
-            image_size, patch_size = 256, 16
-            dropout = 0
-            pooling = "cls"
+            image_size = 224
+
+            enc_dropout, dropout = 0, 0
+            activation = "gelu"
+            pooling = "avg"
             bias_head = True
             num_classes = 1000
 
-            eps = EPS
+            if specification[0] == "B":
+                embed_dim = 768
+                d_ff = 3072
+                nhead, num_layers = 12, 12
+            elif specification[0] == "L":
+                embed_dim = 1024
+                d_ff = 4096
+                nhead, num_layers = 16, 24
+            elif specification[0] == "H":
+                embed_dim = 1280
+                d_ff = 5120
+                nhead, num_layers = 16, 32
+            else:
+                raise ValueError("Not support {}/*.".format(specification[0]))
+
+            patch_size = int(specification[2:])
         else:
             raise ValueError("Not support task={}.".format(task))
 
+        enc_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim, nhead=nhead, dim_feedforward=d_ff,
+            dropout=enc_dropout,
+            activation=activation,
+            layer_norm_eps=EPS,
+            batch_first=True, norm_first=True
+        )
+        transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+
         model = cls(
             transformer,
-            in_channels=in_channels, embed_dim=patch_embed_dim,
+            in_channels=in_channels, embed_dim=embed_dim,
             image_size=image_size, patch_size=patch_size,
             dropout=dropout,
             pooling=pooling,
             bias_head=bias_head,
-            num_classes=num_classes,
-            eps=eps
+            num_classes=num_classes
         )
 
         return model
@@ -149,152 +162,6 @@ class ViTPool(nn.Module):
             output = input.mean(dim=dim)
 
         return output
-
-class ViTEncoderLayer(nn.Module):
-    def __init__(
-        self,
-        d_model, nhead,
-        embed_dim=384, dim_feedforward=1024,
-        dropout=0, bias=True,
-        activation="gelu",
-        layer_norm_eps=EPS,
-        batch_first=True, norm_first=True,
-        device=None, dtype=None
-    ):
-        super().__init__()
-
-        factory_kwargs = {'device': device, 'dtype': dtype}
-
-        self.self_attn = ViTMultiheadSelfAttention(
-            embed_dim, qkv_dim=d_model,
-            num_heads=nhead,
-            dropout=dropout,
-            bias=bias,
-            batch_first=batch_first,
-            **factory_kwargs
-        )
-        self.dropout1 = nn.Dropout(dropout)
-        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-
-        self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
-        self.activation = choose_nonlinear(activation)
-        self.dropout = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
-        self.dropout2 = nn.Dropout(dropout)
-        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-
-        self.norm_first = norm_first
-
-    def forward(self, input, src_mask=None, src_key_padding_mask=None):
-        assert src_mask is None and src_key_padding_mask is None
-
-        if self.norm_first:
-            x = input + self._sa_block(self.norm1(input))
-            output = x + self._ff_block(self.norm2(x))
-        else:
-            x = self.norm1(input + self._sa_block(input))
-            output = self.norm2(x + self._ff_block(x))
-
-        return output
-
-    def _sa_block(self, input):
-        x = self.self_attn(input)
-        output = self.dropout1(x)
-
-        return output
-
-    def _ff_block(self, input):
-        x = self.linear1(input)
-        x = self.activation(x)
-        x = self.dropout(x)
-        x = self.linear2(x)
-        output = self.dropout2(x)
-
-        return output
-
-class ViTMultiheadSelfAttention(nn.Module):
-    def __init__(self, embed_dim, qkv_dim=None, num_heads=6, dropout=0, bias=True, batch_first=True, device=None, dtype=None):
-        super().__init__()
-
-        factory_kwargs = {'device': device, 'dtype': dtype}
-
-        self.embed_dim = embed_dim
-        self.qkv_dim = qkv_dim = qkv_dim if qkv_dim is not None else embed_dim
-        self.num_heads = num_heads
-        self.batch_first = batch_first
-        self.head_dim = embed_dim // num_heads
-
-        assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
-
-        self.q_proj_weight = nn.Parameter(torch.empty((embed_dim, qkv_dim), **factory_kwargs), requires_grad=True)
-        self.k_proj_weight = nn.Parameter(torch.empty((embed_dim, qkv_dim), **factory_kwargs), requires_grad=True)
-        self.v_proj_weight = nn.Parameter(torch.empty((embed_dim, qkv_dim), **factory_kwargs), requires_grad=True)
-
-        if embed_dim == qkv_dim and num_heads == 1:
-            self.out_proj = None
-
-            if dropout > 0:
-                raise ValueError("dropout should be 0, when embed_dim == qkv_dim.")
-        else:
-            self.out_proj = nn.Linear(embed_dim, qkv_dim, bias=bias)
-            self.dropout1d = nn.Dropout(p=dropout)
-
-    def forward(self, input):
-        """
-        Args:
-            input:
-                (batch_size, T, qkv_dim) if self.batch_first=True
-                (T, batch_size, qkv_dim) if self.batch_first=False
-            output:
-                (batch_size, T, qkv_dim) if self.batch_first=True
-                (T, batch_size, qkv_dim) if self.batch_first=False
-        """
-        num_heads = self.num_heads
-        scale = math.sqrt(self.head_dim)
-
-        if not self.batch_first:
-            input = input.transpose(0, 1) # (T, batch_size, qkv_dim) -> (batch_size, T, qkv_dim)
-
-        q = F.linear(input, self.q_proj_weight) # (batch_size, T, embed_dim)
-        k = F.linear(input, self.k_proj_weight) # (batch_size, T, embed_dim)
-        v = F.linear(input, self.v_proj_weight) # (batch_size, T, embed_dim)
-
-        batch_size, T, embed_dim = q.size()
-
-        q = q.view(batch_size, T, num_heads, embed_dim // num_heads)
-        k = k.view(batch_size, T, num_heads, embed_dim // num_heads)
-        v = v.view(batch_size, T, num_heads, embed_dim // num_heads)
-
-        q = q.permute(0, 2, 1, 3) # (batch_size, num_heads, T, embed_dim // num_heads)
-        k = k.permute(0, 2, 3, 1) # (batch_size, num_heads, embed_dim // num_heads, T)
-        v = v.permute(0, 2, 1, 3) # (batch_size, num_heads, T, embed_dim // num_heads)
-
-        qk = torch.matmul(q, k) / scale # (batch_size, num_heads, T, T)
-        attn = F.softmax(qk, dim=-1) # (batch_size, num_heads, T, T)
-
-        x = torch.matmul(attn, v) # (batch_size, num_heads, T, embed_dim // num_heads)
-        x = x.permute(0, 2, 1, 3) # (batch_size, T, num_heads, embed_dim // num_heads)
-        x = x.contiguous()
-        x = x.view(batch_size, T, embed_dim) # (batch_size, T, embed_dim)
-
-        if self.out_proj is None:
-            output = x
-        else:
-            x = self.out_proj(x) # (batch_size, T, embed_dim)
-            output = self.dropout1d(x) # (batch_size, T, embed_dim)
-
-        if not self.batch_first:
-            output = output.transpose(0, 1) # (batch_size, T, qkv_dim) -> (T, batch_size, qkv_dim)
-
-        return output
-
-    def _reset_paramaters(self):
-        nn.init.xavier_uniform_(self.q_proj_weight)
-        nn.init.xavier_uniform_(self.k_proj_weight)
-        nn.init.xavier_uniform_(self.v_proj_weight)
-
-        if self.out_proj_weight is not None:
-            nn.init.xavier_uniform_(self.out_proj_weight)
 
 class PatchEmbedding2d(nn.Module):
     def __init__(self, in_channels, out_channels, patch_size, channel_last=True):
@@ -334,26 +201,22 @@ class PatchEmbedding2d(nn.Module):
         return output
 
 def _test_vit():
-    patch_embed_dim = 1024
-    nhead, num_layers = 16, 6
-    head_dim = 64
-    mha_embed_dim = nhead * head_dim
-    d_ff = 2048
-    dropout = 0
-    enc_bias = True
+    patch_embed_dim = 768
+    nhead, num_layers = 12, 12
+    d_ff = 3072
+    enc_dropout = 0
 
-    enc_layer = ViTEncoderLayer(
-        d_model=patch_embed_dim, nhead=nhead,
-        embed_dim=mha_embed_dim, dim_feedforward=d_ff,
-        dropout=dropout, bias=enc_bias,
-        activation="gelu",
+    enc_layer = nn.TransformerEncoderLayer(
+        d_model=patch_embed_dim, nhead=nhead, dim_feedforward=d_ff,
+        dropout=enc_dropout,
+        activation=F.gelu,
         layer_norm_eps=EPS,
         batch_first=True, norm_first=True
     )
     transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
 
     in_channels = 3
-    image_size, patch_size = 256, 16
+    image_size, patch_size = 224, 32
     dropout = 0
     pooling = "cls"
     bias_head = True
