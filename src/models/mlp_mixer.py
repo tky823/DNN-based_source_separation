@@ -9,8 +9,22 @@ from models.vit import PatchEmbedding2d
 EPS = 1e-12
 
 class MLPMixer(nn.Module):
+    """
+    MLP-Mixer
+    Reference:
+        "MLP-Mixer: An all-MLP Architecture for Vision"
+        See https://arxiv.org/abs/2105.01601
+    """
     pretrained_model_ids = {
-        "imagenet": {}
+        "imagenet": {
+            "S/32": {},
+            "S/16": {},
+            "B/32": {},
+            "B/16": {},
+            "L/32": {},
+            "L/16": {},
+            "H/14": {}
+        }
     }
     def __init__(
         self,
@@ -82,18 +96,37 @@ class MLPMixer(nn.Module):
             raise KeyError("Invalid task ({}) is specified.".format(task))
 
         if task == "imagenet":
+            specification = kwargs.get("specification") or "B/16"
+
             in_channels = 3
-            embed_dim = 512
-            token_hidden_channels, embed_hidden_channels = 256, 2048
-            image_size, patch_size = 224, 16
-            num_layers = 8
+            image_size = 224
+
             dropout = 0
             activation = "gelu"
             pooling = "avg"
             bias_head = True
             num_classes = 1000
 
-            eps = EPS
+            if specification[0] == "S":
+                embed_dim = 512
+                token_hidden_channels, embed_hidden_channels = 256, 2048
+                num_layers = 8
+            elif specification[0] == "B":
+                embed_dim = 768
+                token_hidden_channels, embed_hidden_channels = 384, 3072
+                num_layers = 12
+            elif specification[0] == "L":
+                embed_dim = 1024
+                token_hidden_channels, embed_hidden_channels = 512, 4096
+                num_layers = 24
+            elif specification[0] == "H":
+                embed_dim = 1280
+                token_hidden_channels, embed_hidden_channels = 640, 5120
+                num_layers = 32
+            else:
+                raise ValueError("Not support {}/*.".format(specification[0]))
+
+            patch_size = int(specification[2:])
         else:
             raise ValueError("Not support task={}.".format(task))
 
@@ -108,8 +141,7 @@ class MLPMixer(nn.Module):
             activation=activation,
             pooling=pooling,
             bias_head=bias_head,
-            num_classes=num_classes,
-            eps=eps
+            num_classes=num_classes
         )
 
         return model
@@ -188,8 +220,10 @@ class TokenMixer(nn.Module):
     def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True):
         super().__init__()
 
+        assert norm_first, "norm_first should be True."
+
         self.layer_norm = nn.LayerNorm(num_features)
-        self.mlp = MLP(num_patches, hidden_channels, dropout=dropout, activation=activation, norm_first=norm_first)
+        self.mlp = MLP(num_patches, hidden_channels, dropout=dropout, activation=activation)
 
     def forward(self, input):
         """
@@ -209,10 +243,10 @@ class ChannelMixer(nn.Module):
     def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu", norm_first=True):
         super().__init__()
 
-        self.layer_norm = nn.LayerNorm(num_features)
-        self.mlp = MLP(num_features, hidden_channels, dropout=dropout, activation=activation, norm_first=norm_first)
+        assert norm_first, "norm_first should be True."
 
-        self.norm_first = norm_first
+        self.layer_norm = nn.LayerNorm(num_features)
+        self.mlp = MLP(num_features, hidden_channels, dropout=dropout, activation=activation)
 
     def forward(self, input):
         """
@@ -227,18 +261,14 @@ class ChannelMixer(nn.Module):
         return output
 
 class MLP(nn.Module):
-    def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu", norm_first=True):
+    def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu"):
         super().__init__()
-
-        assert norm_first, "norm_first should be True."
 
         self.linear1 = nn.Linear(num_features, hidden_channels)
         self.activation = choose_nonlinear(activation)
         self.dropout1 = nn.Dropout(dropout)
         self.linear2 = nn.Linear(hidden_channels, num_features)
         self.dropout2 = nn.Dropout(dropout)
-
-        self.norm_first = norm_first
 
     def forward(self, input):
         """
