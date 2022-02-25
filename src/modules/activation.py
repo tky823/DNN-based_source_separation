@@ -1,5 +1,3 @@
-import warnings
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,8 +7,6 @@ EPS = 1e-12
 class ConcatenatedReLU(nn.Module):
     def __init__(self, dim=1):
         super().__init__()
-
-        warnings.warn("Use modules.activation.ConcatenatedReLU instead.", DeprecationWarning)
 
         self.dim = dim
 
@@ -26,8 +22,6 @@ class ConcatenatedReLU(nn.Module):
 class ModReLU1d(nn.Module):
     def __init__(self, num_features):
         super().__init__()
-
-        warnings.warn("Use modules.activation.ModReLU1d instead.", DeprecationWarning)
 
         self.num_features = num_features
         self.bias = nn.Parameter(torch.Tensor((num_features,)), requires_grad=True)
@@ -67,8 +61,6 @@ class ModReLU2d(nn.Module):
     def __init__(self, num_features):
         super().__init__()
 
-        warnings.warn("Use modules.activation.ModReLU2d instead.", DeprecationWarning)
-
         self.num_features = num_features
         self.bias = nn.Parameter(torch.Tensor((num_features,)), requires_grad=True)
 
@@ -103,11 +95,14 @@ class ModReLU2d(nn.Module):
 
         return output
 
+"""
+    See "Deep Complex Networks"
+    https://arxiv.org/abs/1705.09792
+"""
+
 class ComplexReLU(nn.Module):
     def __init__(self):
         super().__init__()
-
-        warnings.warn("Use modules.activation.ComplexReLU instead.", DeprecationWarning)
 
     def forward(self, input):
         """
@@ -130,12 +125,16 @@ class ComplexReLU(nn.Module):
             output = torch.view_as_real(output)
 
         return output
+"""
+    z ReLU
+    See "On complex valued convolutional neural networks" or "Deep Complex Networks"
+    https://arxiv.org/abs/1602.09046
+    https://arxiv.org/abs/1705.09792
+"""
 
 class ZReLU(nn.Module):
     def __init__(self):
         super().__init__()
-
-        warnings.warn("Use modules.activation.ZReLU instead.", DeprecationWarning)
 
     def forward(self, input):
         """
@@ -161,3 +160,78 @@ class ZReLU(nn.Module):
             output = torch.view_as_real(output)
 
         return output
+
+def _test_mod_relu():
+    batch_size, num_features, T = 4, 3, 8
+    real, imag = torch.randn(batch_size, num_features, T), torch.randn(batch_size, num_features, T)
+
+    input = torch.complex(real, imag)
+    model = ModReLU1d(num_features)
+    output_as_complex = model(input)
+
+    print(model)
+    print(input.size(), output_as_complex.size())
+    print()
+
+    input = torch.view_as_real(input)
+    output_as_real = model(input)
+
+    print(model)
+    print(input.size(), output_as_real.size())
+
+    print(torch.all(output_as_complex == torch.view_as_complex(output_as_real)))
+
+def _test_complex_relu():
+    batch_size, num_features, T = 4, 3, 8
+    real, imag = torch.randn(batch_size, num_features, T), torch.randn(batch_size, num_features, T)
+
+    input = torch.complex(real, imag)
+    model = ComplexReLU()
+    output_as_complex = model(input)
+
+    print(model)
+    print(input.size(), output_as_complex.size())
+    print()
+
+    input = torch.view_as_real(input)
+    output_as_real = model(input)
+
+    print(model)
+    print(input.size(), output_as_real.size())
+
+    print(torch.all(output_as_complex == torch.view_as_complex(output_as_real)))
+
+def _test_zrelu():
+    batch_size, num_features, T = 4, 3, 8
+    real, imag = torch.randn(batch_size, num_features, T), torch.randn(batch_size, num_features, T)
+
+    input = torch.complex(real, imag)
+    model = ZReLU()
+    output_as_complex = model(input)
+
+    print(model)
+    print(input.size(), output_as_complex.size())
+    print()
+
+    input = torch.view_as_real(input)
+    output_as_real = model(input)
+
+    print(model)
+    print(input.size(), output_as_real.size())
+
+    print(torch.all(output_as_complex == torch.view_as_complex(output_as_real)))
+
+if __name__ == '__main__':
+    torch.manual_seed(111)
+
+    print("="*10, "ModReLU", "="*10)
+    _test_mod_relu()
+    print()
+
+    print("="*10, "ComplexReLU", "="*10)
+    _test_complex_relu()
+    print()
+
+    print("="*10, "ZReLU", "="*10)
+    _test_zrelu()
+    print()

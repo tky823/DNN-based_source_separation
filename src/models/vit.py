@@ -28,8 +28,7 @@ class ViT(nn.Module):
         dropout=0,
         pooling="cls",
         bias_head=True,
-        num_classes=1000,
-        eps=EPS
+        num_classes=1000
     ):
         super().__init__()
 
@@ -360,8 +359,6 @@ def _test_vit():
     bias_head = True
     num_classes = 1000
 
-    eps = EPS
-
     model = ViT(
         transformer,
         in_channels=in_channels, embed_dim=patch_embed_dim,
@@ -369,8 +366,7 @@ def _test_vit():
         dropout=dropout,
         pooling=pooling,
         bias_head=bias_head,
-        num_classes=num_classes,
-        eps=eps
+        num_classes=num_classes
     )
 
     input = torch.randn(4, in_channels, image_size, image_size)

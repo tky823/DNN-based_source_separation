@@ -1,15 +1,16 @@
-import warnings
-
 import torch
 import torch.nn as nn
 
 EPS = 1e-12
 
+"""
+    Global layer normalization
+    See "Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation"
+    https://arxiv.org/abs/1809.07454
+"""
 class GlobalLayerNorm(nn.Module):
     def __init__(self, num_features, eps=EPS):
         super().__init__()
-
-        warnings.warn("Use modules.norm.GlobalLayerNorm instead.", DeprecationWarning)
 
         self.num_features = num_features
         self.eps = eps
@@ -33,11 +34,14 @@ class GlobalLayerNorm(nn.Module):
 
         return s.format(**self.__dict__)
 
+"""
+    Cumulative layer normalization
+    See "Conv-TasNet: Surpassing Ideal Time-Frequency Magnitude Masking for Speech Separation"
+    https://arxiv.org/abs/1809.07454
+"""
 class CumulativeLayerNorm1d(nn.Module):
     def __init__(self, num_features, eps=EPS):
         super().__init__()
-
-        warnings.warn("Use modules.norm.CumulativeLayerNorm1d instead.", DeprecationWarning)
 
         self.num_features = num_features
         self.eps = eps
@@ -95,3 +99,19 @@ class CumulativeLayerNorm1d(nn.Module):
         s += '({num_features}, eps={eps})'
 
         return s.format(**self.__dict__)
+
+"""
+TODO: Virtual batch normalization
+"""
+
+if __name__ == '__main__':
+    batch_size, C, T = 2, 3, 5
+    causal = True
+
+    norm = GlobalLayerNorm(C)
+    print(norm)
+
+    input = torch.arange(batch_size*C*T, dtype=torch.float).view(batch_size, C, T)
+    output = norm(input)
+    print(input)
+    print(output)

@@ -1,4 +1,3 @@
-import warnings
 import math
 
 import torch
@@ -6,11 +5,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
+"""
+    Depthwise Separable Convolution
+    See "Xception: Deep Learning with Depthwise Separable Convolutions"
+    https://arxiv.org/abs/1610.02357
+"""
 class DepthwiseSeparableConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, padding=0, dilation=1, bias=True):
         super().__init__()
-
-        warnings.warn("Use modules.conv.DepthwiseSeparableConv1d instead.", DeprecationWarning)
 
         if stride is None:
             stride = kernel_size
@@ -29,8 +31,6 @@ class DepthwiseSeparableConv1d(nn.Module):
 class DepthwiseSeparableConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, padding=(0,0), dilation=(1,1), bias=True):
         super().__init__()
-
-        warnings.warn("Use modules.conv.DepthwiseSeparableConv2d instead.", DeprecationWarning)
 
         kernel_size = _pair(kernel_size)
 
@@ -51,11 +51,12 @@ class DepthwiseSeparableConv2d(nn.Module):
 
         return output
 
+"""
+    Depthwise Separable Transposed Convolution
+"""
 class DepthwiseSeparableConvTranspose1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, bias=True):
         super().__init__()
-
-        warnings.warn("Use modules.conv.DepthwiseSeparableConvTranspose1d instead.", DeprecationWarning)
 
         if stride is None:
             stride = kernel_size
@@ -74,8 +75,6 @@ class DepthwiseSeparableConvTranspose1d(nn.Module):
 class DepthwiseSeparableConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=None, dilation=1, bias=True):
         super().__init__()
-
-        warnings.warn("Use modules.conv.DepthwiseSeparableConvTranspose2d instead.", DeprecationWarning)
 
         kernel_size = _pair(kernel_size)
 
@@ -96,11 +95,15 @@ class DepthwiseSeparableConvTranspose2d(nn.Module):
 
         return output
 
+"""
+    Complex convolution
+    See "Deep Complex Networks"
+    https://arxiv.org/abs/1705.09792
+"""
 class ComplexConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1):
         super().__init__()
 
-        warnings.warn("Use modules.conv.ComplexConv1d instead.", DeprecationWarning)
         raise NotImplementedError
 
         self.in_channels, self.out_channels = in_channels, out_channels
@@ -139,8 +142,6 @@ class ComplexConv1d(nn.Module):
 class MultiDilatedConv1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias=True, groups=None):
         super().__init__()
-
-        warnings.warn("Use modules.conv.MultiDilatedConv1d instead.", DeprecationWarning)
 
         self.out_channels = out_channels
         self.kernel_size = kernel_size
@@ -226,8 +227,6 @@ class MultiDilatedConv1d(nn.Module):
 class MultiDilatedConv2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, bias=True, groups=None):
         super().__init__()
-
-        warnings.warn("Use modules.conv.MultiDilatedConv2d instead.", DeprecationWarning)
 
         kernel_size = _pair(kernel_size)
 
@@ -315,11 +314,12 @@ class MultiDilatedConv2d(nn.Module):
             s += ", bias=False"
         return s
 
+"""
+    Quantization
+"""
 class QuantizableConvTranspose1d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
         super().__init__()
-
-        warnings.warn("Use modules.conv.QuantizableConvTranspose1d instead.", DeprecationWarning)
 
         assert in_channels == out_channels and padding == 0 and dilation == 1 and groups == 1 and padding_mode == 'zeros', "Only supports the operation convertible into torch.nn.Conv1d."
 
@@ -343,8 +343,6 @@ class QuantizableConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros'):
         super().__init__()
 
-        warnings.warn("Use modules.conv.QuantizableConvTranspose2d instead.", DeprecationWarning)
-
         kernel_size, stride = _pair(kernel_size), _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
@@ -366,3 +364,53 @@ class QuantizableConvTranspose2d(nn.Module):
         output = self.backend(input_pad)
 
         return output
+
+def _test_multidilated_conv1d():
+    torch.manual_seed(111)
+
+    batch_size = 2
+    in_channels, out_channels = [1, 1, 1], 4
+    T = 16
+
+    kernel_size = 3
+
+    input = torch.randn(batch_size, sum(in_channels), T)
+    conv1d = MultiDilatedConv1d(sum(in_channels), out_channels, kernel_size=kernel_size, groups=len(in_channels))
+    print(conv1d)
+    output = conv1d(input)
+    print(input.size(), output.size())
+    print()
+
+    conv1d = MultiDilatedConv1d(in_channels, out_channels, kernel_size=kernel_size, bias=False)
+    print(conv1d)
+    output = conv1d(input)
+    print(input.size(), output.size())
+
+def _test_multidilated_conv2d():
+    torch.manual_seed(111)
+
+    batch_size = 2
+    in_channels, out_channels = [1, 1, 1], 4
+    H, W = 16, 32
+
+    kernel_size = 3
+
+    input = torch.randn(batch_size, sum(in_channels), H, W)
+
+    conv2d = MultiDilatedConv2d(sum(in_channels), out_channels, kernel_size=kernel_size, groups=len(in_channels))
+    print(conv2d)
+    output = conv2d(input)
+    print(input.size(), output.size())
+    print()
+
+    conv2d = MultiDilatedConv2d(in_channels, out_channels, kernel_size=kernel_size, bias=False)
+    print(conv2d)
+    output = conv2d(input)
+    print(input.size(), output.size())
+    print()
+
+if __name__ == '__main__':
+    _test_multidilated_conv1d()
+    print()
+
+    _test_multidilated_conv2d()
