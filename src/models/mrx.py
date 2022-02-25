@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.utils_audio import build_window
+from utils.audio import build_window
 from utils.model import choose_rnn
 from models.umx import TransformBlock1d
 
