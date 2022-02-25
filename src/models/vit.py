@@ -44,7 +44,6 @@ class ViT(nn.Module):
         self.dropout1d = nn.Dropout(p=dropout)
         self.transformer = transformer
         self.pool1d = ViTPool(pooling, dim=1)
-        self.norm0d = nn.LayerNorm(embed_dim, eps=eps)
         self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
         self.positional_embedding = nn.Parameter(torch.empty(num_patches + 1, embed_dim))
@@ -73,7 +72,6 @@ class ViT(nn.Module):
         x = self.dropout1d(x)
         x = self.transformer(x) # (batch_size, num_patches + 1, embed_dim)
         x = self.pool1d(x) # (batch_size, embed_dim)
-        x = self.norm0d(x) # (batch_size, embed_dim)
         output = self.fc_head(x) # (batch_size, num_classes)
 
         return output

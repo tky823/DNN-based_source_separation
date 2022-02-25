@@ -24,15 +24,15 @@ class MLPMixer(nn.Module):
         activation="gelu",
         pooling="avg",
         bias_head=True,
-        num_classes=1000,
-        eps=EPS
+        num_classes=1000
     ):
         super().__init__()
 
-        image_size = _pair(image_size)
+        self.in_channels = in_channels
+        self.image_size = _pair(image_size)
         patch_size = _pair(patch_size)
 
-        H, W = image_size
+        H, W = self.image_size
         pH, pW = patch_size
 
         num_patches = (H // pH) * (W // pW)
@@ -46,9 +46,6 @@ class MLPMixer(nn.Module):
             dropout=dropout, activation=activation,
             norm_first=True
         )
-
-        # Order of modules ?
-        self.norm1d = nn.LayerNorm(embed_dim, eps=eps)
         self.pool1d = MLPMixerPool1d(pooling)
         self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
@@ -59,9 +56,14 @@ class MLPMixer(nn.Module):
         Returns:
             output: (batch_size, num_classes)
         """
+        C = self.in_channels
+        H, W = self.image_size
+        _, C_in, H_in, W_in = input.size()
+
+        assert C_in == C and H_in == H and W_in == W, "Input shape is expected (batch_size, {}, {}, {}), but given (batch_size, {}, {}, {})".format(C, H, W, C_in, H_in, W_in)
+
         x = self.patch_embedding2d(input) # (batch_size, num_patches, embed_dim)
         x = self.backbone(x) # (batch_size, num_patches, embed_dim)
-        x = self.norm1d(x) # (batch_size, num_patches, embed_dim)
         x = self.pool1d(x) # (batch_size, embed_dim)
         output = self.fc_head(x) # (batch_size, num_classes)
 
@@ -141,7 +143,12 @@ class MLPMixerBackbone(nn.Module):
         return output
 
 class MixerBlock(nn.Module):
-    def __init__(self, embed_dim, token_hidden_channels, embed_hidden_channels, num_patches, dropout=0, activation="gelu", norm_first=True):
+    def __init__(
+        self,
+        embed_dim, token_hidden_channels, embed_hidden_channels,
+        num_patches,
+        dropout=0, activation="gelu", norm_first=True
+    ):
         super().__init__()
 
         self.token_mixer = TokenMixer(
@@ -185,8 +192,8 @@ class TokenMixer(nn.Module):
         Returns:
             output: (batch_size, num_patches, num_features)
         """
-        x = self.layer_norm(input)
-        x = x.permute(0, 2, 1)
+        x = input.permute(0, 2, 1)
+        x = self.layer_norm(x)
         x = self.linear1(x)
         x = self.activation(x)
         x = self.dropout1(x)
@@ -237,27 +244,45 @@ class MLPMixerPool1d(nn.Module):
             raise ValueError("Not support pooling={}".format(self.pooling))
 
     def forward(self, input):
+        """
+        Args:
+            input: (batch_size, length, embed_dim)
+        Returns:
+            output: (batch_size, embed_dim)
+        """
+        x = input.permute(0, 2, 1) # (batch_size, length, num_patches)
+
         if self.pooling == "avg":
-            output = F.adaptive_avg_pool1d(input, 1, return_indices=False)
+            x = F.adaptive_avg_pool1d(x, 1)
         else:
-            output = F.adaptive_max_pool1d(input, 1, return_indices=False)
+            x = F.adaptive_max_pool1d(x, 1, return_indices=False)
+
+        output = x.squeeze(dim=-1)
 
         return output
 
 def _test_mlp_mixer():
     in_channels = 3
-    image_size, patch_size = 256, 16
-    num_classes = 100
+    embed_dim = 512
+    token_hidden_channels, embed_hidden_channels = 256, 2048
+    image_size, patch_size = 224, 16
+    num_layers = 8
+    dropout = 0
+    activation = "gelu"
+    pooling = "avg"
+    bias_head = True
+    num_classes = 1000
 
-    d_model = 1024
-    nhead, num_layers = 16, 6
-    embed_dim = nhead * 64
-    d_ff = 2048
-
-    model = ViT(
-        transformer,
-        in_channels=in_channels, embed_dim=embed_dim,
-        image_size=image_size, patch_size=patch_size,
+    model = MLPMixer(
+        in_channels,
+        embed_dim, token_hidden_channels, embed_hidden_channels,
+        image_size,
+        patch_size=patch_size,
+        num_layers=num_layers,
+        dropout=dropout,
+        activation=activation,
+        pooling=pooling,
+        bias_head=bias_head,
         num_classes=num_classes
     )
 
