@@ -3,8 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from utils.model import choose_nonlinear
-from models.meta_former import PatchEmbedding2d
+from models.metaformer import PatchEmbedding2d, ChannelMixerBlock1d, MLPBlock1d
 
 EPS = 1e-12
 
@@ -38,7 +37,8 @@ class MLPMixer(nn.Module):
         activation="gelu",
         pooling="avg",
         bias_head=True,
-        num_classes=1000
+        num_classes=1000,
+        eps=EPS
     ):
         super().__init__()
 
@@ -51,7 +51,10 @@ class MLPMixer(nn.Module):
 
         num_patches = (H // pH) * (W // pW)
 
-        self.patch_embedding2d = PatchEmbedding2d(in_channels, embed_dim, patch_size=patch_size, channel_last=True)
+        self.patch_embedding2d = PatchEmbedding2d(
+            in_channels, embed_dim,
+            patch_size=patch_size, channel_last=True, to_1d=True
+        )
         self.backbone = MLPMixerBackbone(
             embed_dim,
             token_hidden_channels, embed_hidden_channels,
@@ -60,7 +63,7 @@ class MLPMixer(nn.Module):
             dropout=dropout, activation=activation,
             norm_first=True
         )
-        self.norm1d = nn.LayerNorm(embed_dim)
+        self.norm1d = nn.LayerNorm(embed_dim, eps=eps)
         self.pool1d = MLPMixerPool1d(pooling)
         self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
@@ -75,7 +78,8 @@ class MLPMixer(nn.Module):
         H, W = self.image_size
         _, C_in, H_in, W_in = input.size()
 
-        assert C_in == C and H_in == H and W_in == W, "Input shape is expected (batch_size, {}, {}, {}), but given (batch_size, {}, {}, {})".format(C, H, W, C_in, H_in, W_in)
+        assert C_in == C and H_in == H and W_in == W, \
+            "Input shape is expected (batch_size, {}, {}, {}), but given (batch_size, {}, {}, {})".format(C, H, W, C_in, H_in, W_in)
 
         x = self.patch_embedding2d(input) # (batch_size, num_patches, embed_dim)
         x = self.backbone(x) # (batch_size, num_patches, embed_dim)
@@ -161,8 +165,9 @@ class MLPMixerBackbone(nn.Module):
         net = []
 
         for _ in range(num_layers):
-            module = MixerBlock(
-                embed_dim, token_hidden_channels, embed_hidden_channels, num_patches,
+            module = MLPMixerBlock(
+                embed_dim, token_hidden_channels, embed_hidden_channels,
+                num_patches=num_patches,
                 dropout=dropout,
                 activation=activation,
                 norm_first=norm_first
@@ -182,26 +187,27 @@ class MLPMixerBackbone(nn.Module):
 
         return output
 
-class MixerBlock(nn.Module):
+class MLPMixerBlock(nn.Module):
     def __init__(
         self,
         embed_dim, token_hidden_channels, embed_hidden_channels,
         num_patches,
-        dropout=0, activation="gelu", norm_first=True
+        dropout=0, activation="gelu",
+        norm_first=True
     ):
         super().__init__()
 
-        self.token_mixer = TokenMixer(
+        self.token_mixer = TokenMixerBlock1d(
             embed_dim, num_patches, token_hidden_channels,
             dropout=dropout,
             activation=activation,
             norm_first=norm_first
         )
-        self.channel_mixer = ChannelMixer(
+        self.channel_mixer = ChannelMixerBlock1d(
             embed_dim, embed_hidden_channels,
             dropout=dropout,
             activation=activation,
-            norm_first=norm_first
+            norm_first=norm_first, channel_last=True
         )
 
     def forward(self, input):
@@ -216,14 +222,14 @@ class MixerBlock(nn.Module):
 
         return output
 
-class TokenMixer(nn.Module):
-    def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True):
+class TokenMixerBlock1d(nn.Module):
+    def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True, eps=EPS):
         super().__init__()
 
         assert norm_first, "norm_first should be True."
 
-        self.layer_norm = nn.LayerNorm(num_features)
-        self.mlp = MLP(num_patches, hidden_channels, dropout=dropout, activation=activation)
+        self.layer_norm = nn.LayerNorm(num_features, eps=eps)
+        self.mixer = MLPBlock1d(num_patches, hidden_channels, dropout=dropout, activation=activation, channel_last=True)
 
     def forward(self, input):
         """
@@ -234,54 +240,8 @@ class TokenMixer(nn.Module):
         """
         x = self.layer_norm(input)
         x = x.permute(0, 2, 1)
-        output = self.mlp(x)
+        x = self.mixer(x)
         output = x.permute(0, 2, 1)
-
-        return output
-
-class ChannelMixer(nn.Module):
-    def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu", norm_first=True):
-        super().__init__()
-
-        assert norm_first, "norm_first should be True."
-
-        self.layer_norm = nn.LayerNorm(num_features)
-        self.mlp = MLP(num_features, hidden_channels, dropout=dropout, activation=activation)
-
-    def forward(self, input):
-        """
-        Args:
-            input: (batch_size, token_size, num_features)
-        Returns:
-            output: (batch_size, token_size, num_features)
-        """
-        x = self.layer_norm(input)
-        output = self.mlp(x)
-
-        return output
-
-class MLP(nn.Module):
-    def __init__(self, num_features, hidden_channels, dropout=0, activation="gelu"):
-        super().__init__()
-
-        self.linear1 = nn.Linear(num_features, hidden_channels)
-        self.activation = choose_nonlinear(activation)
-        self.dropout1 = nn.Dropout(dropout)
-        self.linear2 = nn.Linear(hidden_channels, num_features)
-        self.dropout2 = nn.Dropout(dropout)
-
-    def forward(self, input):
-        """
-        Args:
-            input: (batch_size, length, num_features)
-        Returns:
-            output: (batch_size, length, num_features)
-        """
-        x = self.linear1(input)
-        x = self.activation(x)
-        x = self.dropout1(x)
-        x = self.linear2(x)
-        output = self.dropout2(x)
 
         return output
 

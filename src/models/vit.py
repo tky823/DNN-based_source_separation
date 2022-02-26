@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from models.meta_former import PatchEmbedding2d
+from models.metaformer import PatchEmbedding2d
 
 EPS = 1e-12
 
@@ -32,7 +31,8 @@ class ViT(nn.Module):
         dropout=0,
         pooling="cls",
         bias_head=True,
-        num_classes=1000
+        num_classes=1000,
+        eps=EPS
     ):
         super().__init__()
 
@@ -43,10 +43,13 @@ class ViT(nn.Module):
         pH, pW = patch_size
         num_patches = (H // pH) * (W // pW)
 
-        self.patch_embedding2d = PatchEmbedding2d(in_channels, embed_dim, patch_size=patch_size, channel_last=True)
+        self.patch_embedding2d = PatchEmbedding2d(
+            in_channels, embed_dim,
+            patch_size=patch_size, channel_last=True, to_1d=True
+        )
         self.dropout1d = nn.Dropout(p=dropout)
         self.transformer = transformer
-        self.norm1d = nn.LayerNorm(embed_dim)
+        self.norm1d = nn.LayerNorm(embed_dim, eps=eps)
         self.pool1d = ViTPool(pooling, dim=1)
         self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
 
@@ -98,7 +101,7 @@ class ViT(nn.Module):
             image_size = 224
 
             enc_dropout, dropout = 0, 0
-            activation = "gelu"
+            activation = nn.GELU()
             pooling = "avg"
             bias_head = True
             num_classes = 1000
@@ -129,7 +132,7 @@ class ViT(nn.Module):
             layer_norm_eps=EPS,
             batch_first=True, norm_first=True
         )
-        transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+        transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers, norm=None)
 
         model = cls(
             transformer,
@@ -174,11 +177,11 @@ def _test_vit():
     enc_layer = nn.TransformerEncoderLayer(
         d_model=patch_embed_dim, nhead=nhead, dim_feedforward=d_ff,
         dropout=enc_dropout,
-        activation=F.gelu,
+        activation=nn.GELU(),
         layer_norm_eps=EPS,
         batch_first=True, norm_first=True
     )
-    transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+    transformer = nn.TransformerEncoder(enc_layer, num_layers=num_layers, norm=None)
 
     in_channels = 3
     image_size, patch_size = 224, 32
