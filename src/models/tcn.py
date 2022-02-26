@@ -6,6 +6,8 @@ import torch.nn.functional as F
 
 from utils.tasnet import choose_layer_norm
 
+warnings.warn("Use models.tdcn instead.", FutureWarning)
+
 EPS = 1e-12
 
 """
