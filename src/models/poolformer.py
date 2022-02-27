@@ -14,6 +14,15 @@ class PoolFormer(nn.Module):
         "MetaFormer is Actually What You Need for Vision"
         See https://arxiv.org/abs/2111.11418
     """
+    pretrained_model_ids = {
+        "imagenet": {
+            "S/36": {},
+            "S/24": {},
+            "S/12": {},
+            "M/48": {},
+            "M/36": {}
+        }
+    }
     def __init__(
         self,
         in_channels,
@@ -76,6 +85,80 @@ class PoolFormer(nn.Module):
         output = self.fc_head(x) # (batch_size, num_classes)
 
         return output
+
+    @classmethod
+    def build_from_pretrained(cls, load_state_dict=True, **kwargs):
+        if load_state_dict:
+            raise ValueError("Not support load_state_dict=True.")
+
+        task = kwargs.get('task')
+
+        if not task in cls.pretrained_model_ids:
+            raise KeyError("Invalid task ({}) is specified.".format(task))
+
+        if task == "imagenet":
+            specification = kwargs.get("specification") or "M/36"
+
+            in_channels = 3
+
+            patch_size, stride = 7, 4
+            down_patch_size, down_stride = 3, 2
+            pool_size = 3
+
+            dropout = 0
+            layer_scale = 1e-5
+            activation = "gelu"
+            pooling = "avg"
+            bias_head = True
+            num_classes = 1000
+
+            patch_size = int(specification[2:])
+
+            if specification[0] == "S":
+                embed_dim = [64, 128, 320, 512]
+                hidden_channels = [256, 512, 1280, 2048]
+
+                if patch_size == 12:
+                    num_layers = [2, 2, 6, 2]
+                    layer_scale = 1e-5
+                elif patch_size == 24:
+                    num_layers = [4, 4, 12, 4]
+                    layer_scale = 1e-5
+                elif patch_size == 36:
+                    num_layers = [6, 6, 18, 6]
+                    layer_scale = 1e-6
+                raise ValueError("Not support S/{}.".format(patch_size))
+
+            elif specification[0] == "M":
+                embed_dim = [96, 192, 384, 768]
+                hidden_channels = [384, 768, 1536, 3072]
+                layer_scale = 1e-6
+
+                if patch_size == 36:
+                    num_layers = [6, 6, 18, 6]
+                elif patch_size == 48:
+                    num_layers = [8, 8, 24, 8]
+                else:
+                    raise ValueError("Not support M/{}.".format(patch_size))
+            else:
+                raise ValueError("Not support {}/*.".format(specification[0]))
+        else:
+            raise ValueError("Not support task={}.".format(task))
+
+        model = cls(
+            in_channels, embed_dim, hidden_channels,
+            patch_size=patch_size, stride=stride,
+            down_patch_size=down_patch_size, down_stride=down_stride,
+            pool_size=pool_size,
+            num_layers=num_layers,
+            dropout=dropout, activation=activation,
+            layer_scale=layer_scale,
+            pooling=pooling,
+            bias_head=bias_head,
+            num_classes=num_classes
+        )
+    
+        return model
 
 class PoolFormerBackbone(nn.Module):
     def __init__(
