@@ -127,8 +127,8 @@ class PoolFormer(nn.Module):
                 elif patch_size == 36:
                     num_layers = [6, 6, 18, 6]
                     layer_scale = 1e-6
-                raise ValueError("Not support S/{}.".format(patch_size))
-
+                else:
+                    raise ValueError("Not support S/{}.".format(patch_size))
             elif specification[0] == "M":
                 embed_dim = [96, 192, 384, 768]
                 hidden_channels = [384, 768, 1536, 3072]
