@@ -112,34 +112,34 @@ class PoolFormer(nn.Module):
             bias_head = True
             num_classes = 1000
 
-            patch_size = int(specification[2:])
+            total_layers = int(specification[2:])
 
             if specification[0] == "S":
                 embed_dim = [64, 128, 320, 512]
                 hidden_channels = [256, 512, 1280, 2048]
 
-                if patch_size == 12:
+                if total_layers == 12:
                     num_layers = [2, 2, 6, 2]
                     layer_scale = 1e-5
-                elif patch_size == 24:
+                elif total_layers == 24:
                     num_layers = [4, 4, 12, 4]
                     layer_scale = 1e-5
-                elif patch_size == 36:
+                elif total_layers == 36:
                     num_layers = [6, 6, 18, 6]
                     layer_scale = 1e-6
                 else:
-                    raise ValueError("Not support S/{}.".format(patch_size))
+                    raise ValueError("Not support S/{}.".format(total_layers))
             elif specification[0] == "M":
                 embed_dim = [96, 192, 384, 768]
                 hidden_channels = [384, 768, 1536, 3072]
                 layer_scale = 1e-6
 
-                if patch_size == 36:
+                if total_layers == 36:
                     num_layers = [6, 6, 18, 6]
-                elif patch_size == 48:
+                elif total_layers == 48:
                     num_layers = [8, 8, 24, 8]
                 else:
-                    raise ValueError("Not support M/{}.".format(patch_size))
+                    raise ValueError("Not support M/{}.".format(total_layers))
             else:
                 raise ValueError("Not support {}/*.".format(specification[0]))
         else:
