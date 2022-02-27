@@ -210,8 +210,8 @@ class PoolFormerBlock(nn.Module):
         if layer_scale is None:
             self.layer_scale = False
         else:
-            self.token_scale = layer_scale * nn.Parameter(torch.ones(out_channels), requires_grad=True)
-            self.channel_scale = layer_scale * nn.Parameter(torch.ones(out_channels), requires_grad=True)
+            self.token_scale = nn.Parameter(layer_scale * torch.ones(out_channels), requires_grad=True)
+            self.channel_scale = nn.Parameter(layer_scale * torch.ones(out_channels), requires_grad=True)
             self.layer_scale = True
 
         self.skip_token = skip_token
