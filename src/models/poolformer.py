@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
@@ -24,6 +25,7 @@ class PoolFormer(nn.Module):
         dropout=0,
         activation="gelu",
         skip_token=False, skip_channel=True,
+        layer_scale=None,
         pooling="avg",
         bias_head=True,
         num_classes=1000,
@@ -53,6 +55,7 @@ class PoolFormer(nn.Module):
             num_layers=num_layers,
             dropout=dropout, activation=activation,
             norm_first=True, skip_token=skip_token, skip_channel=skip_channel,
+            layer_scale=layer_scale,
             eps=eps
         )
         self.norm2d = nn.GroupNorm(1, embed_dim_out, eps=eps)
@@ -84,6 +87,7 @@ class PoolFormerBackbone(nn.Module):
         num_layers=6,
         dropout=0, activation="gelu",
         norm_first=True, skip_token=False, skip_channel=True,
+        layer_scale=None,
         eps=EPS
     ):
         super().__init__()
@@ -125,6 +129,7 @@ class PoolFormerBackbone(nn.Module):
                         dropout=dropout,
                         activation=activation,
                         norm_first=norm_first, skip_token=skip_token, skip_channel=skip_channel,
+                        layer_scale=layer_scale,
                         eps=eps
                     )
                 else:
@@ -136,6 +141,7 @@ class PoolFormerBackbone(nn.Module):
                         dropout=dropout,
                         activation=activation,
                         norm_first=norm_first, skip_token=skip_token, skip_channel=skip_channel,
+                        layer_scale=layer_scale,
                         eps=eps
                     )
                 net.append(module)
@@ -162,6 +168,7 @@ class PoolFormerBlock(nn.Module):
         dropout=0, activation="gelu",
         out_channels=None,
         norm_first=True, skip_token=False, skip_channel=True,
+        layer_scale=None,
         eps=EPS
     ):
         super().__init__()
@@ -200,6 +207,13 @@ class PoolFormerBlock(nn.Module):
             eps=eps
         )
 
+        if layer_scale is None:
+            self.layer_scale = False
+        else:
+            self.token_scale = layer_scale * nn.Parameter(torch.ones(out_channels), requires_grad=True)
+            self.channel_scale = layer_scale * nn.Parameter(torch.ones(out_channels), requires_grad=True)
+            self.layer_scale = True
+
         self.skip_token = skip_token
         self.skip_channel = skip_channel
 
@@ -221,16 +235,26 @@ class PoolFormerBlock(nn.Module):
 
             x = F.pad(input, (Pw_left, Pw_right, Ph_top, Ph_bottom))
             x = self.patch_embedding2d(x)
-        
-        if self.skip_token:
-            x = x + self.token_mixer(x) # (batch_size, embed_dim, height', width')
+
+        if self.layer_scale:
+            x_rescale = self.token_scale.view(-1, 1, 1) * self.token_mixer(x)
         else:
-            x = self.token_mixer(x) # (batch_size, embed_dim, height', width')
+            x_rescale = self.token_mixer(x)
+
+        if self.skip_token:
+            x = x + x_rescale # (batch_size, embed_dim, height', width')
+        else:
+            x = x_rescale # (batch_size, embed_dim, height', width')
+
+        if self.layer_scale:
+            x_rescale = self.channel_scale.view(-1, 1, 1) * self.channel_mixer(x)
+        else:
+            x_rescale = self.channel_mixer(x)
 
         if self.skip_channel:
-            output = x + self.channel_mixer(x) # (batch_size, embed_dim, height', width')
+            output = x + x_rescale # (batch_size, embed_dim, height', width')
         else:
-            output = self.channel_mixer(x) # (batch_size, embed_dim, height', width')
+            output = x_rescale # (batch_size, embed_dim, height', width')
 
         return output
 

@@ -495,7 +495,8 @@ def _test_poolformer():
         embed_dim, hidden_channels,
         patch_size=down_patch_size, stride=down_stride,
         pool_size=pool_size,
-        num_layers=num_layers
+        num_layers=num_layers,
+        layer_scale=1e-5
     )
     model = MetaFormer(
         backbone,
