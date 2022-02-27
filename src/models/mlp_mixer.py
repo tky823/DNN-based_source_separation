@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
-from models.metaformer import PatchEmbedding2d, ChannelMixerBlock1d, MLPBlock1d
+from models.metaformer import PatchEmbedding2d, ChannelMixerBlock1d, ChannelMixerBlock2d, MLPBlock1d
 
 EPS = 1e-12
 
@@ -165,7 +165,7 @@ class MLPMixerBackbone(nn.Module):
         net = []
 
         for _ in range(num_layers):
-            module = MLPMixerBlock(
+            module = MLPMixerBlock1d(
                 embed_dim, token_hidden_channels, embed_hidden_channels,
                 num_patches=num_patches,
                 dropout=dropout,
@@ -187,7 +187,7 @@ class MLPMixerBackbone(nn.Module):
 
         return output
 
-class MLPMixerBlock(nn.Module):
+class MLPMixerBlock1d(nn.Module):
     def __init__(
         self,
         embed_dim, token_hidden_channels, embed_hidden_channels,
@@ -201,7 +201,7 @@ class MLPMixerBlock(nn.Module):
             embed_dim, num_patches, token_hidden_channels,
             dropout=dropout,
             activation=activation,
-            norm_first=norm_first
+            norm_first=norm_first, channel_last=True
         )
         self.channel_mixer = ChannelMixerBlock1d(
             embed_dim, embed_hidden_channels,
@@ -222,14 +222,49 @@ class MLPMixerBlock(nn.Module):
 
         return output
 
+class MLPMixerBlock2d(nn.Module):
+    def __init__(
+        self,
+        embed_dim, token_hidden_channels, embed_hidden_channels,
+        num_patches,
+        dropout=0, activation="gelu",
+        norm_first=True
+    ):
+        super().__init__()
+
+        self.token_mixer = TokenMixerBlock2d(
+            embed_dim, num_patches, token_hidden_channels,
+            dropout=dropout,
+            activation=activation,
+            norm_first=norm_first, channel_last=False
+        )
+        self.channel_mixer = ChannelMixerBlock2d(
+            embed_dim, embed_hidden_channels,
+            dropout=dropout,
+            activation=activation,
+            norm_first=norm_first, channel_last=False
+        )
+
+    def forward(self, input):
+        """
+        Args:
+            input: (batch_size, num_patches, embed_dim)
+        Returns:
+            output: (batch_size, num_patches, embed_dim)
+        """
+        x = input + self.token_mixer(input) # (batch_size, num_patches, embed_dim)
+        output = x + self.channel_mixer(x) # (batch_size, num_patches, embed_dim)
+
+        return output
+
 class TokenMixerBlock1d(nn.Module):
-    def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True, eps=EPS):
+    def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True, channel_last=True, eps=EPS):
         super().__init__()
 
         assert norm_first, "norm_first should be True."
 
         self.layer_norm = nn.LayerNorm(num_features, eps=eps)
-        self.mixer = MLPBlock1d(num_patches, hidden_channels, dropout=dropout, activation=activation, channel_last=True)
+        self.mixer = MLPBlock1d(num_patches, hidden_channels, dropout=dropout, activation=activation, channel_last=channel_last)
 
     def forward(self, input):
         """
@@ -242,6 +277,53 @@ class TokenMixerBlock1d(nn.Module):
         x = x.permute(0, 2, 1)
         x = self.mixer(x)
         output = x.permute(0, 2, 1)
+
+        return output
+
+class TokenMixerBlock2d(nn.Module):
+    def __init__(self, num_features, num_patches, hidden_channels, dropout=0, activation="gelu", norm_first=True, channel_last=False, eps=EPS):
+        super().__init__()
+
+        assert norm_first, "norm_first should be True."
+
+        if channel_last:
+            self.layer_norm = nn.LayerNorm(num_features, eps=eps)
+        else:
+            self.layer_norm = nn.GroupNorm(1, num_features, eps=eps)
+
+        self.mixer = MLPBlock1d(num_patches, hidden_channels, dropout=dropout, activation=activation, channel_last=True)
+
+        self.channel_last = channel_last
+
+    def forward(self, input):
+        """
+        Args:
+            input:
+                (batch_size, height, width, num_features)
+                (batch_size, num_features, height, width)
+                num_patches == height * width
+        Returns:
+            output:
+                (batch_size, height, width, num_features)
+                (batch_size, num_features, height, width)
+        """
+        if self.channel_last:
+            batch_size, height, width, num_features = input.size()
+            x = self.layer_norm(input)
+            x = x.view(batch_size, height * width, num_features)
+            x = x.permute(0, 2, 1) # (batch_size, num_features, height * width)
+        else:
+            batch_size, num_features, height, width = input.size()
+            x = self.layer_norm(input)
+            x = x.view(batch_size, num_features, height * width)
+
+        x = self.mixer(x)
+
+        if self.channel_last:
+            x = x.permute(0, 2, 1) # (batch_size, height * width, num_features)
+            output = x.view(batch_size, height, width, num_features)
+        else:
+            output = x.view(batch_size, num_features, height, width)
 
         return output
 

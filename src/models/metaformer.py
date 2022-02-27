@@ -25,8 +25,7 @@ class MetaFormer(nn.Module):
     def __init__(
         self,
         backbone,
-        in_channels, embed_dim,
-        image_size,
+        in_channels, embed_dim_in, embed_dim_out,
         patch_size=7, stride=4,
         pooling="avg",
         bias_head=True,
@@ -36,18 +35,17 @@ class MetaFormer(nn.Module):
         super().__init__()
 
         self.in_channels = in_channels
-        self.image_size = _pair(image_size)
         patch_size = _pair(patch_size)
 
         self.patch_embedding2d = OverlappedPatchEmbedding2d(
-            in_channels, embed_dim,
+            in_channels, embed_dim_in,
             patch_size=patch_size, stride=stride,
-            channel_last=True
+            channel_last=False, to_1d=False
         )
         self.backbone = backbone
-        self.norm1d = nn.LayerNorm(embed_dim, eps=eps)
-        self.pool1d = choose_pooling(pooling)
-        self.fc_head = nn.Linear(embed_dim, num_classes, bias=bias_head)
+        self.norm2d = nn.GroupNorm(1, embed_dim_out, eps=eps)
+        self.pool2d = choose_pool2d(pooling, channel_last=False)
+        self.fc_head = nn.Linear(embed_dim_out, num_classes, bias=bias_head)
 
     def forward(self, input):
         """
@@ -56,16 +54,10 @@ class MetaFormer(nn.Module):
         Returns:
             output: (batch_size, num_classes)
         """
-        C = self.in_channels
-        H, W = self.image_size
-        _, C_in, H_in, W_in = input.size()
-
-        assert C_in == C and H_in == H and W_in == W, "Input shape is expected (batch_size, {}, {}, {}), but given (batch_size, {}, {}, {})".format(C, H, W, C_in, H_in, W_in)
-
-        x = self.patch_embedding2d(input) # (batch_size, num_patches, embed_dim)
-        x = self.backbone(x) # (batch_size, num_patches, embed_dim)
-        x = self.norm1d(x) # (batch_size, num_patches, embed_dim)
-        x = self.pool1d(x) # (batch_size, embed_dim)
+        x = self.patch_embedding2d(input) # (batch_size, embed_dim_in, H', W')
+        x = self.backbone(x) # (batch_size, embed_dim_out, H'', W'')
+        x = self.norm2d(x) # (batch_size, embed_dim_out, H'', W'')
+        x = self.pool2d(x) # (batch_size, embed_dim_out)
         output = self.fc_head(x) # (batch_size, num_classes)
 
         return output
@@ -342,7 +334,7 @@ def choose_pool1d(args, channel_last=True):
 
     return module
 
-def choose_pool2d(args, channel_last=True):
+def choose_pool2d(args, channel_last=False):
     if type(args) is str:
         module = Pool2d(pooling=args, channel_last=channel_last)
     elif isinstance(args, nn.Module):
@@ -463,9 +455,71 @@ def _test_overlapped_patch_embedding():
     print(input.size(), output.size())
     print()
 
+def _test_mlp_mixer():
+    from models.mlp_mixer import MLPMixerBlock2d
+
+    in_channels = 3
+    embed_dim, hidden_channels = 8, 12
+    image_size, patch_size = 224, 16
+    num_layers = 2
+
+    mixer_block = MLPMixerBlock2d(
+        embed_dim, token_hidden_channels=hidden_channels, embed_hidden_channels=hidden_channels,
+        num_patches=(image_size//patch_size)**2,
+    )
+    backbone = MetaFormerBackbone(mixer_block, num_layers=num_layers, norm=None)
+
+    model = MetaFormer(
+        backbone,
+        in_channels, embed_dim_in=embed_dim, embed_dim_out=embed_dim,
+        patch_size=patch_size, stride=patch_size,
+        num_classes=10
+    )
+
+    input = torch.randn(4, in_channels, image_size, image_size)
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
+def _test_poolformer():
+    from models.poolformer import PoolFormerBackbone
+
+    in_channels = 3
+    embed_dim, hidden_channels = [5, 6, 7], [12, 16, 18]
+    down_patch_size, down_stride = 3, 2
+    pool_size = 3
+    num_layers = [2, 3, 2]
+
+    backbone = PoolFormerBackbone(
+        embed_dim, hidden_channels,
+        patch_size=down_patch_size, stride=down_stride,
+        pool_size=pool_size,
+        num_layers=num_layers
+    )
+    model = MetaFormer(
+        backbone,
+        in_channels, embed_dim_in=embed_dim[0], embed_dim_out=embed_dim[-1],
+        num_classes=10
+    )
+
+    input = torch.randn(4, in_channels, 256, 256)
+    output = model(input)
+
+    print(model)
+    print(input.size(), output.size())
+
 if __name__ == "__main__":
+    torch.manual_seed(111)
+
     print("="*10, "PatchEmbedding", "="*10)
     _test_patch_embedding()
 
     print("="*10, "OverlappedPatchEmbedding", "="*10)
     _test_overlapped_patch_embedding()
+
+    print("="*10, "MLP-Mixer", "="*10)
+    _test_mlp_mixer()
+
+    print("="*10, "PoolFormer", "="*10)
+    _test_poolformer()

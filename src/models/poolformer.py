@@ -16,9 +16,7 @@ class PoolFormer(nn.Module):
     def __init__(
         self,
         in_channels,
-        embed_dim,
-        hidden_channels,
-        image_size,
+        embed_dim, hidden_channels,
         patch_size=7, stride=4,
         down_patch_size=3, down_stride=2,
         pool_size=3,
@@ -34,7 +32,6 @@ class PoolFormer(nn.Module):
         super().__init__()
 
         self.in_channels = in_channels
-        self.image_size = _pair(image_size)
         patch_size = _pair(patch_size)
 
         if type(embed_dim) is list:
@@ -69,17 +66,10 @@ class PoolFormer(nn.Module):
         Returns:
             output: (batch_size, num_classes)
         """
-        C = self.in_channels
-        H, W = self.image_size
-        _, C_in, H_in, W_in = input.size()
-
-        assert C_in == C and H_in == H and W_in == W, \
-        "Input shape is expected (batch_size, {}, {}, {}), but given (batch_size, {}, {}, {})".format(C, H, W, C_in, H_in, W_in)
-
-        x = self.patch_embedding2d(input) # (batch_size, embed_dim, H', W')
-        x = self.backbone(x) # (batch_size, num_patches, embed_dim)
-        x = self.norm2d(x) # (batch_size, num_patches, embed_dim)
-        x = self.pool2d(x) # (batch_size, embed_dim)
+        x = self.patch_embedding2d(input) # (batch_size, embed_dim_in, H', W')
+        x = self.backbone(x) # (batch_size, embed_dim_out, H'', W'')
+        x = self.norm2d(x) # (batch_size, embed_dim_out, H'', W'')
+        x = self.pool2d(x) # (batch_size, embed_dim_out)
         output = self.fc_head(x) # (batch_size, num_classes)
 
         return output
@@ -198,7 +188,7 @@ class PoolFormerBlock(nn.Module):
 
         self.token_mixer = TokenMixerBlock2d(
             out_channels, pool_size=pool_size,
-            norm_first=norm_first,
+            norm_first=norm_first, channel_last=False,
             eps=eps
         )
 
@@ -245,10 +235,11 @@ class PoolFormerBlock(nn.Module):
         return output
 
 class TokenMixerBlock2d(nn.Module):
-    def __init__(self, num_features, pool_size, norm_first=True, eps=EPS):
+    def __init__(self, num_features, pool_size, norm_first=True, channel_last=False, eps=EPS):
         super().__init__()
 
         assert norm_first, "norm_first should be True."
+        assert not channel_last, "channel_first should be False."
 
         pool_size = _pair(pool_size)
 
@@ -291,7 +282,6 @@ def _test_poolformer():
 
     model = PoolFormer(
         in_channels, embed_dim, hidden_channels,
-        image_size,
         patch_size=patch_size, stride=stride,
         down_patch_size=down_patch_size, down_stride=down_stride,
         pool_size=pool_size,
