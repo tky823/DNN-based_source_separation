@@ -13,35 +13,37 @@ Google Colaboratoryの環境で試すことができます．`train_danet.ipynb`
 `TZ=UTC-9`は`Coordinated Universal Time +9 hours`を意味しています．
 
 ### 0. データセットの準備
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh \
---dataset_root <DATASET_DIR> \
+--librispeech_root <LIBRISPEECH_ROOT> \
 --n_sources <#SPEAKERS>
 ```
 
 ### 1. 学習
-```
-cd <REPOSITORY_ROOT>/egs/librispeech/danet/
-. ./train.sh --exp_dir <OUTPUT_DIR>
+```sh
+cd <REPOSITORY_ROOT>/egs/tutorials/danet/
+. ./train.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 学習を途中から再開したい場合，
-```
+```sh
 . ./train.sh \
 --exp_dir <OUTPUT_DIR> \
 --continue_from <MODEL_PATH>
 ```
 
 ### 2. 評価
-```
-cd <REPOSITORY_ROOT>/egs/librispeech/danet/
-. ./test.sh --exp_dir <OUTPUT_DIR>
+```sh
+cd <REPOSITORY_ROOT>/egs/tutorials/danet/
+. ./test.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. デモ
-```
-cd <REPOSITORY_ROOT>/egs/librispeech/danet/
+```sh
+cd <REPOSITORY_ROOT>/egs/tutorials/danet/
 . ./demo.sh
 ```
 
