@@ -3,7 +3,7 @@ import warnings
 import torch.nn as nn
 
 from utils.filterbank import choose_filterbank
-from norm import GlobalLayerNorm, CumulativeLayerNorm1d
+from modules.norm import GlobalLayerNorm, CumulativeLayerNorm1d
 
 EPS = 1e-12
 

@@ -10,7 +10,7 @@ I recommend that you specify your time zone like `export TZ=UTC-9`.
 Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
 
 ### 0. Preparation
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh \
 --librispeech_root <LIBRISPEECH_ROOT> \
@@ -18,24 +18,28 @@ cd <REPOSITORY_ROOT>/egs/tutorials/common/
 ```
 
 ### 1. Training
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/librispeech/dprnn_tasnet/
-. ./train.sh --exp_dir <OUTPUT_DIR>
+. ./train.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 If you want to resume training,
-```
-. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
+```sh
+. ./train.sh \
+--exp_dir <OUTPUT_DIR> \
+--continue_from <MODEL_PATH>
 ```
 
 ### 2. Evaluation
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/librispeech/dprnn_tasnet/
-. ./test.sh --exp_dir <OUTPUT_DIR>
+. ./test.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. Demo
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/librispeech/dprnn_tasnet/
 . ./demo.sh
 ```

@@ -12,6 +12,8 @@ def choose_nonlinear(name, **kwargs):
         nonlinear = nn.Tanh()
     elif name == 'leaky-relu':
         nonlinear = nn.LeakyReLU()
+    elif name == 'gelu':
+        nonlinear = nn.GELU()
     else:
         raise NotImplementedError("Invalid nonlinear function is specified. Choose 'relu' instead of {}.".format(name))
     
