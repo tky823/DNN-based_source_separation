@@ -94,3 +94,6 @@
 - モデルの追加（`DeepClustering`，`ADANet`）．
 - モデルの修正（`LSTM-TasNet`）．
 - パラメータ名の変更（`fft_size`->`n_fft`，`hop_size`->`hop_length`）．
+
+# v0.7.2
+- Jupyter notebookの更新．

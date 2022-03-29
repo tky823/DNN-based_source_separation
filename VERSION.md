@@ -94,3 +94,6 @@
 - Add new models (`DeepClustering`, `ADANet`).
 - Bug fixes of (`LSTM-TasNet`).
 - Rename parameters (`fft_size`->`n_fft`, `hop_size`->`hop_length`).
+
+# v0.7.2
+- Update jupyter notebooks.

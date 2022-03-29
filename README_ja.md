@@ -3,9 +3,7 @@ DNNによる音源分離（PyTorch実装）
 
 ## 新しい情報
 - v0.7.1
-  - モデルの追加（`DeepClustering`，`ADANet`）．
-  - モデルの修正（`LSTM-TasNet`）．
-  - パラメータ名の変更（`fft_size`->`n_fft`，`hop_size`->`hop_length`）．
+  - Jupyter notebookの更新．
 
 ## モデル
 | モデル | 参考文献 | 実装 |
