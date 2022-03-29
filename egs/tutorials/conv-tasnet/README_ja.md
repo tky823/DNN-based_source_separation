@@ -13,7 +13,7 @@ I recommend that you specify your time zone like `export TZ=UTC-9`.
 Here, `TZ=UTC-9` means `Coordinated Universal Time +9 hours`.
 
 ### 0. データセットの準備
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh \
 --librispeech_root <LIBRISPEECH_ROOT> \
@@ -21,24 +21,28 @@ cd <REPOSITORY_ROOT>/egs/tutorials/common/
 ```
 
 ### 1. 学習
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
-. ./train.sh --exp_dir <OUTPUT_DIR>
+. ./train.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 学習を途中から再開したい場合，
-```
-. ./train.sh --exp_dir <OUTPUT_DIR> --continue_from <MODEL_PATH>
+```sh
+. ./train.sh \
+--exp_dir <OUTPUT_DIR> \
+--continue_from <MODEL_PATH>
 ```
 
 ### 2. 評価
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
-. ./test.sh --exp_dir <OUTPUT_DIR>
+. ./test.sh \
+--exp_dir <OUTPUT_DIR>
 ```
 
 ### 3. デモ
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./demo.sh
 ```
@@ -46,7 +50,7 @@ cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 ## 結果
 テストデータに対する評価．
 モデルはGoogle Colaboratoryで学習させたものであり，次のようにダウンロードできます．
-```
+```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/conv-tasnet/
 . ./prepare_2speakers-model.sh
 ```

@@ -68,7 +68,7 @@ DNNによる音源分離（PyTorch実装）
 ```sh
 cd <REPOSITORY_ROOT>/egs/tutorials/common/
 . ./prepare_librispeech.sh \
---dataset_root <DATASET_DIR> \
+--librispeech_root <LIBRISPEECH_ROOT> \
 --n_sources <#SPEAKERS>
 ```
 
